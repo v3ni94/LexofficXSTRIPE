@@ -1,53 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useInvoicesStore } from "../stores/invoices";
 import type { InvoiceListItem } from "../stores/invoices";
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    open: "bg-green-100 text-green-800",
-    in_collection: "bg-amber-100 text-amber-800",
-    failed: "bg-red-100 text-red-800",
-  };
-  const labels: Record<string, string> = {
-    open: "Offen",
-    in_collection: "Im Einzug",
-    failed: "Fehlgeschlagen",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-        styles[status] ?? "bg-gray-100 text-gray-600"
-      }`}
-    >
-      {labels[status] ?? status}
-    </span>
-  );
-}
-
-function ActionButton({ invoice }: { invoice: InvoiceListItem }) {
-  if (invoice.collection_status === "in_collection") {
-    return null;
-  }
-  if (
-    invoice.collection_status === "open" ||
-    invoice.collection_status === "failed"
-  ) {
-    if (invoice.customer_has_iban) {
-      return (
-        <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors whitespace-nowrap">
-          Lastschrift einreichen
-        </button>
-      );
-    }
-    return (
-      <button className="text-xs px-3 py-1 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors whitespace-nowrap">
-        IBAN hinterlegen
-      </button>
-    );
-  }
-  return null;
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat("de-DE", {
@@ -61,25 +18,357 @@ function formatDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString("de-DE");
 }
 
+function maskIban(iban: string): string {
+  const clean = iban.replace(/\s/g, "");
+  if (clean.length < 8) return iban;
+  const first = clean.slice(0, 4);
+  const last = clean.slice(-4);
+  const masked = "*".repeat(clean.length - 8);
+  const full = first + masked + last;
+  return full.replace(/(.{4})/g, "$1 ").trim();
+}
+
+// ---------------------------------------------------------------------------
+// StatusBadge
+// ---------------------------------------------------------------------------
+
+function StatusBadge({
+  status,
+  failureReason,
+}: {
+  status: string;
+  failureReason?: string | null;
+}) {
+  const styles: Record<string, string> = {
+    open: "bg-blue-100 text-blue-800",
+    in_collection: "bg-amber-100 text-amber-800",
+    collected: "bg-green-100 text-green-800",
+    failed: "bg-red-100 text-red-800",
+  };
+  const labels: Record<string, string> = {
+    open: "Offen",
+    in_collection: "Im Einzugsverfahren",
+    collected: "Eingezogen",
+    failed: "Fehlgeschlagen",
+  };
+
+  const badge = (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+        styles[status] ?? "bg-gray-100 text-gray-600"
+      }`}
+    >
+      {labels[status] ?? status}
+    </span>
+  );
+
+  if (status === "failed" && failureReason) {
+    return (
+      <div className="group relative inline-block">
+        {badge}
+        <div className="pointer-events-none absolute bottom-full left-0 mb-1 hidden w-56 rounded bg-gray-900 px-2 py-1 text-xs text-white group-hover:block z-10">
+          {failureReason}
+        </div>
+      </div>
+    );
+  }
+
+  return badge;
+}
+
+// ---------------------------------------------------------------------------
+// Confirmation Dialog
+// ---------------------------------------------------------------------------
+
+interface ConfirmDialogProps {
+  invoice: InvoiceListItem;
+  ibanMasked: string;
+  mandateRef: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+}
+
+function ConfirmDialog({
+  invoice,
+  ibanMasked,
+  mandateRef,
+  onConfirm,
+  onCancel,
+  isSubmitting,
+}: ConfirmDialogProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          SEPA-Lastschrift einreichen
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Möchten Sie für folgende Rechnung eine SEPA-Lastschrift einreichen?
+        </p>
+        <div className="bg-gray-50 rounded-md p-4 space-y-2 text-sm mb-6">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Rechnung:</span>
+            <span className="font-medium">{invoice.voucher_number}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Kunde:</span>
+            <span className="font-medium">{invoice.contact_name}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Betrag:</span>
+            <span className="font-medium">
+              {formatAmount(invoice.total_gross_amount, invoice.currency)}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">IBAN:</span>
+            <span className="font-medium font-mono">{ibanMasked}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Mandatsreferenz:</span>
+            <span className="font-medium">{mandateRef}</span>
+          </div>
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isSubmitting && (
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+            )}
+            Lastschrift einreichen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// IBAN Modal (for customers without IBAN)
+// ---------------------------------------------------------------------------
+
+interface IbanModalProps {
+  invoice: InvoiceListItem;
+  onSaveAndSubmit: (iban: string, accountHolder: string) => void;
+  onCancel: () => void;
+  isSaving: boolean;
+  error: string | null;
+}
+
+function IbanModal({
+  invoice,
+  onSaveAndSubmit,
+  onCancel,
+  isSaving,
+  error,
+}: IbanModalProps) {
+  const [iban, setIban] = useState("");
+  const [accountHolder, setAccountHolder] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSaveAndSubmit(iban.trim().replace(/\s/g, ""), accountHolder.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          IBAN hinterlegen
+        </h3>
+        <p className="text-sm text-gray-600 mb-1">
+          Für diesen Kunden ist noch keine IBAN hinterlegt.
+        </p>
+        <p className="text-sm text-gray-500 mb-4">
+          Rechnung: <strong>{invoice.voucher_number}</strong> –{" "}
+          {formatAmount(invoice.total_gross_amount, invoice.currency)}
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              IBAN
+            </label>
+            <input
+              type="text"
+              value={iban}
+              onChange={(e) => setIban(e.target.value)}
+              placeholder="DE89 3704 0044 0532 0130 00"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Kontoinhaber
+            </label>
+            <input
+              type="text"
+              value={accountHolder}
+              onChange={(e) => setAccountHolder(e.target.value)}
+              placeholder="Max Mustermann"
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-3 justify-end pt-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={isSaving}
+              className="px-4 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {isSaving && (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              )}
+              IBAN speichern und Lastschrift einreichen
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
+type DialogState =
+  | { type: "none" }
+  | {
+      type: "confirm";
+      invoice: InvoiceListItem;
+      ibanMasked: string;
+      mandateRef: string;
+    }
+  | { type: "iban"; invoice: InvoiceListItem };
+
 export default function InvoicesPage() {
   const {
     data,
     isLoading,
     isSyncing,
     search,
+    submittingIds,
     fetchInvoices,
     syncInvoices,
     setSearch,
     setPage,
+    submitCollection,
+    submitBatch,
+    saveIban,
+    startPolling,
+    stopPolling,
   } = useInvoicesStore();
 
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(search);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dialog, setDialog] = useState<DialogState>({ type: "none" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [ibanSaveError, setIbanSaveError] = useState<string | null>(null);
+
+  // Track which invoice IDs are fading out (just transitioned to "collected")
+  const [fadingIds, setFadingIds] = useState<Set<string>>(new Set());
+  const prevStatusRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     fetchInvoices();
-  }, [fetchInvoices]);
+    startPolling();
+    return () => stopPolling();
+  }, [fetchInvoices, startPolling, stopPolling]);
+
+  // Detect status changes to "collected" and trigger fade-out
+  useEffect(() => {
+    if (!data) return;
+    const prev = prevStatusRef.current;
+    const toFade: string[] = [];
+    for (const inv of data.items) {
+      if (
+        inv.collection_status === "collected" &&
+        prev[inv.id] === "in_collection"
+      ) {
+        toFade.push(inv.id);
+      }
+    }
+    if (toFade.length > 0) {
+      setFadingIds((f) => {
+        const next = new Set(f);
+        toFade.forEach((id) => next.add(id));
+        return next;
+      });
+      // Remove from fading after animation completes (600ms)
+      setTimeout(() => {
+        setFadingIds((f) => {
+          const next = new Set(f);
+          toFade.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, 600);
+    }
+    // Update prev map
+    const newPrev: Record<string, string> = {};
+    for (const inv of data.items) {
+      newPrev[inv.id] = inv.collection_status;
+    }
+    prevStatusRef.current = newPrev;
+  }, [data]);
 
   const handleSync = async () => {
     setSyncMessage(null);
@@ -107,41 +396,155 @@ export default function InvoicesPage() {
     setSearch(searchInput);
   };
 
+  const handleActionClick = (invoice: InvoiceListItem) => {
+    if (invoice.customer_has_iban) {
+      // Show confirm dialog with placeholder IBAN/mandate
+      setDialog({
+        type: "confirm",
+        invoice,
+        ibanMasked: "DE** **** **** **** **** **",
+        mandateRef: "HVM...",
+      });
+    } else {
+      setDialog({ type: "iban", invoice });
+    }
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (dialog.type !== "confirm") return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await submitCollection(dialog.invoice.id);
+      setDialog({ type: "none" });
+    } catch (err: unknown) {
+      const detail =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err
+          ? ((err as { response: { data?: { detail?: string } } }).response
+              .data?.detail ?? "Fehler beim Einreichen")
+          : "Verbindungsfehler";
+      setSubmitError(detail);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleIbanSaveAndSubmit = async (
+    iban: string,
+    accountHolder: string
+  ) => {
+    if (dialog.type !== "iban") return;
+    const invoice = dialog.invoice;
+    if (!invoice.customer_id) return;
+
+    setIsSubmitting(true);
+    setIbanSaveError(null);
+    try {
+      await saveIban(invoice.customer_id, iban, accountHolder);
+      await submitCollection(invoice.id);
+      setDialog({ type: "none" });
+    } catch (err: unknown) {
+      const detail =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err
+          ? ((err as { response: { data?: { detail?: string } } }).response
+              .data?.detail ?? "Fehler")
+          : "Verbindungsfehler";
+      setIbanSaveError(detail);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBatchSubmit = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const result = await submitBatch([...selectedIds]);
+      setSelectedIds(new Set());
+      if (result.failed.length > 0) {
+        setSyncError(
+          `${result.successful.length} erfolgreich, ${result.failed.length} fehlgeschlagen`
+        );
+      } else {
+        setSyncMessage(`${result.successful.length} Lastschriften eingereicht`);
+      }
+    } catch {
+      setSyncError("Batch-Einzug fehlgeschlagen");
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectableInvoices =
+    data?.items.filter(
+      (inv) =>
+        inv.collection_status === "open" || inv.collection_status === "failed"
+    ) ?? [];
+
+  const allSelected =
+    selectableInvoices.length > 0 &&
+    selectableInvoices.every((inv) => selectedIds.has(inv.id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableInvoices.map((inv) => inv.id)));
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-2xl font-bold text-gray-900">Rechnungen</h2>
-        <button
-          onClick={handleSync}
-          disabled={isSyncing}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isSyncing && (
-            <svg
-              className="animate-spin h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBatchSubmit}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
             >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
+              {selectedIds.size} Ausgewählte einziehen
+            </button>
           )}
-          {isSyncing ? "Synchronisiere..." : "Rechnungen synchronisieren"}
-        </button>
+          <button
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSyncing && (
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+            )}
+            {isSyncing ? "Synchronisiere..." : "Rechnungen synchronisieren"}
+          </button>
+        </div>
       </div>
 
-      {/* Sync result messages */}
+      {/* Messages */}
       {syncMessage && (
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm">
           {syncMessage}
@@ -150,6 +553,11 @@ export default function InvoicesPage() {
       {syncError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
           {syncError}
+        </div>
+      )}
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+          {submitError}
         </div>
       )}
 
@@ -188,6 +596,15 @@ export default function InvoicesPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        aria-label="Alle auswählen"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Rechnungsnr.
                     </th>
@@ -209,28 +626,68 @@ export default function InvoicesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {data.items.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {inv.voucher_number}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {inv.contact_name}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                        {formatAmount(inv.total_gross_amount, inv.currency)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {formatDate(inv.due_date)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={inv.collection_status} />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ActionButton invoice={inv} />
-                      </td>
-                    </tr>
-                  ))}
+                  {data.items.map((inv) => {
+                    const isFading = fadingIds.has(inv.id);
+                    const isSelectable =
+                      inv.collection_status === "open" ||
+                      inv.collection_status === "failed";
+                    const isBeingSubmitted = submittingIds.has(inv.id);
+
+                    return (
+                      <tr
+                        key={inv.id}
+                        className={`hover:bg-gray-50 transition-opacity duration-500 ${
+                          isFading ? "opacity-0" : "opacity-100"
+                        }`}
+                      >
+                        <td className="px-4 py-3">
+                          {isSelectable && (
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(inv.id)}
+                              onChange={() => toggleSelect(inv.id)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              aria-label={`Rechnung ${inv.voucher_number} auswählen`}
+                            />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {inv.voucher_number}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {inv.contact_name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
+                          {formatAmount(inv.total_gross_amount, inv.currency)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {formatDate(inv.due_date)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={inv.collection_status} />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {inv.collection_status === "in_collection" ? null : isSelectable ? (
+                            <button
+                              onClick={() => handleActionClick(inv)}
+                              disabled={isBeingSubmitted}
+                              className={`text-xs px-3 py-1 rounded hover:opacity-90 transition-colors whitespace-nowrap disabled:opacity-50 ${
+                                inv.customer_has_iban
+                                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                              }`}
+                            >
+                              {isBeingSubmitted
+                                ? "Einreichen..."
+                                : inv.customer_has_iban
+                                ? "Lastschrift einreichen"
+                                : "IBAN hinterlegen"}
+                            </button>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -262,6 +719,35 @@ export default function InvoicesPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Confirm Dialog */}
+      {dialog.type === "confirm" && (
+        <ConfirmDialog
+          invoice={dialog.invoice}
+          ibanMasked={dialog.ibanMasked}
+          mandateRef={dialog.mandateRef}
+          onConfirm={handleConfirmSubmit}
+          onCancel={() => {
+            setDialog({ type: "none" });
+            setSubmitError(null);
+          }}
+          isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* IBAN Modal */}
+      {dialog.type === "iban" && (
+        <IbanModal
+          invoice={dialog.invoice}
+          onSaveAndSubmit={handleIbanSaveAndSubmit}
+          onCancel={() => {
+            setDialog({ type: "none" });
+            setIbanSaveError(null);
+          }}
+          isSaving={isSubmitting}
+          error={ibanSaveError}
+        />
       )}
     </div>
   );

@@ -29,6 +29,21 @@ interface SyncResult {
   updated_count: number;
 }
 
+interface SubmitResult {
+  collection_id: string;
+  status: string;
+  stripe_payment_intent_id: string;
+}
+
+interface BatchSubmitResult {
+  successful: Array<{
+    invoice_id: string;
+    collection_id: string;
+    stripe_payment_intent_id: string;
+  }>;
+  failed: Array<{ invoice_id: string; error: string }>;
+}
+
 interface InvoicesState {
   data: InvoiceListResponse | null;
   isLoading: boolean;
@@ -36,11 +51,18 @@ interface InvoicesState {
   search: string;
   page: number;
   lastSyncResult: SyncResult | null;
+  submittingIds: Set<string>;
+  pollingIntervalId: ReturnType<typeof setInterval> | null;
 
   fetchInvoices: (page?: number, search?: string) => Promise<void>;
   syncInvoices: () => Promise<SyncResult>;
   setSearch: (search: string) => void;
   setPage: (page: number) => void;
+  submitCollection: (invoiceId: string) => Promise<SubmitResult>;
+  submitBatch: (invoiceIds: string[]) => Promise<BatchSubmitResult>;
+  saveIban: (customerId: string, iban: string, accountHolderName: string) => Promise<void>;
+  startPolling: () => void;
+  stopPolling: () => void;
 }
 
 export const useInvoicesStore = create<InvoicesState>((set, get) => ({
@@ -50,6 +72,8 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   search: "",
   page: 1,
   lastSyncResult: null,
+  submittingIds: new Set(),
+  pollingIntervalId: null,
 
   fetchInvoices: async (page?: number, search?: string) => {
     const p = page ?? get().page;
@@ -74,7 +98,6 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
       const res = await api.post("/invoices/sync");
       const result: SyncResult = res.data;
       set({ isSyncing: false, lastSyncResult: result });
-      // Refresh list after sync
       await get().fetchInvoices(1);
       return result;
     } catch (err) {
@@ -91,5 +114,58 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   setPage: (page: number) => {
     set({ page });
     get().fetchInvoices(page);
+  },
+
+  submitCollection: async (invoiceId: string) => {
+    set((state) => ({
+      submittingIds: new Set([...state.submittingIds, invoiceId]),
+    }));
+    try {
+      const res = await api.post("/collections/submit", { invoice_id: invoiceId });
+      // Refresh list after submission
+      await get().fetchInvoices();
+      return res.data as SubmitResult;
+    } finally {
+      set((state) => {
+        const next = new Set(state.submittingIds);
+        next.delete(invoiceId);
+        return { submittingIds: next };
+      });
+    }
+  },
+
+  submitBatch: async (invoiceIds: string[]) => {
+    const res = await api.post("/collections/submit-batch", {
+      invoice_ids: invoiceIds,
+    });
+    await get().fetchInvoices();
+    return res.data as BatchSubmitResult;
+  },
+
+  saveIban: async (customerId: string, iban: string, accountHolderName: string) => {
+    await api.put(`/customers/${customerId}/iban`, {
+      iban,
+      account_holder_name: accountHolderName,
+    });
+    await get().fetchInvoices();
+  },
+
+  startPolling: () => {
+    const existing = get().pollingIntervalId;
+    if (existing !== null) return;
+
+    const id = setInterval(() => {
+      get().fetchInvoices();
+    }, 30_000);
+
+    set({ pollingIntervalId: id });
+  },
+
+  stopPolling: () => {
+    const id = get().pollingIntervalId;
+    if (id !== null) {
+      clearInterval(id);
+      set({ pollingIntervalId: null });
+    }
   },
 }));
