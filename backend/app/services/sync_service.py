@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.customer import Customer
 from app.models.integration import Integration
 from app.models.invoice import CollectionStatus, Invoice
+from app.services.invoice_keyword_service import InvoiceKeywordService
 from app.services.lexoffice_service import LexofficeService
 
 logger = logging.getLogger(__name__)
@@ -61,6 +63,12 @@ class SyncService:
             due_date = _parse_date(detail.get("dueDate"))
             lex_status = detail.get("voucherStatus", voucher.get("voucherStatus", "open"))
 
+            # --- Extract keyword from line items ---
+            line_items = detail.get("lineItems", [])
+            line_items_json_str = json.dumps(line_items, ensure_ascii=False) if line_items else None
+            keyword_service = InvoiceKeywordService()
+            kw_display, kw_sepa = keyword_service.extract_keyword(line_items)
+
             # --- Upsert invoice ---
             stmt = select(Invoice).where(
                 Invoice.tenant_id == tenant_id,
@@ -77,6 +85,12 @@ class SyncService:
                 existing.due_date = due_date
                 existing.lexoffice_status = lex_status
                 existing.last_synced_at = datetime.now(timezone.utc)
+
+                # Recalculate keyword only if line items changed
+                if line_items_json_str != existing.line_items_json:
+                    existing.line_items_json = line_items_json_str
+                    existing.keyword = kw_display
+                    existing.keyword_sepa = kw_sepa
 
                 # If lexoffice says paid, mark as collected
                 if lex_status == "paid" and existing.collection_status != CollectionStatus.COLLECTED:
@@ -95,6 +109,9 @@ class SyncService:
                     due_date=due_date,
                     lexoffice_status=lex_status,
                     collection_status=CollectionStatus.OPEN,
+                    line_items_json=line_items_json_str,
+                    keyword=kw_display,
+                    keyword_sepa=kw_sepa,
                     last_synced_at=datetime.now(timezone.utc),
                 )
                 db.add(new_invoice)

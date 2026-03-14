@@ -148,6 +148,33 @@ async def get_recent_collections(
     return result
 
 
+@router.get("/keyword-stats")
+async def get_keyword_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return collection counts grouped by invoice keyword."""
+    stmt = (
+        select(
+            Invoice.keyword,
+            func.count().label("count"),
+            func.coalesce(func.sum(PaymentCollection.amount_cents), 0).label("total_cents"),
+        )
+        .join(PaymentCollection, PaymentCollection.invoice_id == Invoice.id)
+        .where(
+            PaymentCollection.tenant_id == current_user.id,
+            Invoice.keyword.isnot(None),
+        )
+        .group_by(Invoice.keyword)
+        .order_by(func.count().desc())
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {"keyword": row[0], "count": row[1], "amount_cents": row[2]}
+        for row in rows
+    ]
+
+
 @router.get("/upcoming-invoices")
 async def get_upcoming_invoices(
     current_user: User = Depends(get_current_user),

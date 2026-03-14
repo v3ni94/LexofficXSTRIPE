@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import math
 from datetime import date
@@ -9,13 +10,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.customer import Customer
 from app.models.customer_iban import CustomerIban
 from app.models.invoice import Invoice
 from app.models.payment_collection import PaymentCollection
 from app.models.sepa_mandate import SepaMandate
 from app.models.user import User
-from app.schemas.collection import CollectionListItem, CollectionListResponse, CollectionResponse
+from app.schemas.collection import CollectionListItem, CollectionListResponse, CollectionPreview, CollectionResponse
 from app.services.collection_service import CollectionError, CollectionService
+from app.services.invoice_keyword_service import InvoiceKeywordService
 from app.utils.iban import mask_iban
 from app.utils.security import get_current_user
 
@@ -107,6 +110,64 @@ async def submit_batch_collection(
     return result
 
 
+@router.get("/preview", response_model=CollectionPreview)
+async def preview_collection(
+    invoice_id: str = Query(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Preview the SEPA description without submitting."""
+    invoice = (
+        await db.execute(
+            select(Invoice).where(
+                Invoice.id == invoice_id,
+                Invoice.tenant_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
+
+    customer = None
+    if invoice.customer_id:
+        customer = (
+            await db.execute(
+                select(Customer).where(
+                    Customer.id == invoice.customer_id,
+                    Customer.tenant_id == current_user.id,
+                )
+            )
+        ).scalar_one_or_none()
+
+    customer_number = customer.customer_number if customer else "00000"
+    keyword_service = InvoiceKeywordService()
+
+    keyword_sepa = invoice.keyword_sepa
+    keyword_display = invoice.keyword
+    if not keyword_sepa and invoice.line_items_json:
+        line_items = json.loads(invoice.line_items_json)
+        keyword_display, keyword_sepa = keyword_service.extract_keyword(line_items)
+    if not keyword_sepa:
+        keyword_sepa = "Sonstiges"
+        keyword_display = "Sonstiges"
+
+    description = keyword_service.build_description(
+        voucher_number=invoice.voucher_number,
+        customer_number=customer_number,
+        keyword_sepa=keyword_sepa,
+    )
+
+    return CollectionPreview(
+        description=description,
+        keyword=keyword_display,
+        keyword_sepa=keyword_sepa,
+        voucher_number=invoice.voucher_number,
+        customer_number=customer_number,
+        amount=float(invoice.total_gross_amount),
+    )
+
+
 @router.get("", response_model=CollectionListResponse)
 async def list_collections(
     current_user: User = Depends(get_current_user),
@@ -196,6 +257,7 @@ async def list_collections(
             submitted_at=c.submitted_at,
             completed_at=c.completed_at,
             failure_reason=c.failure_reason,
+            description=c.description,
         ))
 
     return CollectionListResponse(

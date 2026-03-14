@@ -8,6 +8,8 @@ import {
 import { useInvoicesStore } from "../stores/invoices";
 import type { InvoiceListItem, SyncResult } from "../stores/invoices";
 
+import { api } from "../api/client";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -32,6 +34,55 @@ function maskIban(iban: string): string {
   const masked = "*".repeat(clean.length - 8);
   const full = first + masked + last;
   return full.replace(/(.{4})/g, "$1 ").trim();
+}
+
+// ---------------------------------------------------------------------------
+// Keyword badge
+// ---------------------------------------------------------------------------
+
+const KEYWORD_COLORS: Record<string, string> = {
+  Vermietung: "bg-blue-100 text-blue-800",
+  Verkauf: "bg-green-100 text-green-800",
+  Verwaltung: "bg-purple-100 text-purple-800",
+  "Mieterhöhung": "bg-orange-100 text-orange-800",
+  Nebenkostenabrechnung: "bg-yellow-100 text-yellow-800",
+  Kaution: "bg-gray-100 text-gray-700",
+  Provision: "bg-teal-100 text-teal-800",
+  Instandhaltung: "bg-red-100 text-red-800",
+  Sonstiges: "bg-gray-100 text-gray-600",
+};
+
+function KeywordBadge({ keyword }: { keyword: string | null }) {
+  if (!keyword) return <span className="text-xs text-gray-400">-</span>;
+
+  // Handle combined keywords like "Verkauf/Verwaltung"
+  const parts = keyword.split("/");
+  if (parts.length > 1) {
+    return (
+      <div className="flex gap-1 flex-wrap">
+        {parts.map((p, i) => (
+          <span
+            key={i}
+            className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
+              KEYWORD_COLORS[p.trim()] ?? "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {p.trim()}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+        KEYWORD_COLORS[keyword] ?? "bg-gray-100 text-gray-600"
+      }`}
+    >
+      {keyword}
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -103,6 +154,15 @@ function ConfirmDialog({
   onCancel,
   isSubmitting,
 }: ConfirmDialogProps) {
+  const [preview, setPreview] = useState<{ description: string } | null>(null);
+
+  useEffect(() => {
+    api
+      .get("/collections/preview", { params: { invoice_id: invoice.id } })
+      .then((res) => setPreview(res.data))
+      .catch(() => {});
+  }, [invoice.id]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
@@ -135,6 +195,21 @@ function ConfirmDialog({
             <span className="text-gray-500">Mandatsreferenz:</span>
             <span className="font-medium">{mandateRef}</span>
           </div>
+          {preview && (
+            <>
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <div className="flex justify-between items-start">
+                  <span className="text-gray-500">Verwendungszweck:</span>
+                  <span className="font-medium font-mono text-right text-xs max-w-[200px]">
+                    {preview.description}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1 text-right">
+                  Dieser Text erscheint auf dem Kontoauszug des Kunden.
+                </p>
+              </div>
+            </>
+          )}
         </div>
         <div className="flex gap-3 justify-end">
           <button
@@ -314,6 +389,7 @@ export default function InvoicesPage() {
     fetchInvoices,
     syncInvoices,
     setSearch,
+    setKeyword,
     setPage,
     submitCollection,
     submitBatch,
@@ -334,6 +410,8 @@ export default function InvoicesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [ibanSaveError, setIbanSaveError] = useState<string | null>(null);
+  const [keywords, setKeywords] = useState<{ keyword: string; count: number }[]>([]);
+  const [keywordFilter, setKeywordFilter] = useState("");
 
   // Track which invoice IDs are fading out (just transitioned to "collected")
   const [fadingIds, setFadingIds] = useState<Set<string>>(new Set());
@@ -342,6 +420,7 @@ export default function InvoicesPage() {
   useEffect(() => {
     fetchInvoices();
     startPolling();
+    api.get("/invoices/keywords").then((res) => setKeywords(res.data)).catch(() => {});
     return () => stopPolling();
   }, [fetchInvoices, startPolling, stopPolling]);
 
@@ -549,22 +628,44 @@ export default function InvoicesPage() {
         </div>
       )}
 
-      {/* Search */}
-      <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-md">
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Rechnungsnr. oder Kundenname..."
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition-colors"
-        >
-          Suchen
-        </button>
-      </form>
+      {/* Search + Keyword filter */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <form onSubmit={handleSearchSubmit} className="flex gap-2 max-w-md">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Rechnungsnr. oder Kundenname..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition-colors"
+          >
+            Suchen
+          </button>
+        </form>
+        {keywords.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Kategorie</label>
+            <select
+              value={keywordFilter}
+              onChange={(e) => {
+                setKeywordFilter(e.target.value);
+                setKeyword(e.target.value);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Alle Kategorien</option>
+              {keywords.map((kw) => (
+                <option key={kw.keyword} value={kw.keyword}>
+                  {kw.keyword} ({kw.count})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* Table */}
       {isLoading ? (
@@ -604,6 +705,9 @@ export default function InvoicesPage() {
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Faellig am
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Kategorie
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -650,6 +754,9 @@ export default function InvoicesPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {formatDate(inv.due_date)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <KeywordBadge keyword={inv.keyword} />
                         </td>
                         <td className="px-4 py-3">
                           <StatusBadge status={inv.collection_status} />

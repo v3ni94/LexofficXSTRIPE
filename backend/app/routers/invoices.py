@@ -21,6 +21,7 @@ from app.schemas.invoice import (
     InvoiceDetailResponse,
     InvoiceListItem,
     InvoiceListResponse,
+    KeywordCount,
     SyncResponse,
 )
 from app.services.lexoffice_service import LexofficeService
@@ -120,11 +121,31 @@ def _run_sync(tenant_id, lex_service, db):
         loop.close()
 
 
+@router.get("/keywords", response_model=list[KeywordCount])
+async def list_keywords(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return keyword counts for filter dropdown."""
+    stmt = (
+        select(Invoice.keyword, func.count().label("count"))
+        .where(
+            Invoice.tenant_id == current_user.id,
+            Invoice.keyword.isnot(None),
+        )
+        .group_by(Invoice.keyword)
+        .order_by(func.count().desc())
+    )
+    rows = (await db.execute(stmt)).all()
+    return [KeywordCount(keyword=row[0], count=row[1]) for row in rows]
+
+
 @router.get("", response_model=InvoiceListResponse)
 async def list_invoices(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     status_filter: str | None = Query(None, alias="status"),
+    keyword_filter: str | None = Query(None, alias="keyword"),
     search: str | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -142,6 +163,9 @@ async def list_invoices(
 
     if status_filter:
         base = base.where(Invoice.collection_status == status_filter)
+
+    if keyword_filter:
+        base = base.where(Invoice.keyword == keyword_filter)
 
     if search:
         pattern = f"%{search}%"
@@ -197,6 +221,8 @@ async def list_invoices(
             if isinstance(inv.collection_status, CollectionStatus)
             else inv.collection_status,
             customer_has_iban=iban_map.get(inv.customer_id or "", False),
+            keyword=inv.keyword,
+            keyword_sepa=inv.keyword_sepa,
         )
         items.append(item)
 
@@ -271,6 +297,8 @@ async def get_invoice(
         collection_status=invoice.collection_status.value
         if isinstance(invoice.collection_status, CollectionStatus)
         else invoice.collection_status,
+        keyword=invoice.keyword,
+        keyword_sepa=invoice.keyword_sepa,
         last_synced_at=invoice.last_synced_at,
         customer=customer_brief,
         collections=collections,

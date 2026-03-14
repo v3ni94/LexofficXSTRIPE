@@ -14,6 +14,7 @@ export interface CollectionListItem {
   submitted_at: string | null;
   completed_at: string | null;
   failure_reason: string | null;
+  description: string | null;
 }
 
 interface CollectionListResponse {

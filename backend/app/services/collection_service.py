@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -9,6 +10,7 @@ from app.models.customer_iban import CustomerIban
 from app.models.integration import Integration
 from app.models.invoice import CollectionStatus, Invoice
 from app.models.payment_collection import PaymentCollection
+from app.services.invoice_keyword_service import InvoiceKeywordService
 from app.services.mandate_service import MandateService
 from app.services.stripe_service import StripeService
 
@@ -130,24 +132,40 @@ class CollectionService:
             customer_id=stripe_customer.id,
         )
 
-        # 8. Create and confirm payment intent
+        # 8. Build SEPA Verwendungszweck
+        keyword_service = InvoiceKeywordService()
+        keyword_sepa = invoice.keyword_sepa
+        if not keyword_sepa and invoice.line_items_json:
+            line_items = json.loads(invoice.line_items_json)
+            _, keyword_sepa = keyword_service.extract_keyword(line_items)
+        if not keyword_sepa:
+            keyword_sepa = "Sonstiges"
+
+        description = keyword_service.build_description(
+            voucher_number=invoice.voucher_number,
+            customer_number=customer.customer_number,
+            keyword_sepa=keyword_sepa,
+        )
+
+        # 9. Create and confirm payment intent
         amount_cents = int(invoice.total_gross_amount * 100)
         payment_intent = stripe_svc.create_payment_intent(
             amount_cents=amount_cents,
             customer_id=stripe_customer.id,
             payment_method_id=payment_method.id,
             mandate_reference=mandate.mandate_reference,
-            description=f"Rechnung {invoice.voucher_number}",
+            description=description,
             metadata={
                 "tenant_id": tenant_id,
                 "invoice_id": invoice.id,
                 "mandate_reference": mandate.mandate_reference,
                 "voucher_number": invoice.voucher_number,
+                "customer_number": customer.customer_number,
             },
             contact_email=contact_email,
         )
 
-        # 9. Save PaymentCollection
+        # 10. Save PaymentCollection
         collection = PaymentCollection(
             tenant_id=tenant_id,
             invoice_id=invoice.id,
@@ -157,14 +175,15 @@ class CollectionService:
             currency="EUR",
             stripe_payment_intent_id=payment_intent.id,
             stripe_status="processing",
+            description=description,
             submitted_at=datetime.now(timezone.utc),
         )
         db.add(collection)
 
-        # 10. Update invoice status
+        # 11. Update invoice status
         invoice.collection_status = CollectionStatus.IN_COLLECTION
 
-        # 11. Update mandate with Stripe IDs
+        # 12. Update mandate with Stripe IDs
         mandate.stripe_payment_method_id = payment_method.id
         mandate.stripe_customer_id = stripe_customer.id
 

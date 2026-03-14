@@ -23,6 +23,7 @@ class CollectionResponse(BaseModel):
     submitted_at: datetime | None
     completed_at: datetime | None
     failure_reason: str | None
+    description: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -41,6 +42,7 @@ class CollectionListItem(BaseModel):
     submitted_at: datetime | None
     completed_at: datetime | None
     failure_reason: str | None
+    description: str | None = None
 
 
 class CollectionListResponse(BaseModel):
@@ -49,6 +51,15 @@ class CollectionListResponse(BaseModel):
     page: int
     per_page: int
     total_pages: int
+
+
+class CollectionPreview(BaseModel):
+    description: str
+    keyword: str | None
+    keyword_sepa: str | None
+    voucher_number: str
+    customer_number: str
+    amount: float
 
 
 class DashboardStats(BaseModel):

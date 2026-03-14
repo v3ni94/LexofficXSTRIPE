@@ -6,6 +6,7 @@ import {
   SyncToast,
   useCooldown,
 } from "../components/SyncControls";
+import { api } from "../api/client";
 import { useDashboardStore } from "../stores/dashboard";
 import { useInvoicesStore } from "../stores/invoices";
 import type { SyncResult } from "../stores/invoices";
@@ -182,6 +183,43 @@ function UpcomingInvoicesList({ items }: { items: UpcomingInvoice[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Keyword stats mini-list
+// ---------------------------------------------------------------------------
+
+interface KeywordStat {
+  keyword: string;
+  count: number;
+  amount_cents: number;
+}
+
+function KeywordStatsList({ items }: { items: KeywordStat[] }) {
+  if (items.length === 0) {
+    return <p className="text-sm text-gray-400 py-2">Noch keine Daten vorhanden.</p>;
+  }
+
+  const maxCount = Math.max(...items.map((i) => i.count));
+
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <li key={item.keyword} className="flex items-center gap-3">
+          <span className="text-sm text-gray-700 w-32 truncate shrink-0">{item.keyword}</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
+            <div
+              className="bg-blue-500 h-full rounded-full transition-all"
+              style={{ width: `${Math.max(4, (item.count / maxCount) * 100)}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-500 w-20 text-right shrink-0">
+            {item.count}x / {formatCents(item.amount_cents, "EUR")}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -200,6 +238,7 @@ export default function DashboardPage() {
   const { coolingDown, secondsLeft } = useCooldown(isCoolingDown, cooldownSecondsLeft);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [toastResult, setToastResult] = useState<SyncResult | null>(null);
+  const [keywordStats, setKeywordStats] = useState<KeywordStat[]>([]);
 
   const handleSync = async () => {
     setSyncError(null);
@@ -219,6 +258,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchAll();
+    api.get("/dashboard/keyword-stats").then((res) => setKeywordStats(res.data)).catch(() => {});
   }, [fetchAll]);
 
   if (isLoading && !stats) {
@@ -386,6 +426,14 @@ export default function DashboardPage() {
             </div>
             <UpcomingInvoicesList items={upcomingInvoices} />
           </div>
+        </div>
+      )}
+
+      {/* Keyword stats */}
+      {keywordStats.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Einzüge nach Kategorie</h3>
+          <KeywordStatsList items={keywordStats} />
         </div>
       )}
 

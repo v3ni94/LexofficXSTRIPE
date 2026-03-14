@@ -114,6 +114,7 @@ function exportCsv(items: CollectionListItem[]) {
     "Betrag (EUR)",
     "IBAN",
     "Mandatsreferenz",
+    "Verwendungszweck",
     "Status",
     "Abgeschlossen",
     "Fehlergrund",
@@ -126,6 +127,7 @@ function exportCsv(items: CollectionListItem[]) {
     (item.amount_cents / 100).toFixed(2).replace(".", ","),
     item.iban_masked ?? "",
     item.mandate_reference ?? "",
+    item.description ?? "",
     item.stripe_status ?? "",
     formatDate(item.completed_at),
     item.failure_reason ?? "",
@@ -272,6 +274,9 @@ export default function CollectionsPage() {
                       Mandatsreferenz
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Verwendungszweck
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -296,6 +301,18 @@ export default function CollectionsPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500 font-mono">
                         {item.mandate_reference ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px]">
+                        {item.description ? (
+                          <div className="group relative">
+                            <span className="truncate block">{item.description}</span>
+                            <div className="pointer-events-none absolute bottom-full left-0 mb-1 hidden w-72 rounded bg-gray-900 px-2 py-1 text-xs text-white group-hover:block z-10 font-mono">
+                              {item.description}
+                            </div>
+                          </div>
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge item={item} />

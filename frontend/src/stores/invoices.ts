@@ -13,6 +13,8 @@ export interface InvoiceListItem {
   lexoffice_status: string;
   collection_status: string;
   customer_has_iban: boolean;
+  keyword: string | null;
+  keyword_sepa: string | null;
 }
 
 interface InvoiceListResponse {
@@ -53,6 +55,7 @@ interface InvoicesState {
   isLoading: boolean;
   isSyncing: boolean;
   search: string;
+  keyword: string;
   page: number;
   lastSyncResult: SyncResult | null;
   lastSyncAt: Date | null;
@@ -63,6 +66,7 @@ interface InvoicesState {
   fetchInvoices: (page?: number, search?: string) => Promise<void>;
   syncInvoices: () => Promise<SyncResult>;
   setSearch: (search: string) => void;
+  setKeyword: (keyword: string) => void;
   setPage: (page: number) => void;
   submitCollection: (invoiceId: string) => Promise<SubmitResult>;
   submitBatch: (invoiceIds: string[]) => Promise<BatchSubmitResult>;
@@ -78,6 +82,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   isLoading: false,
   isSyncing: false,
   search: "",
+  keyword: "",
   page: 1,
   lastSyncResult: null,
   lastSyncAt: null,
@@ -88,6 +93,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   fetchInvoices: async (page?: number, search?: string) => {
     const p = page ?? get().page;
     const s = search ?? get().search;
+    const kw = get().keyword;
     set({ isLoading: true });
     try {
       const params: Record<string, string | number> = {
@@ -95,6 +101,7 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
         per_page: 20,
       };
       if (s) params.search = s;
+      if (kw) params.keyword = kw;
       const res = await api.get("/invoices", { params });
       set({ data: res.data, isLoading: false, page: p, search: s });
     } catch {
@@ -125,6 +132,11 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   setSearch: (search: string) => {
     set({ search, page: 1 });
     get().fetchInvoices(1, search);
+  },
+
+  setKeyword: (keyword: string) => {
+    set({ keyword, page: 1 });
+    get().fetchInvoices(1);
   },
 
   setPage: (page: number) => {

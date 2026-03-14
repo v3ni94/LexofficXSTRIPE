@@ -16,6 +16,8 @@ class InvoiceListItem(BaseModel):
     lexoffice_status: str
     collection_status: str
     customer_has_iban: bool = False
+    keyword: str | None = None
+    keyword_sepa: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -40,6 +42,8 @@ class InvoiceDetailResponse(BaseModel):
     due_date: date | None
     lexoffice_status: str
     collection_status: str
+    keyword: str | None = None
+    keyword_sepa: str | None = None
     last_synced_at: datetime | None
     customer: "CustomerBrief | None" = None
     collections: list["CollectionBrief"] = []
@@ -69,6 +73,11 @@ class CollectionBrief(BaseModel):
     failure_reason: str | None
 
     model_config = {"from_attributes": True}
+
+
+class KeywordCount(BaseModel):
+    keyword: str
+    count: int
 
 
 class SyncResponse(BaseModel):

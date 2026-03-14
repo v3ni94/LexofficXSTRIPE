@@ -1,4 +1,5 @@
 """Tests for collection submission – service layer and HTTP endpoint."""
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -252,3 +253,126 @@ async def test_submit_endpoint_collection_error(
 async def test_submit_endpoint_requires_auth(client: AsyncClient):
     resp = await client.post("/collections/submit", json={"invoice_id": "x"})
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Description / Verwendungszweck tests
+# ---------------------------------------------------------------------------
+
+
+async def test_submit_collection_sets_description(
+    db: AsyncSession,
+    test_user: User,
+    test_integration: Integration,
+    create_customer,
+    create_invoice,
+    create_iban,
+):
+    """The collection.description should be a SEPA-compliant Verwendungszweck."""
+    customer = await create_customer(test_user.id, customer_number="10431")
+    line_items = [
+        {"name": "Monatsmiete Wohnung", "description": "", "totalPrice": {"totalGrossAmount": 800}},
+    ]
+    invoice = await create_invoice(test_user.id, customer.id, amount=800.00, voucher_number="RE260001")
+    invoice.line_items_json = json.dumps(line_items)
+    invoice.keyword = "Vermietung"
+    invoice.keyword_sepa = "Vermietung"
+    await db.flush()
+
+    await create_iban(test_user.id, customer.id)
+
+    mock_svc = _stripe_mocks()
+    with patch("app.services.collection_service.StripeService", return_value=mock_svc):
+        collection = await CollectionService.submit_collection(
+            tenant_id=test_user.id,
+            invoice_id=invoice.id,
+            db=db,
+        )
+
+    assert collection.description is not None
+    assert collection.description == "SEPA LS RE RE260001 KD 10431 - Vermietung"
+    assert len(collection.description) <= 140
+
+    # Verify the description was passed to stripe
+    call_args = mock_svc.create_payment_intent.call_args
+    assert call_args.kwargs["description"] == "SEPA LS RE RE260001 KD 10431 - Vermietung"
+
+
+async def test_submit_collection_fallback_sonstiges(
+    db: AsyncSession,
+    test_user: User,
+    test_integration: Integration,
+    create_customer,
+    create_invoice,
+    create_iban,
+):
+    """Without keyword data, falls back to 'Sonstiges'."""
+    customer = await create_customer(test_user.id, customer_number="10500")
+    invoice = await create_invoice(test_user.id, customer.id, amount=100.00, voucher_number="RE999")
+    # No keyword fields set, no line_items_json
+    await create_iban(test_user.id, customer.id)
+
+    mock_svc = _stripe_mocks()
+    with patch("app.services.collection_service.StripeService", return_value=mock_svc):
+        collection = await CollectionService.submit_collection(
+            tenant_id=test_user.id,
+            invoice_id=invoice.id,
+            db=db,
+        )
+
+    assert "Sonstiges" in collection.description
+    assert collection.description.startswith("SEPA LS RE")
+
+
+async def test_submit_collection_metadata_includes_customer_number(
+    db: AsyncSession,
+    test_user: User,
+    test_integration: Integration,
+    create_customer,
+    create_invoice,
+    create_iban,
+):
+    """Stripe metadata should contain customer_number."""
+    customer = await create_customer(test_user.id, customer_number="10777")
+    invoice = await create_invoice(test_user.id, customer.id, amount=50.00)
+    await create_iban(test_user.id, customer.id)
+
+    mock_svc = _stripe_mocks()
+    with patch("app.services.collection_service.StripeService", return_value=mock_svc):
+        await CollectionService.submit_collection(
+            tenant_id=test_user.id,
+            invoice_id=invoice.id,
+            db=db,
+        )
+
+    call_args = mock_svc.create_payment_intent.call_args
+    assert call_args.kwargs["metadata"]["customer_number"] == "10777"
+
+
+async def test_preview_endpoint(
+    client: AsyncClient,
+    db: AsyncSession,
+    test_user: User,
+    auth_headers,
+    create_customer,
+    create_invoice,
+):
+    """GET /collections/preview returns the correct Verwendungszweck."""
+    customer = await create_customer(test_user.id, customer_number="10431")
+    invoice = await create_invoice(test_user.id, customer.id, voucher_number="RE260001")
+    invoice.keyword = "Vermietung"
+    invoice.keyword_sepa = "Vermietung"
+    await db.flush()
+    await db.commit()
+
+    resp = await client.get(
+        "/collections/preview",
+        params={"invoice_id": invoice.id},
+        headers=auth_headers(test_user.id),
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["description"] == "SEPA LS RE RE260001 KD 10431 - Vermietung"
+    assert data["keyword"] == "Vermietung"
+    assert data["voucher_number"] == "RE260001"
+    assert data["customer_number"] == "10431"

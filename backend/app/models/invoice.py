@@ -3,7 +3,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models import Base
@@ -47,6 +47,9 @@ class Invoice(Base):
         Enum(CollectionStatus, native_enum=False, length=20),
         default=CollectionStatus.NONE,
     )
+    line_items_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    keyword: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    keyword_sepa: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True
     )
