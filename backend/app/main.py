@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine
-from app.routers import auth, collections, customers, integrations, invoices, webhooks
+from app.routers import auth, collections, customers, dashboard, integrations, invoices, webhooks
 
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ app.include_router(integrations.router)
 app.include_router(invoices.router)
 app.include_router(customers.router)
 app.include_router(collections.router)
+app.include_router(dashboard.router)
 app.include_router(webhooks.router)
 
 

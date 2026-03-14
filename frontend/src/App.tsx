@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./layouts/DashboardLayout";
+import CollectionsPage from "./pages/CollectionsPage";
 import DashboardPage from "./pages/DashboardPage";
 import InvoicesPage from "./pages/InvoicesPage";
 import LoginPage from "./pages/Login";
@@ -32,10 +33,7 @@ function App() {
             path="customers"
             element={<PlaceholderPage title="Kunden & Stammdaten" />}
           />
-          <Route
-            path="collections"
-            element={<PlaceholderPage title="Einzuege" />}
-          />
+          <Route path="collections" element={<CollectionsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
