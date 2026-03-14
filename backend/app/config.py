@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Stripe
     STRIPE_WEBHOOK_SECRET: str = ""
 
+    # Logging
+    LOG_LEVEL: str = "INFO"
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
