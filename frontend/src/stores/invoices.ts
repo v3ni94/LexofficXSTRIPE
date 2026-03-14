@@ -23,10 +23,12 @@ interface InvoiceListResponse {
   total_pages: number;
 }
 
-interface SyncResult {
+export interface SyncResult {
   synced_count: number;
   new_count: number;
   updated_count: number;
+  removed_count: number;
+  duration_seconds: number;
 }
 
 interface SubmitResult {
@@ -44,6 +46,8 @@ interface BatchSubmitResult {
   failed: Array<{ invoice_id: string; error: string }>;
 }
 
+const COOLDOWN_MS = 60_000; // 60 seconds
+
 interface InvoicesState {
   data: InvoiceListResponse | null;
   isLoading: boolean;
@@ -51,6 +55,8 @@ interface InvoicesState {
   search: string;
   page: number;
   lastSyncResult: SyncResult | null;
+  lastSyncAt: Date | null;
+  syncCooldownUntil: Date | null;
   submittingIds: Set<string>;
   pollingIntervalId: ReturnType<typeof setInterval> | null;
 
@@ -63,6 +69,8 @@ interface InvoicesState {
   saveIban: (customerId: string, iban: string, accountHolderName: string) => Promise<void>;
   startPolling: () => void;
   stopPolling: () => void;
+  isCoolingDown: () => boolean;
+  cooldownSecondsLeft: () => number;
 }
 
 export const useInvoicesStore = create<InvoicesState>((set, get) => ({
@@ -72,6 +80,8 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   search: "",
   page: 1,
   lastSyncResult: null,
+  lastSyncAt: null,
+  syncCooldownUntil: null,
   submittingIds: new Set(),
   pollingIntervalId: null,
 
@@ -97,7 +107,13 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     try {
       const res = await api.post("/invoices/sync");
       const result: SyncResult = res.data;
-      set({ isSyncing: false, lastSyncResult: result });
+      const now = new Date();
+      set({
+        isSyncing: false,
+        lastSyncResult: result,
+        lastSyncAt: now,
+        syncCooldownUntil: new Date(now.getTime() + COOLDOWN_MS),
+      });
       await get().fetchInvoices(1);
       return result;
     } catch (err) {
@@ -122,7 +138,6 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     }));
     try {
       const res = await api.post("/collections/submit", { invoice_id: invoiceId });
-      // Refresh list after submission
       await get().fetchInvoices();
       return res.data as SubmitResult;
     } finally {
@@ -153,11 +168,9 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
   startPolling: () => {
     const existing = get().pollingIntervalId;
     if (existing !== null) return;
-
     const id = setInterval(() => {
       get().fetchInvoices();
     }, 30_000);
-
     set({ pollingIntervalId: id });
   },
 
@@ -167,5 +180,16 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
       clearInterval(id);
       set({ pollingIntervalId: null });
     }
+  },
+
+  isCoolingDown: () => {
+    const until = get().syncCooldownUntil;
+    return until !== null && new Date() < until;
+  },
+
+  cooldownSecondsLeft: () => {
+    const until = get().syncCooldownUntil;
+    if (!until) return 0;
+    return Math.max(0, Math.ceil((until.getTime() - Date.now()) / 1000));
   },
 }));

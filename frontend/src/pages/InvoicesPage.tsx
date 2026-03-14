@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  CooldownSyncButton,
+  LastSyncLabel,
+  SyncToast,
+  useCooldown,
+} from "../components/SyncControls";
 import { useInvoicesStore } from "../stores/invoices";
-import type { InvoiceListItem } from "../stores/invoices";
+import type { InvoiceListItem, SyncResult } from "../stores/invoices";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -304,6 +310,7 @@ export default function InvoicesPage() {
     isSyncing,
     search,
     submittingIds,
+    lastSyncAt,
     fetchInvoices,
     syncInvoices,
     setSearch,
@@ -313,10 +320,14 @@ export default function InvoicesPage() {
     saveIban,
     startPolling,
     stopPolling,
+    isCoolingDown,
+    cooldownSecondsLeft,
   } = useInvoicesStore();
 
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const { coolingDown, secondsLeft } = useCooldown(isCoolingDown, cooldownSecondsLeft);
+
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [toastResult, setToastResult] = useState<SyncResult | null>(null);
   const [searchInput, setSearchInput] = useState(search);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
@@ -371,13 +382,10 @@ export default function InvoicesPage() {
   }, [data]);
 
   const handleSync = async () => {
-    setSyncMessage(null);
     setSyncError(null);
     try {
       const result = await syncInvoices();
-      setSyncMessage(
-        `Synchronisiert: ${result.synced_count} Rechnungen (${result.new_count} neu, ${result.updated_count} aktualisiert)`
-      );
+      setToastResult(result);
     } catch (err: unknown) {
       const detail =
         typeof err === "object" &&
@@ -469,7 +477,7 @@ export default function InvoicesPage() {
           `${result.successful.length} erfolgreich, ${result.failed.length} fehlgeschlagen`
         );
       } else {
-        setSyncMessage(`${result.successful.length} Lastschriften eingereicht`);
+        setSyncError(null);
       }
     } catch {
       setSyncError("Batch-Einzug fehlgeschlagen");
@@ -507,7 +515,10 @@ export default function InvoicesPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-2xl font-bold text-gray-900">Rechnungen</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Rechnungen</h2>
+          <LastSyncLabel lastSyncAt={lastSyncAt} />
+        </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
             <button
@@ -517,39 +528,16 @@ export default function InvoicesPage() {
               {selectedIds.size} Ausgewählte einziehen
             </button>
           )}
-          <button
+          <CooldownSyncButton
+            isSyncing={isSyncing}
+            isCoolingDown={coolingDown}
+            cooldownSecondsLeft={secondsLeft}
             onClick={handleSync}
-            disabled={isSyncing}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isSyncing && (
-              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </svg>
-            )}
-            {isSyncing ? "Synchronisiere..." : "Rechnungen synchronisieren"}
-          </button>
+          />
         </div>
       </div>
 
       {/* Messages */}
-      {syncMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded text-sm">
-          {syncMessage}
-        </div>
-      )}
       {syncError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
           {syncError}
@@ -749,6 +737,9 @@ export default function InvoicesPage() {
           error={ibanSaveError}
         />
       )}
+
+      {/* Sync toast */}
+      <SyncToast result={toastResult} onClose={() => setToastResult(null)} />
     </div>
   );
 }

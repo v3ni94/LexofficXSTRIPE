@@ -1,6 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  CooldownSyncButton,
+  LastSyncLabel,
+  SyncToast,
+  useCooldown,
+} from "../components/SyncControls";
 import { useDashboardStore } from "../stores/dashboard";
+import { useInvoicesStore } from "../stores/invoices";
+import type { SyncResult } from "../stores/invoices";
 import type { RecentCollection, UpcomingInvoice } from "../stores/dashboard";
 
 // ---------------------------------------------------------------------------
@@ -181,6 +189,34 @@ export default function DashboardPage() {
   const { stats, recentCollections, upcomingInvoices, isLoading, fetchAll } =
     useDashboardStore();
 
+  const {
+    isSyncing,
+    lastSyncAt,
+    syncInvoices,
+    isCoolingDown,
+    cooldownSecondsLeft,
+  } = useInvoicesStore();
+
+  const { coolingDown, secondsLeft } = useCooldown(isCoolingDown, cooldownSecondsLeft);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [toastResult, setToastResult] = useState<SyncResult | null>(null);
+
+  const handleSync = async () => {
+    setSyncError(null);
+    try {
+      const result = await syncInvoices();
+      setToastResult(result);
+      await fetchAll(); // refresh stats
+    } catch (err: unknown) {
+      const detail =
+        typeof err === "object" && err !== null && "response" in err
+          ? ((err as { response: { data?: { detail?: string } } }).response
+              .data?.detail ?? "Sync fehlgeschlagen")
+          : "Verbindungsfehler";
+      setSyncError(detail);
+    }
+  };
+
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
@@ -195,7 +231,27 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Übersicht</h2>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Übersicht</h2>
+          <LastSyncLabel lastSyncAt={lastSyncAt} />
+        </div>
+        {lex && (
+          <CooldownSyncButton
+            isSyncing={isSyncing}
+            isCoolingDown={coolingDown}
+            cooldownSecondsLeft={secondsLeft}
+            onClick={handleSync}
+          />
+        )}
+      </div>
+
+      {syncError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+          {syncError}
+        </div>
+      )}
 
       {/* Not-connected banner */}
       {(!lex || !stripe) && (
@@ -332,6 +388,9 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Sync toast */}
+      <SyncToast result={toastResult} onClose={() => setToastResult(null)} />
     </div>
   );
 }

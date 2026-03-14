@@ -1,5 +1,7 @@
 import asyncio
 import math
+import time
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
@@ -28,6 +30,10 @@ from app.utils.security import get_current_user
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
+# In-memory rate limit: tenant_id -> last manual sync timestamp (UTC)
+_last_manual_sync: dict[str, datetime] = {}
+MANUAL_SYNC_COOLDOWN_SECONDS = 60
+
 
 async def _get_lexoffice_service(
     db: AsyncSession, user: User
@@ -55,11 +61,24 @@ async def sync_invoices(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger a manual Lexoffice invoice sync."""
+    """Trigger a manual Lexoffice invoice sync (max once per 60 s per tenant)."""
+    # --- Rate limiting ---
+    now = datetime.now(timezone.utc)
+    last = _last_manual_sync.get(current_user.id)
+    if last is not None:
+        elapsed = (now - last).total_seconds()
+        if elapsed < MANUAL_SYNC_COOLDOWN_SECONDS:
+            remaining = int(MANUAL_SYNC_COOLDOWN_SECONDS - elapsed)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Bitte warte noch {remaining}s vor dem nächsten Sync",
+                headers={"Retry-After": str(remaining)},
+            )
+
     lex_service = await _get_lexoffice_service(db, current_user)
 
+    t_start = time.monotonic()
     try:
-        # Run synchronous Lexoffice calls in a thread
         result = await asyncio.to_thread(
             _run_sync, current_user.id, lex_service, db
         )
@@ -73,11 +92,17 @@ async def sync_invoices(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Sync-Fehler: {e}",
         )
+    duration = round(time.monotonic() - t_start, 2)
+
+    # Record successful sync time
+    _last_manual_sync[current_user.id] = datetime.now(timezone.utc)
 
     return SyncResponse(
         synced_count=result.synced_count,
         new_count=result.new_count,
         updated_count=result.updated_count,
+        removed_count=result.removed_count,
+        duration_seconds=duration,
     )
 
 

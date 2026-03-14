@@ -18,6 +18,7 @@ class SyncResult:
         self.synced_count = 0
         self.new_count = 0
         self.updated_count = 0
+        self.removed_count = 0
 
 
 class SyncService:
@@ -119,8 +120,10 @@ class SyncService:
 
                     if new_status in ("paid",):
                         inv.collection_status = CollectionStatus.COLLECTED
+                        result.removed_count += 1
                     elif new_status in ("voided", "cancelled"):
                         inv.collection_status = CollectionStatus.NONE
+                        result.removed_count += 1
 
                     result.updated_count += 1
                 except Exception:

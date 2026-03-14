@@ -75,3 +75,5 @@ class SyncResponse(BaseModel):
     synced_count: int
     new_count: int
     updated_count: int
+    removed_count: int = 0
+    duration_seconds: float = 0.0
