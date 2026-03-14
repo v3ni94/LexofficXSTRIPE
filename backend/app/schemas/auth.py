@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
-    company_name: str | None = None
+    company_name: str
 
 
 class LoginRequest(BaseModel):
@@ -25,7 +25,7 @@ class RefreshRequest(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
-    company_name: str | None
+    company_name: str
     is_active: bool
 
     model_config = {"from_attributes": True}

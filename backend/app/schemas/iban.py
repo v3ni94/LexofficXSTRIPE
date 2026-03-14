@@ -1,18 +1,18 @@
 from pydantic import BaseModel
 
 
-class IBANCreate(BaseModel):
+class CustomerIbanCreate(BaseModel):
     iban: str
     bic: str | None = None
-    bank_name: str | None = None
-    is_primary: bool = False
+    account_holder_name: str
 
 
-class IBANResponse(BaseModel):
+class CustomerIbanResponse(BaseModel):
     id: str
+    customer_id: str
     iban: str
     bic: str | None
-    bank_name: str | None
-    is_primary: bool
+    account_holder_name: str
+    is_active: bool
 
     model_config = {"from_attributes": True}

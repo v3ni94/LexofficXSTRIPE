@@ -1,14 +1,19 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
-class IntegrationCreate(BaseModel):
-    provider: str  # "lexoffice" or "stripe"
-    api_key: str
+class IntegrationUpdate(BaseModel):
+    lexoffice_api_key: str | None = None
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
 
 
 class IntegrationResponse(BaseModel):
     id: str
-    provider: str
-    is_active: bool
+    tenant_id: str
+    lexoffice_connected: bool
+    stripe_connected: bool
+    lexoffice_last_sync: datetime | None
 
     model_config = {"from_attributes": True}
