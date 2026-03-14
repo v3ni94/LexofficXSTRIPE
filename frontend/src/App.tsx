@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./layouts/DashboardLayout";
 import DashboardPage from "./pages/DashboardPage";
+import InvoicesPage from "./pages/InvoicesPage";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/SettingsPage";
@@ -26,10 +27,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardPage />} />
-          <Route
-            path="invoices"
-            element={<PlaceholderPage title="Rechnungen" />}
-          />
+          <Route path="invoices" element={<InvoicesPage />} />
           <Route
             path="customers"
             element={<PlaceholderPage title="Kunden & Stammdaten" />}
