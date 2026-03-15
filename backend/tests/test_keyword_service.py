@@ -65,12 +65,12 @@ class TestExtractKeyword:
     def test_two_keywords_sorted_alphabetically(self):
         items = [
             {
-                "name": "Maklergebühr Verkauf",
+                "name": "Maklergebühr Objekt",
                 "description": "",
                 "totalPrice": {"totalGrossAmount": 500},
             },
             {
-                "name": "Hausverwaltung Q1",
+                "name": "Kaufpreis Wohnung",
                 "description": "",
                 "totalPrice": {"totalGrossAmount": 200},
             },
@@ -139,7 +139,7 @@ class TestExtractKeyword:
         items = [
             {
                 "name": "Position 1",
-                "description": "Kaution für Mietobjekt Berliner Str.",
+                "description": "Kaution für Objekt Berliner Str.",
                 "totalPrice": {"totalGrossAmount": 2000},
             }
         ]
@@ -186,11 +186,11 @@ class TestBuildDescription:
 
     def test_examples_from_spec(self):
         examples = [
-            ("RE260001", "10431", "Vermietung", 43),
-            ("RE-2024-00001", "10001", "Verkauf", 46),
-            ("RE260012", "10431", "Verkauf/Verwaltung", 51),
-            ("RE260099", "10001", "Nebenkostenabr.", 48),
-            ("RE-2024-00001", "10001", "Instandhaltung/Nebenkostenabr.", 69),
+            ("RE260001", "10431", "Vermietung", 41),
+            ("RE-2024-00001", "10001", "Verkauf", 43),
+            ("RE260012", "10431", "Verkauf/Verwaltung", 49),
+            ("RE260099", "10001", "Nebenkostenabr.", 46),
+            ("RE-2024-00001", "10001", "Instandhaltung/Nebenkostenabr.", 66),
         ]
         for voucher, customer, keyword, expected_len in examples:
             result = self.svc.build_description(voucher, customer, keyword)

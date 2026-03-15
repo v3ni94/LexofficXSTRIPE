@@ -108,7 +108,7 @@ class InvoiceKeywordService:
                 if not entry["search_terms"]:
                     continue  # skip Sonstiges
                 for term in entry["search_terms"]:
-                    if term.lower() in item_text:
+                    if re.search(rf"\b{re.escape(term.lower())}\b", item_text):
                         name = entry["display_name"]
                         if name not in matches or amount > matches[name]:
                             matches[name] = amount

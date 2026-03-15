@@ -114,10 +114,11 @@ def test_mask_iban_hides_middle():
 
 def test_mask_iban_groups_of_four():
     masked = mask_iban("DE89370400440532013000")
-    # Should be space-separated groups of 4
+    # Should be space-separated groups of 4 (last group may be shorter)
     parts = masked.split(" ")
-    for part in parts:
+    for part in parts[:-1]:
         assert len(part) == 4, f"Group '{part}' is not 4 chars"
+    assert 1 <= len(parts[-1]) <= 4, f"Last group '{parts[-1]}' has unexpected length"
 
 
 def test_mask_iban_different_country():
