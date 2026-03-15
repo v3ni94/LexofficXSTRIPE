@@ -1,16 +1,17 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, time, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database import engine
+from app.database import engine, async_session as async_session_factory
 from app.middleware.rate_limiter import RateLimitMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
-from app.routers import auth, collections, customers, dashboard, integrations, invoices, webhooks
+from app.routers import auth, collections, customers, dashboard, integrations, invoices, onboarding, organizations, webhooks
 from app.tasks.sync_task import background_sync_loop
 from app.utils.exceptions import (
     AppError,
@@ -31,24 +32,53 @@ setup_logging(settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 
+async def scheduled_collections_loop():
+    """Run scheduled collection processing daily at 06:00 UTC."""
+    from app.tasks.scheduled_collections_task import process_scheduled_collections
+
+    while True:
+        now = datetime.now(timezone.utc)
+        # Calculate seconds until next 06:00 UTC
+        target = datetime.combine(now.date(), time(6, 0), tzinfo=timezone.utc)
+        if now >= target:
+            # Already past 06:00 today, schedule for tomorrow
+            from datetime import timedelta
+            target = target + timedelta(days=1)
+        wait_seconds = (target - now).total_seconds()
+        logger.info("Nächste terminierte Einzüge in %.0f Sekunden (um %s)", wait_seconds, target.isoformat())
+
+        await asyncio.sleep(wait_seconds)
+
+        try:
+            async with async_session_factory() as db:
+                result = await process_scheduled_collections(db)
+                await db.commit()
+                logger.info("Terminierte Einzüge verarbeitet: %s", result)
+        except Exception:
+            logger.exception("Fehler bei terminierten Einzügen")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(background_sync_loop())
-    logger.info("Hintergrund-Sync-Task erstellt")
+    sync_task = asyncio.create_task(background_sync_loop())
+    scheduled_task = asyncio.create_task(scheduled_collections_loop())
+    logger.info("Hintergrund-Tasks erstellt (Sync + terminierte Einzüge)")
     try:
         yield
     finally:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        sync_task.cancel()
+        scheduled_task.cancel()
+        for task in (sync_task, scheduled_task):
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
         await engine.dispose()
 
 
 app = FastAPI(
     title="LexSEPA API",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
     root_path="/api",
 )
@@ -156,6 +186,8 @@ app.include_router(customers.router)
 app.include_router(collections.router)
 app.include_router(dashboard.router)
 app.include_router(webhooks.router)
+app.include_router(organizations.router)
+app.include_router(onboarding.router)
 
 
 @app.get("/health")

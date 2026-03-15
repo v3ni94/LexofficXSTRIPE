@@ -17,7 +17,7 @@ class CustomerIban(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id"), nullable=False, index=True
+        String(36), ForeignKey("organizations.id"), nullable=False, index=True
     )
     customer_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("customers.id"), nullable=False, index=True

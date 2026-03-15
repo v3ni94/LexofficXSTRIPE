@@ -14,7 +14,7 @@ class Integration(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id"), unique=True, nullable=False, index=True
+        String(36), ForeignKey("organizations.id"), unique=True, nullable=False, index=True
     )
 
     # Encrypted API keys — NEVER stored in plaintext
@@ -34,7 +34,7 @@ class Integration(Base):
     )
 
     # Relationships
-    tenant: Mapped["User"] = relationship("User", back_populates="integration")
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="integration")
 
     # --- Fernet property helpers ---
     @property

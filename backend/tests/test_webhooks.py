@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invoice import CollectionStatus, Invoice
+from app.models.organization import Organization
 from app.models.payment_collection import PaymentCollection
 from app.models.user import User
 
@@ -91,21 +92,22 @@ async def test_webhook_payment_intent_succeeded(
     client: AsyncClient,
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration,
     create_invoice,
 ):
     invoice = await create_invoice(
-        test_user.id,
+        test_org.id,
         collection_status=CollectionStatus.IN_COLLECTION,
         lexoffice_status="open",
     )
     pi_id = "pi_test_succeeded_001"
-    await _create_collection(db, test_user.id, pi_id, invoice)
+    await _create_collection(db, test_org.id, pi_id, invoice)
 
     event = _build_event(
         "payment_intent.succeeded",
         {"id": pi_id, "metadata": {}},
-        test_user.id,
+        test_org.id,
     )
 
     with patch("stripe.Webhook.construct_event", return_value=event):
@@ -142,16 +144,17 @@ async def test_webhook_payment_intent_failed(
     client: AsyncClient,
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration,
     create_invoice,
 ):
     invoice = await create_invoice(
-        test_user.id,
+        test_org.id,
         collection_status=CollectionStatus.IN_COLLECTION,
         lexoffice_status="open",
     )
     pi_id = "pi_test_failed_001"
-    await _create_collection(db, test_user.id, pi_id, invoice)
+    await _create_collection(db, test_org.id, pi_id, invoice)
 
     event = _build_event(
         "payment_intent.payment_failed",
@@ -160,7 +163,7 @@ async def test_webhook_payment_intent_failed(
             "metadata": {},
             "last_payment_error": {"message": "Insufficient funds"},
         },
-        test_user.id,
+        test_org.id,
     )
 
     with patch("stripe.Webhook.construct_event", return_value=event):
@@ -207,22 +210,23 @@ async def test_webhook_invalid_signature_returns_200_no_db_change(
     client: AsyncClient,
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration,
     create_invoice,
 ):
     """Invalid signature → endpoint returns 200 but does NOT update DB."""
     invoice = await create_invoice(
-        test_user.id,
+        test_org.id,
         collection_status=CollectionStatus.IN_COLLECTION,
         lexoffice_status="open",
     )
     pi_id = "pi_test_badsig_001"
-    await _create_collection(db, test_user.id, pi_id, invoice)
+    await _create_collection(db, test_org.id, pi_id, invoice)
 
     event_payload = _build_event(
         "payment_intent.succeeded",
         {"id": pi_id, "metadata": {}},
-        test_user.id,
+        test_org.id,
     )
 
     # Signature verification raises an error
@@ -257,12 +261,13 @@ async def test_webhook_invalid_signature_returns_200_no_db_change(
 async def test_webhook_unknown_event_type_returns_200(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     test_integration,
 ):
     event = _build_event(
         "customer.subscription.created",
         {"id": "sub_123", "metadata": {}},
-        test_user.id,
+        test_org.id,
     )
 
     with patch("stripe.Webhook.construct_event", return_value=event):

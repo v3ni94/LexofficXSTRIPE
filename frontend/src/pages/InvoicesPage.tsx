@@ -98,12 +98,14 @@ function StatusBadge({
 }) {
   const styles: Record<string, string> = {
     open: "bg-blue-100 text-blue-800",
+    scheduled: "bg-indigo-100 text-indigo-800",
     in_collection: "bg-amber-100 text-amber-800",
     collected: "bg-green-100 text-green-800",
     failed: "bg-red-100 text-red-800",
   };
   const labels: Record<string, string> = {
     open: "Offen",
+    scheduled: "Terminiert",
     in_collection: "Im Einzugsverfahren",
     collected: "Eingezogen",
     failed: "Fehlgeschlagen",
@@ -141,9 +143,24 @@ interface ConfirmDialogProps {
   invoice: InvoiceListItem;
   ibanMasked: string;
   mandateRef: string;
-  onConfirm: () => void;
+  onConfirm: (scheduledDate?: string) => void;
   onCancel: () => void;
   isSubmitting: boolean;
+}
+
+function getMinDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  // Skip to Monday if tomorrow is weekend
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d.toISOString().split("T")[0];
+}
+
+function isWeekday(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  return d.getDay() !== 0 && d.getDay() !== 6;
 }
 
 function ConfirmDialog({
@@ -155,6 +172,8 @@ function ConfirmDialog({
   isSubmitting,
 }: ConfirmDialogProps) {
   const [preview, setPreview] = useState<{ description: string } | null>(null);
+  const [mode, setMode] = useState<"immediate" | "scheduled">("immediate");
+  const [scheduledDate, setScheduledDate] = useState(getMinDate());
 
   useEffect(() => {
     api
@@ -163,16 +182,23 @@ function ConfirmDialog({
       .catch(() => {});
   }, [invoice.id]);
 
+  const handleConfirm = () => {
+    if (mode === "scheduled") {
+      onConfirm(scheduledDate);
+    } else {
+      onConfirm();
+    }
+  };
+
+  const dateValid = mode === "immediate" || (scheduledDate && isWeekday(scheduledDate));
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           SEPA-Lastschrift einreichen
         </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Möchten Sie für folgende Rechnung eine SEPA-Lastschrift einreichen?
-        </p>
-        <div className="bg-gray-50 rounded-md p-4 space-y-2 text-sm mb-6">
+        <div className="bg-gray-50 rounded-md p-4 space-y-2 text-sm mb-4">
           <div className="flex justify-between">
             <span className="text-gray-500">Rechnung:</span>
             <span className="font-medium">{invoice.voucher_number}</span>
@@ -196,21 +222,65 @@ function ConfirmDialog({
             <span className="font-medium">{mandateRef}</span>
           </div>
           {preview && (
-            <>
-              <div className="border-t border-gray-200 pt-2 mt-2">
-                <div className="flex justify-between items-start">
-                  <span className="text-gray-500">Verwendungszweck:</span>
-                  <span className="font-medium font-mono text-right text-xs max-w-[200px]">
-                    {preview.description}
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1 text-right">
-                  Dieser Text erscheint auf dem Kontoauszug des Kunden.
-                </p>
+            <div className="border-t border-gray-200 pt-2 mt-2">
+              <div className="flex justify-between items-start">
+                <span className="text-gray-500">Verwendungszweck:</span>
+                <span className="font-medium font-mono text-right text-xs max-w-[200px]">
+                  {preview.description}
+                </span>
               </div>
-            </>
+              <p className="text-[10px] text-gray-400 mt-1 text-right">
+                Dieser Text erscheint auf dem Kontoauszug des Kunden.
+              </p>
+            </div>
           )}
         </div>
+
+        {/* Scheduling options */}
+        <div className="mb-4 space-y-2">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="schedule"
+              checked={mode === "immediate"}
+              onChange={() => setMode("immediate")}
+              className="text-blue-600"
+            />
+            Sofort einziehen (naechstmoeglicher Termin)
+          </label>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="schedule"
+              checked={mode === "scheduled"}
+              onChange={() => setMode("scheduled")}
+              className="text-blue-600"
+            />
+            Einzug terminieren auf:
+          </label>
+          {mode === "scheduled" && (
+            <div className="ml-6">
+              <input
+                type="date"
+                value={scheduledDate}
+                min={getMinDate()}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {scheduledDate && !isWeekday(scheduledDate) && (
+                <p className="text-xs text-red-600 mt-1">
+                  SEPA-Einzuege nur an Werktagen (Mo-Fr) moeglich.
+                </p>
+              )}
+              {scheduledDate && isWeekday(scheduledDate) && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Einzug wird am {new Date(scheduledDate).toLocaleDateString("de-DE")} ausgefuehrt.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
@@ -220,28 +290,19 @@ function ConfirmDialog({
             Abbrechen
           </button>
           <button
-            onClick={onConfirm}
-            disabled={isSubmitting}
+            onClick={handleConfirm}
+            disabled={isSubmitting || !dateValid}
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
           >
             {isSubmitting && (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             )}
-            Lastschrift einreichen
+            {mode === "scheduled"
+              ? `Lastschrift terminieren zum ${new Date(scheduledDate).toLocaleDateString("de-DE")}`
+              : "Lastschrift jetzt einreichen"}
           </button>
         </div>
       </div>
@@ -497,12 +558,12 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleConfirmSubmit = async () => {
+  const handleConfirmSubmit = async (scheduledDate?: string) => {
     if (dialog.type !== "confirm") return;
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      await submitCollection(dialog.invoice.id);
+      await submitCollection(dialog.invoice.id, scheduledDate);
       setDialog({ type: "none" });
     } catch (err: unknown) {
       const detail =

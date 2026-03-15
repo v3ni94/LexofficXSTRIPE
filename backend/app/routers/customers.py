@@ -11,7 +11,6 @@ from app.models.customer_iban import CustomerIban
 from app.models.iban_history import IbanAction, IbanHistory
 from app.models.invoice import CollectionStatus, Invoice
 from app.models.sepa_mandate import SepaMandate
-from app.models.user import User
 from app.schemas.customer import (
     CustomerDetailResponse,
     CustomerListItem,
@@ -25,25 +24,20 @@ from app.schemas.customer import (
     MandateInfo,
 )
 from app.utils.iban import format_iban, mask_iban, validate_iban
-from app.utils.security import get_current_user
+from app.utils.security import UserContext, get_user_context
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
 
-# ---------------------------------------------------------------------------
-# GET /customers — paginated list
-# ---------------------------------------------------------------------------
-
-
 @router.get("", response_model=CustomerListResponse)
 async def list_customers(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
     search: str | None = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    base = select(Customer).where(Customer.tenant_id == current_user.id)
+    base = select(Customer).where(Customer.tenant_id == ctx.organization_id)
 
     if search:
         pattern = f"%{search}%"
@@ -54,12 +48,10 @@ async def list_customers(
             )
         )
 
-    # Count
     count_stmt = select(func.count()).select_from(base.subquery())
     total = (await db.execute(count_stmt)).scalar() or 0
     total_pages = max(1, math.ceil(total / per_page))
 
-    # Fetch page
     offset = (page - 1) * per_page
     rows = (
         await db.execute(
@@ -73,7 +65,6 @@ async def list_customers(
         )
     ).scalars().all()
 
-    # Open invoice counts
     customer_ids = [c.id for c in rows]
     inv_counts: dict[str, int] = {}
     if customer_ids:
@@ -114,15 +105,10 @@ async def list_customers(
     )
 
 
-# ---------------------------------------------------------------------------
-# GET /customers/{id} — detail
-# ---------------------------------------------------------------------------
-
-
 @router.get("/{customer_id}", response_model=CustomerDetailResponse)
 async def get_customer(
     customer_id: str,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = (
@@ -131,16 +117,15 @@ async def get_customer(
             selectinload(Customer.ibans),
             selectinload(Customer.mandates),
         )
-        .where(Customer.id == customer_id, Customer.tenant_id == current_user.id)
+        .where(Customer.id == customer_id, Customer.tenant_id == ctx.organization_id)
     )
     customer = (await db.execute(stmt)).scalar_one_or_none()
     if not customer:
         raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
 
-    # Open invoices
     inv_stmt = select(Invoice).where(
         Invoice.customer_id == customer_id,
-        Invoice.tenant_id == current_user.id,
+        Invoice.tenant_id == ctx.organization_id,
         Invoice.lexoffice_status.in_(["open", "overdue"]),
         Invoice.collection_status.in_([
             CollectionStatus.OPEN,
@@ -195,51 +180,42 @@ async def get_customer(
     )
 
 
-# ---------------------------------------------------------------------------
-# PUT /customers/{id}/iban — update/create IBAN
-# ---------------------------------------------------------------------------
-
-
 @router.put("/{customer_id}/iban", response_model=IbanUpdateResponse)
 async def update_iban(
     customer_id: str,
     data: IbanCreateRequest,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
-    # Validate IBAN
     valid, result = validate_iban(data.iban)
     if not valid:
         raise HTTPException(status_code=422, detail=result)
     cleaned_iban = result
 
-    # Load customer
     customer = (
         await db.execute(
             select(Customer)
             .options(selectinload(Customer.ibans))
-            .where(Customer.id == customer_id, Customer.tenant_id == current_user.id)
+            .where(Customer.id == customer_id, Customer.tenant_id == ctx.organization_id)
         )
     ).scalar_one_or_none()
     if not customer:
         raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
 
-    # Deactivate current active IBAN(s)
     for ib in customer.ibans:
         if ib.is_active:
             ib.is_active = False
             db.add(IbanHistory(
-                tenant_id=current_user.id,
+                tenant_id=ctx.organization_id,
                 customer_iban_id=ib.id,
                 action=IbanAction.DEACTIVATED,
                 old_iban=ib.iban,
-                changed_by=current_user.id,
+                changed_by=ctx.user_id,
                 change_reason=data.change_reason,
             ))
 
-    # Create new IBAN
     new_iban = CustomerIban(
-        tenant_id=current_user.id,
+        tenant_id=ctx.organization_id,
         customer_id=customer_id,
         iban=cleaned_iban,
         bic=data.bic,
@@ -249,26 +225,24 @@ async def update_iban(
     db.add(new_iban)
     await db.flush()
 
-    # History entry for creation
     db.add(IbanHistory(
-        tenant_id=current_user.id,
+        tenant_id=ctx.organization_id,
         customer_iban_id=new_iban.id,
         action=IbanAction.CREATED,
         new_iban=cleaned_iban,
-        changed_by=current_user.id,
+        changed_by=ctx.user_id,
         change_reason=data.change_reason,
     ))
 
-    # Update existing active mandate to use new IBAN
     mandate_stmt = select(SepaMandate).where(
-        SepaMandate.tenant_id == current_user.id,
+        SepaMandate.tenant_id == ctx.organization_id,
         SepaMandate.customer_id == customer_id,
         SepaMandate.is_active.is_(True),
     )
     mandate = (await db.execute(mandate_stmt)).scalar_one_or_none()
     if mandate:
         mandate.customer_iban_id = new_iban.id
-        mandate.stripe_payment_method_id = None  # needs re-creation
+        mandate.stripe_payment_method_id = None
 
     await db.flush()
 
@@ -277,41 +251,33 @@ async def update_iban(
     )
 
 
-# ---------------------------------------------------------------------------
-# POST /customers/{id}/iban — for walk-in customers (per invoice)
-# ---------------------------------------------------------------------------
-
-
 @router.post("/{customer_id}/iban", response_model=IbanUpdateResponse)
 async def create_iban_for_invoice(
     customer_id: str,
     data: IbanCreateForInvoiceRequest,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
-    # Validate IBAN
     valid, result = validate_iban(data.iban)
     if not valid:
         raise HTTPException(status_code=422, detail=result)
     cleaned_iban = result
 
-    # Load customer
     customer = (
         await db.execute(
             select(Customer).where(
-                Customer.id == customer_id, Customer.tenant_id == current_user.id
+                Customer.id == customer_id, Customer.tenant_id == ctx.organization_id
             )
         )
     ).scalar_one_or_none()
     if not customer:
         raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
 
-    # Verify invoice belongs to this customer and tenant
     invoice = (
         await db.execute(
             select(Invoice).where(
                 Invoice.id == data.invoice_id,
-                Invoice.tenant_id == current_user.id,
+                Invoice.tenant_id == ctx.organization_id,
                 Invoice.customer_id == customer_id,
             )
         )
@@ -319,9 +285,8 @@ async def create_iban_for_invoice(
     if not invoice:
         raise HTTPException(status_code=404, detail="Rechnung nicht gefunden")
 
-    # For walk-in customers, multiple active IBANs can exist (one per invoice)
     new_iban = CustomerIban(
-        tenant_id=current_user.id,
+        tenant_id=ctx.organization_id,
         customer_id=customer_id,
         iban=cleaned_iban,
         bic=data.bic,
@@ -332,11 +297,11 @@ async def create_iban_for_invoice(
     await db.flush()
 
     db.add(IbanHistory(
-        tenant_id=current_user.id,
+        tenant_id=ctx.organization_id,
         customer_iban_id=new_iban.id,
         action=IbanAction.CREATED,
         new_iban=cleaned_iban,
-        changed_by=current_user.id,
+        changed_by=ctx.user_id,
         change_reason=f"Laufkunde, Rechnung {invoice.voucher_number}",
     ))
 
@@ -347,29 +312,22 @@ async def create_iban_for_invoice(
     )
 
 
-# ---------------------------------------------------------------------------
-# GET /customers/{id}/iban-history
-# ---------------------------------------------------------------------------
-
-
 @router.get("/{customer_id}/iban-history", response_model=list[IbanHistoryItem])
 async def get_iban_history(
     customer_id: str,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
-    # Verify customer belongs to tenant
     customer = (
         await db.execute(
             select(Customer).where(
-                Customer.id == customer_id, Customer.tenant_id == current_user.id
+                Customer.id == customer_id, Customer.tenant_id == ctx.organization_id
             )
         )
     ).scalar_one_or_none()
     if not customer:
         raise HTTPException(status_code=404, detail="Kunde nicht gefunden")
 
-    # Get all IBANs for this customer, then their history
     iban_ids_stmt = select(CustomerIban.id).where(
         CustomerIban.customer_id == customer_id
     )

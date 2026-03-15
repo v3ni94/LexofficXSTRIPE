@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.customer import Customer
 from app.models.customer_iban import CustomerIban
 from app.models.iban_history import IbanAction, IbanHistory
+from app.models.organization import Organization
 from app.models.user import User
 
 
@@ -26,12 +27,14 @@ async def test_list_customers_empty(client: AsyncClient, test_user: User, auth_h
 async def test_list_customers_returns_own_only(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     test_user2: User,
+    test_org2: Organization,
     create_customer,
     auth_headers,
 ):
-    await create_customer(test_user.id, name="User A Customer")
-    await create_customer(test_user2.id, name="User B Customer")
+    await create_customer(test_org.id, name="User A Customer")
+    await create_customer(test_org2.id, name="User B Customer")
 
     resp = await client.get("/customers", headers=auth_headers(test_user.id))
     assert resp.status_code == 200
@@ -43,11 +46,12 @@ async def test_list_customers_returns_own_only(
 async def test_list_customers_search(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     create_customer,
     auth_headers,
 ):
-    await create_customer(test_user.id, name="Alpha GmbH", customer_number="10001")
-    await create_customer(test_user.id, name="Beta GmbH", customer_number="10002")
+    await create_customer(test_org.id, name="Alpha GmbH", customer_number="10001")
+    await create_customer(test_org.id, name="Beta GmbH", customer_number="10002")
 
     resp = await client.get("/customers?search=Alpha", headers=auth_headers(test_user.id))
     assert resp.status_code == 200
@@ -63,12 +67,13 @@ async def test_list_customers_search(
 async def test_get_customer_detail(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     create_customer,
     create_iban,
     auth_headers,
 ):
-    customer = await create_customer(test_user.id, name="Detail Test")
-    await create_iban(test_user.id, customer.id, iban="DE89370400440532013000")
+    customer = await create_customer(test_org.id, name="Detail Test")
+    await create_iban(test_org.id, customer.id, iban="DE89370400440532013000")
 
     resp = await client.get(f"/customers/{customer.id}", headers=auth_headers(test_user.id))
     assert resp.status_code == 200
@@ -97,13 +102,14 @@ async def test_get_customer_not_found(
 async def test_update_iban_deactivates_old(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     db: AsyncSession,
     create_customer,
     create_iban,
     auth_headers,
 ):
-    customer = await create_customer(test_user.id)
-    old_iban = await create_iban(test_user.id, customer.id, iban="DE89370400440532013000")
+    customer = await create_customer(test_org.id)
+    old_iban = await create_iban(test_org.id, customer.id, iban="DE89370400440532013000")
 
     resp = await client.put(
         f"/customers/{customer.id}/iban",
@@ -135,13 +141,14 @@ async def test_update_iban_deactivates_old(
 async def test_update_iban_creates_history_entries(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     db: AsyncSession,
     create_customer,
     create_iban,
     auth_headers,
 ):
-    customer = await create_customer(test_user.id)
-    await create_iban(test_user.id, customer.id)
+    customer = await create_customer(test_org.id)
+    await create_iban(test_org.id, customer.id)
 
     await client.put(
         f"/customers/{customer.id}/iban",
@@ -174,10 +181,11 @@ async def test_update_iban_creates_history_entries(
 async def test_update_iban_invalid_iban(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     create_customer,
     auth_headers,
 ):
-    customer = await create_customer(test_user.id)
+    customer = await create_customer(test_org.id)
     resp = await client.put(
         f"/customers/{customer.id}/iban",
         json={"iban": "INVALID", "account_holder_name": "Test"},
@@ -194,6 +202,7 @@ async def test_update_iban_invalid_iban(
 async def test_walkin_iban_allows_multiple_active(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     db: AsyncSession,
     create_customer,
     create_invoice,
@@ -201,10 +210,10 @@ async def test_walkin_iban_allows_multiple_active(
 ):
     """Walk-in customers may have multiple active IBANs (one per invoice)."""
     customer = await create_customer(
-        test_user.id, is_walk_in=True, customer_number="WALK1"
+        test_org.id, is_walk_in=True, customer_number="WALK1"
     )
-    invoice1 = await create_invoice(test_user.id, customer.id, voucher_number="RE-001")
-    invoice2 = await create_invoice(test_user.id, customer.id, voucher_number="RE-002")
+    invoice1 = await create_invoice(test_org.id, customer.id, voucher_number="RE-001")
+    invoice2 = await create_invoice(test_org.id, customer.id, voucher_number="RE-002")
 
     for invoice, iban in [
         (invoice1, "DE89370400440532013000"),
@@ -239,12 +248,13 @@ async def test_walkin_iban_allows_multiple_active(
 async def test_iban_history_returns_entries(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     create_customer,
     create_iban,
     auth_headers,
 ):
-    customer = await create_customer(test_user.id)
-    await create_iban(test_user.id, customer.id)
+    customer = await create_customer(test_org.id)
+    await create_iban(test_org.id, customer.id)
 
     # Trigger a change to create history entries
     await client.put(

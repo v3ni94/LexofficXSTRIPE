@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/auth";
+import { usePermission } from "../hooks/usePermission";
 
-const navItems = [
-  { to: "/dashboard", label: "Uebersicht", end: true },
-  { to: "/dashboard/invoices", label: "Rechnungen", end: false },
-  { to: "/dashboard/customers", label: "Kunden & Stammdaten", end: false },
-  { to: "/dashboard/collections", label: "Einzuege", end: false },
-  { to: "/dashboard/settings", label: "Einstellungen", end: false },
-];
+const roleLabels: Record<string, string> = {
+  owner: "Inhaber",
+  admin: "Admin",
+  member: "Mitglied",
+};
 
 export default function DashboardLayout() {
   const user = useAuthStore((s) => s.user);
@@ -17,6 +16,7 @@ export default function DashboardLayout() {
   const fetchUser = useAuthStore((s) => s.fetchUser);
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { canManageTeam, canManageIntegrations } = usePermission();
 
   useEffect(() => {
     if (!user && !isLoading) {
@@ -36,6 +36,15 @@ export default function DashboardLayout() {
       </div>
     );
   }
+
+  const navItems = [
+    { to: "/dashboard", label: "Uebersicht", end: true, show: true },
+    { to: "/dashboard/invoices", label: "Rechnungen", end: false, show: true },
+    { to: "/dashboard/customers", label: "Kunden & Stammdaten", end: false, show: true },
+    { to: "/dashboard/collections", label: "Einzuege", end: false, show: true },
+    { to: "/dashboard/team", label: "Team", end: false, show: canManageTeam },
+    { to: "/dashboard/settings", label: "Einstellungen", end: false, show: canManageIntegrations },
+  ];
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `block px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -73,17 +82,19 @@ export default function DashboardLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={linkClass}
-              onClick={() => setSidebarOpen(false)}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems
+            .filter((item) => item.show)
+            .map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={linkClass}
+                onClick={() => setSidebarOpen(false)}
+              >
+                {item.label}
+              </NavLink>
+            ))}
         </nav>
 
         {/* User info */}
@@ -91,9 +102,12 @@ export default function DashboardLayout() {
           {user && (
             <div className="mb-3">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {user.company_name}
+                {user.organization_name || user.display_name || user.email}
               </p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              <p className="text-xs text-gray-500 truncate">
+                {user.display_name || user.email}
+                {user.role ? ` (${roleLabels[user.role] ?? user.role})` : ""}
+              </p>
             </div>
           )}
           <button

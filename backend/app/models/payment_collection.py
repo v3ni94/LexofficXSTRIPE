@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models import Base
@@ -14,7 +14,7 @@ class PaymentCollection(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id"), nullable=False, index=True
+        String(36), ForeignKey("organizations.id"), nullable=False, index=True
     )
     invoice_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("invoices.id"), nullable=False, index=True
@@ -42,6 +42,11 @@ class PaymentCollection(Base):
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     description: Mapped[str | None] = mapped_column(String(140), nullable=True)
 
+    # Scheduled collection fields
+    scheduled_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    is_scheduled: Mapped[bool] = mapped_column(Boolean, default=False)
+    scheduled_submitted: Mapped[bool] = mapped_column(Boolean, default=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
     )
@@ -50,7 +55,7 @@ class PaymentCollection(Base):
     )
 
     # Relationships
-    tenant: Mapped["User"] = relationship("User", back_populates="payment_collections")
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="payment_collections")
     invoice: Mapped["Invoice"] = relationship(
         "Invoice", back_populates="payment_collections"
     )

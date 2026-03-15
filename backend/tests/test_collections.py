@@ -11,6 +11,7 @@ from app.models.customer import Customer
 from app.models.customer_iban import CustomerIban
 from app.models.integration import Integration
 from app.models.invoice import CollectionStatus, Invoice
+from app.models.organization import Organization
 from app.models.payment_collection import PaymentCollection
 from app.models.user import User
 from app.services.collection_service import CollectionError, CollectionService
@@ -49,19 +50,20 @@ def _stripe_mocks():
 async def test_submit_collection_success(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
     create_iban,
 ):
-    customer = await create_customer(test_user.id, customer_number="10099")
-    invoice = await create_invoice(test_user.id, customer.id, amount=150.00)
-    await create_iban(test_user.id, customer.id)
+    customer = await create_customer(test_org.id, customer_number="10099")
+    invoice = await create_invoice(test_org.id, customer.id, amount=150.00)
+    await create_iban(test_org.id, customer.id)
 
     mock_svc = _stripe_mocks()
     with patch("app.services.collection_service.StripeService", return_value=mock_svc):
         collection = await CollectionService.submit_collection(
-            tenant_id=test_user.id,
+            tenant_id=test_org.id,
             invoice_id=invoice.id,
             db=db,
         )
@@ -78,83 +80,88 @@ async def test_submit_collection_success(
 async def test_submit_collection_invoice_not_open(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
     create_iban,
 ):
-    customer = await create_customer(test_user.id, customer_number="10100")
+    customer = await create_customer(test_org.id, customer_number="10100")
     invoice = await create_invoice(
-        test_user.id, customer.id, lexoffice_status="paid"
+        test_org.id, customer.id, lexoffice_status="paid"
     )
-    await create_iban(test_user.id, customer.id)
+    await create_iban(test_org.id, customer.id)
 
     with pytest.raises(CollectionError, match="Lexoffice-Status"):
-        await CollectionService.submit_collection(test_user.id, invoice.id, db)
+        await CollectionService.submit_collection(test_org.id, invoice.id, db)
 
 
 async def test_submit_collection_already_in_collection(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
     create_iban,
 ):
-    customer = await create_customer(test_user.id, customer_number="10101")
+    customer = await create_customer(test_org.id, customer_number="10101")
     invoice = await create_invoice(
-        test_user.id,
+        test_org.id,
         customer.id,
         collection_status=CollectionStatus.IN_COLLECTION,
     )
-    await create_iban(test_user.id, customer.id)
+    await create_iban(test_org.id, customer.id)
 
     with pytest.raises(CollectionError, match="bereits im Einzugsverfahren"):
-        await CollectionService.submit_collection(test_user.id, invoice.id, db)
+        await CollectionService.submit_collection(test_org.id, invoice.id, db)
 
 
 async def test_submit_collection_no_iban(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
 ):
-    customer = await create_customer(test_user.id, customer_number="10102")
-    invoice = await create_invoice(test_user.id, customer.id)
+    customer = await create_customer(test_org.id, customer_number="10102")
+    invoice = await create_invoice(test_org.id, customer.id)
     # No IBAN created
 
     with pytest.raises(CollectionError, match="IBAN"):
-        await CollectionService.submit_collection(test_user.id, invoice.id, db)
+        await CollectionService.submit_collection(test_org.id, invoice.id, db)
 
 
 async def test_submit_collection_no_customer(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_invoice,
 ):
     # Invoice without a linked customer
-    invoice = await create_invoice(test_user.id, customer_id=None)
+    invoice = await create_invoice(test_org.id, customer_id=None)
 
     with pytest.raises(CollectionError, match="Kunden"):
-        await CollectionService.submit_collection(test_user.id, invoice.id, db)
+        await CollectionService.submit_collection(test_org.id, invoice.id, db)
 
 
 async def test_submit_collection_stripe_not_connected(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     create_customer,
     create_invoice,
     create_iban,
 ):
     # Integration exists but Stripe NOT connected (no test_integration fixture)
-    customer = await create_customer(test_user.id, customer_number="10103")
-    invoice = await create_invoice(test_user.id, customer.id)
-    await create_iban(test_user.id, customer.id)
+    customer = await create_customer(test_org.id, customer_number="10103")
+    invoice = await create_invoice(test_org.id, customer.id)
+    await create_iban(test_org.id, customer.id)
 
     with pytest.raises(CollectionError, match="Stripe"):
-        await CollectionService.submit_collection(test_user.id, invoice.id, db)
+        await CollectionService.submit_collection(test_org.id, invoice.id, db)
 
 
 # ---------------------------------------------------------------------------
@@ -165,30 +172,31 @@ async def test_submit_collection_stripe_not_connected(
 async def test_submit_batch_partial_failure(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
     create_iban,
 ):
     """3 valid invoices + 1 without IBAN → 3 successful, 1 failed."""
-    customer = await create_customer(test_user.id, customer_number="10200")
-    await create_iban(test_user.id, customer.id)
+    customer = await create_customer(test_org.id, customer_number="10200")
+    await create_iban(test_org.id, customer.id)
 
     invoices = []
     for i in range(3):
         inv = await create_invoice(
-            test_user.id, customer.id, voucher_number=f"RE-BATCH-{i}", amount=50.00
+            test_org.id, customer.id, voucher_number=f"RE-BATCH-{i}", amount=50.00
         )
         invoices.append(inv)
 
     # 4th invoice has no customer → will fail
-    bad_invoice = await create_invoice(test_user.id, customer_id=None, voucher_number="RE-BAD")
+    bad_invoice = await create_invoice(test_org.id, customer_id=None, voucher_number="RE-BAD")
     invoice_ids = [inv.id for inv in invoices] + [bad_invoice.id]
 
     mock_svc = _stripe_mocks()
     with patch("app.services.collection_service.StripeService", return_value=mock_svc):
         result = await CollectionService.submit_batch_collection(
-            tenant_id=test_user.id,
+            tenant_id=test_org.id,
             invoice_ids=invoice_ids,
             db=db,
         )
@@ -263,28 +271,29 @@ async def test_submit_endpoint_requires_auth(client: AsyncClient):
 async def test_submit_collection_sets_description(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
     create_iban,
 ):
     """The collection.description should be a SEPA-compliant Verwendungszweck."""
-    customer = await create_customer(test_user.id, customer_number="10431")
+    customer = await create_customer(test_org.id, customer_number="10431")
     line_items = [
         {"name": "Monatsmiete Wohnung", "description": "", "totalPrice": {"totalGrossAmount": 800}},
     ]
-    invoice = await create_invoice(test_user.id, customer.id, amount=800.00, voucher_number="RE260001")
+    invoice = await create_invoice(test_org.id, customer.id, amount=800.00, voucher_number="RE260001")
     invoice.line_items_json = json.dumps(line_items)
     invoice.keyword = "Vermietung"
     invoice.keyword_sepa = "Vermietung"
     await db.flush()
 
-    await create_iban(test_user.id, customer.id)
+    await create_iban(test_org.id, customer.id)
 
     mock_svc = _stripe_mocks()
     with patch("app.services.collection_service.StripeService", return_value=mock_svc):
         collection = await CollectionService.submit_collection(
-            tenant_id=test_user.id,
+            tenant_id=test_org.id,
             invoice_id=invoice.id,
             db=db,
         )
@@ -301,21 +310,22 @@ async def test_submit_collection_sets_description(
 async def test_submit_collection_fallback_sonstiges(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
     create_iban,
 ):
     """Without keyword data, falls back to 'Sonstiges'."""
-    customer = await create_customer(test_user.id, customer_number="10500")
-    invoice = await create_invoice(test_user.id, customer.id, amount=100.00, voucher_number="RE999")
+    customer = await create_customer(test_org.id, customer_number="10500")
+    invoice = await create_invoice(test_org.id, customer.id, amount=100.00, voucher_number="RE999")
     # No keyword fields set, no line_items_json
-    await create_iban(test_user.id, customer.id)
+    await create_iban(test_org.id, customer.id)
 
     mock_svc = _stripe_mocks()
     with patch("app.services.collection_service.StripeService", return_value=mock_svc):
         collection = await CollectionService.submit_collection(
-            tenant_id=test_user.id,
+            tenant_id=test_org.id,
             invoice_id=invoice.id,
             db=db,
         )
@@ -327,20 +337,21 @@ async def test_submit_collection_fallback_sonstiges(
 async def test_submit_collection_metadata_includes_customer_number(
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     create_customer,
     create_invoice,
     create_iban,
 ):
     """Stripe metadata should contain customer_number."""
-    customer = await create_customer(test_user.id, customer_number="10777")
-    invoice = await create_invoice(test_user.id, customer.id, amount=50.00)
-    await create_iban(test_user.id, customer.id)
+    customer = await create_customer(test_org.id, customer_number="10777")
+    invoice = await create_invoice(test_org.id, customer.id, amount=50.00)
+    await create_iban(test_org.id, customer.id)
 
     mock_svc = _stripe_mocks()
     with patch("app.services.collection_service.StripeService", return_value=mock_svc):
         await CollectionService.submit_collection(
-            tenant_id=test_user.id,
+            tenant_id=test_org.id,
             invoice_id=invoice.id,
             db=db,
         )
@@ -353,13 +364,14 @@ async def test_preview_endpoint(
     client: AsyncClient,
     db: AsyncSession,
     test_user: User,
+    test_org: Organization,
     auth_headers,
     create_customer,
     create_invoice,
 ):
     """GET /collections/preview returns the correct Verwendungszweck."""
-    customer = await create_customer(test_user.id, customer_number="10431")
-    invoice = await create_invoice(test_user.id, customer.id, voucher_number="RE260001")
+    customer = await create_customer(test_org.id, customer_number="10431")
+    invoice = await create_invoice(test_org.id, customer.id, voucher_number="RE260001")
     invoice.keyword = "Vermietung"
     invoice.keyword_sepa = "Vermietung"
     await db.flush()

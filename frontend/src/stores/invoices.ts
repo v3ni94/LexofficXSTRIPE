@@ -68,7 +68,7 @@ interface InvoicesState {
   setSearch: (search: string) => void;
   setKeyword: (keyword: string) => void;
   setPage: (page: number) => void;
-  submitCollection: (invoiceId: string) => Promise<SubmitResult>;
+  submitCollection: (invoiceId: string, scheduledDate?: string) => Promise<SubmitResult>;
   submitBatch: (invoiceIds: string[]) => Promise<BatchSubmitResult>;
   saveIban: (customerId: string, iban: string, accountHolderName: string) => Promise<void>;
   startPolling: () => void;
@@ -144,12 +144,14 @@ export const useInvoicesStore = create<InvoicesState>((set, get) => ({
     get().fetchInvoices(page);
   },
 
-  submitCollection: async (invoiceId: string) => {
+  submitCollection: async (invoiceId: string, scheduledDate?: string) => {
     set((state) => ({
       submittingIds: new Set([...state.submittingIds, invoiceId]),
     }));
     try {
-      const res = await api.post("/collections/submit", { invoice_id: invoiceId });
+      const body: Record<string, string> = { invoice_id: invoiceId };
+      if (scheduledDate) body.scheduled_date = scheduledDate;
+      const res = await api.post("/collections/submit", body);
       await get().fetchInvoices();
       return res.data as SubmitResult;
     } finally {

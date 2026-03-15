@@ -15,12 +15,11 @@ from app.models.customer_iban import CustomerIban
 from app.models.invoice import Invoice
 from app.models.payment_collection import PaymentCollection
 from app.models.sepa_mandate import SepaMandate
-from app.models.user import User
 from app.schemas.collection import CollectionListItem, CollectionListResponse, CollectionPreview, CollectionResponse
 from app.services.collection_service import CollectionError, CollectionService
 from app.services.invoice_keyword_service import InvoiceKeywordService
 from app.utils.iban import mask_iban
-from app.utils.security import get_current_user
+from app.utils.security import UserContext, get_user_context
 
 logger = logging.getLogger(__name__)
 
@@ -29,32 +28,38 @@ router = APIRouter(prefix="/collections", tags=["collections"])
 
 class SubmitRequest(BaseModel):
     invoice_id: str
+    scheduled_date: date | None = None
 
 
 class BatchSubmitRequest(BaseModel):
     invoice_ids: list[str]
+    scheduled_date: date | None = None
 
 
-def _run_submit(tenant_id: str, invoice_id: str, db):
+class RescheduleRequest(BaseModel):
+    scheduled_date: date
+
+
+def _run_submit(tenant_id: str, invoice_id: str, db, scheduled_date=None):
     """Run async submit_collection in a new event loop (for thread execution)."""
     import asyncio as _asyncio
 
     loop = _asyncio.new_event_loop()
     try:
         return loop.run_until_complete(
-            CollectionService.submit_collection(tenant_id, invoice_id, db)
+            CollectionService.submit_collection(tenant_id, invoice_id, db, scheduled_date=scheduled_date)
         )
     finally:
         loop.close()
 
 
-def _run_batch_submit(tenant_id: str, invoice_ids: list[str], db):
+def _run_batch_submit(tenant_id: str, invoice_ids: list[str], db, scheduled_date=None):
     import asyncio as _asyncio
 
     loop = _asyncio.new_event_loop()
     try:
         return loop.run_until_complete(
-            CollectionService.submit_batch_collection(tenant_id, invoice_ids, db)
+            CollectionService.submit_batch_collection(tenant_id, invoice_ids, db, scheduled_date=scheduled_date)
         )
     finally:
         loop.close()
@@ -63,13 +68,13 @@ def _run_batch_submit(tenant_id: str, invoice_ids: list[str], db):
 @router.post("/submit", response_model=dict)
 async def submit_collection(
     body: SubmitRequest,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit a single SEPA direct debit."""
+    """Submit a single SEPA direct debit (immediate or scheduled)."""
     try:
         collection = await asyncio.to_thread(
-            _run_submit, current_user.id, body.invoice_id, db
+            _run_submit, ctx.organization_id, body.invoice_id, db, body.scheduled_date
         )
         await db.commit()
     except CollectionError as exc:
@@ -85,19 +90,20 @@ async def submit_collection(
         "collection_id": collection.id,
         "status": collection.stripe_status,
         "stripe_payment_intent_id": collection.stripe_payment_intent_id,
+        "scheduled_date": str(collection.scheduled_date) if collection.scheduled_date else None,
     }
 
 
 @router.post("/submit-batch", response_model=dict)
 async def submit_batch_collection(
     body: BatchSubmitRequest,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Submit multiple SEPA direct debits at once."""
     try:
         result = await asyncio.to_thread(
-            _run_batch_submit, current_user.id, body.invoice_ids, db
+            _run_batch_submit, ctx.organization_id, body.invoice_ids, db, body.scheduled_date
         )
         await db.commit()
     except Exception as exc:
@@ -110,10 +116,50 @@ async def submit_batch_collection(
     return result
 
 
+@router.delete("/{collection_id}/cancel")
+async def cancel_collection(
+    collection_id: str,
+    ctx: UserContext = Depends(get_user_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cancel a scheduled collection."""
+    try:
+        collection = await CollectionService.cancel_scheduled_collection(
+            ctx.organization_id, collection_id, db
+        )
+        await db.commit()
+    except CollectionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return {"status": "cancelled", "collection_id": collection.id}
+
+
+@router.put("/{collection_id}/reschedule")
+async def reschedule_collection(
+    collection_id: str,
+    body: RescheduleRequest,
+    ctx: UserContext = Depends(get_user_context),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reschedule a scheduled collection."""
+    try:
+        collection = await CollectionService.reschedule_collection(
+            ctx.organization_id, collection_id, body.scheduled_date, db
+        )
+        await db.commit()
+    except CollectionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return {
+        "collection_id": collection.id,
+        "scheduled_date": str(collection.scheduled_date),
+    }
+
+
 @router.get("/preview", response_model=CollectionPreview)
 async def preview_collection(
     invoice_id: str = Query(...),
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Preview the SEPA description without submitting."""
@@ -121,7 +167,7 @@ async def preview_collection(
         await db.execute(
             select(Invoice).where(
                 Invoice.id == invoice_id,
-                Invoice.tenant_id == current_user.id,
+                Invoice.tenant_id == ctx.organization_id,
             )
         )
     ).scalar_one_or_none()
@@ -135,7 +181,7 @@ async def preview_collection(
             await db.execute(
                 select(Customer).where(
                     Customer.id == invoice.customer_id,
-                    Customer.tenant_id == current_user.id,
+                    Customer.tenant_id == ctx.organization_id,
                 )
             )
         ).scalar_one_or_none()
@@ -170,7 +216,7 @@ async def preview_collection(
 
 @router.get("", response_model=CollectionListResponse)
 async def list_collections(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
     status_filter: str | None = Query(None, alias="status"),
     date_from: date | None = Query(None),
@@ -179,11 +225,11 @@ async def list_collections(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    """List all collections for the tenant, paginated, with enriched join data."""
+    """List all collections for the organization, paginated."""
     from sqlalchemy import func
 
     base = select(PaymentCollection).where(
-        PaymentCollection.tenant_id == current_user.id
+        PaymentCollection.tenant_id == ctx.organization_id
     )
 
     if status_filter:
@@ -200,10 +246,9 @@ async def list_collections(
         base = base.where(PaymentCollection.submitted_at < dt_to)
 
     if customer_id:
-        # Filter via Invoice join
         invoice_ids_stmt = select(Invoice.id).where(
             Invoice.customer_id == customer_id,
-            Invoice.tenant_id == current_user.id,
+            Invoice.tenant_id == ctx.organization_id,
         )
         base = base.where(PaymentCollection.invoice_id.in_(invoice_ids_stmt))
 
@@ -214,7 +259,7 @@ async def list_collections(
     offset = (page - 1) * per_page
     collections = (
         await db.execute(
-            base.order_by(PaymentCollection.submitted_at.desc())
+            base.order_by(PaymentCollection.created_at.desc())
             .offset(offset)
             .limit(per_page)
         )
@@ -258,6 +303,8 @@ async def list_collections(
             completed_at=c.completed_at,
             failure_reason=c.failure_reason,
             description=c.description,
+            scheduled_date=c.scheduled_date,
+            is_scheduled=c.is_scheduled,
         ))
 
     return CollectionListResponse(
@@ -272,7 +319,7 @@ async def list_collections(
 @router.get("/{collection_id}", response_model=CollectionResponse)
 async def get_collection(
     collection_id: str,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single collection by ID."""
@@ -280,7 +327,7 @@ async def get_collection(
         await db.execute(
             select(PaymentCollection).where(
                 PaymentCollection.id == collection_id,
-                PaymentCollection.tenant_id == current_user.id,
+                PaymentCollection.tenant_id == ctx.organization_id,
             )
         )
     ).scalar_one_or_none()

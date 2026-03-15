@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer import Customer
 from app.models.customer_iban import CustomerIban
+from app.models.organization import Organization
 from app.models.sepa_mandate import SepaMandate
 from app.models.user import User
 from app.services.mandate_service import MandateService
@@ -50,11 +51,13 @@ async def _make_customer_with_iban(
 # ---------------------------------------------------------------------------
 
 
-async def test_stammkunde_mandate_reference_format(db: AsyncSession, test_user: User):
-    customer, iban = await _make_customer_with_iban(db, test_user.id, "10045")
+async def test_stammkunde_mandate_reference_format(
+    db: AsyncSession, test_user: User, test_org: Organization
+):
+    customer, iban = await _make_customer_with_iban(db, test_org.id, "10045")
 
     mandate = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer.id,
         customer_iban_id=iban.id,
         db=db,
@@ -64,18 +67,20 @@ async def test_stammkunde_mandate_reference_format(db: AsyncSession, test_user: 
     assert mandate.is_active is True
 
 
-async def test_stammkunde_mandate_reuse(db: AsyncSession, test_user: User):
+async def test_stammkunde_mandate_reuse(
+    db: AsyncSession, test_user: User, test_org: Organization
+):
     """Second call must return the SAME mandate, not create a new one."""
-    customer, iban = await _make_customer_with_iban(db, test_user.id, "10045")
+    customer, iban = await _make_customer_with_iban(db, test_org.id, "10045")
 
     mandate1 = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer.id,
         customer_iban_id=iban.id,
         db=db,
     )
     mandate2 = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer.id,
         customer_iban_id=iban.id,
         db=db,
@@ -89,14 +94,16 @@ async def test_stammkunde_mandate_reuse(db: AsyncSession, test_user: User):
 # ---------------------------------------------------------------------------
 
 
-async def test_laufkunde_mandate_reference_format(db: AsyncSession, test_user: User):
+async def test_laufkunde_mandate_reference_format(
+    db: AsyncSession, test_user: User, test_org: Organization
+):
     customer, iban = await _make_customer_with_iban(
-        db, test_user.id, "WALK001", is_walk_in=True
+        db, test_org.id, "WALK001", is_walk_in=True
     )
 
     today = date.today().strftime("%Y%m%d")
     mandate = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer.id,
         customer_iban_id=iban.id,
         db=db,
@@ -108,26 +115,28 @@ async def test_laufkunde_mandate_reference_format(db: AsyncSession, test_user: U
     assert suffix.isdigit()
 
 
-async def test_laufkunde_counter_increments(db: AsyncSession, test_user: User):
+async def test_laufkunde_counter_increments(
+    db: AsyncSession, test_user: User, test_org: Organization
+):
     """Each new walk-in mandate for the same date gets a higher counter."""
     today = date.today().strftime("%Y%m%d")
 
     # Create two different walk-in customers
     customer1, iban1 = await _make_customer_with_iban(
-        db, test_user.id, "WALK001", is_walk_in=True
+        db, test_org.id, "WALK001", is_walk_in=True
     )
     customer2, iban2 = await _make_customer_with_iban(
-        db, test_user.id, "WALK002", is_walk_in=True
+        db, test_org.id, "WALK002", is_walk_in=True
     )
 
     mandate1 = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer1.id,
         customer_iban_id=iban1.id,
         db=db,
     )
     mandate2 = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer2.id,
         customer_iban_id=iban2.id,
         db=db,
@@ -151,12 +160,14 @@ async def test_laufkunde_counter_increments(db: AsyncSession, test_user: User):
 # ---------------------------------------------------------------------------
 
 
-async def test_mandate_iban_updated_on_change(db: AsyncSession, test_user: User):
+async def test_mandate_iban_updated_on_change(
+    db: AsyncSession, test_user: User, test_org: Organization
+):
     """If customer's IBAN changes, the existing mandate is updated, not recreated."""
-    customer, iban1 = await _make_customer_with_iban(db, test_user.id, "10001")
+    customer, iban1 = await _make_customer_with_iban(db, test_org.id, "10001")
 
     mandate = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer.id,
         customer_iban_id=iban1.id,
         db=db,
@@ -165,7 +176,7 @@ async def test_mandate_iban_updated_on_change(db: AsyncSession, test_user: User)
 
     # New IBAN record
     iban2 = CustomerIban(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer.id,
         iban="AT611904300234573201",
         account_holder_name="Test",
@@ -176,7 +187,7 @@ async def test_mandate_iban_updated_on_change(db: AsyncSession, test_user: User)
     await db.refresh(iban2)
 
     updated_mandate = await MandateService.get_or_create_mandate(
-        tenant_id=test_user.id,
+        tenant_id=test_org.id,
         customer_id=customer.id,
         customer_iban_id=iban2.id,
         db=db,

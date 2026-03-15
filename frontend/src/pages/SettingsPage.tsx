@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useIntegrationsStore } from "../stores/integrations";
+import { usePermission } from "../hooks/usePermission";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -21,6 +22,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function SettingsPage() {
+  const { canManageIntegrations } = usePermission();
   const { status, isLoading, fetchStatus } = useIntegrationsStore();
   const connectLexoffice = useIntegrationsStore((s) => s.connectLexoffice);
   const connectStripe = useIntegrationsStore((s) => s.connectStripe);
@@ -111,6 +113,17 @@ export default function SettingsPage() {
       setStripeLoading(false);
     }
   };
+
+  if (!canManageIntegrations) {
+    return (
+      <div className="space-y-4 max-w-2xl">
+        <h2 className="text-2xl font-bold text-gray-900">Einstellungen</h2>
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+          <p className="text-gray-500">Nur Administratoren und Inhaber koennen die Einstellungen verwalten.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || !status) {
     return <p className="text-gray-500">Laden...</p>;

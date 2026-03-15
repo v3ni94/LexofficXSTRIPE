@@ -14,7 +14,6 @@ from app.models.customer_iban import CustomerIban
 from app.models.integration import Integration
 from app.models.invoice import CollectionStatus, Invoice
 from app.models.sepa_mandate import SepaMandate
-from app.models.user import User
 from app.schemas.invoice import (
     CollectionBrief,
     CustomerBrief,
@@ -27,20 +26,20 @@ from app.schemas.invoice import (
 from app.services.lexoffice_service import LexofficeService
 from app.services.sync_service import SyncService
 from app.utils.exceptions import LexofficeAuthError
-from app.utils.security import get_current_user
+from app.utils.security import UserContext, get_user_context
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
-# In-memory rate limit: tenant_id -> last manual sync timestamp (UTC)
+# In-memory rate limit: org_id -> last manual sync timestamp (UTC)
 _last_manual_sync: dict[str, datetime] = {}
 MANUAL_SYNC_COOLDOWN_SECONDS = 60
 
 
 async def _get_lexoffice_service(
-    db: AsyncSession, user: User
+    db: AsyncSession, org_id: str
 ) -> LexofficeService:
     result = await db.execute(
-        select(Integration).where(Integration.tenant_id == user.id)
+        select(Integration).where(Integration.tenant_id == org_id)
     )
     integration = result.scalar_one_or_none()
     if not integration or not integration.lexoffice_connected:
@@ -59,13 +58,12 @@ async def _get_lexoffice_service(
 
 @router.post("/sync", response_model=SyncResponse)
 async def sync_invoices(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
-    """Trigger a manual Lexoffice invoice sync (max once per 60 s per tenant)."""
-    # --- Rate limiting ---
+    """Trigger a manual Lexoffice invoice sync (max once per 60 s per org)."""
     now = datetime.now(timezone.utc)
-    last = _last_manual_sync.get(current_user.id)
+    last = _last_manual_sync.get(ctx.organization_id)
     if last is not None:
         elapsed = (now - last).total_seconds()
         if elapsed < MANUAL_SYNC_COOLDOWN_SECONDS:
@@ -76,12 +74,12 @@ async def sync_invoices(
                 headers={"Retry-After": str(remaining)},
             )
 
-    lex_service = await _get_lexoffice_service(db, current_user)
+    lex_service = await _get_lexoffice_service(db, ctx.organization_id)
 
     t_start = time.monotonic()
     try:
         result = await asyncio.to_thread(
-            _run_sync, current_user.id, lex_service, db
+            _run_sync, ctx.organization_id, lex_service, db
         )
     except LexofficeAuthError:
         raise HTTPException(
@@ -95,8 +93,7 @@ async def sync_invoices(
         )
     duration = round(time.monotonic() - t_start, 2)
 
-    # Record successful sync time
-    _last_manual_sync[current_user.id] = datetime.now(timezone.utc)
+    _last_manual_sync[ctx.organization_id] = datetime.now(timezone.utc)
 
     return SyncResponse(
         synced_count=result.synced_count,
@@ -123,14 +120,14 @@ def _run_sync(tenant_id, lex_service, db):
 
 @router.get("/keywords", response_model=list[KeywordCount])
 async def list_keywords(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Return keyword counts for filter dropdown."""
     stmt = (
         select(Invoice.keyword, func.count().label("count"))
         .where(
-            Invoice.tenant_id == current_user.id,
+            Invoice.tenant_id == ctx.organization_id,
             Invoice.keyword.isnot(None),
         )
         .group_by(Invoice.keyword)
@@ -142,7 +139,7 @@ async def list_keywords(
 
 @router.get("", response_model=InvoiceListResponse)
 async def list_invoices(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
     status_filter: str | None = Query(None, alias="status"),
     keyword_filter: str | None = Query(None, alias="keyword"),
@@ -150,12 +147,13 @@ async def list_invoices(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    """List invoices: only open/overdue with open/in_collection/failed."""
+    """List invoices: only open/overdue with open/scheduled/in_collection/failed."""
     base = select(Invoice).where(
-        Invoice.tenant_id == current_user.id,
+        Invoice.tenant_id == ctx.organization_id,
         Invoice.lexoffice_status.in_(["open", "overdue"]),
         Invoice.collection_status.in_([
             CollectionStatus.OPEN,
+            CollectionStatus.SCHEDULED,
             CollectionStatus.IN_COLLECTION,
             CollectionStatus.FAILED,
         ]),
@@ -176,12 +174,10 @@ async def list_invoices(
             )
         )
 
-    # Count
     count_stmt = select(func.count()).select_from(base.subquery())
     total = (await db.execute(count_stmt)).scalar() or 0
     total_pages = max(1, math.ceil(total / per_page))
 
-    # Fetch page
     offset = (page - 1) * per_page
     rows_stmt = (
         base.order_by(Invoice.due_date.asc().nulls_last(), Invoice.created_at.asc())
@@ -190,7 +186,6 @@ async def list_invoices(
     )
     rows = (await db.execute(rows_stmt)).scalars().all()
 
-    # Check which customers have active IBANs
     customer_ids = [r.customer_id for r in rows if r.customer_id]
     iban_map: dict[str, bool] = {}
     if customer_ids:
@@ -238,7 +233,7 @@ async def list_invoices(
 @router.get("/{invoice_id}", response_model=InvoiceDetailResponse)
 async def get_invoice(
     invoice_id: str,
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Get invoice detail with customer, IBAN, mandate, collections."""
@@ -249,7 +244,7 @@ async def get_invoice(
             selectinload(Invoice.customer).selectinload(Customer.mandates),
             selectinload(Invoice.payment_collections),
         )
-        .where(Invoice.id == invoice_id, Invoice.tenant_id == current_user.id)
+        .where(Invoice.id == invoice_id, Invoice.tenant_id == ctx.organization_id)
     )
     invoice = (await db.execute(stmt)).scalar_one_or_none()
     if not invoice:

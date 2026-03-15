@@ -9,21 +9,20 @@ from app.database import get_db
 from app.models.integration import Integration
 from app.models.invoice import CollectionStatus, Invoice
 from app.models.payment_collection import PaymentCollection
-from app.models.user import User
+from app.models.sepa_mandate import SepaMandate
 from app.schemas.collection import DashboardStats
-from app.utils.security import get_current_user
+from app.utils.security import UserContext, get_user_context
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
-    tenant_id = current_user.id
+    tenant_id = ctx.organization_id
 
-    # --- Invoice aggregates by collection_status ---
     inv_stmt = select(
         Invoice.collection_status,
         func.count().label("cnt"),
@@ -41,7 +40,6 @@ async def get_dashboard_stats(
         counts[key] = row.cnt
         amounts[key] = Decimal(str(row.total))
 
-    # --- Collected in last 30 days (via PaymentCollection completed_at) ---
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     collected_stmt = select(
         func.count().label("cnt"),
@@ -55,7 +53,6 @@ async def get_dashboard_stats(
     collected_count = collected_row.cnt or 0
     collected_amount = Decimal(str(collected_row.total_cents or 0)) / 100
 
-    # --- Failed collections aggregate ---
     failed_stmt = select(
         func.count().label("cnt"),
         func.coalesce(func.sum(PaymentCollection.amount_cents), 0).label("total_cents"),
@@ -67,7 +64,20 @@ async def get_dashboard_stats(
     failed_count = failed_row.cnt or 0
     failed_amount = Decimal(str(failed_row.total_cents or 0)) / 100
 
-    # --- Integration status ---
+    # Scheduled collections
+    scheduled_stmt = select(
+        func.count().label("cnt"),
+        func.coalesce(func.sum(PaymentCollection.amount_cents), 0).label("total_cents"),
+    ).where(
+        PaymentCollection.tenant_id == tenant_id,
+        PaymentCollection.is_scheduled.is_(True),
+        PaymentCollection.scheduled_submitted.is_(False),
+        PaymentCollection.stripe_status == "scheduled",
+    )
+    scheduled_row = (await db.execute(scheduled_stmt)).one()
+    scheduled_count = scheduled_row.cnt or 0
+    scheduled_amount = Decimal(str(scheduled_row.total_cents or 0)) / 100
+
     integration = (
         await db.execute(
             select(Integration).where(Integration.tenant_id == tenant_id)
@@ -87,6 +97,8 @@ async def get_dashboard_stats(
         collected_last_30_days_amount=collected_amount,
         failed_count=failed_count,
         failed_amount=failed_amount,
+        scheduled_count=scheduled_count,
+        scheduled_amount=scheduled_amount,
         lexoffice_connected=lex_connected,
         stripe_connected=stripe_connected,
         last_sync=last_sync,
@@ -95,24 +107,18 @@ async def get_dashboard_stats(
 
 @router.get("/recent-collections")
 async def get_recent_collections(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Return the 5 most recent collections with invoice/customer context."""
-    from sqlalchemy.orm import selectinload
-    from app.models.invoice import Invoice
-    from app.models.sepa_mandate import SepaMandate
-    from app.utils.iban import mask_iban
-
     stmt = (
         select(PaymentCollection)
-        .where(PaymentCollection.tenant_id == current_user.id)
-        .order_by(PaymentCollection.submitted_at.desc())
+        .where(PaymentCollection.tenant_id == ctx.organization_id)
+        .order_by(PaymentCollection.created_at.desc())
         .limit(5)
     )
     collections = (await db.execute(stmt)).scalars().all()
 
-    # Load related invoices
     invoice_ids = [c.invoice_id for c in collections]
     invoices: dict[str, Invoice] = {}
     if invoice_ids:
@@ -121,7 +127,6 @@ async def get_recent_collections(
         ).scalars().all()
         invoices = {inv.id: inv for inv in inv_rows}
 
-    # Load related mandates
     mandate_ids = [c.mandate_id for c in collections]
     mandates: dict[str, SepaMandate] = {}
     if mandate_ids:
@@ -144,13 +149,14 @@ async def get_recent_collections(
             "mandate_reference": mandate.mandate_reference if mandate else None,
             "submitted_at": c.submitted_at.isoformat() if c.submitted_at else None,
             "failure_reason": c.failure_reason,
+            "scheduled_date": str(c.scheduled_date) if c.scheduled_date else None,
         })
     return result
 
 
 @router.get("/keyword-stats")
 async def get_keyword_stats(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Return collection counts grouped by invoice keyword."""
@@ -162,7 +168,7 @@ async def get_keyword_stats(
         )
         .join(PaymentCollection, PaymentCollection.invoice_id == Invoice.id)
         .where(
-            PaymentCollection.tenant_id == current_user.id,
+            PaymentCollection.tenant_id == ctx.organization_id,
             Invoice.keyword.isnot(None),
         )
         .group_by(Invoice.keyword)
@@ -177,14 +183,14 @@ async def get_keyword_stats(
 
 @router.get("/upcoming-invoices")
 async def get_upcoming_invoices(
-    current_user: User = Depends(get_current_user),
+    ctx: UserContext = Depends(get_user_context),
     db: AsyncSession = Depends(get_db),
 ):
     """Return 5 invoices with the nearest due dates (open/failed only)."""
     stmt = (
         select(Invoice)
         .where(
-            Invoice.tenant_id == current_user.id,
+            Invoice.tenant_id == ctx.organization_id,
             Invoice.collection_status.in_([CollectionStatus.OPEN, CollectionStatus.FAILED]),
             Invoice.lexoffice_status.in_(["open", "overdue"]),
             Invoice.due_date.is_not(None),

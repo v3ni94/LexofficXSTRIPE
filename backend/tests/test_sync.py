@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.customer import Customer
 from app.models.integration import Integration
 from app.models.invoice import CollectionStatus, Invoice
+from app.models.organization import Organization
 from app.models.user import User
 from app.services.sync_service import SyncService
 
@@ -68,7 +69,12 @@ def _contact(cid: str, name: str, number: str = "10001") -> dict:
 # ---------------------------------------------------------------------------
 
 
-async def test_sync_creates_new_invoices(db: AsyncSession, test_user: User, test_integration: Integration):
+async def test_sync_creates_new_invoices(
+    db: AsyncSession,
+    test_user: User,
+    test_org: Organization,
+    test_integration: Integration,
+):
     vid = "lex-inv-001"
     lex = _make_lex_mock(
         vouchers=[_voucher(vid, "RE-001")],
@@ -76,27 +82,32 @@ async def test_sync_creates_new_invoices(db: AsyncSession, test_user: User, test
         contacts={},
     )
 
-    result = await SyncService.sync_invoices(test_user.id, lex, db)
+    result = await SyncService.sync_invoices(test_org.id, lex, db)
 
     assert result.new_count == 1
     assert result.synced_count == 1
 
     invoices = (
-        await db.execute(select(Invoice).where(Invoice.tenant_id == test_user.id))
+        await db.execute(select(Invoice).where(Invoice.tenant_id == test_org.id))
     ).scalars().all()
     assert len(invoices) == 1
     assert invoices[0].voucher_number == "RE-001"
     assert invoices[0].collection_status == CollectionStatus.OPEN
 
 
-async def test_sync_updates_existing_invoice(db: AsyncSession, test_user: User, test_integration: Integration):
+async def test_sync_updates_existing_invoice(
+    db: AsyncSession,
+    test_user: User,
+    test_org: Organization,
+    test_integration: Integration,
+):
     vid = "lex-inv-002"
     lex1 = _make_lex_mock(
         vouchers=[_voucher(vid, "RE-002")],
         details={vid: _detail(vid, "RE-002", amount=100.0)},
         contacts={},
     )
-    await SyncService.sync_invoices(test_user.id, lex1, db)
+    await SyncService.sync_invoices(test_org.id, lex1, db)
 
     # Second sync with updated amount
     lex2 = _make_lex_mock(
@@ -104,7 +115,7 @@ async def test_sync_updates_existing_invoice(db: AsyncSession, test_user: User, 
         details={vid: _detail(vid, "RE-002", amount=150.0)},
         contacts={},
     )
-    result2 = await SyncService.sync_invoices(test_user.id, lex2, db)
+    result2 = await SyncService.sync_invoices(test_org.id, lex2, db)
 
     assert result2.updated_count == 1
     assert result2.new_count == 0
@@ -116,7 +127,10 @@ async def test_sync_updates_existing_invoice(db: AsyncSession, test_user: User, 
 
 
 async def test_sync_marks_paid_invoice_as_collected(
-    db: AsyncSession, test_user: User, test_integration: Integration
+    db: AsyncSession,
+    test_user: User,
+    test_org: Organization,
+    test_integration: Integration,
 ):
     """An invoice that disappears from the open list and is re-checked as 'paid'
     must be updated to COLLECTED."""
@@ -127,7 +141,7 @@ async def test_sync_marks_paid_invoice_as_collected(
         details={vid: _detail(vid, "RE-003", status="open")},
         contacts={},
     )
-    await SyncService.sync_invoices(test_user.id, lex1, db)
+    await SyncService.sync_invoices(test_org.id, lex1, db)
 
     # Second sync: invoice no longer in open list, re-check returns "paid"
     lex2 = _make_lex_mock(
@@ -135,7 +149,7 @@ async def test_sync_marks_paid_invoice_as_collected(
         details={vid: _detail(vid, "RE-003", status="paid")},
         contacts={},
     )
-    await SyncService.sync_invoices(test_user.id, lex2, db)
+    await SyncService.sync_invoices(test_org.id, lex2, db)
 
     invoice = (
         await db.execute(select(Invoice).where(Invoice.lexoffice_invoice_id == vid))
@@ -145,7 +159,10 @@ async def test_sync_marks_paid_invoice_as_collected(
 
 
 async def test_sync_creates_customer_from_contact(
-    db: AsyncSession, test_user: User, test_integration: Integration
+    db: AsyncSession,
+    test_user: User,
+    test_org: Organization,
+    test_integration: Integration,
 ):
     vid = "lex-inv-004"
     cid = "lex-contact-001"
@@ -155,10 +172,10 @@ async def test_sync_creates_customer_from_contact(
         contacts={cid: _contact(cid, "Mustermann GmbH", number="20001")},
     )
 
-    await SyncService.sync_invoices(test_user.id, lex, db)
+    await SyncService.sync_invoices(test_org.id, lex, db)
 
     customers = (
-        await db.execute(select(Customer).where(Customer.tenant_id == test_user.id))
+        await db.execute(select(Customer).where(Customer.tenant_id == test_org.id))
     ).scalars().all()
     assert len(customers) == 1
     assert customers[0].name == "Mustermann GmbH"
@@ -172,13 +189,16 @@ async def test_sync_creates_customer_from_contact(
 
 
 async def test_sync_updates_last_sync_timestamp(
-    db: AsyncSession, test_user: User, test_integration: Integration
+    db: AsyncSession,
+    test_user: User,
+    test_org: Organization,
+    test_integration: Integration,
 ):
     lex = _make_lex_mock(vouchers=[], details={}, contacts={})
-    await SyncService.sync_invoices(test_user.id, lex, db)
+    await SyncService.sync_invoices(test_org.id, lex, db)
 
     result = await db.execute(
-        select(Integration).where(Integration.tenant_id == test_user.id)
+        select(Integration).where(Integration.tenant_id == test_org.id)
     )
     integ = result.scalar_one()
     assert integ.lexoffice_last_sync is not None

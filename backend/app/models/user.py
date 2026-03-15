@@ -17,7 +17,7 @@ class User(Base):
         String(255), unique=True, nullable=False, index=True
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
@@ -27,15 +27,6 @@ class User(Base):
     )
 
     # Relationships
-    integration: Mapped["Integration"] = relationship(
-        "Integration", back_populates="tenant", uselist=False, cascade="all, delete-orphan"
-    )
-    customers: Mapped[list["Customer"]] = relationship(
-        "Customer", back_populates="tenant", cascade="all, delete-orphan"
-    )
-    invoices: Mapped[list["Invoice"]] = relationship(
-        "Invoice", back_populates="tenant", cascade="all, delete-orphan"
-    )
-    payment_collections: Mapped[list["PaymentCollection"]] = relationship(
-        "PaymentCollection", back_populates="tenant", cascade="all, delete-orphan"
+    memberships: Mapped[list["OrganizationMember"]] = relationship(
+        "OrganizationMember", back_populates="user", cascade="all, delete-orphan"
     )

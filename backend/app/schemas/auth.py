@@ -45,10 +45,19 @@ class RefreshResponse(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
-    company_name: str
+    display_name: str | None = None
     is_active: bool
+    organization_id: str | None = None
+    organization_name: str | None = None
+    role: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str
+    password: str | None = None
+    display_name: str | None = None
 
 
 class LogoutResponse(BaseModel):

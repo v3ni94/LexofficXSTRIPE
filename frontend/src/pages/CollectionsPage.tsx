@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useCollectionsStore } from "../stores/collections";
 import type { CollectionListItem } from "../stores/collections";
+import { api } from "../api/client";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -35,6 +36,28 @@ function formatDate(iso: string | null): string {
 
 function StatusBadge({ item }: { item: CollectionListItem }) {
   const s = item.stripe_status;
+
+  if (s === "scheduled") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        Terminiert zum {item.scheduled_date ? formatDate(item.scheduled_date) : ""}
+      </span>
+    );
+  }
+
+  if (s === "cancelled") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+        Storniert
+      </span>
+    );
+  }
 
   if (s === "processing") {
     return (
@@ -152,9 +175,11 @@ function exportCsv(items: CollectionListItem[]) {
 
 const STATUS_OPTIONS = [
   { value: "", label: "Alle Status" },
+  { value: "scheduled", label: "Terminiert" },
   { value: "processing", label: "Verarbeitung" },
   { value: "succeeded", label: "Erfolgreich" },
   { value: "failed", label: "Fehlgeschlagen" },
+  { value: "cancelled", label: "Storniert" },
   { value: "disputed", label: "Widerspruch" },
 ];
 
@@ -214,6 +239,10 @@ function FilterBar() {
 
 export default function CollectionsPage() {
   const { data, isLoading, fetchCollections, setPage } = useCollectionsStore();
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCollections(1);
@@ -222,6 +251,35 @@ export default function CollectionsPage() {
   const handleExport = () => {
     if (!data) return;
     exportCsv(data.items);
+  };
+
+  const handleCancel = async (collectionId: string) => {
+    if (!confirm("Diesen terminierten Einzug wirklich stornieren?")) return;
+    setCancellingId(collectionId);
+    setActionError(null);
+    try {
+      await api.delete(`/collections/${collectionId}/cancel`);
+      await fetchCollections();
+    } catch {
+      setActionError("Stornierung fehlgeschlagen.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const handleReschedule = async (collectionId: string) => {
+    if (!rescheduleDate) return;
+    setActionError(null);
+    try {
+      await api.put(`/collections/${collectionId}/reschedule`, {
+        new_date: rescheduleDate,
+      });
+      setRescheduleId(null);
+      setRescheduleDate("");
+      await fetchCollections();
+    } catch {
+      setActionError("Terminänderung fehlgeschlagen.");
+    }
   };
 
   return (
@@ -243,6 +301,12 @@ export default function CollectionsPage() {
 
       {/* Filters */}
       <FilterBar />
+
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
+          {actionError}
+        </div>
+      )}
 
       {/* Table */}
       {isLoading ? (
@@ -277,10 +341,16 @@ export default function CollectionsPage() {
                       Verwendungszweck
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Termin
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Abgeschlossen
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aktionen
                     </th>
                   </tr>
                 </thead>
@@ -314,11 +384,58 @@ export default function CollectionsPage() {
                           "-"
                         )}
                       </td>
+                      <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                        {item.scheduled_date ? formatDate(item.scheduled_date) : "-"}
+                      </td>
                       <td className="px-4 py-3">
                         <StatusBadge item={item} />
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                         {formatDate(item.completed_at)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {item.stripe_status === "scheduled" && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleCancel(item.id)}
+                              disabled={cancellingId === item.id}
+                              className="px-2 py-1 text-xs border border-red-200 text-red-600 rounded hover:bg-red-50 disabled:opacity-50 transition-colors"
+                            >
+                              {cancellingId === item.id ? "..." : "Stornieren"}
+                            </button>
+                            {rescheduleId === item.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="date"
+                                  value={rescheduleDate}
+                                  onChange={(e) => setRescheduleDate(e.target.value)}
+                                  className="px-1 py-0.5 text-xs border border-gray-300 rounded"
+                                  min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                                />
+                                <button
+                                  onClick={() => handleReschedule(item.id)}
+                                  disabled={!rescheduleDate}
+                                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                  OK
+                                </button>
+                                <button
+                                  onClick={() => { setRescheduleId(null); setRescheduleDate(""); }}
+                                  className="px-1 py-1 text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  X
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setRescheduleId(item.id)}
+                                className="px-2 py-1 text-xs border border-blue-200 text-blue-600 rounded hover:bg-blue-50 transition-colors"
+                              >
+                                Datum ändern
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -15,6 +15,8 @@ export interface CollectionListItem {
   completed_at: string | null;
   failure_reason: string | null;
   description: string | null;
+  scheduled_date: string | null;
+  is_scheduled: boolean;
 }
 
 interface CollectionListResponse {

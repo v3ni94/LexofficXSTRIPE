@@ -154,7 +154,7 @@ async def test_me_with_valid_token(client: AsyncClient, test_user: User, auth_he
     assert resp.status_code == 200
     data = resp.json()
     assert data["email"] == test_user.email
-    assert data["company_name"] == test_user.company_name
+    assert data["display_name"] == test_user.display_name
     assert "hashed_password" not in data
 
 

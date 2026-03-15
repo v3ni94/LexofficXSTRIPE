@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel
@@ -24,6 +24,8 @@ class CollectionResponse(BaseModel):
     completed_at: datetime | None
     failure_reason: str | None
     description: str | None = None
+    scheduled_date: date | None = None
+    is_scheduled: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -43,6 +45,8 @@ class CollectionListItem(BaseModel):
     completed_at: datetime | None
     failure_reason: str | None
     description: str | None = None
+    scheduled_date: date | None = None
+    is_scheduled: bool = False
 
 
 class CollectionListResponse(BaseModel):
@@ -71,6 +75,8 @@ class DashboardStats(BaseModel):
     collected_last_30_days_amount: Decimal
     failed_count: int
     failed_amount: Decimal
+    scheduled_count: int = 0
+    scheduled_amount: Decimal = Decimal("0")
     lexoffice_connected: bool
     stripe_connected: bool
     last_sync: datetime | None

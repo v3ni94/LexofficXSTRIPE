@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from cryptography.fernet import Fernet
@@ -29,15 +30,27 @@ def verify_password(plain: str, hashed: str) -> bool:
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(
+    user_id: str,
+    organization_id: str | None = None,
+    role: str | None = None,
+) -> str:
+    payload = {
+        "sub": user_id,
+        "type": "access",
+        "exp": datetime.now(timezone.utc)
+        + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
+    }
+    if organization_id:
+        payload["org_id"] = organization_id
+        payload["tenant_id"] = organization_id
+    else:
+        # Backward compat: tenant_id = user_id when no org context
+        payload["tenant_id"] = user_id
+    if role:
+        payload["role"] = role
     return jwt.encode(
-        {
-            "sub": user_id,
-            "tenant_id": user_id,
-            "type": "access",
-            "exp": datetime.now(timezone.utc)
-            + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
-        },
+        payload,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )
@@ -85,14 +98,26 @@ def decrypt_value(encrypted: str) -> str:
     return _get_fernet().decrypt(encrypted.encode()).decode()
 
 
-# --- FastAPI dependency ---
+# --- UserContext: the primary auth dependency ---
+
+
+@dataclass
+class UserContext:
+    """Resolved auth context available to all endpoints."""
+    user_id: str
+    organization_id: str
+    role: str  # "owner" | "admin" | "member"
 
 
 async def get_current_user(
     token: str | None = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-    """Dependency: extract tenant from JWT, load User, check is_active."""
+    """Dependency: extract tenant from JWT, load User, check is_active.
+
+    Returns the User ORM object for backward compatibility.
+    Prefer get_user_context for new code.
+    """
     from app.models.user import User
 
     if token is None:
@@ -133,3 +158,87 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN, detail="User account is deactivated"
         )
     return user
+
+
+async def get_user_context(
+    token: str | None = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> UserContext:
+    """Dependency: resolve full org-aware context from JWT."""
+    from app.models.user import User
+    from app.models.organization_member import OrganizationMember
+
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+            )
+        user_id: str | None = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Verify user exists and is active
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is deactivated"
+        )
+
+    # If org_id in token, use it; otherwise resolve from membership
+    org_id = payload.get("org_id")
+    role = payload.get("role")
+
+    if not org_id or not role:
+        # Resolve from organization_members
+        member = (
+            await db.execute(
+                select(OrganizationMember).where(
+                    OrganizationMember.user_id == user_id
+                ).limit(1)
+            )
+        ).scalar_one_or_none()
+
+        if member is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not a member of any organization",
+            )
+        org_id = member.organization_id
+        role = member.role.value if hasattr(member.role, "value") else member.role
+
+    return UserContext(user_id=user_id, organization_id=org_id, role=role)
+
+
+def require_role(*allowed_roles: str):
+    """Dependency factory: restrict endpoint to certain roles."""
+    async def _check(ctx: UserContext = Depends(get_user_context)) -> UserContext:
+        if ctx.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Rolle '{ctx.role}' hat keine Berechtigung fuer diese Aktion",
+            )
+        return ctx
+    return _check

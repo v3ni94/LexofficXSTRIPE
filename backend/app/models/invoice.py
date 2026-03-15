@@ -15,6 +15,7 @@ class CollectionStatus(str, enum.Enum):
     IN_COLLECTION = "in_collection"
     COLLECTED = "collected"
     FAILED = "failed"
+    SCHEDULED = "scheduled"
 
 
 class Invoice(Base):
@@ -27,7 +28,7 @@ class Invoice(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id"), nullable=False, index=True
+        String(36), ForeignKey("organizations.id"), nullable=False, index=True
     )
     lexoffice_invoice_id: Mapped[str] = mapped_column(
         String(36), nullable=False, index=True
@@ -62,7 +63,7 @@ class Invoice(Base):
     )
 
     # Relationships
-    tenant: Mapped["User"] = relationship("User", back_populates="invoices")
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="invoices")
     customer: Mapped["Customer | None"] = relationship(
         "Customer", back_populates="invoices"
     )

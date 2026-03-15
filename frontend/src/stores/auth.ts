@@ -4,8 +4,11 @@ import { api, setTokenAccessor } from "../api/client";
 interface User {
   id: string;
   email: string;
-  company_name: string;
+  display_name: string | null;
   is_active: boolean;
+  organization_id: string | null;
+  organization_name: string | null;
+  role: string | null;
 }
 
 interface AuthState {
@@ -42,7 +45,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       refreshToken: refresh_token,
       isAuthenticated: true,
     });
-    // Fetch user profile after login
     await get().fetchUser();
   },
 
@@ -63,7 +65,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    // Fire-and-forget server logout (best effort)
     const token = get().accessToken;
     if (token) {
       api.post("/auth/logout").catch(() => {});
@@ -86,7 +87,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ accessToken: res.data.access_token });
       return true;
     } catch {
-      // Refresh failed — force logout
       get().logout();
       return false;
     }
@@ -104,8 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 }));
 
-// Wire up the token accessor so the API client can read tokens from the store
-// without importing the store directly (avoids circular deps).
+// Wire up the token accessor
 setTokenAccessor(() => ({
   accessToken: useAuthStore.getState().accessToken,
   refreshToken: useAuthStore.getState().refreshToken,

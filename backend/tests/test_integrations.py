@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.integration import Integration
+from app.models.organization import Organization
 from app.models.user import User
 
 
@@ -52,6 +53,7 @@ async def test_get_integration_status(client: AsyncClient, test_user: User, auth
 async def test_connect_lexoffice_success(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     db: AsyncSession,
     auth_headers,
 ):
@@ -68,7 +70,7 @@ async def test_connect_lexoffice_success(
     assert resp.json()["connected"] is True
 
     # Verify encryption: DB value must not equal plaintext
-    result = await db.execute(select(Integration).where(Integration.tenant_id == test_user.id))
+    result = await db.execute(select(Integration).where(Integration.tenant_id == test_org.id))
     integ = result.scalar_one()
     assert integ.lexoffice_connected is True
     assert integ.lexoffice_api_key_encrypted is not None
@@ -107,6 +109,7 @@ async def test_connect_lexoffice_requires_auth(client: AsyncClient):
 async def test_connect_stripe_success(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     db: AsyncSession,
     auth_headers,
 ):
@@ -125,7 +128,7 @@ async def test_connect_stripe_success(
     assert resp.status_code == 200
     assert resp.json()["connected"] is True
 
-    result = await db.execute(select(Integration).where(Integration.tenant_id == test_user.id))
+    result = await db.execute(select(Integration).where(Integration.tenant_id == test_org.id))
     integ = result.scalar_one()
     assert integ.stripe_connected is True
     # Keys must be stored encrypted
@@ -162,6 +165,7 @@ async def test_connect_stripe_invalid_key(
 async def test_disconnect_lexoffice(
     client: AsyncClient,
     test_user: User,
+    test_org: Organization,
     test_integration: Integration,
     db: AsyncSession,
     auth_headers,
@@ -173,7 +177,7 @@ async def test_disconnect_lexoffice(
     assert resp.status_code == 200
     assert resp.json()["connected"] is False
 
-    result = await db.execute(select(Integration).where(Integration.tenant_id == test_user.id))
+    result = await db.execute(select(Integration).where(Integration.tenant_id == test_org.id))
     integ = result.scalar_one()
     assert integ.lexoffice_connected is False
     assert integ.lexoffice_api_key_encrypted is None
