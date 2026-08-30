@@ -1,0 +1,329 @@
+/* ==========================================================================
+   SEPA-Portal – Hausverwaltung Müller GmbH
+   --------------------------------------------------------------------------
+   CI-HINWEIS: Die folgenden Variablen sind PLATZHALTER in neutraler,
+   seriöser Farbgebung. Die verbindlichen CI-Werte (Farben, Schrift, Logo)
+   aus dem CI-Handbuch der HVM (Skill hvm-ci) hier zentral eintragen.
+   Alle Komponenten greifen ausschließlich auf diese Variablen zu.
+   ========================================================================== */
+:root {
+    /* PLATZHALTER: Primärfarbe der HVM eintragen */
+    --hvm-primary: #1d3a5f;
+    --hvm-primary-dark: #14293f;
+    /* PLATZHALTER: Akzentfarbe der HVM eintragen */
+    --hvm-accent: #b08d3f;
+
+    --color-text: #1f2933;
+    --color-text-muted: #616e7c;
+    --color-bg: #f4f5f7;
+    --color-surface: #ffffff;
+    --color-border: #d9dde3;
+
+    --color-success: #1e7e4a;
+    --color-success-bg: #e3f3ea;
+    --color-info: #1d5f8a;
+    --color-info-bg: #e3eef5;
+    --color-danger: #a12622;
+    --color-danger-bg: #f8e7e6;
+    --color-neutral: #4b5563;
+    --color-neutral-bg: #eceef1;
+
+    /* PLATZHALTER: Hausschrift der HVM eintragen */
+    --font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --radius: 6px;
+    --shadow: 0 1px 3px rgba(31, 41, 51, 0.1);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--font-family);
+    font-size: 15px;
+    color: var(--color-text);
+    background: var(--color-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+a { color: var(--hvm-primary); }
+
+/* --- Header --- */
+.site-header {
+    background: var(--hvm-primary);
+    color: #fff;
+    box-shadow: var(--shadow);
+}
+.header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    min-height: 64px;
+    flex-wrap: wrap;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: #fff;
+    padding: 10px 0;
+}
+.brand-logo { height: 36px; width: auto; }
+.brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    background: var(--hvm-accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+.brand-name { font-weight: 600; font-size: 15px; }
+.brand-sub { font-size: 12px; opacity: 0.75; }
+
+.main-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+.main-nav a {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 14px;
+}
+.main-nav a:hover { background: var(--hvm-primary-dark); color: #fff; }
+
+.user-menu {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+}
+.user-email { opacity: 0.9; }
+.user-role {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+/* --- Main --- */
+.site-main {
+    flex: 1;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 28px 24px 48px;
+}
+
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 17px; margin: 0 0 12px; }
+.page-sub { color: var(--color-text-muted); margin: 0 0 24px; font-size: 14px; }
+
+/* --- Karten --- */
+.card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+}
+.stat-value { font-size: 26px; font-weight: 700; color: var(--hvm-primary); }
+.stat-label { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+
+/* --- Tabellen --- */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+tr:hover td { background: #fafbfc; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+
+/* --- Badges --- */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.badge-success { background: var(--color-success-bg); color: var(--color-success); }
+.badge-info    { background: var(--color-info-bg);    color: var(--color-info); }
+.badge-danger  { background: var(--color-danger-bg);  color: var(--color-danger); }
+.badge-neutral { background: var(--color-neutral-bg); color: var(--color-neutral); }
+
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    padding: 9px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--hvm-primary);
+    background: var(--hvm-primary);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+}
+.btn:hover { background: var(--hvm-primary-dark); }
+.btn-secondary {
+    background: var(--color-surface);
+    color: var(--hvm-primary);
+}
+.btn-secondary:hover { background: var(--color-bg); }
+.btn-danger { background: var(--color-danger); border-color: var(--color-danger); }
+.btn-danger:hover { background: #7f1e1b; }
+.btn-ghost {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
+    font-weight: 400;
+}
+.btn-ghost:hover { background: rgba(255, 255, 255, 0.1); }
+.btn-sm { padding: 5px 10px; font-size: 13px; }
+button.linklike {
+    background: none;
+    border: none;
+    color: var(--hvm-primary);
+    cursor: pointer;
+    padding: 0;
+    font: inherit;
+    text-decoration: underline;
+}
+
+/* --- Formulare --- */
+label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 4px; }
+input[type="text"], input[type="email"], input[type="password"],
+input[type="date"], select, textarea {
+    width: 100%;
+    max-width: 480px;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+}
+input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--hvm-primary);
+    outline-offset: 0;
+    border-color: var(--hvm-primary);
+}
+.form-actions { margin-top: 20px; display: flex; gap: 10px; }
+.inline-form { display: inline-flex; align-items: center; gap: 6px; }
+.inline-form input[type="date"] { width: auto; padding: 5px 8px; font-size: 13px; }
+.hint { font-size: 13px; color: var(--color-text-muted); margin-top: 6px; }
+
+/* --- Flash-Meldungen --- */
+.flash {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    font-size: 14px;
+    border: 1px solid transparent;
+}
+.flash-success { background: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success); }
+.flash-error   { background: var(--color-danger-bg);  color: var(--color-danger);  border-color: var(--color-danger); }
+.flash-info    { background: var(--color-info-bg);    color: var(--color-info);    border-color: var(--color-info); }
+
+/* --- Auth-Seiten --- */
+.auth-wrap {
+    max-width: 420px;
+    margin: 48px auto;
+}
+.auth-wrap .card { padding: 32px; }
+.auth-title { text-align: center; margin-bottom: 8px; }
+.auth-sub { text-align: center; color: var(--color-text-muted); font-size: 14px; margin-bottom: 20px; }
+.auth-wrap input { max-width: 100%; }
+.auth-wrap .btn { width: 100%; margin-top: 20px; }
+.auth-links { text-align: center; margin-top: 16px; font-size: 14px; }
+
+/* --- Onboarding --- */
+.steps { list-style: none; padding: 0; margin: 0; }
+.steps li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+.steps li:last-child { border-bottom: none; }
+.step-status {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: var(--color-neutral-bg);
+    color: var(--color-neutral);
+}
+.step-done { background: var(--color-success-bg); color: var(--color-success); }
+
+/* --- Footer --- */
+.site-footer {
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+    margin-top: auto;
+}
+.footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+code.copy {
+    background: var(--color-neutral-bg);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+@media (max-width: 720px) {
+    .header-inner { gap: 12px; padding-bottom: 10px; }
+    .user-menu { margin-left: 0; }
+}

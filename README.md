@@ -2,6 +2,11 @@
 
 LexSEPA verbindet **Lexoffice** mit **Stripe** und automatisiert den SEPA-Lastschrifteinzug für offene Rechnungen.
 
+> **PHP-Variante für IONOS Webhosting:** Unter [`php-ionos/`](php-ionos/) liegt eine
+> eigenständige PHP/MariaDB-Version der Anwendung, die ohne Docker per FTP auf
+> normales IONOS Webhosting hochgeladen werden kann (Subdomain `sepa.muellerhv.de`).
+> Installation: siehe [`php-ionos/ANLEITUNG-IONOS.md`](php-ionos/ANLEITUNG-IONOS.md).
+
 ## Features
 
 - Synchronisation offener Rechnungen von Lexoffice
