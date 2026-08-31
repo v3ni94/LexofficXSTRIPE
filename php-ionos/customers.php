@@ -24,11 +24,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'add_iban') {
-            set_customer_iban(
+            $result = set_customer_iban(
                 $tenantId, $customerId, $ctx['user_id'],
                 $_POST['iban'] ?? '', $_POST['account_holder_name'] ?? '', $_POST['bic'] ?? null
             );
-            flash_set('success', 'IBAN für ' . $customer['name'] . ' hinterlegt.');
+            $msg = 'IBAN für ' . $customer['name'] . ' hinterlegt.';
+            $msg .= $result['stripe_registered']
+                ? ' Zahlungsmethode wurde direkt bei Stripe registriert.'
+                : ' Stripe-Registrierung erfolgt automatisch beim ersten Einzug'
+                    . ($result['stripe_reason'] ? ' (' . $result['stripe_reason'] . ')' : '') . '.';
+            flash_set('success', $msg);
 
         } elseif ($action === 'set_sepa_debit') {
             $enabled = ($_POST['sepa_debit_enabled'] ?? '1') === '1';

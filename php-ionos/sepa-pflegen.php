@@ -22,11 +22,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if ($action === 'save_iban') {
-            set_customer_iban(
+            $result = set_customer_iban(
                 $tenantId, $customerId, $ctx['user_id'],
                 $_POST['iban'] ?? '', $_POST['account_holder_name'] ?? '', $_POST['bic'] ?? null
             );
-            flash_set('success', 'IBAN hinterlegt, SEPA-Einzug ist damit aktiviert.');
+            $msg = 'IBAN hinterlegt, SEPA-Einzug ist damit aktiviert.';
+            $msg .= $result['stripe_registered']
+                ? ' Zahlungsmethode wurde direkt bei Stripe registriert.'
+                : ' Stripe-Registrierung erfolgt automatisch beim ersten Einzug'
+                    . ($result['stripe_reason'] ? ' (' . $result['stripe_reason'] . ')' : '') . '.';
+            flash_set('success', $msg);
         } elseif ($action === 'disable_sepa') {
             set_customer_sepa_debit($tenantId, $customerId, false);
             flash_set('success', 'SEPA-Einzug für diesen Kunden deaktiviert.');

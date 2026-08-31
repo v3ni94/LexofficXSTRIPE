@@ -19,6 +19,72 @@ require_once __DIR__ . '/mandates.php';
 
 class CollectionException extends RuntimeException {}
 
+/**
+ * Kunde und IBAN sofort bei Stripe registrieren (SEPA-Zahlungsmethode
+ * anlegen und anhängen), OHNE eine Zahlung auszulösen. Wird beim
+ * Hinterlegen einer IBAN aufgerufen (customers.php, sepa-pflegen.php),
+ * damit die Zahlungsmethode direkt sichtbar ist statt erst beim ersten
+ * tatsächlichen Einzug. Wirft NICHT, wenn Stripe nicht verbunden ist
+ * (normal während der Einrichtung) — gibt stattdessen registered=false
+ * mit Begründung zurück, damit der Aufrufer das anzeigen kann.
+ *
+ * @return array{registered:bool,reason:?string}
+ */
+function register_iban_with_stripe(string $tenantId, string $customerId, string $customerIbanId): array
+{
+    $pdo = db();
+
+    $stmt = $pdo->prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?');
+    $stmt->execute([$customerId, $tenantId]);
+    $customer = $stmt->fetch();
+    if (!$customer) {
+        return ['registered' => false, 'reason' => 'Kunde nicht gefunden.'];
+    }
+
+    $stmt = $pdo->prepare('SELECT * FROM customer_ibans WHERE id = ? AND tenant_id = ?');
+    $stmt->execute([$customerIbanId, $tenantId]);
+    $iban = $stmt->fetch();
+    if (!$iban) {
+        return ['registered' => false, 'reason' => 'IBAN nicht gefunden.'];
+    }
+
+    try {
+        $stripe = _get_stripe_client($tenantId);
+    } catch (Throwable $e) {
+        return ['registered' => false, 'reason' => $e->getMessage()];
+    }
+
+    $mandate = get_or_create_mandate($tenantId, $customerId, $customerIbanId);
+
+    if (!empty($mandate['stripe_customer_id']) && !empty($mandate['stripe_payment_method_id'])) {
+        return ['registered' => true, 'reason' => null];
+    }
+
+    $contactEmail = $customer['email'] ?: 'noreply@muellerhv.de';
+
+    $stripeCustomer = $stripe->findOrCreateCustomer(
+        $customer['name'],
+        $customer['email'] ?: null,
+        [
+            'tenant_id'       => $tenantId,
+            'customer_id'     => $customer['id'],
+            'customer_number' => $customer['customer_number'],
+        ]
+    );
+    $paymentMethod = $stripe->createSepaPaymentMethod(
+        $iban['iban'],
+        $iban['account_holder_name'],
+        $contactEmail
+    );
+    $stripe->attachPaymentMethod($paymentMethod['id'], $stripeCustomer['id']);
+
+    $pdo->prepare(
+        'UPDATE sepa_mandates SET stripe_payment_method_id = ?, stripe_customer_id = ? WHERE id = ?'
+    )->execute([$paymentMethod['id'], $stripeCustomer['id'], $mandate['id']]);
+
+    return ['registered' => true, 'reason' => null];
+}
+
 function validate_scheduled_date(string $scheduledDate): void
 {
     $today = new DateTimeImmutable('today');
@@ -126,22 +192,31 @@ function _execute_stripe_collection(
 ): array {
     $contactEmail = $customer['email'] ?: 'noreply@muellerhv.de';
 
-    $stripeCustomer = $stripe->findOrCreateCustomer(
-        $customer['name'],
-        $customer['email'] ?: null,
-        [
-            'tenant_id'       => $tenantId,
-            'customer_id'     => $customer['id'],
-            'customer_number' => $customer['customer_number'],
-        ]
-    );
+    if (!empty($mandate['stripe_customer_id']) && !empty($mandate['stripe_payment_method_id'])) {
+        // Kunde wurde bereits bei Stripe registriert (z.B. beim Hinterlegen
+        // der IBAN über "SEPA Pflegen" oder bei einem früheren Einzug).
+        // Vorhandene Zahlungsmethode wiederverwenden statt bei jedem Einzug
+        // eine neue SEPA-Zahlungsmethode anzulegen.
+        $stripeCustomer = ['id' => $mandate['stripe_customer_id']];
+        $paymentMethod = ['id' => $mandate['stripe_payment_method_id']];
+    } else {
+        $stripeCustomer = $stripe->findOrCreateCustomer(
+            $customer['name'],
+            $customer['email'] ?: null,
+            [
+                'tenant_id'       => $tenantId,
+                'customer_id'     => $customer['id'],
+                'customer_number' => $customer['customer_number'],
+            ]
+        );
 
-    $paymentMethod = $stripe->createSepaPaymentMethod(
-        $iban['iban'],
-        $iban['account_holder_name'],
-        $contactEmail
-    );
-    $stripe->attachPaymentMethod($paymentMethod['id'], $stripeCustomer['id']);
+        $paymentMethod = $stripe->createSepaPaymentMethod(
+            $iban['iban'],
+            $iban['account_holder_name'],
+            $contactEmail
+        );
+        $stripe->attachPaymentMethod($paymentMethod['id'], $stripeCustomer['id']);
+    }
 
     $paymentIntent = $stripe->createPaymentIntent(
         $amountCents,

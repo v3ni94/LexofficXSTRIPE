@@ -46,9 +46,10 @@ function set_customer_sepa_debit(string $tenantId, string $customerId, bool $ena
  * Neue aktive IBAN für einen Kunden hinterlegen (bisherige aktive IBAN wird
  * deaktiviert, Historie wird geschrieben). Setzt bei Nicht-Laufkunden
  * automatisch sepa_debit_enabled = 1, da das Hinterlegen einer IBAN den
- * Wunsch nach SEPA-Einzug ausdrückt.
+ * Wunsch nach SEPA-Einzug ausdrückt, und registriert die Zahlungsmethode
+ * direkt bei Stripe (ohne Zahlung auszulösen), falls Stripe verbunden ist.
  *
- * @return string die bereinigte, gespeicherte IBAN
+ * @return array{iban:string,stripe_registered:bool,stripe_reason:?string}
  */
 function set_customer_iban(
     string $tenantId,
@@ -57,8 +58,9 @@ function set_customer_iban(
     string $ibanRaw,
     string $holderRaw,
     ?string $bicRaw
-): string {
+): array {
     require_once __DIR__ . '/iban.php';
+    require_once __DIR__ . '/collections.php';
 
     [$ok, $result] = validate_iban($ibanRaw);
     if (!$ok) {
@@ -118,5 +120,18 @@ function set_customer_iban(
         throw $e;
     }
 
-    return $iban;
+    // Direkt bei Stripe registrieren (Zahlungsmethode anlegen, keine
+    // Zahlung). Absichtlich NACH dem Commit und ohne die IBAN-Speicherung
+    // fehlschlagen zu lassen, falls Stripe nicht verbunden ist oder gerade
+    // nicht erreichbar ist — das holt der erste tatsächliche Einzug nach.
+    $stripeResult = ['registered' => false, 'reason' => 'Laufkunde (Sammel-Kundennummer)'];
+    if (!(int)$customer['is_walk_in']) {
+        $stripeResult = register_iban_with_stripe($tenantId, $customerId, $newId);
+    }
+
+    return [
+        'iban' => $iban,
+        'stripe_registered' => $stripeResult['registered'],
+        'stripe_reason' => $stripeResult['reason'],
+    ];
 }
