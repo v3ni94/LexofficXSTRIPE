@@ -253,8 +253,7 @@ layout_header('Rechnungen', $ctx);
                         <?php endif; ?>
 
                         <?php if ($canToggleSepa): ?>
-                        <form method="post" class="inline-form" style="margin-top: 4px;"
-                              onsubmit="return confirm('SEPA-Einzug für Kundennummer <?= e($inv['customer_number']) ?> wirklich <?= $sepaDisabled ? 'wieder aktivieren' : 'deaktivieren' ?>? Dies gilt für ALLE Rechnungen dieses Kunden.')">
+                        <form method="post" class="inline-form" style="margin-top: 4px;">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="<?= $sepaDisabled ? 'sepa_enable' : 'sepa_disable' ?>">
                             <input type="hidden" name="customer_id" value="<?= e($inv['customer_id']) ?>">
