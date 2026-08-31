@@ -84,6 +84,9 @@ function _load_and_validate(string $tenantId, string $invoiceId): array
     if (!$customer) {
         throw new CollectionException('Kunde nicht gefunden.');
     }
+    if ((int)($customer['sepa_debit_enabled'] ?? 1) === 0) {
+        throw new CollectionException('SEPA-Einzug ist für diesen Kunden deaktiviert.');
+    }
 
     $stmt = $pdo->prepare(
         'SELECT * FROM customer_ibans WHERE customer_id = ? AND tenant_id = ? AND is_active = 1 LIMIT 1'

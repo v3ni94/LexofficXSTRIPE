@@ -114,7 +114,7 @@ if ($filter === 'open') {
 }
 
 $stmt = $pdo->prepare(
-    "SELECT i.*, c.customer_number
+    "SELECT i.*, c.customer_number, c.sepa_debit_enabled
      FROM invoices i
      LEFT JOIN customers c ON c.id = i.customer_id
      WHERE $where
@@ -162,9 +162,11 @@ layout_header('Rechnungen', $ctx);
             </thead>
             <tbody>
                 <?php foreach ($invoices as $inv):
+                    $sepaDisabled = $inv['customer_id'] && (int)($inv['sepa_debit_enabled'] ?? 1) === 0;
                     $collectable = in_array($inv['lexoffice_status'], ['open', 'overdue'], true)
                         && !in_array($inv['collection_status'], ['in_collection', 'scheduled'], true)
-                        && $inv['customer_id'];
+                        && $inv['customer_id']
+                        && !$sepaDisabled;
                 ?>
                 <tr>
                     <td><?= e($inv['voucher_number']) ?></td>
@@ -197,6 +199,8 @@ layout_header('Rechnungen', $ctx);
                         </form>
                         <?php elseif (!$inv['customer_id']): ?>
                             <span class="hint">Kein Kunde verknüpft</span>
+                        <?php elseif ($sepaDisabled): ?>
+                            <span class="hint">SEPA-Einzug für diesen Kunden deaktiviert</span>
                         <?php endif; ?>
                     </td>
                 </tr>

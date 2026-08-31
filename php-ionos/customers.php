@@ -65,6 +65,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             flash_set('success', 'IBAN für ' . $customer['name'] . ' hinterlegt.');
 
+        } elseif ($action === 'set_sepa_debit') {
+            if ((int)$customer['is_walk_in']) {
+                throw new RuntimeException(
+                    'Für Laufkunden (Sammel-Kundennummer) kann der SEPA-Einzug hier nicht '
+                    . 'ein- oder ausgeschaltet werden, da diese Nummer von mehreren Personen geteilt wird.'
+                );
+            }
+            $enabled = ($_POST['sepa_debit_enabled'] ?? '1') === '1' ? 1 : 0;
+            // Gilt für alle Datensätze mit derselben Kundennummer, nicht nur
+            // diesen einen Kontakt-Datensatz.
+            $stmt = $pdo->prepare(
+                'UPDATE customers SET sepa_debit_enabled = ? WHERE tenant_id = ? AND customer_number = ?'
+            );
+            $stmt->execute([$enabled, $tenantId, $customer['customer_number']]);
+
+            flash_set('success', sprintf(
+                'SEPA-Einzug für Kundennummer %s auf "%s" gesetzt. Gilt automatisch für alle '
+                . 'aktuellen und künftigen Rechnungen dieses Kunden.',
+                $customer['customer_number'],
+                $enabled ? 'Ja' : 'Nein'
+            ));
+
         } elseif ($action === 'deactivate_iban') {
             $ibanId = $_POST['iban_id'] ?? '';
             $stmt = $pdo->prepare(
@@ -145,7 +167,7 @@ layout_header('Kunden', $ctx);
             <thead>
                 <tr>
                     <th>Kundennr.</th><th>Name</th><th>E-Mail</th>
-                    <th>Offene Rechnungen</th><th>IBAN</th><th></th>
+                    <th>Offene Rechnungen</th><th>IBAN</th><th>SEPA-Einzug</th><th></th>
                 </tr>
             </thead>
             <tbody>
@@ -162,11 +184,39 @@ layout_header('Kunden', $ctx);
                             ? '<span class="badge badge-success">Hinterlegt</span>'
                             : '<span class="badge badge-danger">Fehlt</span>' ?>
                     </td>
+                    <td>
+                        <?php if ((int)$c['is_walk_in']): ?>
+                            <span class="hint">-</span>
+                        <?php else: ?>
+                            <?= (int)$c['sepa_debit_enabled']
+                                ? '<span class="badge badge-success">Ja</span>'
+                                : '<span class="badge badge-danger">Nein</span>' ?>
+                        <?php endif; ?>
+                    </td>
                     <td><a href="customers.php?open=<?= e($c['id']) ?><?= $search !== '' ? '&q=' . urlencode($search) : '' ?>">Bankverbindung</a></td>
                 </tr>
                 <?php if ($openId === $c['id']): ?>
                 <tr>
-                    <td colspan="6" style="background: #fafbfc;">
+                    <td colspan="7" style="background: #fafbfc;">
+                        <h2>SEPA-Einzug: <?= e($c['name']) ?></h2>
+                        <?php if ((int)$c['is_walk_in']): ?>
+                            <p class="hint">Laufkunde (Sammel-Kundennummer <?= e($c['customer_number']) ?>):
+                                SEPA-Einzug kann hier nicht pro Person ein-/ausgeschaltet werden,
+                                da die Nummer von mehreren Personen geteilt wird.</p>
+                        <?php else: ?>
+                        <form method="post" class="inline-form" style="margin-bottom: 20px;">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="set_sepa_debit">
+                            <input type="hidden" name="customer_id" value="<?= e($c['id']) ?>">
+                            <select name="sepa_debit_enabled" style="max-width: 160px;">
+                                <option value="1" <?= (int)$c['sepa_debit_enabled'] ? 'selected' : '' ?>>Ja</option>
+                                <option value="0" <?= !(int)$c['sepa_debit_enabled'] ? 'selected' : '' ?>>Nein</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm">Speichern</button>
+                            <span class="hint">Gilt für alle Rechnungen mit Kundennummer <?= e($c['customer_number']) ?>.</span>
+                        </form>
+                        <?php endif; ?>
+
                         <h2>Bankverbindung: <?= e($c['name']) ?></h2>
 
                         <?php if ($openIbans): ?>
