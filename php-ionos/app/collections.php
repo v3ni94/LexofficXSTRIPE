@@ -264,18 +264,27 @@ function reschedule_collection(string $tenantId, string $collectionId, string $n
 }
 
 /**
- * Fällige terminierte Einzüge bei Stripe einreichen (Aufruf über cron.php).
+ * Fällige terminierte Einzüge bei Stripe einreichen.
+ *
+ * Ohne $tenantId (Aufruf über cron.php): alle Organisationen.
+ * Mit $tenantId (manueller Button im Portal): nur die eigene Organisation,
+ * damit ein Nutzer nicht versehentlich Einzüge anderer Mandanten auslöst.
+ *
  * @return array{submitted:int,failed:int}
  */
-function process_scheduled_collections(): array
+function process_scheduled_collections(?string $tenantId = null): array
 {
     $pdo = db();
-    $stmt = $pdo->prepare(
-        "SELECT * FROM payment_collections
-         WHERE is_scheduled = 1 AND scheduled_submitted = 0
-           AND stripe_status = 'scheduled' AND scheduled_date <= CURDATE()"
-    );
-    $stmt->execute();
+    $sql = "SELECT * FROM payment_collections
+            WHERE is_scheduled = 1 AND scheduled_submitted = 0
+              AND stripe_status = 'scheduled' AND scheduled_date <= CURDATE()";
+    $params = [];
+    if ($tenantId !== null) {
+        $sql .= ' AND tenant_id = ?';
+        $params[] = $tenantId;
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     $due = $stmt->fetchAll();
 
     $submitted = 0;

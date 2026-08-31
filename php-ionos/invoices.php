@@ -177,6 +177,9 @@ layout_header('Rechnungen', $ctx);
         <?php else: ?>
             <a class="btn btn-secondary" href="<?= e(invoices_url('open', $sepaFilter)) ?>">Nur offene anzeigen</a>
         <?php endif; ?>
+        <?php if (can_manage($ctx)): ?>
+            <a class="btn btn-secondary" href="reconcile.php">Mit Lexoffice abgleichen</a>
+        <?php endif; ?>
     </div>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <span class="hint" style="align-self: center;">SEPA-deaktivierte Kunden:</span>

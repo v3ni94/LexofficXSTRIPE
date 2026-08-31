@@ -21,6 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newDate = $_POST['new_date'] ?? '';
             reschedule_collection($tenantId, $collectionId, $newDate);
             flash_set('success', 'Einzug wurde auf den ' . format_date($newDate) . ' umterminiert.');
+
+        } elseif ($action === 'process_due') {
+            // Ersetzt den Cronjob: fällige terminierte Einzüge manuell auslösen.
+            $result = process_scheduled_collections($tenantId);
+            flash_set('success', sprintf(
+                'Fällige terminierte Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen.',
+                $result['submitted'], $result['failed']
+            ));
         }
     } catch (Throwable $e) {
         flash_set('error', 'Fehler: ' . $e->getMessage());
@@ -55,12 +63,29 @@ while ((int)$suggest->format('N') >= 6) {
     $suggest = $suggest->modify('+1 day');
 }
 
+$stmt = $pdo->prepare(
+    "SELECT COUNT(*) FROM payment_collections
+     WHERE tenant_id = ? AND is_scheduled = 1 AND scheduled_submitted = 0
+       AND stripe_status = 'scheduled' AND scheduled_date <= CURDATE()"
+);
+$stmt->execute([$tenantId]);
+$dueCount = (int)$stmt->fetchColumn();
+
 layout_header('Einzüge', $ctx);
 ?>
 <h1>SEPA-Einzüge</h1>
 <p class="page-sub">Alle eingereichten, terminierten und abgeschlossenen Lastschriften</p>
 
 <div class="card">
+    <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
+        <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="process_due">
+            <button type="submit" class="btn"<?= $dueCount === 0 ? ' disabled' : '' ?>>
+                Fällige terminierte Einzüge jetzt einreichen<?= $dueCount > 0 ? " ($dueCount)" : '' ?>
+            </button>
+        </form>
+    </div>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <a class="btn <?= $filter === '' ? '' : 'btn-secondary' ?> btn-sm" href="collections.php">Alle</a>
         <?php foreach ($allowedFilters as $f): ?>

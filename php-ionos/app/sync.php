@@ -34,12 +34,14 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
 {
     if ($cursor === null) {
         $cursor = [
-            'phase'          => 'open',
-            'lex_page'       => 0,
-            'lex_index'      => 0,
-            'run_started_at' => date('Y-m-d H:i:s'),
-            'result'         => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
-            'recheck_ids'    => null,
+            'phase'            => 'open',
+            'lex_page'         => 0,
+            'lex_index'        => 0,
+            'lex_page_content' => null, // gecachter Inhalt der aktuellen Lexoffice-Seite
+            'lex_total_pages'  => 1,
+            'run_started_at'   => date('Y-m-d H:i:s'),
+            'result'           => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
+            'recheck_ids'      => null,
         ];
     }
 
@@ -48,9 +50,19 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
 
     if ($cursor['phase'] === 'open' || $cursor['phase'] === 'overdue') {
         $voucherStatus = $cursor['phase'];
-        $page = $lex->getInvoiceVouchersPage($voucherStatus, $cursor['lex_page']);
-        $content = $page['content'] ?? [];
-        $totalPages = (int)($page['totalPages'] ?? 1);
+
+        // Eine Lexoffice-Seite nur EINMAL abrufen und über mehrere Batches
+        // hinweg zwischenspeichern. Würde man dieselbe Seite bei jedem
+        // Batch erneut abrufen, könnten sich Position/Inhalt zwischen den
+        // Aufrufen verschieben (z.B. weil zwischenzeitlich eine Rechnung
+        // bezahlt wurde und aus der offenen Liste verschwindet) und
+        // Rechnungen würden bei der Synchronisation übersprungen.
+        if ($cursor['lex_page_content'] === null) {
+            $page = $lex->getInvoiceVouchersPage($voucherStatus, $cursor['lex_page']);
+            $cursor['lex_page_content'] = $page['content'] ?? [];
+            $cursor['lex_total_pages'] = (int)($page['totalPages'] ?? 1);
+        }
+        $content = $cursor['lex_page_content'];
 
         while ($processed < $batchSize && $cursor['lex_index'] < count($content)) {
             $voucher = $content[$cursor['lex_index']];
@@ -65,8 +77,9 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
 
         if ($cursor['lex_index'] >= count($content)) {
             $cursor['lex_index'] = 0;
+            $cursor['lex_page_content'] = null;
             $cursor['lex_page']++;
-            if ($cursor['lex_page'] >= $totalPages) {
+            if ($cursor['lex_page'] >= $cursor['lex_total_pages']) {
                 $cursor['lex_page'] = 0;
                 $cursor['phase'] = $voucherStatus === 'open' ? 'overdue' : 'recheck';
             }
