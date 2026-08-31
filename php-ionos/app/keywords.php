@@ -145,11 +145,14 @@ function extract_keyword(array $lineItems): array
 /** SEPA-konformer Verwendungszweck (max. 140 Zeichen). */
 function build_description(string $voucherNumber, string $customerNumber, string $keywordSepa): string
 {
-    $raw = "SEPA LS RE $voucherNumber KD $customerNumber - $keywordSepa";
+    // Firmenname vorangestellt, damit Kunden den Lastschrifteinzug auf dem
+    // Kontoauszug sofort der Hausverwaltung Müller GmbH zuordnen können,
+    // statt nur eine kryptische Nummernfolge zu sehen.
+    $raw = "Hausverwaltung Mueller GmbH SEPA RE $voucherNumber KD $customerNumber - $keywordSepa";
     $sanitized = sanitize_for_sepa($raw);
 
     if (strlen($sanitized) > 140) {
-        $prefix = sanitize_for_sepa("SEPA LS RE $voucherNumber KD $customerNumber - ");
+        $prefix = sanitize_for_sepa("Hausverwaltung Mueller GmbH SEPA RE $voucherNumber KD $customerNumber - ");
         $maxKwLen = 140 - strlen($prefix) - 1;
         $kw = substr(sanitize_for_sepa($keywordSepa), 0, max(0, $maxKwLen)) . '.';
         $sanitized = $prefix . $kw;
