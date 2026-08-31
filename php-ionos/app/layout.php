@@ -1,11 +1,12 @@
 <?php
 /**
- * Seitengerüst im CI der Hausverwaltung Müller GmbH.
+ * Seitengerüst im verbindlichen CI der Hausverwaltung Müller GmbH (Skill hvm-ci).
  *
- * HINWEIS CI: Farben, Logo und Schrift sind in assets/css/style.css als
- * CSS-Variablen zentral hinterlegt und dort als PLATZHALTER gekennzeichnet.
- * Die verbindlichen Werte aus dem CI-Handbuch (Skill hvm-ci) müssen dort
- * eingetragen werden. Ein Logo kann als assets/img/logo.svg abgelegt werden.
+ * Farben, Schrift und Logo sind zentral in assets/css/style.css als
+ * CSS-Variablen hinterlegt (Abschnitt 2 und 3 des CI-Handbuchs). Die
+ * HVM-Kennlinie (vierfarbiges Band, Abschnitt 5.1) wird hier als Balken
+ * über Kopf- und Fußzeile jeder Seite ausgegeben. Logo: assets/img/logo.jpg
+ * (offizielle Datei aus dem CI-Handbuch, 1320 x 1143 px).
  */
 
 declare(strict_types=1);
@@ -17,7 +18,7 @@ if (get_included_files()[0] === __FILE__) {
 
 function layout_header(string $title, ?array $ctx = null): void
 {
-    $logoPath = APP_ROOT . '/assets/img/logo.svg';
+    $logoPath = APP_ROOT . '/assets/img/logo.jpg';
     $hasLogo = is_file($logoPath);
     ?>
 <!DOCTYPE html>
@@ -30,11 +31,12 @@ function layout_header(string $title, ?array $ctx = null): void
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
+<div class="hvm-kennlinie" aria-hidden="true"></div>
 <header class="site-header">
     <div class="header-inner">
         <a class="brand" href="dashboard.php">
             <?php if ($hasLogo): ?>
-                <img src="assets/img/logo.svg" alt="Hausverwaltung Müller GmbH" class="brand-logo">
+                <img src="assets/img/logo.jpg" alt="Hausverwaltung Müller GmbH" class="brand-logo">
             <?php else: ?>
                 <span class="brand-mark">HVM</span>
             <?php endif; ?>
@@ -74,12 +76,10 @@ function layout_footer(): void
     ?>
 </main>
 <footer class="site-footer">
+    <div class="hvm-kennlinie hvm-kennlinie-footer" aria-hidden="true"></div>
     <div class="footer-inner">
-        <span>Hausverwaltung Müller GmbH · SEPA-Portal · Internes System</span>
-        <span>
-            <!-- PLATZHALTER: Pflichtangaben (Sitz, Registergericht, HRB, Geschäftsführung)
-                 gemäß CI-Vorgaben der HVM ergänzen -->
-        </span>
+        <span>Hausverwaltung Müller GmbH | Rheinpromenade 13 | 40789 Monheim am Rhein</span>
+        <span>Amtsgericht Düsseldorf, HRB 104762 | Geschäftsführer: Timo Müller | www.muellerhv.de</span>
     </div>
 </footer>
 </body>
