@@ -51,6 +51,7 @@ function layout_header(string $title, ?array $ctx = null): void
             <a href="invoices.php">Rechnungen</a>
             <a href="collections.php">Einzüge</a>
             <a href="customers.php">Kunden</a>
+            <a href="sepa-pflegen.php">SEPA Pflegen</a>
             <?php if (can_manage($ctx)): ?>
                 <a href="team.php">Team</a>
                 <a href="settings.php">Einstellungen</a>

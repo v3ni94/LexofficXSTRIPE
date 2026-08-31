@@ -24,46 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'add_iban') {
-            [$ok, $result] = validate_iban($_POST['iban'] ?? '');
-            if (!$ok) {
-                throw new RuntimeException($result);
-            }
-            $iban = $result;
-            $holder = trim($_POST['account_holder_name'] ?? '');
-            if ($holder === '') {
-                throw new RuntimeException('Bitte den Kontoinhaber angeben.');
-            }
-            $bic = strtoupper(trim($_POST['bic'] ?? '')) ?: null;
-
-            $pdo->beginTransaction();
-            // Bisherige aktive IBANs deaktivieren (eine aktive IBAN je Kunde)
-            $stmt = $pdo->prepare(
-                'SELECT * FROM customer_ibans WHERE customer_id = ? AND tenant_id = ? AND is_active = 1'
+            set_customer_iban(
+                $tenantId, $customerId, $ctx['user_id'],
+                $_POST['iban'] ?? '', $_POST['account_holder_name'] ?? '', $_POST['bic'] ?? null
             );
-            $stmt->execute([$customerId, $tenantId]);
-            foreach ($stmt->fetchAll() as $old) {
-                $pdo->prepare('UPDATE customer_ibans SET is_active = 0 WHERE id = ?')
-                    ->execute([$old['id']]);
-                $pdo->prepare(
-                    'INSERT INTO iban_history (id, tenant_id, customer_iban_id, action, old_iban, new_iban, changed_by, change_reason)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-                )->execute([
-                    uuid4(), $tenantId, $old['id'], 'deactivated', $old['iban'], $iban,
-                    $ctx['user_id'], 'Ersetzt durch neue IBAN',
-                ]);
-            }
-
-            $newId = uuid4();
-            $pdo->prepare(
-                'INSERT INTO customer_ibans (id, tenant_id, customer_id, iban, bic, account_holder_name, is_active)
-                 VALUES (?, ?, ?, ?, ?, ?, 1)'
-            )->execute([$newId, $tenantId, $customerId, $iban, $bic, $holder]);
-            $pdo->prepare(
-                'INSERT INTO iban_history (id, tenant_id, customer_iban_id, action, new_iban, changed_by)
-                 VALUES (?, ?, ?, ?, ?, ?)'
-            )->execute([uuid4(), $tenantId, $newId, 'created', $iban, $ctx['user_id']]);
-            $pdo->commit();
-
             flash_set('success', 'IBAN für ' . $customer['name'] . ' hinterlegt.');
 
         } elseif ($action === 'set_sepa_debit') {
