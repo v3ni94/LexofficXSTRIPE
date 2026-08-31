@@ -6,7 +6,10 @@ require_once __DIR__ . '/app/crypto.php';
 require_once __DIR__ . '/app/sync.php';
 require_once __DIR__ . '/app/collections.php';
 
-$ctx = require_onboarded();
+// require_login() statt require_onboarded(): Diese Seite führt selbst den
+// letzten Onboarding-Schritt (erste Synchronisation) aus und muss daher auch
+// vor Abschluss des Onboardings erreichbar sein.
+$ctx = require_login();
 $tenantId = $ctx['org_id'];
 $pdo = db();
 
