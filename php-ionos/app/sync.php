@@ -2,6 +2,15 @@
 /**
  * Lexoffice-Synchronisation: offene/überfällige Rechnungen und Kontakte
  * in die lokale Datenbank übernehmen. Portiert aus sync_service.py.
+ *
+ * sync_invoices_step() verarbeitet nur eine kleine, feste Anzahl Rechnungen
+ * pro Aufruf und liefert einen Cursor zum Fortsetzen zurück. Das ist nötig,
+ * weil Shared-Hosting-Umgebungen (z.B. IONOS) das Zeitlimit für einen
+ * einzelnen HTTP-Request strikt begrenzen, ein kompletter Durchlauf über
+ * viele Rechnungen mit gedrosselten Lexoffice-Aufrufen (max. ca. 2/s) das
+ * aber leicht überschreitet ("Page temporarily unavailable"). Der
+ * aufrufende Code (invoices.php) ruft diese Funktion wiederholt auf, bis
+ * done=true zurückkommt.
  */
 
 declare(strict_types=1);
@@ -15,109 +24,141 @@ require_once __DIR__ . '/lexoffice.php';
 require_once __DIR__ . '/keywords.php';
 
 /**
+ * Einen Synchronisations-Schritt ausführen.
+ *
+ * @param array|null $cursor Cursor aus dem vorherigen Aufruf, oder null für
+ *                           einen neuen Durchlauf.
+ * @return array{done:bool,cursor:array|null,result:array{synced:int,new:int,updated:int,removed:int}}
+ */
+function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $cursor, int $batchSize = 6): array
+{
+    if ($cursor === null) {
+        $cursor = [
+            'phase'          => 'open',
+            'lex_page'       => 0,
+            'lex_index'      => 0,
+            'run_started_at' => date('Y-m-d H:i:s'),
+            'result'         => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
+            'recheck_ids'    => null,
+        ];
+    }
+
+    $pdo = db();
+    $processed = 0;
+
+    if ($cursor['phase'] === 'open' || $cursor['phase'] === 'overdue') {
+        $voucherStatus = $cursor['phase'];
+        $page = $lex->getInvoiceVouchersPage($voucherStatus, $cursor['lex_page']);
+        $content = $page['content'] ?? [];
+        $totalPages = (int)($page['totalPages'] ?? 1);
+
+        while ($processed < $batchSize && $cursor['lex_index'] < count($content)) {
+            $voucher = $content[$cursor['lex_index']];
+            if (!empty($voucher['id'])) {
+                $isNew = _sync_process_voucher($tenantId, $voucher, $lex);
+                $cursor['result']['synced']++;
+                $cursor['result'][$isNew ? 'new' : 'updated']++;
+            }
+            $cursor['lex_index']++;
+            $processed++;
+        }
+
+        if ($cursor['lex_index'] >= count($content)) {
+            $cursor['lex_index'] = 0;
+            $cursor['lex_page']++;
+            if ($cursor['lex_page'] >= $totalPages) {
+                $cursor['lex_page'] = 0;
+                $cursor['phase'] = $voucherStatus === 'open' ? 'overdue' : 'recheck';
+            }
+        }
+
+        return ['done' => false, 'cursor' => $cursor, 'result' => $cursor['result']];
+    }
+
+    // --- Phase 'recheck': lokale offene/überfällige Rechnungen prüfen,
+    //     die in diesem Durchlauf nicht in Lexoffice gesehen wurden ---
+    if ($cursor['recheck_ids'] === null) {
+        $stmt = $pdo->prepare(
+            "SELECT id FROM invoices
+             WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')
+               AND (last_synced_at IS NULL OR last_synced_at < ?)"
+        );
+        $stmt->execute([$tenantId, $cursor['run_started_at']]);
+        $cursor['recheck_ids'] = array_column($stmt->fetchAll(), 'id');
+    }
+
+    while ($processed < $batchSize && $cursor['recheck_ids']) {
+        $invoiceId = array_shift($cursor['recheck_ids']);
+        $stmt = $pdo->prepare('SELECT * FROM invoices WHERE id = ?');
+        $stmt->execute([$invoiceId]);
+        $inv = $stmt->fetch();
+
+        if ($inv) {
+            try {
+                $detail = $lex->getInvoiceDetail($inv['lexoffice_invoice_id']);
+                $newStatus = $detail['voucherStatus'] ?? 'unknown';
+                $collectionStatus = $inv['collection_status'];
+
+                if ($newStatus === 'paid') {
+                    $collectionStatus = 'collected';
+                    $cursor['result']['removed']++;
+                } elseif (in_array($newStatus, ['voided', 'cancelled'], true)) {
+                    $collectionStatus = 'none';
+                    $cursor['result']['removed']++;
+                }
+
+                $pdo->prepare(
+                    'UPDATE invoices SET lexoffice_status = ?, collection_status = ?, last_synced_at = NOW() WHERE id = ?'
+                )->execute([$newStatus, $collectionStatus, $inv['id']]);
+                $cursor['result']['updated']++;
+            } catch (Throwable $e) {
+                error_log('Konnte Rechnung ' . $inv['lexoffice_invoice_id'] . ' nicht pruefen: ' . $e->getMessage());
+            }
+        }
+        $processed++;
+    }
+
+    if (!$cursor['recheck_ids']) {
+        $pdo->prepare('UPDATE integrations SET lexoffice_last_sync = NOW() WHERE tenant_id = ?')
+            ->execute([$tenantId]);
+        return ['done' => true, 'cursor' => null, 'result' => $cursor['result']];
+    }
+
+    return ['done' => false, 'cursor' => $cursor, 'result' => $cursor['result']];
+}
+
+/**
+ * Vollständiger, blockierender Durchlauf ohne Cursor. Nur für CLI-Aufrufe
+ * oder sehr kleine Bestände geeignet, für den interaktiven Web-Aufruf
+ * sync_invoices_step() verwenden (siehe Datei-Kommentar oben).
+ *
  * @return array{synced:int,new:int,updated:int,removed:int}
  */
 function sync_invoices(string $tenantId, LexofficeClient $lex): array
 {
-    // Eine große Synchronisation kann bei vielen Rechnungen dauern
-    @set_time_limit(300);
+    @set_time_limit(0);
 
     $pdo = db();
     $result = ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0];
-    $seenIds = [];
+    $runStartedAt = date('Y-m-d H:i:s');
 
     foreach ($lex->getOpenInvoices() as $voucher) {
-        $voucherId = $voucher['id'] ?? null;
-        if (!$voucherId) {
+        if (empty($voucher['id'])) {
             continue;
         }
-        $seenIds[$voucherId] = true;
+        $isNew = _sync_process_voucher($tenantId, $voucher, $lex);
         $result['synced']++;
-
-        $detail = $lex->getInvoiceDetail($voucherId);
-
-        // --- Kunde auflösen ---
-        $customerId = null;
-        $contactName = _sync_extract_contact_name($detail);
-        $contactId = $detail['address']['contactId'] ?? null;
-        if ($contactId) {
-            $customerId = _sync_upsert_customer($tenantId, $contactId, $contactName, $lex);
-        }
-
-        // --- Rechnungsfelder ---
-        $voucherNumber = $detail['voucherNumber'] ?? ($voucher['voucherNumber'] ?? '');
-        $totalAmount = (string)($detail['totalPrice']['totalGrossAmount'] ?? '0');
-        $currency = $detail['totalPrice']['currency'] ?? 'EUR';
-        $dueDate = _sync_parse_date($detail['dueDate'] ?? null);
-        $lexStatus = $detail['voucherStatus'] ?? ($voucher['voucherStatus'] ?? 'open');
-
-        // --- Stichwort aus Positionen ---
-        $lineItems = $detail['lineItems'] ?? [];
-        $lineItemsJson = $lineItems ? json_encode($lineItems, JSON_UNESCAPED_UNICODE) : null;
-        [$kwDisplay, $kwSepa] = extract_keyword($lineItems);
-
-        // --- Upsert Rechnung ---
-        $stmt = $pdo->prepare(
-            'SELECT * FROM invoices WHERE tenant_id = ? AND lexoffice_invoice_id = ?'
-        );
-        $stmt->execute([$tenantId, $voucherId]);
-        $existing = $stmt->fetch();
-
-        if ($existing) {
-            $newCollectionStatus = $existing['collection_status'];
-            if ($lexStatus === 'paid' && $existing['collection_status'] !== 'collected') {
-                $newCollectionStatus = 'collected';
-            }
-
-            // Stichwort nur neu berechnen, wenn sich die Positionen geändert haben
-            $keyword = $existing['keyword'];
-            $keywordSepa = $existing['keyword_sepa'];
-            $itemsJson = $existing['line_items_json'];
-            if ($lineItemsJson !== $existing['line_items_json']) {
-                $itemsJson = $lineItemsJson;
-                $keyword = $kwDisplay;
-                $keywordSepa = $kwSepa;
-            }
-
-            $pdo->prepare(
-                'UPDATE invoices SET voucher_number = ?, customer_id = ?, contact_name = ?,
-                    total_gross_amount = ?, currency = ?, due_date = ?, lexoffice_status = ?,
-                    collection_status = ?, line_items_json = ?, keyword = ?, keyword_sepa = ?,
-                    last_synced_at = NOW()
-                 WHERE id = ?'
-            )->execute([
-                $voucherNumber, $customerId, $contactName, $totalAmount, $currency,
-                $dueDate, $lexStatus, $newCollectionStatus, $itemsJson, $keyword, $keywordSepa,
-                $existing['id'],
-            ]);
-            $result['updated']++;
-        } else {
-            $pdo->prepare(
-                'INSERT INTO invoices
-                    (id, tenant_id, lexoffice_invoice_id, voucher_number, customer_id, contact_name,
-                     total_gross_amount, currency, due_date, lexoffice_status, collection_status,
-                     line_items_json, keyword, keyword_sepa, last_synced_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())'
-            )->execute([
-                uuid4(), $tenantId, $voucherId, $voucherNumber, $customerId, $contactName,
-                $totalAmount, $currency, $dueDate, $lexStatus, 'open',
-                $lineItemsJson, $kwDisplay, $kwSepa,
-            ]);
-            $result['new']++;
-        }
+        $result[$isNew ? 'new' : 'updated']++;
     }
 
-    // --- Lokale Rechnungen prüfen, die nicht mehr offen/überfällig sind ---
     $stmt = $pdo->prepare(
-        "SELECT * FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')"
+        "SELECT * FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')
+           AND (last_synced_at IS NULL OR last_synced_at < ?)"
     );
-    $stmt->execute([$tenantId]);
+    $stmt->execute([$tenantId, $runStartedAt]);
     $localOpen = $stmt->fetchAll();
 
     foreach ($localOpen as $inv) {
-        if (isset($seenIds[$inv['lexoffice_invoice_id']])) {
-            continue;
-        }
         try {
             $detail = $lex->getInvoiceDetail($inv['lexoffice_invoice_id']);
             $newStatus = $detail['voucherStatus'] ?? 'unknown';
@@ -136,7 +177,7 @@ function sync_invoices(string $tenantId, LexofficeClient $lex): array
             )->execute([$newStatus, $collectionStatus, $inv['id']]);
             $result['updated']++;
         } catch (Throwable $e) {
-            error_log('Konnte Rechnung ' . $inv['lexoffice_invoice_id'] . ' nicht prüfen: ' . $e->getMessage());
+            error_log('Konnte Rechnung ' . $inv['lexoffice_invoice_id'] . ' nicht pruefen: ' . $e->getMessage());
         }
     }
 
@@ -147,6 +188,82 @@ function sync_invoices(string $tenantId, LexofficeClient $lex): array
 }
 
 // ---------------------------------------------------------------------------
+
+/** Einen Voucher aus der Lexoffice-Liste in die Datenbank übernehmen. Gibt true zurück, wenn neu angelegt. */
+function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient $lex): bool
+{
+    $pdo = db();
+    $voucherId = $voucher['id'];
+    $detail = $lex->getInvoiceDetail($voucherId);
+
+    // --- Kunde auflösen ---
+    $customerId = null;
+    $contactName = _sync_extract_contact_name($detail);
+    $contactId = $detail['address']['contactId'] ?? null;
+    if ($contactId) {
+        $customerId = _sync_upsert_customer($tenantId, $contactId, $contactName, $lex);
+    }
+
+    // --- Rechnungsfelder ---
+    $voucherNumber = $detail['voucherNumber'] ?? ($voucher['voucherNumber'] ?? '');
+    $totalAmount = (string)($detail['totalPrice']['totalGrossAmount'] ?? '0');
+    $currency = $detail['totalPrice']['currency'] ?? 'EUR';
+    $dueDate = _sync_parse_date($detail['dueDate'] ?? null);
+    $lexStatus = $detail['voucherStatus'] ?? ($voucher['voucherStatus'] ?? 'open');
+
+    // --- Stichwort aus Positionen ---
+    $lineItems = $detail['lineItems'] ?? [];
+    $lineItemsJson = $lineItems ? json_encode($lineItems, JSON_UNESCAPED_UNICODE) : null;
+    [$kwDisplay, $kwSepa] = extract_keyword($lineItems);
+
+    // --- Upsert Rechnung ---
+    $stmt = $pdo->prepare('SELECT * FROM invoices WHERE tenant_id = ? AND lexoffice_invoice_id = ?');
+    $stmt->execute([$tenantId, $voucherId]);
+    $existing = $stmt->fetch();
+
+    if ($existing) {
+        $newCollectionStatus = $existing['collection_status'];
+        if ($lexStatus === 'paid' && $existing['collection_status'] !== 'collected') {
+            $newCollectionStatus = 'collected';
+        }
+
+        // Stichwort nur neu berechnen, wenn sich die Positionen geändert haben
+        $keyword = $existing['keyword'];
+        $keywordSepa = $existing['keyword_sepa'];
+        $itemsJson = $existing['line_items_json'];
+        if ($lineItemsJson !== $existing['line_items_json']) {
+            $itemsJson = $lineItemsJson;
+            $keyword = $kwDisplay;
+            $keywordSepa = $kwSepa;
+        }
+
+        $pdo->prepare(
+            'UPDATE invoices SET voucher_number = ?, customer_id = ?, contact_name = ?,
+                total_gross_amount = ?, currency = ?, due_date = ?, lexoffice_status = ?,
+                collection_status = ?, line_items_json = ?, keyword = ?, keyword_sepa = ?,
+                last_synced_at = NOW()
+             WHERE id = ?'
+        )->execute([
+            $voucherNumber, $customerId, $contactName, $totalAmount, $currency,
+            $dueDate, $lexStatus, $newCollectionStatus, $itemsJson, $keyword, $keywordSepa,
+            $existing['id'],
+        ]);
+        return false;
+    }
+
+    $pdo->prepare(
+        'INSERT INTO invoices
+            (id, tenant_id, lexoffice_invoice_id, voucher_number, customer_id, contact_name,
+             total_gross_amount, currency, due_date, lexoffice_status, collection_status,
+             line_items_json, keyword, keyword_sepa, last_synced_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())'
+    )->execute([
+        uuid4(), $tenantId, $voucherId, $voucherNumber, $customerId, $contactName,
+        $totalAmount, $currency, $dueDate, $lexStatus, 'open',
+        $lineItemsJson, $kwDisplay, $kwSepa,
+    ]);
+    return true;
+}
 
 function _sync_upsert_customer(string $tenantId, string $contactId, string $fallbackName, LexofficeClient $lex): string
 {

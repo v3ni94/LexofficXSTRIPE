@@ -13,12 +13,18 @@ $ctx = require_login();
 $tenantId = $ctx['org_id'];
 $pdo = db();
 
+$syncCursorKey = 'sync_cursor_' . $tenantId;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
 
     try {
-        if ($action === 'sync') {
+        if ($action === 'sync' || $action === 'sync_continue') {
+            // Läuft in kleinen Schritten (siehe app/sync.php), damit ein
+            // einzelner Request nicht am Zeitlimit des Hostings scheitert.
+            // Der API-Key wird bewusst bei jedem Schritt neu aus der
+            // Datenbank gelesen statt in der Session zwischengespeichert.
             $stmt = $pdo->prepare('SELECT * FROM integrations WHERE tenant_id = ?');
             $stmt->execute([$tenantId]);
             $integration = $stmt->fetch();
@@ -29,11 +35,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$apiKey) {
                 throw new RuntimeException('Lexoffice API-Key fehlt.');
             }
-            $result = sync_invoices($tenantId, new LexofficeClient($apiKey));
-            flash_set('success', sprintf(
-                'Synchronisation abgeschlossen: %d Rechnungen geprüft, %d neu, %d aktualisiert, %d abgeschlossen.',
-                $result['synced'], $result['new'], $result['updated'], $result['removed']
-            ));
+
+            $cursor = $action === 'sync_continue' ? ($_SESSION[$syncCursorKey] ?? null) : null;
+            $step = sync_invoices_step($tenantId, new LexofficeClient($apiKey), $cursor);
+
+            if ($step['done']) {
+                unset($_SESSION[$syncCursorKey]);
+                $result = $step['result'];
+                flash_set('success', sprintf(
+                    'Synchronisation abgeschlossen: %d Rechnungen geprüft, %d neu, %d aktualisiert, %d abgeschlossen.',
+                    $result['synced'], $result['new'], $result['updated'], $result['removed']
+                ));
+                redirect('invoices.php');
+            }
+
+            $_SESSION[$syncCursorKey] = $step['cursor'];
+            redirect('invoices.php?syncing=1');
+
+        } elseif ($action === 'sync_cancel') {
+            unset($_SESSION[$syncCursorKey]);
+            flash_set('info', 'Synchronisation abgebrochen.');
 
         } elseif ($action === 'collect') {
             $collectionId = submit_collection($tenantId, $_POST['invoice_id'] ?? '');
@@ -49,6 +70,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     redirect('invoices.php');
+}
+
+// --- Laufende Synchronisation: Fortschritt anzeigen und automatisch fortsetzen ---
+if (!empty($_GET['syncing']) && isset($_SESSION[$syncCursorKey])) {
+    $progress = $_SESSION[$syncCursorKey]['result'] ?? ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0];
+    layout_header('Rechnungen', $ctx);
+    ?>
+    <h1>Rechnungen</h1>
+    <p class="page-sub">Synchronisation mit Lexoffice läuft ...</p>
+    <div class="card">
+        <p>Bitte warten, die Rechnungen werden in kleinen Schritten übernommen,
+            damit die Verbindung nicht durch ein Zeitlimit des Servers abbricht.</p>
+        <p><strong><?= (int)$progress['synced'] ?></strong> Rechnungen geprüft,
+            <strong><?= (int)$progress['new'] ?></strong> neu,
+            <strong><?= (int)$progress['updated'] ?></strong> aktualisiert.</p>
+        <form method="post" id="sync-continue-form">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="sync_continue">
+            <noscript><button type="submit" class="btn">Weiter</button></noscript>
+        </form>
+        <form method="post" class="inline-form" style="margin-top: 12px;">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="sync_cancel">
+            <button type="submit" class="btn btn-secondary btn-sm">Abbrechen</button>
+        </form>
+    </div>
+    <script>
+        setTimeout(function () {
+            document.getElementById('sync-continue-form').submit();
+        }, 300);
+    </script>
+    <?php
+    layout_footer();
+    exit;
 }
 
 // Filter

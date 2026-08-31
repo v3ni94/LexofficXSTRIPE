@@ -116,12 +116,7 @@ class LexofficeClient
         foreach (['open', 'overdue'] as $voucherStatus) {
             $page = 0;
             while (true) {
-                $data = $this->request('/voucherlist', [
-                    'voucherType'   => 'invoice',
-                    'voucherStatus' => $voucherStatus,
-                    'size'          => 100,
-                    'page'          => $page,
-                ]);
+                $data = $this->getInvoiceVouchersPage($voucherStatus, $page);
                 foreach ($data['content'] ?? [] as $voucher) {
                     $vouchers[] = $voucher;
                 }
@@ -133,6 +128,21 @@ class LexofficeClient
             }
         }
         return $vouchers;
+    }
+
+    /**
+     * Eine einzelne Seite der Voucherliste abrufen (für die schrittweise
+     * Synchronisation, damit ein HTTP-Request nicht durch viele
+     * gedrosselte API-Aufrufe das Zeitlimit des Hostings überschreitet).
+     */
+    public function getInvoiceVouchersPage(string $voucherStatus, int $page): array
+    {
+        return $this->request('/voucherlist', [
+            'voucherType'   => 'invoice',
+            'voucherStatus' => $voucherStatus,
+            'size'          => 100,
+            'page'          => $page,
+        ]);
     }
 
     public function getInvoiceDetail(string $invoiceId): array
