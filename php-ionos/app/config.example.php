@@ -7,6 +7,13 @@
  * NICHT ins Git eingecheckt werden.
  */
 
+declare(strict_types=1);
+
+if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__)) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 return [
     // --- MariaDB (Zugangsdaten aus dem IONOS Kundenbereich: Hosting > Datenbanken) ---
     'db' => [

@@ -10,6 +10,11 @@
 
 declare(strict_types=1);
 
+if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__)) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 function layout_header(string $title, ?array $ctx = null): void
 {
     $logoPath = APP_ROOT . '/assets/img/logo.svg';

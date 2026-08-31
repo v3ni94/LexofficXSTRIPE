@@ -6,6 +6,11 @@
 
 declare(strict_types=1);
 
+if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__)) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 /** Aktuellen Benutzerkontext laden (User + Organisation + Rolle) oder null. */
 function current_user(): ?array
 {

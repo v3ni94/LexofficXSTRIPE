@@ -6,6 +6,11 @@
 
 declare(strict_types=1);
 
+if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__)) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 const KEYWORD_CATALOG = [
     [
         'display_name' => 'Vermietung',

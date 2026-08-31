@@ -6,6 +6,11 @@
 
 declare(strict_types=1);
 
+if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__)) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 const IBAN_LENGTHS = [
     'DE' => 22, 'AT' => 20, 'CH' => 21, 'NL' => 18, 'FR' => 27,
     'BE' => 16, 'LU' => 20, 'IT' => 27, 'ES' => 24,
