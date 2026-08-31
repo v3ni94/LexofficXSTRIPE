@@ -48,7 +48,6 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
             'lex_total_pages'  => 1,
             'collected'        => [], // gesammelte {id, voucherNumber, voucherStatus} aus 'listing'
             'proc_index'       => 0,
-            'run_started_at'   => date('Y-m-d H:i:s'),
             'result'           => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
             'recheck_ids'      => null,
         ];
@@ -118,6 +117,31 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
         }
 
         if ($cursor['proc_index'] >= count($list)) {
+            // Kandidaten für den Recheck jetzt bestimmen: lokale offene/
+            // überfällige Rechnungen, deren Lexoffice-ID NICHT in der gerade
+            // aktuell abgerufenen Liste auftauchte. Ein reiner Zeitstempel-
+            // Vergleich (frühere Version) konnte bei zwei sehr schnell
+            // aufeinanderfolgenden Durchläufen innerhalb derselben Sekunde
+            // eine Statusänderung übersehen, da MySQL-Zeitstempel nur
+            // Sekundengenauigkeit haben. Die Mengendifferenz ist eindeutig
+            // und zeitunabhängig korrekt.
+            $seenLexIds = array_column($list, 'id');
+            if ($seenLexIds) {
+                $placeholders = implode(',', array_fill(0, count($seenLexIds), '?'));
+                $stmt = $pdo->prepare(
+                    "SELECT id FROM invoices
+                     WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')
+                       AND lexoffice_invoice_id NOT IN ($placeholders)"
+                );
+                $stmt->execute(array_merge([$tenantId], $seenLexIds));
+            } else {
+                $stmt = $pdo->prepare(
+                    "SELECT id FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')"
+                );
+                $stmt->execute([$tenantId]);
+            }
+            $cursor['recheck_ids'] = array_column($stmt->fetchAll(), 'id');
+
             $cursor['phase'] = 'recheck';
             $cursor['collected'] = []; // Session klein halten, wird nicht mehr gebraucht
         }
@@ -126,17 +150,9 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
     }
 
     // --- Phase 'recheck': lokale offene/überfällige Rechnungen prüfen,
-    //     die in diesem Durchlauf nicht in Lexoffice gesehen wurden ---
-    if ($cursor['recheck_ids'] === null) {
-        $stmt = $pdo->prepare(
-            "SELECT id FROM invoices
-             WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')
-               AND (last_synced_at IS NULL OR last_synced_at < ?)"
-        );
-        $stmt->execute([$tenantId, $cursor['run_started_at']]);
-        $cursor['recheck_ids'] = array_column($stmt->fetchAll(), 'id');
-    }
-
+    //     die in diesem Durchlauf nicht in Lexoffice gesehen wurden
+    //     (recheck_ids wurde beim Verlassen der 'processing'-Phase bereits
+    //     bestimmt, siehe oben) ---
     while ($processed < $batchSize && $cursor['recheck_ids']) {
         $invoiceId = array_shift($cursor['recheck_ids']);
         $stmt = $pdo->prepare('SELECT * FROM invoices WHERE id = ?');
@@ -190,22 +206,35 @@ function sync_invoices(string $tenantId, LexofficeClient $lex): array
 
     $pdo = db();
     $result = ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0];
-    $runStartedAt = date('Y-m-d H:i:s');
+    $seenLexIds = [];
 
     foreach ($lex->getOpenInvoices() as $voucher) {
         if (empty($voucher['id'])) {
             continue;
         }
+        $seenLexIds[] = $voucher['id'];
         $isNew = _sync_process_voucher($tenantId, $voucher, $lex);
         $result['synced']++;
         $result[$isNew ? 'new' : 'updated']++;
     }
 
-    $stmt = $pdo->prepare(
-        "SELECT * FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')
-           AND (last_synced_at IS NULL OR last_synced_at < ?)"
-    );
-    $stmt->execute([$tenantId, $runStartedAt]);
+    // Lokale offene/überfällige Rechnungen, deren Lexoffice-ID NICHT in der
+    // gerade abgerufenen Liste auftauchte, erneut prüfen (bezahlt, storniert,
+    // ...). Mengendifferenz statt Zeitstempelvergleich, siehe
+    // sync_invoices_step() für die Begründung.
+    if ($seenLexIds) {
+        $placeholders = implode(',', array_fill(0, count($seenLexIds), '?'));
+        $stmt = $pdo->prepare(
+            "SELECT * FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')
+               AND lexoffice_invoice_id NOT IN ($placeholders)"
+        );
+        $stmt->execute(array_merge([$tenantId], $seenLexIds));
+    } else {
+        $stmt = $pdo->prepare(
+            "SELECT * FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')"
+        );
+        $stmt->execute([$tenantId]);
+    }
     $localOpen = $stmt->fetchAll();
 
     foreach ($localOpen as $inv) {

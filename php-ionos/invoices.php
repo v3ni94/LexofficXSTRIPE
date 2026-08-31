@@ -246,6 +246,8 @@ layout_header('Rechnungen', $ctx);
                                    value="<?= $suggest->format('Y-m-d') ?>">
                             <button type="submit" class="btn btn-sm btn-secondary">Terminieren</button>
                         </form>
+                        <?php elseif (!in_array($inv['lexoffice_status'], ['open', 'overdue'], true)): ?>
+                            <span class="hint">Nicht mehr einziehbar (Lexoffice: <?= e(lexoffice_status_label($inv['lexoffice_status'])) ?>)</span>
                         <?php elseif (!$hasCustomer): ?>
                             <span class="hint">Kein Kunde verknüpft</span>
                         <?php elseif ($sepaDisabled): ?>

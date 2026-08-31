@@ -121,3 +121,17 @@ function status_badge(string $status, ?string $scheduledDate = null): string
     }
     return '<span class="badge badge-' . $class . '">' . e($label . $suffix) . '</span>';
 }
+
+/** Lesbare Bezeichnung für den Lexoffice-eigenen Rechnungsstatus (nicht den Einzugsstatus). */
+function lexoffice_status_label(string $status): string
+{
+    $map = [
+        'open'     => 'Offen',
+        'overdue'  => 'Überfällig',
+        'paid'     => 'Bezahlt',
+        'voided'   => 'Storniert',
+        'cancelled'=> 'Storniert',
+        'draft'    => 'Entwurf',
+    ];
+    return $map[$status] ?? $status;
+}
