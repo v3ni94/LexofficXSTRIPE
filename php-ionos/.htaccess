@@ -1,5 +1,8 @@
 # HVM SEPA-Portal – Apache-Konfiguration (IONOS)
 
+# Startseite explizit festlegen
+DirectoryIndex index.php
+
 # HTTPS erzwingen
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
