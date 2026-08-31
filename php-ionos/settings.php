@@ -152,4 +152,4 @@ layout_header('Einstellungen', $ctx);
         </form>
     <?php endif; ?>
 </div>
-<?php layout_footer(); ?>
+<?php layout_footer($ctx); ?>

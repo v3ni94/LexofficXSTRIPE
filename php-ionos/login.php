@@ -30,7 +30,7 @@ layout_header('Anmelden');
 <div class="auth-wrap">
     <div class="card">
         <h1 class="auth-title">Anmelden</h1>
-        <p class="auth-sub">SEPA-Portal der Hausverwaltung Müller GmbH</p>
+        <p class="auth-sub">SEPA-Portal</p>
         <?php if ($error): ?>
             <div class="flash flash-error"><?= e($error) ?></div>
         <?php endif; ?>

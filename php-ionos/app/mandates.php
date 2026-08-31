@@ -1,8 +1,11 @@
 <?php
 /**
  * SEPA-Mandate: vorhandenes aktives Mandat verwenden oder neues anlegen.
- * Referenzformat: Stammkunde "HVM<Kundennummer>", Laufkunde "HVM<JJJJMMTT><lfd. Nr.>".
- * Portiert aus mandate_service.py.
+ * Referenzformat: Stammkunde "<Präfix><Kundennummer>", Laufkunde
+ * "<Präfix><JJJJMMTT><lfd. Nr.>". Das Präfix ist je Firma (Organisation)
+ * individuell (organizations.mandate_prefix), damit z.B. "HVM10045" für
+ * die Hausverwaltung Müller GmbH und "TM10045" für eine andere Firma im
+ * selben Portal entstehen. Portiert aus mandate_service.py.
  */
 
 declare(strict_types=1);
@@ -43,11 +46,16 @@ function get_or_create_mandate(string $tenantId, string $customerId, string $cus
         throw new RuntimeException('Kunde nicht gefunden');
     }
 
+    // 2b. Mandatspräfix der Firma laden (z.B. "HVM", "TM")
+    $stmt = $pdo->prepare('SELECT mandate_prefix FROM organizations WHERE id = ?');
+    $stmt->execute([$tenantId]);
+    $orgPrefix = (string)($stmt->fetchColumn() ?: 'FIRMA');
+
     // 3. Mandatsreferenz erzeugen
     if (!(int)$customer['is_walk_in']) {
-        $mandateRef = 'HVM' . $customer['customer_number'];
+        $mandateRef = $orgPrefix . $customer['customer_number'];
     } else {
-        $prefix = 'HVM' . date('Ymd');
+        $prefix = $orgPrefix . date('Ymd');
         $stmt = $pdo->prepare(
             'SELECT COUNT(*) AS c FROM sepa_mandates WHERE tenant_id = ? AND mandate_reference LIKE ?'
         );

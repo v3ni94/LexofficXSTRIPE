@@ -1,12 +1,14 @@
 <?php
 /**
- * Seitengerüst im verbindlichen CI der Hausverwaltung Müller GmbH (Skill hvm-ci).
+ * Seitengerüst. Für die Hausverwaltung Müller GmbH wird das verbindliche
+ * HVM-Corporate-Design (Skill hvm-ci) angezeigt (Logo, Kennlinie,
+ * Pflichtangaben), gesteuert über organizations.use_hvm_ci. Andere Firmen
+ * im selben Portal bekommen einen neutralen Aufbau ohne fremdes CI: nur
+ * der eigene Firmenname, keine erfundenen Logos oder Pflichtangaben.
  *
- * Farben, Schrift und Logo sind zentral in assets/css/style.css als
- * CSS-Variablen hinterlegt (Abschnitt 2 und 3 des CI-Handbuchs). Die
- * HVM-Kennlinie (vierfarbiges Band, Abschnitt 5.1) wird hier als Balken
- * über Kopf- und Fußzeile jeder Seite ausgegeben. Logo: assets/img/logo.jpg
- * (offizielle Datei aus dem CI-Handbuch, 1320 x 1143 px).
+ * Farben/Schrift für das HVM-Design sind in assets/css/style.css als
+ * CSS-Variablen hinterlegt (Abschnitt 2 und 3 des CI-Handbuchs). Logo:
+ * assets/img/logo.jpg (offizielle Datei aus dem CI-Handbuch, 1320x1143 px).
  */
 
 declare(strict_types=1);
@@ -18,8 +20,14 @@ if (get_included_files()[0] === __FILE__) {
 
 function layout_header(string $title, ?array $ctx = null): void
 {
+    $useHvmCi = $ctx && !empty($ctx['use_hvm_ci']);
+    $orgName = $ctx['org_name'] ?? null;
     $logoPath = APP_ROOT . '/assets/img/logo.jpg';
-    $hasLogo = is_file($logoPath);
+    $hasLogo = $useHvmCi && is_file($logoPath);
+
+    $titleSuffix = $useHvmCi ? 'Hausverwaltung Müller GmbH' : ($orgName ?? 'SEPA-Portal');
+    $brandName = $useHvmCi ? 'Hausverwaltung Müller GmbH' : ($orgName ?? 'SEPA-Portal');
+    $brandMarkText = $useHvmCi ? 'HVM' : mb_strtoupper(mb_substr($brandName, 0, 3));
     ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -27,21 +35,23 @@ function layout_header(string $title, ?array $ctx = null): void
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= e($title) ?> | SEPA-Portal | Hausverwaltung Müller GmbH</title>
+    <title><?= e($title) ?> | SEPA-Portal | <?= e($titleSuffix) ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
+<?php if ($useHvmCi): ?>
 <div class="hvm-kennlinie" aria-hidden="true"></div>
+<?php endif; ?>
 <header class="site-header">
     <div class="header-inner">
         <a class="brand" href="dashboard.php">
             <?php if ($hasLogo): ?>
-                <img src="assets/img/logo.jpg" alt="Hausverwaltung Müller GmbH" class="brand-logo">
+                <img src="assets/img/logo.jpg" alt="<?= e($brandName) ?>" class="brand-logo">
             <?php else: ?>
-                <span class="brand-mark">HVM</span>
+                <span class="brand-mark"><?= e($brandMarkText) ?></span>
             <?php endif; ?>
             <span class="brand-text">
-                <span class="brand-name">Hausverwaltung Müller GmbH</span>
+                <span class="brand-name"><?= e($brandName) ?></span>
                 <span class="brand-sub">SEPA-Portal</span>
             </span>
         </a>
@@ -56,6 +66,7 @@ function layout_header(string $title, ?array $ctx = null): void
                 <a href="team.php">Team</a>
                 <a href="settings.php">Einstellungen</a>
             <?php endif; ?>
+            <a href="companies.php">Firmen</a>
         </nav>
         <div class="user-menu">
             <span class="user-email"><?= e($ctx['display_name'] ?: $ctx['email']) ?></span>
@@ -72,16 +83,24 @@ function layout_header(string $title, ?array $ctx = null): void
     <?php
 }
 
-function layout_footer(): void
+function layout_footer(?array $ctx = null): void
 {
+    $useHvmCi = $ctx && !empty($ctx['use_hvm_ci']);
+    $orgName = $ctx['org_name'] ?? 'SEPA-Portal';
     ?>
 </main>
 <footer class="site-footer">
+    <?php if ($useHvmCi): ?>
     <div class="hvm-kennlinie hvm-kennlinie-footer" aria-hidden="true"></div>
     <div class="footer-inner">
         <span>Hausverwaltung Müller GmbH | Rheinpromenade 13 | 40789 Monheim am Rhein</span>
         <span>Amtsgericht Düsseldorf, HRB 104762 | Geschäftsführer: Timo Müller | www.muellerhv.de</span>
     </div>
+    <?php else: ?>
+    <div class="footer-inner">
+        <span><?= e($orgName) ?> | SEPA-Portal</span>
+    </div>
+    <?php endif; ?>
 </footer>
 </body>
 </html>

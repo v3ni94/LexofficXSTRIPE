@@ -193,4 +193,4 @@ layout_header('Einzüge', $ctx);
     </div>
     <?php endif; ?>
 </div>
-<?php layout_footer(); ?>
+<?php layout_footer($ctx); ?>

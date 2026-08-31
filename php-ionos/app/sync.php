@@ -48,6 +48,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
             'lex_total_pages'  => 1,
             'collected'        => [], // gesammelte {id, voucherNumber, voucherStatus} aus 'listing'
             'proc_index'       => 0,
+            'contact_cache'    => [], // contactId => Kontaktdaten, vermeidet Mehrfachabrufe im selben Lauf
             'result'           => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
             'recheck_ids'      => null,
         ];
@@ -109,7 +110,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
 
         while ($processed < $batchSize && $cursor['proc_index'] < count($list)) {
             $voucher = $list[$cursor['proc_index']];
-            $isNew = _sync_process_voucher($tenantId, $voucher, $lex);
+            $isNew = _sync_process_voucher($tenantId, $voucher, $lex, $cursor['contact_cache']);
             $cursor['result']['synced']++;
             $cursor['result'][$isNew ? 'new' : 'updated']++;
             $cursor['proc_index']++;
@@ -233,13 +234,14 @@ function sync_invoices(string $tenantId, LexofficeClient $lex): array
     $pdo = db();
     $result = ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0];
     $seenLexIds = [];
+    $contactCache = [];
 
     foreach ($lex->getOpenInvoices() as $voucher) {
         if (empty($voucher['id'])) {
             continue;
         }
         $seenLexIds[] = $voucher['id'];
-        $isNew = _sync_process_voucher($tenantId, $voucher, $lex);
+        $isNew = _sync_process_voucher($tenantId, $voucher, $lex, $contactCache);
         $result['synced']++;
         $result[$isNew ? 'new' : 'updated']++;
     }
@@ -311,8 +313,13 @@ function _voucher_sort_key(string $voucherNumber): int
     return (int)substr($digits, 0, 15);
 }
 
-/** Einen Voucher aus der Lexoffice-Liste in die Datenbank übernehmen. Gibt true zurück, wenn neu angelegt. */
-function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient $lex): bool
+/**
+ * Einen Voucher aus der Lexoffice-Liste in die Datenbank übernehmen. Gibt
+ * true zurück, wenn neu angelegt. $contactCache spart wiederholte
+ * Lexoffice-Kontaktabrufe, wenn mehrere Rechnungen im selben Lauf zum
+ * gleichen Kunden gehören (z.B. mehrere offene Monate desselben Mieters).
+ */
+function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient $lex, array &$contactCache): bool
 {
     $pdo = db();
     $voucherId = $voucher['id'];
@@ -323,7 +330,7 @@ function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient
     $contactName = _sync_extract_contact_name($detail);
     $contactId = $detail['address']['contactId'] ?? null;
     if ($contactId) {
-        $customerId = _sync_upsert_customer($tenantId, $contactId, $contactName, $lex);
+        $customerId = _sync_upsert_customer($tenantId, $contactId, $contactName, $lex, $contactCache);
     }
 
     // --- Rechnungsfelder ---
@@ -387,8 +394,13 @@ function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient
     return true;
 }
 
-function _sync_upsert_customer(string $tenantId, string $contactId, string $fallbackName, LexofficeClient $lex): string
-{
+function _sync_upsert_customer(
+    string $tenantId,
+    string $contactId,
+    string $fallbackName,
+    LexofficeClient $lex,
+    array &$contactCache
+): string {
     $pdo = db();
     $stmt = $pdo->prepare(
         'SELECT * FROM customers WHERE tenant_id = ? AND lexoffice_contact_id = ?'
@@ -396,10 +408,17 @@ function _sync_upsert_customer(string $tenantId, string $contactId, string $fall
     $stmt->execute([$tenantId, $contactId]);
     $existing = $stmt->fetch();
 
-    try {
-        $contact = $lex->getContact($contactId);
-    } catch (Throwable $e) {
-        $contact = [];
+    if (array_key_exists($contactId, $contactCache)) {
+        // Dieser Kontakt wurde in diesem Lauf bereits abgerufen (z.B. weil
+        // eine andere Rechnung desselben Kunden vorher verarbeitet wurde).
+        $contact = $contactCache[$contactId];
+    } else {
+        try {
+            $contact = $lex->getContact($contactId);
+        } catch (Throwable $e) {
+            $contact = [];
+        }
+        $contactCache[$contactId] = $contact;
     }
 
     $name = _sync_extract_customer_name($contact) ?: $fallbackName;

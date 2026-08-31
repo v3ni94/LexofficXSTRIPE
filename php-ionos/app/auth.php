@@ -30,7 +30,7 @@ function current_user(): ?array
 
     $stmt = db()->prepare(
         'SELECT u.id AS user_id, u.email, u.display_name,
-                o.id AS org_id, o.name AS org_name,
+                o.id AS org_id, o.name AS org_name, o.mandate_prefix, o.use_hvm_ci,
                 o.onboarding_completed, o.onboarding_step,
                 m.role
          FROM users u
@@ -75,7 +75,7 @@ function require_role(array $roles): array
         echo '<div class="card"><h1>Kein Zugriff</h1>'
            . '<p>Diese Funktion steht nur Administratoren zur Verfügung.</p>'
            . '<p><a class="btn" href="dashboard.php">Zurück zum Dashboard</a></p></div>';
-        layout_footer();
+        layout_footer($ctx);
         exit;
     }
     return $ctx;
@@ -117,8 +117,13 @@ function auth_login(string $email, string $password): bool
  * Registrierung: legt User, Organisation, Owner-Mitgliedschaft und
  * leeren Integrations-Datensatz an. Gibt Fehlermeldung oder null zurück.
  */
-function auth_register(string $email, string $password, string $orgName, ?string $displayName): ?string
-{
+function auth_register(
+    string $email,
+    string $password,
+    string $orgName,
+    ?string $displayName,
+    string $mandatePrefix
+): ?string {
     $email = mb_strtolower(trim($email));
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return 'Bitte eine gültige E-Mail-Adresse angeben.';
@@ -128,6 +133,10 @@ function auth_register(string $email, string $password, string $orgName, ?string
     }
     if (trim($orgName) === '') {
         return 'Bitte einen Organisationsnamen angeben.';
+    }
+    [$mandatePrefix, $prefixError] = validate_mandate_prefix($mandatePrefix);
+    if ($prefixError) {
+        return $prefixError;
     }
 
     $pdo = db();
@@ -145,8 +154,8 @@ function auth_register(string $email, string $password, string $orgName, ?string
         $pdo->prepare('INSERT INTO users (id, email, password_hash, display_name) VALUES (?, ?, ?, ?)')
             ->execute([$userId, $email, password_hash($password, PASSWORD_DEFAULT), $displayName ?: null]);
 
-        $pdo->prepare('INSERT INTO organizations (id, name) VALUES (?, ?)')
-            ->execute([$orgId, trim($orgName)]);
+        $pdo->prepare('INSERT INTO organizations (id, name, mandate_prefix, use_hvm_ci) VALUES (?, ?, ?, 0)')
+            ->execute([$orgId, trim($orgName), $mandatePrefix]);
 
         $pdo->prepare('INSERT INTO organization_members (id, organization_id, user_id, role) VALUES (?, ?, ?, ?)')
             ->execute([uuid4(), $orgId, $userId, 'owner']);
@@ -165,6 +174,90 @@ function auth_register(string $email, string $password, string $orgName, ?string
     $_SESSION['user_id'] = $userId;
     $_SESSION['org_id']  = $orgId;
     return null;
+}
+
+/**
+ * Neue Firma (Organisation) für einen bereits angemeldeten Nutzer anlegen.
+ * Der Nutzer wird automatisch Inhaber. Eigene, leere Lexoffice-/Stripe-
+ * Integration, vollständig getrennt von seinen anderen Firmen. Erhält nie
+ * das HVM-Design (das bleibt der ursprünglichen Organisation vorbehalten).
+ *
+ * @return array{org_id:?string,error:?string}
+ */
+function create_company(string $userId, string $orgName, string $mandatePrefix): array
+{
+    $orgName = trim($orgName);
+    if ($orgName === '') {
+        return ['org_id' => null, 'error' => 'Bitte einen Firmennamen angeben.'];
+    }
+    [$mandatePrefix, $prefixError] = validate_mandate_prefix($mandatePrefix);
+    if ($prefixError) {
+        return ['org_id' => null, 'error' => $prefixError];
+    }
+
+    $pdo = db();
+
+    $stmt = $pdo->prepare('SELECT 1 FROM organizations WHERE mandate_prefix = ?');
+    $stmt->execute([$mandatePrefix]);
+    if ($stmt->fetch()) {
+        return ['org_id' => null, 'error' => "Das Mandatspräfix \"$mandatePrefix\" wird bereits verwendet."];
+    }
+
+    $pdo->beginTransaction();
+    try {
+        $orgId = uuid4();
+        $pdo->prepare('INSERT INTO organizations (id, name, mandate_prefix, use_hvm_ci) VALUES (?, ?, ?, 0)')
+            ->execute([$orgId, $orgName, $mandatePrefix]);
+        $pdo->prepare('INSERT INTO organization_members (id, organization_id, user_id, role) VALUES (?, ?, ?, ?)')
+            ->execute([uuid4(), $orgId, $userId, 'owner']);
+        $pdo->prepare('INSERT INTO integrations (id, tenant_id) VALUES (?, ?)')
+            ->execute([uuid4(), $orgId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        error_log('Firma anlegen fehlgeschlagen: ' . $e->getMessage());
+        return ['org_id' => null, 'error' => 'Firma konnte nicht angelegt werden.'];
+    }
+
+    return ['org_id' => $orgId, 'error' => null];
+}
+
+/** Mandatspräfix normalisieren und prüfen (2-10 Zeichen, nur Großbuchstaben/Ziffern). */
+function validate_mandate_prefix(string $raw): array
+{
+    $prefix = strtoupper(trim($raw));
+    if (!preg_match('/^[A-Z0-9]{2,10}$/', $prefix)) {
+        return [$prefix, 'Mandatspräfix muss 2 bis 10 Buchstaben/Ziffern enthalten (z.B. "HVM" oder "TM").'];
+    }
+    return [$prefix, null];
+}
+
+/** In eine andere Firma wechseln, sofern der Nutzer dort Mitglied ist. */
+function switch_company(string $userId, string $orgId): bool
+{
+    $stmt = db()->prepare(
+        'SELECT 1 FROM organization_members WHERE user_id = ? AND organization_id = ?'
+    );
+    $stmt->execute([$userId, $orgId]);
+    if (!$stmt->fetch()) {
+        return false;
+    }
+    $_SESSION['org_id'] = $orgId;
+    return true;
+}
+
+/** Alle Firmen (Organisationen) auflisten, in denen der Nutzer Mitglied ist. */
+function list_user_companies(string $userId): array
+{
+    $stmt = db()->prepare(
+        'SELECT o.id, o.name, o.mandate_prefix, m.role
+         FROM organization_members m
+         JOIN organizations o ON o.id = m.organization_id
+         WHERE m.user_id = ?
+         ORDER BY o.name ASC'
+    );
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
 }
 
 function auth_logout(): void

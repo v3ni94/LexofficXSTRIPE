@@ -8,6 +8,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE IF NOT EXISTS organizations (
     id                    CHAR(36)     NOT NULL PRIMARY KEY,
     name                  VARCHAR(255) NOT NULL,
+    mandate_prefix        VARCHAR(10)  NOT NULL DEFAULT '', -- Präfix für SEPA-Mandatsreferenzen dieser Firma
+    use_hvm_ci            TINYINT(1)   NOT NULL DEFAULT 0,  -- nur für die Hausverwaltung Müller GmbH selbst
     onboarding_completed  TINYINT(1)   NOT NULL DEFAULT 0,
     onboarding_step       INT          NOT NULL DEFAULT 0,
     created_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

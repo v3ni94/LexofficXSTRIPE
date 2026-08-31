@@ -20,6 +20,17 @@ require_once __DIR__ . '/mandates.php';
 class CollectionException extends RuntimeException {}
 
 /**
+ * Platzhalter-Kontakt-E-Mail für Stripe, falls der Kunde keine E-Mail
+ * hinterlegt hat (Stripe verlangt für das SEPA-Mandat eine E-Mail-Adresse).
+ * Firmenunabhängig aus der Portal-Domain abgeleitet, statt fest verdrahtet.
+ */
+function _fallback_contact_email(): string
+{
+    $host = parse_url((string)config('base_url'), PHP_URL_HOST);
+    return 'noreply@' . ($host ?: 'example.invalid');
+}
+
+/**
  * Kunde und IBAN sofort bei Stripe registrieren (SEPA-Zahlungsmethode
  * anlegen und anhängen), OHNE eine Zahlung auszulösen. Wird beim
  * Hinterlegen einer IBAN aufgerufen (customers.php, sepa-pflegen.php),
@@ -60,7 +71,7 @@ function register_iban_with_stripe(string $tenantId, string $customerId, string 
         return ['registered' => true, 'reason' => null];
     }
 
-    $contactEmail = $customer['email'] ?: 'noreply@muellerhv.de';
+    $contactEmail = $customer['email'] ?: _fallback_contact_email();
 
     $stripeCustomer = $stripe->findOrCreateCustomer(
         $customer['name'],
@@ -166,7 +177,7 @@ function _load_and_validate(string $tenantId, string $invoiceId): array
     return [$invoice, $customer, $iban];
 }
 
-function _build_collection_description(array $invoice, array $customer): string
+function _build_collection_description(string $tenantId, array $invoice, array $customer): string
 {
     $keywordSepa = $invoice['keyword_sepa'];
     if (!$keywordSepa && $invoice['line_items_json']) {
@@ -176,7 +187,10 @@ function _build_collection_description(array $invoice, array $customer): string
     if (!$keywordSepa) {
         $keywordSepa = 'Sonstiges';
     }
-    return build_description($invoice['voucher_number'], $customer['customer_number'], $keywordSepa);
+    $stmt = db()->prepare('SELECT name FROM organizations WHERE id = ?');
+    $stmt->execute([$tenantId]);
+    $orgName = (string)($stmt->fetchColumn() ?: 'SEPA-Einzug');
+    return build_description($invoice['voucher_number'], $customer['customer_number'], $keywordSepa, $orgName);
 }
 
 /** Stripe-Aufrufe für einen Einzug ausführen. Gibt [customer, paymentMethod, paymentIntent] zurück. */
@@ -190,7 +204,7 @@ function _execute_stripe_collection(
     string $description,
     int $amountCents
 ): array {
-    $contactEmail = $customer['email'] ?: 'noreply@muellerhv.de';
+    $contactEmail = $customer['email'] ?: _fallback_contact_email();
 
     if (!empty($mandate['stripe_customer_id']) && !empty($mandate['stripe_payment_method_id'])) {
         // Kunde wurde bereits bei Stripe registriert (z.B. beim Hinterlegen
@@ -248,7 +262,7 @@ function submit_collection(string $tenantId, string $invoiceId, ?string $schedul
     $pdo = db();
     [$invoice, $customer, $iban] = _load_and_validate($tenantId, $invoiceId);
     $mandate = get_or_create_mandate($tenantId, $customer['id'], $iban['id']);
-    $description = _build_collection_description($invoice, $customer);
+    $description = _build_collection_description($tenantId, $invoice, $customer);
     $amountCents = (int)round((float)$invoice['total_gross_amount'] * 100);
 
     $collectionId = uuid4();

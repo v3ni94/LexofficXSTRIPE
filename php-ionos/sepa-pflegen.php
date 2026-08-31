@@ -112,4 +112,4 @@ layout_header('SEPA Pflegen', $ctx);
         </form>
     <?php endif; ?>
 </div>
-<?php layout_footer(); ?>
+<?php layout_footer($ctx); ?>

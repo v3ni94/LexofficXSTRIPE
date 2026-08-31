@@ -116,7 +116,7 @@ if (!empty($_GET['syncing']) && isset($_SESSION[$syncCursorKey])) {
         }, 300);
     </script>
     <?php
-    layout_footer();
+    layout_footer($ctx);
     exit;
 }
 
@@ -274,4 +274,4 @@ layout_header('Rechnungen', $ctx);
     </div>
     <?php endif; ?>
 </div>
-<?php layout_footer(); ?>
+<?php layout_footer($ctx); ?>

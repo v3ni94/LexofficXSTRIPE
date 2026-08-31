@@ -162,4 +162,4 @@ layout_header('Abgleich', $ctx);
     <?php endif; ?>
     <?php endif; ?>
 </div>
-<?php layout_footer(); ?>
+<?php layout_footer($ctx); ?>

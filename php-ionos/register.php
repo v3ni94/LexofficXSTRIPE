@@ -19,7 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_POST['email'] ?? '',
         $_POST['password'] ?? '',
         $_POST['org_name'] ?? '',
-        trim($_POST['display_name'] ?? '') ?: null
+        trim($_POST['display_name'] ?? '') ?: null,
+        $_POST['mandate_prefix'] ?? ''
     );
     if ($error === null) {
         redirect('onboarding.php');
@@ -40,6 +41,12 @@ layout_header('Registrieren');
             <label for="org_name">Organisation / Gesellschaft</label>
             <input type="text" id="org_name" name="org_name" required
                    value="<?= e($_POST['org_name'] ?? '') ?>">
+            <label for="mandate_prefix">Mandatspräfix (2-10 Zeichen, z.B. "HVM" oder "TM")</label>
+            <input type="text" id="mandate_prefix" name="mandate_prefix" required maxlength="10"
+                   pattern="[A-Za-z0-9]{2,10}" style="text-transform: uppercase;"
+                   value="<?= e($_POST['mandate_prefix'] ?? '') ?>">
+            <p class="hint">Wird als Anfang der SEPA-Mandatsreferenz Ihrer Kunden verwendet
+                (z.B. "HVM10045"). Nach der Einrichtung nicht mehr änderbar.</p>
             <label for="display_name">Ihr Name (optional)</label>
             <input type="text" id="display_name" name="display_name"
                    value="<?= e($_POST['display_name'] ?? '') ?>">

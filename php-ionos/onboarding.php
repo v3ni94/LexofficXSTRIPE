@@ -89,4 +89,4 @@ Lastschrifteinzug offener Rechnungen. Bitte die folgenden Schritte abschließen.
 <?php if ((int)$ctx['onboarding_completed']): ?>
 <p><a class="btn btn-secondary" href="dashboard.php">Zum Dashboard</a></p>
 <?php endif; ?>
-<?php layout_footer(); ?>
+<?php layout_footer($ctx); ?>

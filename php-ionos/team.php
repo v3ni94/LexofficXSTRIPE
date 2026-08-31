@@ -258,4 +258,4 @@ layout_header('Team', $ctx);
     </div>
     <?php endif; ?>
 </div>
-<?php layout_footer(); ?>
+<?php layout_footer($ctx); ?>
