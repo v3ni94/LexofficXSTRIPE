@@ -29,6 +29,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'Fällige terminierte Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen.',
                 $result['submitted'], $result['failed']
             ));
+
+        } elseif ($action === 'sync_status') {
+            $result = sync_collection_statuses($tenantId);
+            flash_set('success', sprintf(
+                'Statusabgleich: %d geprüft, %d eingezogen, %d fehlgeschlagen, %d unverändert.',
+                $result['checked'], $result['succeeded'], $result['failed'], $result['unchanged']
+            ));
+
+        } elseif ($action === 'submit_all_ready') {
+            $result = submit_all_ready_collections($tenantId);
+            flash_set('success', sprintf(
+                'Sammel-Einzug: %d von %d Rechnungen eingereicht, %d fehlgeschlagen.',
+                $result['submitted'], $result['candidates'], $result['failed']
+            ));
         }
     } catch (Throwable $e) {
         flash_set('error', 'Fehler: ' . $e->getMessage());
@@ -71,6 +85,14 @@ $stmt = $pdo->prepare(
 $stmt->execute([$tenantId]);
 $dueCount = (int)$stmt->fetchColumn();
 
+$stmt = $pdo->prepare(
+    "SELECT COUNT(*) FROM payment_collections WHERE tenant_id = ? AND stripe_status = 'processing'"
+);
+$stmt->execute([$tenantId]);
+$processingCount = (int)$stmt->fetchColumn();
+
+$ready = count_ready_for_collection($tenantId);
+
 layout_header('Einzüge', $ctx);
 ?>
 <h1>SEPA-Einzüge</h1>
@@ -85,7 +107,28 @@ layout_header('Einzüge', $ctx);
                 Fällige terminierte Einzüge jetzt einreichen<?= $dueCount > 0 ? " ($dueCount)" : '' ?>
             </button>
         </form>
+        <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="sync_status">
+            <button type="submit" class="btn btn-secondary"<?= $processingCount === 0 ? ' disabled' : '' ?>>
+                Status mit Stripe abgleichen<?= $processingCount > 0 ? " ($processingCount)" : '' ?>
+            </button>
+        </form>
     </div>
+    <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
+        <form method="post"
+              onsubmit="return confirm('Achtung: Löst echte SEPA-Lastschriften aus.\n\n<?= $ready['count'] ?> Rechnung(en) mit insgesamt <?= e(format_eur($ready['amount'])) ?> werden jetzt bei Stripe eingezogen.\n\nWirklich fortfahren?')">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="submit_all_ready">
+            <button type="submit" class="btn btn-danger"<?= $ready['count'] === 0 ? ' disabled' : '' ?>>
+                Alle bereiten Einzüge jetzt einreichen<?= $ready['count'] > 0 ? " ({$ready['count']}, " . format_eur($ready['amount']) . ')' : '' ?>
+            </button>
+        </form>
+    </div>
+    <p class="hint">"Status mit Stripe abgleichen" prüft laufende Einzüge (nur Lesezugriff, kein Geld
+        bewegt sich) und aktualisiert Erfolg/Fehlschlag. Erkennt keine spätere Rücklastschrift (dafür
+        muss der Stripe-Webhook eingerichtet sein, siehe Einstellungen). "Alle bereiten Einzüge jetzt
+        einreichen" löst echte Lastschriften für alle offenen Rechnungen mit hinterlegter IBAN aus.</p>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <a class="btn <?= $filter === '' ? '' : 'btn-secondary' ?> btn-sm" href="collections.php">Alle</a>
         <?php foreach ($allowedFilters as $f): ?>

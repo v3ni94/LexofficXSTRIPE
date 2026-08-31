@@ -339,6 +339,139 @@ function reschedule_collection(string $tenantId, string $collectionId, string $n
 }
 
 /**
+ * Status laufender Einzüge ("processing") bei Stripe abfragen und lokal
+ * nachziehen. Reiner Lesezugriff, löst keine Zahlung aus.
+ *
+ * WICHTIG: Erkennt nur Erfolg/Fehlschlag anhand des PaymentIntent-Status.
+ * Eine spätere SEPA-Rücklastschrift (Kunde widerruft die bereits als
+ * erfolgreich gemeldete Lastschrift bei seiner Bank, bis zu 8 Wochen
+ * später möglich) wird NICHT durch Abfragen des PaymentIntent erkannt,
+ * sondern nur über den Stripe-Webhook (charge.dispute.created). Bitte
+ * daher zusätzlich sicherstellen, dass der Stripe-Webhook eingerichtet
+ * ist (Einstellungen-Seite zeigt die Webhook-URL).
+ *
+ * @return array{checked:int,succeeded:int,failed:int,unchanged:int}
+ */
+function sync_collection_statuses(string $tenantId): array
+{
+    $pdo = db();
+    $stmt = $pdo->prepare(
+        "SELECT * FROM payment_collections
+         WHERE tenant_id = ? AND stripe_status = 'processing' AND stripe_payment_intent_id IS NOT NULL"
+    );
+    $stmt->execute([$tenantId]);
+    $pending = $stmt->fetchAll();
+
+    $result = ['checked' => count($pending), 'succeeded' => 0, 'failed' => 0, 'unchanged' => 0];
+    if (!$pending) {
+        return $result;
+    }
+
+    $stripe = _get_stripe_client($tenantId);
+
+    foreach ($pending as $collection) {
+        try {
+            $pi = $stripe->getPaymentIntent($collection['stripe_payment_intent_id']);
+        } catch (Throwable $e) {
+            error_log(
+                'Statusabgleich für PaymentIntent ' . $collection['stripe_payment_intent_id']
+                . ' fehlgeschlagen: ' . $e->getMessage()
+            );
+            $result['unchanged']++;
+            continue;
+        }
+
+        $piStatus = $pi['status'] ?? '';
+
+        if ($piStatus === 'succeeded') {
+            $pdo->prepare(
+                "UPDATE payment_collections SET stripe_status = 'succeeded', completed_at = NOW() WHERE id = ?"
+            )->execute([$collection['id']]);
+            $pdo->prepare("UPDATE invoices SET collection_status = 'collected' WHERE id = ?")
+                ->execute([$collection['invoice_id']]);
+            $result['succeeded']++;
+        } elseif (in_array($piStatus, ['canceled', 'requires_payment_method'], true)) {
+            $reason = $pi['last_payment_error']['message'] ?? 'Lastschrift konnte nicht eingezogen werden.';
+            $pdo->prepare(
+                "UPDATE payment_collections SET stripe_status = 'failed', failure_reason = ?, completed_at = NOW() WHERE id = ?"
+            )->execute([$reason, $collection['id']]);
+            $pdo->prepare("UPDATE invoices SET collection_status = 'failed' WHERE id = ?")
+                ->execute([$collection['invoice_id']]);
+            $result['failed']++;
+        } else {
+            $result['unchanged']++;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * Alle offenen Rechnungen mit aktiver IBAN und gewünschtem SEPA-Einzug
+ * sofort bei Stripe einreichen (Sammel-Einzug). Nur Rechnungen, die noch
+ * nicht im Einzugsverfahren sind. Löst echte Lastschriften aus, daher nur
+ * über einen Button mit Bestätigungsabfrage auslösen.
+ *
+ * @return array{submitted:int,failed:int,candidates:int}
+ */
+function submit_all_ready_collections(string $tenantId): array
+{
+    $pdo = db();
+    $stmt = $pdo->prepare(
+        "SELECT i.id FROM invoices i
+         JOIN customers c ON c.id = i.customer_id
+         WHERE i.tenant_id = ?
+           AND i.lexoffice_status IN ('open', 'overdue')
+           AND i.collection_status NOT IN ('in_collection', 'scheduled', 'collected')
+           AND c.sepa_debit_enabled = 1
+           AND EXISTS (
+               SELECT 1 FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1
+           )"
+    );
+    $stmt->execute([$tenantId]);
+    $invoiceIds = array_column($stmt->fetchAll(), 'id');
+
+    $submitted = 0;
+    $failed = 0;
+    foreach ($invoiceIds as $invoiceId) {
+        try {
+            submit_collection($tenantId, $invoiceId);
+            $submitted++;
+        } catch (Throwable $e) {
+            error_log('Sammel-Einzug für Rechnung ' . $invoiceId . ' fehlgeschlagen: ' . $e->getMessage());
+            $failed++;
+        }
+    }
+
+    return ['submitted' => $submitted, 'failed' => $failed, 'candidates' => count($invoiceIds)];
+}
+
+/**
+ * Anzahl und Summe der Rechnungen ermitteln, die submit_all_ready_collections()
+ * jetzt einreichen würde. Für die Anzeige/Bestätigung vor dem Auslösen.
+ *
+ * @return array{count:int,amount:string}
+ */
+function count_ready_for_collection(string $tenantId): array
+{
+    $stmt = db()->prepare(
+        "SELECT COUNT(*) AS cnt, COALESCE(SUM(i.total_gross_amount), 0) AS total
+         FROM invoices i
+         JOIN customers c ON c.id = i.customer_id
+         WHERE i.tenant_id = ?
+           AND i.lexoffice_status IN ('open', 'overdue')
+           AND i.collection_status NOT IN ('in_collection', 'scheduled', 'collected')
+           AND c.sepa_debit_enabled = 1
+           AND EXISTS (
+               SELECT 1 FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1
+           )"
+    );
+    $stmt->execute([$tenantId]);
+    $row = $stmt->fetch();
+    return ['count' => (int)$row['cnt'], 'amount' => (string)$row['total']];
+}
+
+/**
  * Fällige terminierte Einzüge bei Stripe einreichen.
  *
  * Ohne $tenantId (Aufruf über cron.php): alle Organisationen.

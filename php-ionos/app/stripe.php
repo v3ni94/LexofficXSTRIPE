@@ -80,6 +80,12 @@ class StripeClient
         return $this->request('GET', '/account');
     }
 
+    /** Aktuellen Status eines PaymentIntent abrufen (reiner Lesezugriff). */
+    public function getPaymentIntent(string $paymentIntentId): array
+    {
+        return $this->request('GET', '/payment_intents/' . rawurlencode($paymentIntentId));
+    }
+
     /** Kunde per Metadaten suchen, sonst anlegen. */
     public function findOrCreateCustomer(string $name, ?string $email, array $metadata): array
     {
