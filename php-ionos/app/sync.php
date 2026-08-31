@@ -142,6 +142,32 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
             }
             $cursor['recheck_ids'] = array_column($stmt->fetchAll(), 'id');
 
+            // Sofortkorrektur, BEVOR die langsame Einzelprüfung (unten,
+            // ein Lexoffice-Aufruf pro Rechnung) überhaupt beginnt: Für
+            // jede der oben gefundenen Rechnungen steht schon jetzt fest,
+            // dass sie in Lexoffice nicht mehr offen/überfällig ist – auch
+            // ohne den genauen neuen Status zu kennen. Damit Dashboard und
+            // "Rechnungen" sofort korrekte Zahlen zeigen (statt erst nach
+            // der oft minutenlangen Einzelprüfung bei großen Beständen),
+            // wird der Sammelstatus 'not_open' in EINEM SQL-Befehl gesetzt.
+            // collection_status nur anfassen, wenn dort noch der
+            // Standardwert 'open' steht – laufende Stripe-Vorgänge
+            // (in_collection/scheduled/...) werden dadurch nicht angetastet,
+            // deren Status verwaltet die Einzugslogik bzw. der Stripe-
+            // Webhook. Die anschließende Einzelprüfung (unten) ergänzt
+            // danach in Ruhe den genauen Lexoffice-Status (bezahlt,
+            // storniert, ...) für die Anzeige.
+            if ($cursor['recheck_ids']) {
+                $placeholders2 = implode(',', array_fill(0, count($cursor['recheck_ids']), '?'));
+                $pdo->prepare(
+                    "UPDATE invoices
+                     SET lexoffice_status = 'not_open',
+                         collection_status = IF(collection_status = 'open', 'none', collection_status),
+                         last_synced_at = NOW()
+                     WHERE tenant_id = ? AND id IN ($placeholders2)"
+                )->execute(array_merge([$tenantId], $cursor['recheck_ids']));
+            }
+
             $cursor['phase'] = 'recheck';
             $cursor['collected'] = []; // Session klein halten, wird nicht mehr gebraucht
         }

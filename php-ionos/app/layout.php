@@ -132,6 +132,7 @@ function lexoffice_status_label(string $status): string
         'voided'   => 'Storniert',
         'cancelled'=> 'Storniert',
         'draft'    => 'Entwurf',
+        'not_open' => 'wird noch geprüft',
     ];
     return $map[$status] ?? $status;
 }
