@@ -3,6 +3,7 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/iban.php';
+require_once __DIR__ . '/app/customer_settings.php';
 
 $ctx = require_onboarded();
 $tenantId = $ctx['org_id'];
@@ -66,24 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'IBAN für ' . $customer['name'] . ' hinterlegt.');
 
         } elseif ($action === 'set_sepa_debit') {
-            if ((int)$customer['is_walk_in']) {
-                throw new RuntimeException(
-                    'Für Laufkunden (Sammel-Kundennummer) kann der SEPA-Einzug hier nicht '
-                    . 'ein- oder ausgeschaltet werden, da diese Nummer von mehreren Personen geteilt wird.'
-                );
-            }
-            $enabled = ($_POST['sepa_debit_enabled'] ?? '1') === '1' ? 1 : 0;
-            // Gilt für alle Datensätze mit derselben Kundennummer, nicht nur
-            // diesen einen Kontakt-Datensatz.
-            $stmt = $pdo->prepare(
-                'UPDATE customers SET sepa_debit_enabled = ? WHERE tenant_id = ? AND customer_number = ?'
-            );
-            $stmt->execute([$enabled, $tenantId, $customer['customer_number']]);
+            $enabled = ($_POST['sepa_debit_enabled'] ?? '1') === '1';
+            $updated = set_customer_sepa_debit($tenantId, $customerId, $enabled);
 
             flash_set('success', sprintf(
                 'SEPA-Einzug für Kundennummer %s auf "%s" gesetzt. Gilt automatisch für alle '
                 . 'aktuellen und künftigen Rechnungen dieses Kunden.',
-                $customer['customer_number'],
+                $updated['customer_number'],
                 $enabled ? 'Ja' : 'Nein'
             ));
 
