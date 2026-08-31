@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__)) {
+if (get_included_files()[0] === __FILE__) {
     http_response_code(403);
     exit('Forbidden');
 }
