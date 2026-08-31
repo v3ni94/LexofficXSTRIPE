@@ -11,6 +11,13 @@
  * aber leicht überschreitet ("Page temporarily unavailable"). Der
  * aufrufende Code (invoices.php) ruft diese Funktion wiederholt auf, bis
  * done=true zurückkommt.
+ *
+ * Reihenfolge: Zuerst wird in der Phase 'listing' günstig (nur Rechnungs-
+ * nummer/ID, keine Einzelabrufe) die komplette offene/überfällige Liste
+ * geholt und nach Rechnungsnummer absteigend sortiert. Erst danach beginnt
+ * die eigentliche Verarbeitung (Phase 'processing') mit den teuren
+ * Einzelabrufen pro Rechnung. So stehen bei einem Abbruch mitten im Lauf
+ * bereits die neuesten Rechnungen aktuell in der Datenbank.
  */
 
 declare(strict_types=1);
@@ -34,11 +41,13 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
 {
     if ($cursor === null) {
         $cursor = [
-            'phase'            => 'open',
+            'phase'            => 'listing',
+            'listing_status'   => 'open',
             'lex_page'         => 0,
-            'lex_index'        => 0,
             'lex_page_content' => null, // gecachter Inhalt der aktuellen Lexoffice-Seite
             'lex_total_pages'  => 1,
+            'collected'        => [], // gesammelte {id, voucherNumber, voucherStatus} aus 'listing'
+            'proc_index'       => 0,
             'run_started_at'   => date('Y-m-d H:i:s'),
             'result'           => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
             'recheck_ids'      => null,
@@ -48,41 +57,69 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
     $pdo = db();
     $processed = 0;
 
-    if ($cursor['phase'] === 'open' || $cursor['phase'] === 'overdue') {
-        $voucherStatus = $cursor['phase'];
+    // --- Phase 'listing': günstig (nur Nummer/ID, keine Einzelabrufe) die
+    //     komplette offene/überfällige Liste holen, dann absteigend nach
+    //     Rechnungsnummer sortieren ---
+    if ($cursor['phase'] === 'listing') {
+        $voucherStatus = $cursor['listing_status'];
 
-        // Eine Lexoffice-Seite nur EINMAL abrufen und über mehrere Batches
-        // hinweg zwischenspeichern. Würde man dieselbe Seite bei jedem
-        // Batch erneut abrufen, könnten sich Position/Inhalt zwischen den
-        // Aufrufen verschieben (z.B. weil zwischenzeitlich eine Rechnung
-        // bezahlt wurde und aus der offenen Liste verschwindet) und
-        // Rechnungen würden bei der Synchronisation übersprungen.
+        // Eine Lexoffice-Seite nur EINMAL abrufen und zwischenspeichern.
+        // Würde man dieselbe Seite bei jedem Batch erneut abrufen, könnten
+        // sich Position/Inhalt zwischen den Aufrufen verschieben (z.B. weil
+        // zwischenzeitlich eine Rechnung bezahlt wurde) und Einträge würden
+        // übersprungen oder doppelt gezählt.
         if ($cursor['lex_page_content'] === null) {
             $page = $lex->getInvoiceVouchersPage($voucherStatus, $cursor['lex_page']);
             $cursor['lex_page_content'] = $page['content'] ?? [];
             $cursor['lex_total_pages'] = (int)($page['totalPages'] ?? 1);
         }
-        $content = $cursor['lex_page_content'];
 
-        while ($processed < $batchSize && $cursor['lex_index'] < count($content)) {
-            $voucher = $content[$cursor['lex_index']];
+        foreach ($cursor['lex_page_content'] as $voucher) {
             if (!empty($voucher['id'])) {
-                $isNew = _sync_process_voucher($tenantId, $voucher, $lex);
-                $cursor['result']['synced']++;
-                $cursor['result'][$isNew ? 'new' : 'updated']++;
+                $cursor['collected'][] = [
+                    'id'            => $voucher['id'],
+                    'voucherNumber' => $voucher['voucherNumber'] ?? $voucher['id'],
+                    'voucherStatus' => $voucher['voucherStatus'] ?? $voucherStatus,
+                ];
             }
-            $cursor['lex_index']++;
+        }
+
+        $cursor['lex_page_content'] = null;
+        $cursor['lex_page']++;
+        if ($cursor['lex_page'] >= $cursor['lex_total_pages']) {
+            $cursor['lex_page'] = 0;
+            if ($voucherStatus === 'open') {
+                $cursor['listing_status'] = 'overdue';
+            } else {
+                // Beide Status vollständig aufgelistet: sortieren und mit
+                // der eigentlichen Verarbeitung beginnen.
+                usort($cursor['collected'], function (array $a, array $b): int {
+                    return _voucher_sort_key($b['voucherNumber']) <=> _voucher_sort_key($a['voucherNumber']);
+                });
+                $cursor['phase'] = 'processing';
+            }
+        }
+
+        return ['done' => false, 'cursor' => $cursor, 'result' => $cursor['result']];
+    }
+
+    // --- Phase 'processing': die sortierte Liste abarbeiten (neueste
+    //     Rechnungsnummer zuerst), hier passieren die teuren Einzelabrufe ---
+    if ($cursor['phase'] === 'processing') {
+        $list = $cursor['collected'];
+
+        while ($processed < $batchSize && $cursor['proc_index'] < count($list)) {
+            $voucher = $list[$cursor['proc_index']];
+            $isNew = _sync_process_voucher($tenantId, $voucher, $lex);
+            $cursor['result']['synced']++;
+            $cursor['result'][$isNew ? 'new' : 'updated']++;
+            $cursor['proc_index']++;
             $processed++;
         }
 
-        if ($cursor['lex_index'] >= count($content)) {
-            $cursor['lex_index'] = 0;
-            $cursor['lex_page_content'] = null;
-            $cursor['lex_page']++;
-            if ($cursor['lex_page'] >= $cursor['lex_total_pages']) {
-                $cursor['lex_page'] = 0;
-                $cursor['phase'] = $voucherStatus === 'open' ? 'overdue' : 'recheck';
-            }
+        if ($cursor['proc_index'] >= count($list)) {
+            $cursor['phase'] = 'recheck';
+            $cursor['collected'] = []; // Session klein halten, wird nicht mehr gebraucht
         }
 
         return ['done' => false, 'cursor' => $cursor, 'result' => $cursor['result']];
@@ -201,6 +238,23 @@ function sync_invoices(string $tenantId, LexofficeClient $lex): array
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Vergleichbaren Sortierschlüssel aus einer Rechnungsnummer extrahieren
+ * (alle enthaltenen Ziffern zusammengenommen), damit "RE04878" > "RE12"
+ * und "RE-2026-045" > "RE-2025-999" korrekt als neuer eingestuft werden,
+ * statt nur alphabetisch zu vergleichen.
+ */
+function _voucher_sort_key(string $voucherNumber): int
+{
+    $digits = preg_replace('/\D/', '', $voucherNumber);
+    if ($digits === '') {
+        return 0;
+    }
+    // Auf eine handhabbare Länge begrenzen, falls ungewöhnlich viele Ziffern
+    // vorkommen (verhindert Überlauf bei (int)-Cast).
+    return (int)substr($digits, 0, 15);
+}
 
 /** Einen Voucher aus der Lexoffice-Liste in die Datenbank übernehmen. Gibt true zurück, wenn neu angelegt. */
 function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient $lex): bool
