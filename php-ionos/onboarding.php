@@ -9,7 +9,7 @@ $pdo = db();
 
 $stmt = $pdo->prepare('SELECT * FROM integrations WHERE tenant_id = ?');
 $stmt->execute([$tenantId]);
-$integration = $stmt->fetch() ?: ['lexoffice_connected' => 0, 'stripe_connected' => 0, 'lexoffice_last_sync' => null];
+$integration = $stmt->fetch() ?: ['lexoffice_connected' => 0, 'stripe_connected' => 0, 'lexoffice_last_sync' => null, 'lexoffice_last_verified_at' => null, 'stripe_last_verified_at' => null];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
@@ -28,8 +28,8 @@ $hasCompanyData = !empty($ctx['creditor_identifier']) && !empty($ctx['street']) 
 
 $steps = [
     [
-        'title' => 'Firmenaccount angelegt',
-        'desc'  => 'Konto und Firma "' . $ctx['org_name'] . '" wurden erstellt, Zwei-Faktor-Authentifizierung ist aktiv.',
+        'title' => 'Konto erstellt',
+        'desc'  => 'Konto und Firma "' . $ctx['org_name'] . '" wurden angelegt, Zwei-Faktor-Authentifizierung ist aktiv.',
         'done'  => true,
         'link'  => null,
     ],
@@ -44,14 +44,20 @@ if (billing_enabled() && !(int)$ctx['billing_exempt']) {
 }
 $steps[] = [
     'title' => 'Lexware Office verbinden',
-    'desc'  => 'API-Key aus Lexware Office (Public API) hinterlegen, damit offene Rechnungen abgerufen werden können.',
+    'desc'  => 'API-Schlüssel aus Lexware Office (Einstellungen > Erweiterungen > Public API) hinterlegen. Die Anleitung finden Sie direkt in den Einstellungen.',
     'done'  => (bool)(int)$integration['lexoffice_connected'],
     'link'  => can_manage_settings($ctx) ? 'settings.php' : null,
 ];
 $steps[] = [
     'title' => 'Stripe verbinden',
-    'desc'  => 'Eigenes Stripe-Konto anbinden (Secret Key und Webhook-Secret) für den SEPA-Einzug.',
+    'desc'  => 'Eigenes Stripe-Konto anbinden (Secret Key, optional Webhook-Secret). Stripe führt die SEPA-Lastschriften aus.',
     'done'  => (bool)(int)$integration['stripe_connected'],
+    'link'  => can_manage_settings($ctx) ? 'settings.php' : null,
+];
+$steps[] = [
+    'title' => 'Verbindungen prüfen',
+    'desc'  => 'Beide Verbindungen wurden gegen die jeweilige API getestet. Unter Einstellungen sehen Sie Konto, Modus und Zeitpunkt der letzten Prüfung.',
+    'done'  => !empty($integration['lexoffice_last_verified_at']) && !empty($integration['stripe_last_verified_at']),
     'link'  => can_manage_settings($ctx) ? 'settings.php' : null,
 ];
 $steps[] = [
@@ -62,8 +68,8 @@ $steps[] = [
     'optional' => true,
 ];
 $steps[] = [
-    'title' => 'Erste Synchronisation',
-    'desc'  => 'Offene Rechnungen und Kunden aus Lexware Office übernehmen.',
+    'title' => 'Einrichtung abgeschlossen',
+    'desc'  => 'Erste Synchronisation der offenen Rechnungen und Kunden aus Lexware Office. Danach steht das Dashboard mit Einzugsübersicht bereit.',
     'done'  => !empty($integration['lexoffice_last_sync']),
     'link'  => $needsSubscription ? null : 'invoices.php',
 ];
@@ -76,7 +82,11 @@ layout_header('Einrichtung', $ctx);
 <p class="page-sub"><?= e(product_name()) ?> verbindet Ihre Rechnungs- und Kundendaten aus Lexware Office mit Ihrem
     Stripe-Konto für den SEPA-Lastschrifteinzug. Bitte die folgenden Schritte abschließen.</p>
 
+<?php $doneCount = count(array_filter($steps, fn($s) => $s['done'])); ?>
 <div class="card">
+    <p class="hint" style="margin-top:0"><strong><?= $doneCount ?> von <?= count($steps) ?> Schritten</strong> erledigt.
+        <?php if (!$allDone): ?>Nach Abschluss finden Sie alles Weitere im Dashboard.<?php endif; ?></p>
+    <progress value="<?= $doneCount ?>" max="<?= count($steps) ?>" style="width:100%;height:10px" aria-label="Fortschritt der Einrichtung"></progress>
     <ul class="steps">
         <?php foreach ($steps as $i => $step): ?>
         <li>

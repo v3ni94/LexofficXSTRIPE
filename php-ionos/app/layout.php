@@ -11,6 +11,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/integrations.php';
+
 if (get_included_files()[0] === __FILE__) {
     http_response_code(403);
     exit('Forbidden');
@@ -104,6 +106,11 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
     <?php foreach (flash_pull() as $msg): ?>
         <div class="flash flash-<?= e($msg['type']) ?>"><?= e($msg['message']) ?></div>
     <?php endforeach; ?>
+    <?php if ($ctx && integration_stripe_test_mode($ctx['org_id'])): ?>
+        <div class="flash flash-warn testmode-banner"><strong>TESTMODUS.</strong> Diese Firma ist mit einem Stripe-Testschlüssel verbunden. Es werden keine echten Lastschriften ausgeführt.
+            <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Live-Schlüssel hinterlegen</a><?php endif; ?>
+        </div>
+    <?php endif; ?>
     <?php if ($ctx && billing_enabled() && !subscription_allows_operation($ctx) && current_script() !== 'subscription.php'): ?>
         <div class="flash flash-info">Für diese Firma liegt noch kein aktives Abonnement vor.
             <?php if ($ctx['role'] === 'owner'): ?><a href="subscription.php">Abonnement jetzt abschließen</a><?php else: ?>Bitte wenden Sie sich an den Inhaber des Firmenaccounts.<?php endif; ?>

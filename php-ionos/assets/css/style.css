@@ -455,3 +455,18 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 .footer-legal { border-top: 1px solid var(--color-border); }
 .footer-legal a { color: var(--hvm-anthracite); }
 .footer-disclaimer { color: var(--color-text-muted); }
+
+/* Testmodus-Banner (Stripe-Testschlüssel hinterlegt) */
+.flash-warn { background: #fff4d6; color: #7a5300; border-color: #e3ac48; }
+.testmode-banner { border-left: 6px solid #e3ac48; letter-spacing: 0.01em; }
+.testmode-banner a { color: inherit; text-decoration: underline; margin-left: 6px; }
+
+/* Schritt-für-Schritt-Anleitungen in den Einstellungen */
+.guide { margin: 12px 0 16px; padding: 14px 18px; background: var(--color-info-bg); border-radius: 8px; font-size: 0.93rem; }
+.guide summary { cursor: pointer; font-weight: 600; }
+.guide ol { margin: 10px 0 0 18px; padding: 0; }
+.guide li { margin: 4px 0; }
+.guide .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; background: rgba(255,255,255,0.7); padding: 1px 5px; border-radius: 4px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0 12px; font-size: 0.95rem; }
+.kv dt { color: var(--color-muted, #666); }
+.kv dd { margin: 0; }
