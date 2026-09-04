@@ -10,16 +10,16 @@
 <meta property="og:description" content="Hilfe-Übersicht zu Lexware-Einzug: Anleitungen zu Lexware Office und Stripe, Funktionen, Preise, FAQ, Ratgeber und Kontakt.">
 <meta property="og:url" content="https://lexware-einzug.de/hilfe">
 <meta property="og:type" content="article">
-<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png?v=20260904g">
+<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png?v=20260904h">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="de_DE">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#2E2D2E">
-<link rel="icon" href="/assets/img/favicon.svg?v=20260904g" type="image/svg+xml">
-<link rel="icon" href="/assets/img/favicon-32.png?v=20260904g" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260904g">
-<link rel="stylesheet" href="/assets/css/site.css?v=20260904g">
+<link rel="icon" href="/assets/img/favicon.svg?v=20260904h" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260904h" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260904h">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904h">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -82,8 +82,33 @@
 
   <section class="section">
     <div class="container">
+      <h2>Wo finde ich was?</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Diese Seite ist der Einstiegspunkt für alle Fragen rund um Lexware-Einzug. Die Anleitungen führen Sie Schritt für Schritt durch die Einrichtung der Verbindungen zu Lexware Office und Stripe. Die FAQ beantwortet kurze Einzelfragen zur Bedienung, zu Tarifen und zur Technik. Der Ratgeber liefert Hintergrundwissen zu SEPA-Lastschrift, Fristen und Buchhaltung. Die Seiten zu Funktionen, Preisen und Sicherheit beschreiben, was die Anwendung leistet, was sie kostet und wie Ihre Daten geschützt werden. Wenn Sie zum ersten Mal hier sind, beginnen Sie mit den folgenden fünf Schritten.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
       <div class="section-head">
-        <p class="eyebrow">Erste Schritte</p>
+        <p class="eyebrow">Schnellstart</p>
+        <h2>Die ersten fünf Schritte</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Konto anlegen</h3><p>Registrieren Sie einen Firmenaccount mit Ihrer geschäftlichen E-Mail-Adresse und richten Sie die Zwei-Faktor-Authentifizierung ein.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Lexware Office verbinden</h3><p>Erzeugen Sie in Lexware Office einen Public-API-Schlüssel und hinterlegen Sie ihn in Lexware-Einzug. Nach Angaben von Lexware ist derzeit der Tarif Lexware Office XL erforderlich, bitte im eigenen Konto prüfen.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Stripe verbinden</h3><p>Tragen Sie den Secret Key Ihres eigenen Stripe-Kontos ein und richten Sie den Webhook ein, damit Statusmeldungen zurückfließen. SEPA-Lastschrift muss in Stripe aktiviert sein.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Verbindungen prüfen</h3><p>Lexware-Einzug testet beide Schlüssel und zeigt an, ob Rechnungen aus Lexware Office geladen und Zahlungen an Stripe übergeben werden können.</p></div></li>
+        <li class="step"><span class="step-number">5</span><div><h3>Erster Einzug</h3><p>Wählen Sie eine offene Rechnung, hinterlegen Sie Mandat und IBAN des Kunden und lösen Sie den Einzug sofort oder terminiert aus. Den Status verfolgen Sie in der Einzugsübersicht.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Einrichtung</p>
         <h2>Anleitungen</h2>
         <span class="bar" aria-hidden="true"></span>
       </div>
@@ -119,16 +144,30 @@
       </div>
       <div class="tiles">
         <div class="tile"><h3>Häufige Fragen</h3><p>Antworten auf die häufigsten Fragen rund um Lexware Office, Stripe und den SEPA-Einzug.</p><p><a href="/faq">Zur FAQ</a></p></div>
-        <div class="tile"><h3>Ratgeber</h3><p>Hintergrundartikel zu Vorabankündigung, Mandatsreferenz und Gläubiger-Identifikationsnummer.</p><p><a href="/ratgeber/">Zum Ratgeber</a></p></div>
+        <div class="tile"><h3>Ratgeber</h3><p>Hintergrundartikel zu Vorabankündigung, Mandatsreferenz, Fristen und zur Verbuchung eingezogener Lastschriften.</p><p><a href="/ratgeber/">Zum Ratgeber</a></p></div>
       </div>
     </div>
   </section>
 
   <section class="section section-alt">
     <div class="container">
+      <h2>Typische Fragen beim Start</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <ul class="checklist">
+        <li><strong>Warum kann Lexware Office nicht selbst einziehen?</strong> Lexware Office stellt Rechnungen und verwaltet Zahlungen, führt aber keine Lastschriften aus. Den Hintergrund erläutert die Seite <a href="/lexware-sepa-einzug">Lexware SEPA Einzug</a>.</li>
+        <li><strong>Brauche ich ein eigenes Stripe-Konto?</strong> Ja. Der Einzug läuft über Ihr Stripe-Konto, die Beträge fließen an Sie. Lexware-Einzug hat keinen Zugriff auf Ihr Guthaben. Zur Einrichtung siehe die <a href="/anleitung/stripe-verbinden">Anleitung zur Stripe-Verbindung</a>.</li>
+        <li><strong>Wo finde ich den API-Schlüssel von Lexware Office?</strong> Im Bereich für Erweiterungen Ihres Lexware-Office-Kontos. Der Weg dorthin ist in der <a href="/anleitung/lexware-office-api">Anleitung zum API-Schlüssel</a> beschrieben.</li>
+        <li><strong>Was kostet die Nutzung?</strong> Der Tarif UNLIMITED START kostet als Einführungspreis 25,00 EUR netto je vier Wochen statt bisher 50,00 EUR, für Firmenaccounts bis 31.12.2026, mit unbegrenzten Einzügen und Mitarbeitern. Alle Preise netto zuzüglich Umsatzsteuer. Details unter <a href="/preise">Preise</a>.</li>
+        <li><strong>Wann ist eine Rechnung endgültig bezahlt?</strong> Erst nach erfolgreicher Rückmeldung von Stripe und Ablauf der Rückgabefristen. Weitere Antworten zu Status und Abläufen finden Sie in der <a href="/faq">FAQ</a>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
       <h2>Kontakt</h2>
       <span class="bar" aria-hidden="true"></span>
-      <p>Finden Sie hier keine passende Antwort, erreichen Sie uns per E-Mail unter <a href="mailto:info@mueller-holding.ag">info@mueller-holding.ag</a>.</p>
+      <p>Bleibt eine Frage offen, schreiben Sie uns an <a href="mailto:kontakt@mueller-holding.ag">kontakt@mueller-holding.ag</a>. Nennen Sie dabei bitte Ihren Firmennamen und, sofern vorhanden, die betroffene Rechnungs- oder Einzugsnummer, damit wir den Vorgang schnell zuordnen können. Zugangsdaten oder API-Schlüssel gehören nicht in eine E-Mail.</p>
       <div class="cta-row">
         <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="hilfe-bottom">Jetzt registrieren</a>
       </div>
@@ -149,7 +188,7 @@
         <ul>
           <li><a href="/impressum">Impressum</a></li>
           <li><a href="/datenschutz">Datenschutz</a></li>
-          <li><a href="/agb">AGB</a></li>
+          <li><a href="/agb">AGB</a></li><li><a href="/datenschutz#cookies" data-consent-open>Cookie-Einstellungen</a></li>
           <li><a href="/hilfe">Hilfe</a></li>
           <li><a href="/ratgeber/">Ratgeber</a></li>
           <li><a href="/sicherheit">Sicherheit</a></li>
@@ -164,7 +203,7 @@
   </div>
 </footer>
 
-<script src="/assets/js/site.js?v=20260904g" defer></script>
+<script src="/assets/js/site.js?v=20260904h" defer></script>
 <!--
   Timo Müller · Müller Holding AG
   In Liebe zu Charlotte und Christina.

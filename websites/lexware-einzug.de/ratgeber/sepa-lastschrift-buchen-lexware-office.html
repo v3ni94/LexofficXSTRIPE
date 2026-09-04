@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eingezogene Lastschriften in Lexware Office verbuchen</title>
+<meta name="description" content="Wie Zahlungseingänge aus Stripe-Lastschriften in Lexware Office als Rechnungszahlung erfasst werden: Auszahlungen, Sammelauszahlungen, Gebühren und Abstimmung.">
+<link rel="canonical" href="https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office">
+<meta property="og:title" content="Eingezogene Lastschriften in Lexware Office verbuchen">
+<meta property="og:description" content="Wie Zahlungseingänge aus Stripe-Lastschriften in Lexware Office als Rechnungszahlung erfasst werden: Auszahlungen, Sammelauszahlungen, Gebühren und Abstimmung.">
+<meta property="og:url" content="https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png?v=20260904h">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon.svg?v=20260904h" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260904h" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260904h">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904h">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://lexware-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Ratgeber",
+      "item": "https://lexware-einzug.de/ratgeber/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Eingezogene Lastschriften in Lexware Office verbuchen",
+      "item": "https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Eingezogene Lastschriften in Lexware Office verbuchen",
+  "description": "Wie Zahlungseingänge aus Stripe-Lastschriften in Lexware Office als Rechnungszahlung erfasst werden: Auszahlungen, Sammelauszahlungen, Gebühren und Abstimmung.",
+  "datePublished": "2026-09-04",
+  "author": {
+    "@type": "Organization",
+    "name": "Müller Holding AG"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Müller Holding AG"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office"
+  }
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen">Funktionen</a></li>
+        <li><a href="/preise">Preise</a></li>
+        <li><a href="/sicherheit">Sicherheit</a></li>
+        <li><a href="/hilfe">Hilfe</a></li>
+        <li><a href="/faq">FAQ</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+<li><a href="/ratgeber/">Ratgeber</a></li>
+<li aria-current="page">Eingezogene Lastschriften in Lexware Office verbuchen</li>
+  </ol>
+</nav>
+
+<main>
+
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Ratgeber</p>
+      <h1>Eingezogene Lastschriften in Lexware Office verbuchen</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Der Einzug läuft über Stripe, die Rechnung liegt in Lexware Office. Dieser Artikel zeigt, wie beides in der Buchhaltung sauber zusammenfindet.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <h2>Zwei Systeme, ein Zahlungsvorgang</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Bei einem Einzug mit Lexware-Einzug sind drei Beteiligte im Spiel. Lexware Office führt die Rechnung und später die Zahlung dazu. Stripe belastet das Konto Ihres Kunden per SEPA-Basislastschrift und schreibt den Betrag zunächst Ihrem Stripe-Guthaben gut. Lexware-Einzug verbindet beide Seiten, löst den Einzug aus und meldet den Status zurück. Auf Ihrem Geschäftskonto erscheint der Betrag jedoch erst, wenn Stripe das Guthaben auszahlt.</p>
+      <p>Genau hier entsteht in der Praxis die häufigste Verwirrung: Auf dem Kontoauszug steht eine Überweisung von Stripe, nicht die Zahlung des einzelnen Kunden. Die Bankbuchung in Lexware Office lässt sich deshalb nicht ohne Weiteres einer einzelnen Rechnung zuordnen. Wer den Zusammenhang kennt, kann die Vorgänge trotzdem zügig und nachvollziehbar erfassen.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2>Wann gilt die Rechnung als bezahlt?</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Aus Sicht der Forderung ist die Rechnung beglichen, sobald Stripe die Lastschrift als erfolgreich meldet und die Rückgabefrist ohne Widerspruch abläuft. Lexware-Einzug zeigt Ihnen diesen Status je Einzug an. Ob Sie die Rechnung in Lexware Office bereits zu diesem Zeitpunkt oder erst mit dem Geldeingang auf dem Geschäftskonto als bezahlt kennzeichnen, ist eine Frage Ihrer Buchhaltungsorganisation und der Abstimmung mit Ihrer Steuerberatung.</p>
+      <p>Viele Anwender bevorzugen den zweiten Weg, weil Lexware Office die Zahlung dann direkt aus dem Bankumsatz heraus zuordnen kann. Der erste Weg liefert dagegen ein aktuelleres Bild der offenen Posten, erfordert aber, dass die spätere Stripe-Auszahlung nicht noch einmal als Zahlungseingang auf die Rechnung gebucht wird. Entscheiden Sie sich für eine Variante und wenden Sie sie durchgehend an.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Die Stripe-Auszahlung auf dem Geschäftskonto</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Stripe überweist eingezogene Beträge nach einem festgelegten Rhythmus auf Ihr Geschäftskonto. Dabei sind die Stripe-Gebühren bereits abgezogen. Auf dem Kontoauszug erscheint also nicht der Rechnungsbetrag, sondern der Rechnungsbetrag abzüglich der Gebühr. Die Höhe der Gebühr entnehmen Sie Ihrem Stripe-Konto, sie hängt von Ihrer Vereinbarung mit Stripe ab.</p>
+      <p>Ordnen Sie in Lexware Office nur den ausgezahlten Betrag der Rechnung zu, bleibt in Höhe der Gebühr ein Rest offen. Damit die Rechnung vollständig ausgeglichen ist, wird der Bankumsatz in der Regel aufgeteilt: der volle Rechnungsbetrag als Zahlung auf die Rechnung und die Gebühr als Aufwand für Zahlungsdienstleistungen. Lexware Office bietet bei der Zuordnung von Bankumsätzen die Möglichkeit, einen Umsatz auf mehrere Positionen zu verteilen. Die genaue Bezeichnung des Aufwandskontos und die umsatzsteuerliche Behandlung der Gebühr sollten Sie mit Ihrer Steuerberatung festlegen, da dies vom Kontenrahmen und von Ihrer steuerlichen Situation abhängt.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2>Sammelauszahlungen mehrerer Einzüge</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Häufig fasst Stripe mehrere Einzüge eines Tages oder mehrerer Tage zu einer einzigen Auszahlung zusammen. Auf dem Geschäftskonto steht dann ein Betrag, der zu mehreren Rechnungen und mehreren Gebühren gehört. Für die Zuordnung benötigen Sie die Aufschlüsselung der Auszahlung, die Stripe im Dashboard und als Export bereitstellt. Sie zeigt, welche Zahlungen mit welchen Gebühren in die Auszahlung eingeflossen sind.</p>
+      <p>Mit dieser Aufschlüsselung teilen Sie den Bankumsatz in Lexware Office auf die enthaltenen Rechnungen auf und erfassen die Summe der Gebühren als eine Aufwandsposition. Hilfreich ist es, die Auszahlungsreferenz von Stripe im Buchungstext zu vermerken. So lässt sich später jederzeit nachvollziehen, welche Auszahlung welche Rechnungen abgedeckt hat. Lexware-Einzug unterstützt diesen Schritt, indem in der Einzugsübersicht Rechnungsnummer, Kunde und Betrag je Einzug sichtbar bleiben.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Rücklastschriften in der Buchhaltung</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Widerspricht ein Kunde der Lastschrift oder ist das Konto nicht gedeckt, meldet Stripe eine Rücklastschrift. War die Rechnung in Lexware Office bereits als bezahlt gekennzeichnet, muss die Zahlung storniert oder ausgeglichen werden, damit die Forderung wieder als offen erscheint. Zusätzlich fallen für Rücklastschriften meist eigene Gebühren an, die Stripe mit späteren Auszahlungen verrechnet. Auch diese gehören als Aufwand in die Buchhaltung. Lexware-Einzug setzt den Einzugsstatus entsprechend zurück, sodass Sie erkennen, welche Rechnung erneut anzumahnen oder einzuziehen ist.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2>Empfehlungen für die Abstimmung</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <ul class="checklist">
+        <li>Legen Sie einmalig mit Ihrer Steuerberatung fest, zu welchem Zeitpunkt eine per Lastschrift eingezogene Rechnung als bezahlt gilt.</li>
+        <li>Buchen Sie den Bruttobetrag der Rechnung als Zahlung und die Stripe-Gebühr getrennt als Aufwand, nicht den Nettoeingang als Teilzahlung.</li>
+        <li>Nutzen Sie die Auszahlungsaufschlüsselung von Stripe für Sammelauszahlungen und vermerken Sie die Auszahlungsreferenz.</li>
+        <li>Prüfen Sie monatlich, ob die Summe der Stripe-Auszahlungen zuzüglich Gebühren mit den in Lexware-Einzug erfolgreich abgeschlossenen Einzügen übereinstimmt.</li>
+        <li>Bewahren Sie die Stripe-Abrechnungen als Belege für die Gebühren auf.</li>
+      </ul>
+      <p>Dieser Artikel beschreibt einen gängigen Weg, ersetzt jedoch keine steuerliche Beratung. Kontenbezeichnungen, Buchungssätze und die Behandlung der Gebühren richten sich nach Ihrem Kontenrahmen und Ihrer individuellen Situation. Wie der Einzug selbst funktioniert, beschreibt die Seite <a href="/lexware-office-lastschrift">Lexware Office Lastschrift einziehen</a>. Welche Fristen zwischen Einreichung und endgültigem Zahlungseingang liegen, erläutert der Artikel <a href="/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten">Fristen und Vorlaufzeiten bei der SEPA-Basislastschrift</a>.</p>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="ratgeber-buchen">Jetzt registrieren</a>
+        <a href="/ratgeber/" class="btn btn-outline">Weitere Ratgeberartikel</a>
+      </div>
+    </div>
+  </section>
+</article>
+
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum">Impressum</a></li>
+          <li><a href="/datenschutz">Datenschutz</a></li>
+          <li><a href="/agb">AGB</a></li><li><a href="/datenschutz#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/hilfe">Hilfe</a></li>
+          <li><a href="/ratgeber/">Ratgeber</a></li>
+          <li><a href="/sicherheit">Sicherheit</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260904h" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

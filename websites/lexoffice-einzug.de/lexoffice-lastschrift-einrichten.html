@@ -11,15 +11,15 @@
 <meta property="og:description" content="Schritt für Schritt vom bestehenden lexoffice-Konto zum ersten SEPA-Einzug: Registrierung, Lexware Office und Stripe verbinden, Mandat, Einzug, Status.">
 <meta property="og:url" content="https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten">
 <meta property="og:type" content="article">
-<meta property="og:image" content="https://lexoffice-einzug.de/assets/img/og-image.png?v=20260904g">
+<meta property="og:image" content="https://lexoffice-einzug.de/assets/img/og-image.png?v=20260904h">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="de_DE">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="/assets/img/favicon.svg?v=20260904g" type="image/svg+xml">
-<link rel="icon" href="/assets/img/favicon-32.png?v=20260904g" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260904g">
-<link rel="stylesheet" href="/assets/css/site.css?v=20260904g">
+<link rel="icon" href="/assets/img/favicon.svg?v=20260904h" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260904h" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260904h">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904h">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -81,10 +81,10 @@
   <section class="section section-alt">
     <div class="container">
       <ol class="steps">
-        <li class="step"><span class="step-number">1</span><div><h3>Voraussetzungen prüfen</h3><p>Sie benötigen ein bestehendes Lexware-Office-Konto (früher lexoffice), einen eigenen Stripe-Account und gültige SEPA-Mandate der Kunden, die Sie einziehen möchten. Für den Zugriff auf die Public API prüfen Sie außerdem, welchen Lexware-Office-Tarif Sie aktuell nutzen.</p></div></li>
+        <li class="step"><span class="step-number">1</span><div><h3>Voraussetzungen prüfen</h3><p>Sie benötigen ein bestehendes Lexware-Office-Konto (früher lexoffice), einen eigenen Stripe-Account und gültige SEPA-Mandate der Kunden, die Sie einziehen möchten. Für den Zugriff auf die Public API ist nach Angaben von Lexware derzeit der Tarif Lexware Office XL erforderlich, bitte im eigenen Konto prüfen.</p></div></li>
         <li class="step"><span class="step-number">2</span><div><h3>Account bei Lexware-Einzug anlegen</h3><p>Sie registrieren sich mit Ihrer geschäftlichen E-Mail-Adresse und hinterlegen grundlegende Firmendaten.</p></div></li>
         <li class="step"><span class="step-number">3</span><div><h3>Zwei-Faktor-Authentifizierung einrichten</h3><p>Die Registrierung verlangt zwingend eine Authenticator-App. Sie scannen einen QR-Code, hinterlegen die App und speichern die angezeigten Recovery-Codes an einem sicheren Ort, bevor Sie fortfahren.</p></div></li>
-        <li class="step"><span class="step-number">4</span><div><h3>Lexware Office verbinden</h3><p>Sie hinterlegen einen API-Schlüssel aus der Public API Ihres Lexware-Office-Kontos. Der Schlüssel wird verschlüsselt gespeichert und Ihnen danach nicht erneut angezeigt. Die genauen Schritte dazu beschreibt die Seite zur Public API.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Lexware Office verbinden</h3><p>Sie hinterlegen einen API-Schlüssel aus der Public API Ihres Lexware-Office-Kontos. Der Schlüssel wird verschlüsselt gespeichert und Ihnen danach nicht erneut angezeigt. Die genauen Schritte dazu beschreibt die Seite <a href="/lexoffice-public-api-xl">Public API und Tarif XL</a>.</p></div></li>
         <li class="step"><span class="step-number">5</span><div><h3>Stripe verbinden</h3><p>Sie hinterlegen den Secret Key Ihres Stripe-Kontos unter Einstellungen. Über diese Verbindung wickelt Stripe später die eigentlichen SEPA-Lastschriften ab.</p></div></li>
         <li class="step"><span class="step-number">6</span><div><h3>Erste Synchronisierung abwarten</h3><p>Lexware-Einzug ruft offene und überfällige Rechnungen sowie die zugehörigen Kunden aus Lexware Office ab. Der Abgleich läuft serverseitig und inkrementell, bereits bezahlte oder stornierte Rechnungen werden dabei erkannt.</p></div></li>
         <li class="step"><span class="step-number">7</span><div><h3>IBAN und SEPA-Mandat je Kunde hinterlegen</h3><p>Unter "SEPA Pflegen" tragen Sie die IBAN eines Kunden ein und erzeugen ein SEPA-Mandatsdokument mit automatisch vergebener Mandatsreferenz. Die Unterschrift des Kunden erfassen Sie im Anschluss, danach aktivieren Sie den SEPA-Einzug für diesen Kunden.</p></div></li>
@@ -107,10 +107,10 @@
 
       <div class="cta-row" style="margin:32px 0;">
         <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="einrichten-mid">Jetzt registrieren</a>
-        <a class="btn btn-outline" href="/lexoffice-lastschrift-einrichten">So funktioniert es</a>
+        <a class="btn btn-outline" href="/ratgeber/">Zum Ratgeber</a>
       </div>
 
-      <p>Ausführliche Hintergründe zum SEPA-Mandat liefert die Seite <a href="/lexoffice-sepa-mandat">SEPA-Mandat bei lexoffice</a>, zur Verbindung mit Stripe die Seite <a href="/lexoffice-stripe-lastschrift">lexoffice mit Stripe verbinden</a> und zum allgemeinen Lastschriftverfahren <a href="/lexoffice-lastschrift">lexoffice Lastschriftverfahren</a>.</p>
+      <p>Ausführliche Hintergründe zum SEPA-Mandat liefert die Seite <a href="/lexoffice-sepa-mandat">SEPA-Mandat bei lexoffice</a>, zur Verbindung mit Stripe die Seite <a href="/lexoffice-stripe-lastschrift">lexoffice mit Stripe verbinden</a> und zum allgemeinen Lastschriftverfahren <a href="/lexoffice-lastschrift">lexoffice Lastschriftverfahren</a>. Ein Vorgehen für die Umstellung Ihres bestehenden Kundenstamms beschreibt der Ratgeber <a href="/ratgeber/sepa-mandat-einholen-bestandskunden">SEPA-Mandat bei Bestandskunden einholen</a>.</p>
 
       <div class="cta-row" style="margin:32px 0 12px;">
         <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="einrichten-final">Jetzt registrieren</a>
@@ -132,6 +132,7 @@
       <a href="/impressum">Impressum</a>
       <a href="/datenschutz">Datenschutz</a>
       <a href="/agb">AGB</a>
+      <a href="/datenschutz#cookies" data-consent-open>Cookie-Einstellungen</a>
       <a href="/ratgeber/">Ratgeber</a>
       <a href="/lexoffice-heisst-jetzt-lexware-office">Umbenennung</a>
       <a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de">Login</a>
@@ -141,7 +142,7 @@
   </div>
 </footer>
 
-<script src="/assets/js/site.js?v=20260904g" defer></script>
+<script src="/assets/js/site.js?v=20260904h" defer></script>
 <!--
   Timo Müller · Müller Holding AG
   In Liebe zu Charlotte und Christina.

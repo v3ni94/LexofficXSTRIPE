@@ -523,3 +523,13 @@ main p a:not(.btn):hover, main li a:not(.btn):hover { color: var(--anthracite); 
 .price-card .plan-was { color: #B9B8B6; font-size: 0.98rem; margin: 0 0 2px; }
 .price-card .plan-was s { color: #D6D5D3; text-decoration-thickness: 2px; text-decoration-color: var(--gold); font-weight: 600; }
 .price-note { font-size: 0.85rem; color: var(--gray-text); margin: 14px 0 0; max-width: 640px; }
+
+/* Einwilligungsbanner */
+.consent { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; padding: 16px; background: rgba(46, 45, 46, 0.55); backdrop-filter: blur(2px); }
+.consent-box { max-width: 760px; margin: 0 auto; background: var(--white); border-radius: 14px; border-top: 4px solid var(--gold); box-shadow: 0 18px 50px rgba(0,0,0,0.25); padding: 22px 26px; }
+.consent-title { margin: 0 0 8px; font-weight: 700; font-size: 1.05rem; color: var(--anthracite); }
+.consent-text { margin: 0 0 16px; font-size: 0.95rem; color: var(--gray-text); line-height: 1.55; }
+.consent-text a { color: var(--gold-text); text-decoration: underline; }
+.consent-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.consent-actions .btn { min-width: 160px; }
+@media (max-width: 600px) { .consent { padding: 10px; } .consent-box { padding: 18px; } .consent-actions .btn { flex: 1 1 100%; } }
