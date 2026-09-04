@@ -510,3 +510,10 @@ hr.hairline { border: none; border-top: 1px solid var(--hairline); margin: 40px 
 /* Textlinks im Inhalt sichtbar machen */
 main p a:not(.btn), main li a:not(.btn), main td a { color: var(--gold-dark); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 main p a:not(.btn):hover, main li a:not(.btn):hover { color: var(--anthracite); }
+
+/* Bildmarke: goldenes Euro auf Anthrazit-Kachel */
+.wordmark .mark, .footer-wordmark .mark {
+  width: 30px; height: 30px; border-radius: 8px; background: var(--anthracite); color: var(--gold);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 19px; line-height: 1; flex: none;
+}
+.footer-wordmark .mark { background: var(--gold); color: var(--anthracite); }
