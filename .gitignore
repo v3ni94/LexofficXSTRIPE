@@ -21,3 +21,4 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 php-ionos/app/config.php
+php-ionos/mail.log

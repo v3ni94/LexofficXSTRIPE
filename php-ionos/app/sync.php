@@ -1,13 +1,13 @@
 <?php
 /**
- * Lexoffice-Synchronisation: offene/überfällige Rechnungen und Kontakte
+ * Lexware-Office-Synchronisation: offene/überfällige Rechnungen und Kontakte
  * in die lokale Datenbank übernehmen. Portiert aus sync_service.py.
  *
  * sync_invoices_step() verarbeitet nur eine kleine, feste Anzahl Rechnungen
  * pro Aufruf und liefert einen Cursor zum Fortsetzen zurück. Das ist nötig,
  * weil Shared-Hosting-Umgebungen (z.B. IONOS) das Zeitlimit für einen
  * einzelnen HTTP-Request strikt begrenzen, ein kompletter Durchlauf über
- * viele Rechnungen mit gedrosselten Lexoffice-Aufrufen (max. ca. 2/s) das
+ * viele Rechnungen mit gedrosselten Lexware-Office-Aufrufen (max. ca. 2/s) das
  * aber leicht überschreitet ("Page temporarily unavailable"). Der
  * aufrufende Code (invoices.php) ruft diese Funktion wiederholt auf, bis
  * done=true zurückkommt.
@@ -44,7 +44,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
             'phase'            => 'listing',
             'listing_status'   => 'open',
             'lex_page'         => 0,
-            'lex_page_content' => null, // gecachter Inhalt der aktuellen Lexoffice-Seite
+            'lex_page_content' => null, // gecachter Inhalt der aktuellen Lexware-Office-Seite
             'lex_total_pages'  => 1,
             'collected'        => [], // gesammelte {id, voucherNumber, voucherStatus} aus 'listing'
             'proc_index'       => 0,
@@ -63,7 +63,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
     if ($cursor['phase'] === 'listing') {
         $voucherStatus = $cursor['listing_status'];
 
-        // Eine Lexoffice-Seite nur EINMAL abrufen und zwischenspeichern.
+        // Eine Lexware-Office-Seite nur EINMAL abrufen und zwischenspeichern.
         // Würde man dieselbe Seite bei jedem Batch erneut abrufen, könnten
         // sich Position/Inhalt zwischen den Aufrufen verschieben (z.B. weil
         // zwischenzeitlich eine Rechnung bezahlt wurde) und Einträge würden
@@ -119,7 +119,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
 
         if ($cursor['proc_index'] >= count($list)) {
             // Kandidaten für den Recheck jetzt bestimmen: lokale offene/
-            // überfällige Rechnungen, deren Lexoffice-ID NICHT in der gerade
+            // überfällige Rechnungen, deren Lexware-Office-ID NICHT in der gerade
             // aktuell abgerufenen Liste auftauchte. Ein reiner Zeitstempel-
             // Vergleich (frühere Version) konnte bei zwei sehr schnell
             // aufeinanderfolgenden Durchläufen innerhalb derselben Sekunde
@@ -144,9 +144,9 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
             $cursor['recheck_ids'] = array_column($stmt->fetchAll(), 'id');
 
             // Sofortkorrektur, BEVOR die langsame Einzelprüfung (unten,
-            // ein Lexoffice-Aufruf pro Rechnung) überhaupt beginnt: Für
+            // ein Lexware-Office-Aufruf pro Rechnung) überhaupt beginnt: Für
             // jede der oben gefundenen Rechnungen steht schon jetzt fest,
-            // dass sie in Lexoffice nicht mehr offen/überfällig ist – auch
+            // dass sie in Lexware Office nicht mehr offen/überfällig ist – auch
             // ohne den genauen neuen Status zu kennen. Damit Dashboard und
             // "Rechnungen" sofort korrekte Zahlen zeigen (statt erst nach
             // der oft minutenlangen Einzelprüfung bei großen Beständen),
@@ -156,7 +156,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
             // (in_collection/scheduled/...) werden dadurch nicht angetastet,
             // deren Status verwaltet die Einzugslogik bzw. der Stripe-
             // Webhook. Die anschließende Einzelprüfung (unten) ergänzt
-            // danach in Ruhe den genauen Lexoffice-Status (bezahlt,
+            // danach in Ruhe den genauen Lexware-Office-Status (bezahlt,
             // storniert, ...) für die Anzeige.
             if ($cursor['recheck_ids']) {
                 $placeholders2 = implode(',', array_fill(0, count($cursor['recheck_ids']), '?'));
@@ -177,7 +177,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
     }
 
     // --- Phase 'recheck': lokale offene/überfällige Rechnungen prüfen,
-    //     die in diesem Durchlauf nicht in Lexoffice gesehen wurden
+    //     die in diesem Durchlauf nicht in Lexware Office gesehen wurden
     //     (recheck_ids wurde beim Verlassen der 'processing'-Phase bereits
     //     bestimmt, siehe oben) ---
     while ($processed < $batchSize && $cursor['recheck_ids']) {
@@ -246,7 +246,7 @@ function sync_invoices(string $tenantId, LexofficeClient $lex): array
         $result[$isNew ? 'new' : 'updated']++;
     }
 
-    // Lokale offene/überfällige Rechnungen, deren Lexoffice-ID NICHT in der
+    // Lokale offene/überfällige Rechnungen, deren Lexware-Office-ID NICHT in der
     // gerade abgerufenen Liste auftauchte, erneut prüfen (bezahlt, storniert,
     // ...). Mengendifferenz statt Zeitstempelvergleich, siehe
     // sync_invoices_step() für die Begründung.
@@ -314,9 +314,9 @@ function _voucher_sort_key(string $voucherNumber): int
 }
 
 /**
- * Einen Voucher aus der Lexoffice-Liste in die Datenbank übernehmen. Gibt
+ * Einen Voucher aus der Lexware-Office-Liste in die Datenbank übernehmen. Gibt
  * true zurück, wenn neu angelegt. $contactCache spart wiederholte
- * Lexoffice-Kontaktabrufe, wenn mehrere Rechnungen im selben Lauf zum
+ * Lexware-Office-Kontaktabrufe, wenn mehrere Rechnungen im selben Lauf zum
  * gleichen Kunden gehören (z.B. mehrere offene Monate desselben Mieters).
  */
 function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient $lex, array &$contactCache): bool

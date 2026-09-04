@@ -114,7 +114,9 @@ if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli') {
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
-    session_name('HVMSEPASESSID');
+    ini_set('session.use_strict_mode', '1');   // keine fremd vorgegebenen Session-IDs annehmen
+    ini_set('session.use_only_cookies', '1');
+    session_name('LXEINZUGSESSID');
     session_start();
 }
 

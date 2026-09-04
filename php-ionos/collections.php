@@ -4,7 +4,10 @@ require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/collections.php';
 
-$ctx = require_onboarded();
+$ctx = require_subscription();
+if (!(int)$ctx['onboarding_completed']) {
+    redirect('onboarding.php');
+}
 $tenantId = $ctx['org_id'];
 $pdo = db();
 
@@ -15,33 +18,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if ($action === 'cancel') {
-            cancel_scheduled_collection($tenantId, $collectionId);
+            cancel_scheduled_collection($tenantId, $collectionId, $ctx);
             flash_set('success', 'Terminierter Einzug wurde storniert. Die Rechnung ist wieder offen.');
         } elseif ($action === 'reschedule') {
             $newDate = $_POST['new_date'] ?? '';
-            reschedule_collection($tenantId, $collectionId, $newDate);
+            reschedule_collection($tenantId, $collectionId, $newDate, $ctx);
             flash_set('success', 'Einzug wurde auf den ' . format_date($newDate) . ' umterminiert.');
 
         } elseif ($action === 'process_due') {
-            // Ersetzt den Cronjob: fällige terminierte Einzüge manuell auslösen.
-            $result = process_scheduled_collections($tenantId);
+            $result = process_scheduled_collections($tenantId, $ctx);
             flash_set('success', sprintf(
                 'Fällige terminierte Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen.',
                 $result['submitted'], $result['failed']
             ));
 
         } elseif ($action === 'sync_status') {
-            $result = sync_collection_statuses($tenantId);
+            $result = sync_collection_statuses($tenantId, $ctx);
             flash_set('success', sprintf(
                 'Statusabgleich: %d geprüft, %d eingezogen, %d fehlgeschlagen, %d unverändert.',
                 $result['checked'], $result['succeeded'], $result['failed'], $result['unchanged']
             ));
 
         } elseif ($action === 'submit_all_ready') {
-            $result = submit_all_ready_collections($tenantId);
-            flash_set('success', sprintf(
-                'Sammel-Einzug: %d von %d Rechnungen eingereicht, %d fehlgeschlagen.',
-                $result['submitted'], $result['candidates'], $result['failed']
+            $result = submit_all_ready_collections($tenantId, $ctx);
+            flash_set($result['failed'] > 0 ? 'info' : 'success', sprintf(
+                'Sammel-Einzug: %d von %d Rechnungen eingereicht (%s), %d fehlgeschlagen.%s',
+                $result['submitted'], $result['candidates'], format_eur_cents($result['amount_cents']), $result['failed'],
+                $result['errors'] ? ' Gründe: ' . implode(' | ', $result['errors']) : ''
             ));
         }
     } catch (Throwable $e) {
@@ -61,10 +64,12 @@ if (in_array($filter, $allowedFilters, true)) {
 }
 
 $stmt = $pdo->prepare(
-    "SELECT pc.*, i.voucher_number, i.contact_name, m.mandate_reference
+    "SELECT pc.*, i.voucher_number, i.contact_name, i.customer_id, m.mandate_reference,
+            u.email AS created_by_email, u.display_name AS created_by_name
      FROM payment_collections pc
      JOIN invoices i ON i.id = pc.invoice_id
      JOIN sepa_mandates m ON m.id = pc.mandate_id
+     LEFT JOIN users u ON u.id = pc.created_by_user_id
      WHERE $where
      ORDER BY pc.created_at DESC
      LIMIT 500"
@@ -72,7 +77,9 @@ $stmt = $pdo->prepare(
 $stmt->execute($params);
 $collections = $stmt->fetchAll();
 
-$suggest = new DateTimeImmutable('tomorrow');
+$preNotify = (int)$ctx['send_pre_notification'] === 1;
+$minLead = $preNotify ? max(1, (int)$ctx['pre_notification_days']) : 1;
+$suggest = (new DateTimeImmutable('today'))->modify('+' . $minLead . ' days');
 while ((int)$suggest->format('N') >= 6) {
     $suggest = $suggest->modify('+1 day');
 }
@@ -96,7 +103,7 @@ $ready = count_ready_for_collection($tenantId);
 layout_header('Einzüge', $ctx);
 ?>
 <h1>SEPA-Einzüge</h1>
-<p class="page-sub">Alle eingereichten, terminierten und abgeschlossenen Lastschriften</p>
+<p class="page-sub">Alle eingereichten, terminierten und abgeschlossenen Lastschriften mit auslösender Person</p>
 
 <div class="card">
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
@@ -115,6 +122,7 @@ layout_header('Einzüge', $ctx);
             </button>
         </form>
     </div>
+    <?php if (!$preNotify): ?>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <form method="post"
               onsubmit="return confirm('Achtung: Löst echte SEPA-Lastschriften aus.\n\n<?= $ready['count'] ?> Rechnung(en) mit insgesamt <?= e(format_eur($ready['amount'])) ?> werden jetzt bei Stripe eingezogen.\n\nWirklich fortfahren?')">
@@ -125,10 +133,11 @@ layout_header('Einzüge', $ctx);
             </button>
         </form>
     </div>
+    <?php else: ?>
+        <p class="hint">Vorabankündigung per E-Mail ist aktiv: Einzüge werden über "Rechnungen" terminiert (frühester Termin <?= $suggest->format('d.m.Y') ?>) und hier am Fälligkeitstag eingereicht.</p>
+    <?php endif; ?>
     <p class="hint">"Status mit Stripe abgleichen" prüft laufende Einzüge (nur Lesezugriff, kein Geld
-        bewegt sich) und aktualisiert Erfolg/Fehlschlag. Erkennt keine spätere Rücklastschrift (dafür
-        muss der Stripe-Webhook eingerichtet sein, siehe Einstellungen). "Alle bereiten Einzüge jetzt
-        einreichen" löst echte Lastschriften für alle offenen Rechnungen mit hinterlegter IBAN aus.</p>
+        bewegt sich). Eine spätere Rücklastschrift erkennt nur der Stripe-Webhook (siehe Einstellungen).</p>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <a class="btn <?= $filter === '' ? '' : 'btn-secondary' ?> btn-sm" href="collections.php">Alle</a>
         <?php foreach ($allowedFilters as $f): ?>
@@ -145,7 +154,7 @@ layout_header('Einzüge', $ctx);
             <thead>
                 <tr>
                     <th>Rechnung</th><th>Kunde</th><th class="num">Betrag</th>
-                    <th>Mandat</th><th>Status</th><th>Termin</th><th>Eingereicht</th><th>Aktionen</th>
+                    <th>Mandat</th><th>Status</th><th>Termin</th><th>Eingereicht</th><th>Ausgelöst von</th><th>Aktionen</th>
                 </tr>
             </thead>
             <tbody>
@@ -155,7 +164,7 @@ layout_header('Einzüge', $ctx);
                 ?>
                 <tr>
                     <td><?= e($c['voucher_number']) ?></td>
-                    <td><?= e($c['contact_name']) ?></td>
+                    <td><?php if ($c['customer_id']): ?><a href="customer.php?id=<?= e($c['customer_id']) ?>"><?= e($c['contact_name']) ?></a><?php else: ?><?= e($c['contact_name']) ?><?php endif; ?></td>
                     <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?></td>
                     <td><?= e($c['mandate_reference']) ?></td>
                     <td>
@@ -166,6 +175,7 @@ layout_header('Einzüge', $ctx);
                     </td>
                     <td><?= (int)$c['is_scheduled'] ? format_date($c['scheduled_date']) : '-' ?></td>
                     <td><?= format_datetime($c['submitted_at']) ?></td>
+                    <td class="hint"><?= e($c['created_by_name'] ?: ($c['created_by_email'] ?: 'System/Cron')) ?></td>
                     <td>
                         <?php if ($cancellable): ?>
                         <form method="post" class="inline-form">

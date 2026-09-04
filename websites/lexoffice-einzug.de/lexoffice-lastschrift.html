@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lexoffice Lastschriftverfahren erklärt | Lexware-Einzug</title>
+<meta name="description" content="Wie funktioniert das SEPA-Lastschriftverfahren für Rechnungen aus lexoffice bzw. Lexware Office? Ablauf, Mandat und Rolle von Stripe im Überblick erklärt.">
+<link rel="canonical" href="https://lexoffice-einzug.de/lexoffice-lastschrift">
+<meta name="theme-color" content="#2E2D2E">
+<meta property="og:title" content="lexoffice Lastschriftverfahren erklärt | Lexware-Einzug">
+<meta property="og:description" content="Wie funktioniert das SEPA-Lastschriftverfahren für Rechnungen aus lexoffice bzw. Lexware Office? Ablauf, Mandat und Rolle von Stripe im Überblick erklärt.">
+<meta property="og:url" content="https://lexoffice-einzug.de/lexoffice-lastschrift">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://lexoffice-einzug.de/assets/img/og-image.png">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Startseite", "item": "https://lexoffice-einzug.de/" },
+    { "@type": "ListItem", "position": 2, "name": "Das SEPA-Lastschriftverfahren für lexoffice-Rechnungen", "item": "https://lexoffice-einzug.de/lexoffice-lastschrift" }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="seam"><span></span></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="dot"></span>Lexware-Einzug</a>
+    <nav class="main-nav">
+      <a href="/#produkt">Produkt</a>
+      <a href="/#funktionen">Funktionen</a>
+      <a href="/#so-funktioniert-es">So funktioniert es</a>
+      <a href="/#preise">Preise</a>
+      <a href="/#faq">FAQ</a>
+      <a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de">Login</a>
+    </nav>
+    <div class="header-cta">
+      <a class="btn btn-primary btn-small" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="header">Jetzt registrieren</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Startseite</a> &gt; <span>Das SEPA-Lastschriftverfahren für lexoffice-Rechnungen</span>
+    </nav>
+  </div>
+
+  <article class="legal">
+    <div class="container" style="padding-top:24px;">
+      <span class="label">Lastschriftverfahren</span>
+      <h1>Das SEPA-Lastschriftverfahren für lexoffice-Rechnungen</h1>
+      <div class="bar"></div>
+      <p class="lead">lexoffice trägt seit der Umbenennung den Namen Lexware Office. Wenn Sie darüber Rechnungen stellen und diese künftig per Lastschrift statt per Überweisung einziehen möchten, bildet das SEPA-Lastschriftverfahren die Grundlage, die Lexware-Einzug für Sie organisiert.</p>
+
+      <h2>Wie läuft das SEPA-Lastschriftverfahren technisch ab?</h2>
+      <p>Beim SEPA-Lastschriftverfahren beauftragt der Zahlungsempfänger, in diesem Fall Sie als Rechnungssteller, seine Bank über einen Zahlungsdienstleister, einen festgelegten Betrag vom Konto des Zahlungspflichtigen einzuziehen. Voraussetzung ist ein SEPA-Mandat, mit dem der Kunde diesen Einzug ausdrücklich gestattet hat. In Lexware-Einzug bilden Sie diesen Ablauf ab, indem Sie eine Rechnung aus Lexware Office auswählen, sie dem hinterlegten Mandat zuordnen und den Einzug auslösen.</p>
+
+      <h2>Welche Rolle spielt Lexware Office im Lastschriftverfahren?</h2>
+      <p>Lexware Office, vormals lexoffice, ist in diesem Ablauf die Quelle Ihrer Rechnungs- und Kundendaten. Über die Public API von Lexware Office bezieht Lexware-Einzug Rechnungsbetrag, Fälligkeit und Kundendaten. Lexware Office selbst nimmt am eigentlichen Zahlungsvorgang nicht teil und führt keine Lastschrift aus, es bleibt bei der Rolle der Buchhaltungssoftware.</p>
+
+      <h2>Welche Rolle übernimmt Stripe im Einzug?</h2>
+      <p>Stripe ist der Zahlungsdienstleister, der die SEPA-Lastschrift technisch verarbeitet. Lexware-Einzug übergibt die von Ihnen freigegebenen Einzüge an Stripe, das den Kontakt zur Bank des Zahlungspflichtigen herstellt und den Betrag einzieht. Lexware-Einzug selbst ist damit die Schaltstelle zwischen Ihren Rechnungsdaten aus Lexware Office und der Zahlungsabwicklung bei Stripe, ohne selbst Zahlungsdienstleister zu sein.</p>
+
+      <h2>Was unterscheidet Erst- und Folgelastschriften?</h2>
+      <p>Bei einer erstmaligen Lastschrift zu einem neuen Mandat prüft die Bank des Zahlungspflichtigen den Einzug in der Regel genauer als bei einer bereits eingespielten, wiederkehrenden Folgelastschrift. Für die konkreten Fristen und Ablehnungsmöglichkeiten einer Lastschrift sind die Bedingungen Ihrer Bank sowie die Regeln von Stripe maßgeblich, eine pauschale Aussage dazu trifft diese Seite bewusst nicht.</p>
+
+      <h2>Woran erkennen Sie den Status einer Lastschrift?</h2>
+      <p>Zu jeder aus Lexware Office übernommenen Rechnung zeigt Lexware-Einzug den aktuellen Zahlungsstatus, von eingezogen bis Rücklastschrift. Damit behalten Sie den Überblick, ohne den Status einzelner Zahlungen manuell in Lexware Office oder bei Stripe nachschlagen zu müssen.</p>
+
+      <h2>Welche Angaben braucht eine SEPA-Lastschrift zu einer lexoffice-Rechnung?</h2>
+      <p>Damit ein Einzug ausgelöst werden kann, müssen mehrere Angaben zusammenkommen: der Rechnungsbetrag und die Fälligkeit aus Lexware Office, die Bankverbindung des Kunden sowie die Referenz des SEPA-Mandats, mit dem der Kunde dem Einzug zugestimmt hat. Fehlt eine dieser Angaben, etwa weil noch kein Mandat hinterlegt ist, lässt sich die betroffene Rechnung in Lexware-Einzug erkennen und vor dem nächsten Einzugslauf ergänzen.</p>
+
+      <h2>Wie unterscheidet sich das Lastschriftverfahren von einer Kartenzahlung?</h2>
+      <p>Bei einer Kartenzahlung wird der Betrag durch eine aktive Handlung des Kunden ausgelöst, bei der Lastschrift durch Sie als Rechnungssteller auf Grundlage des erteilten Mandats. Für lexoffice-Nutzer mit wiederkehrenden Rechnungen bedeutet das planbarere Zahlungseingänge, weil der Einzug nicht von einer erneuten aktiven Zahlung des Kunden abhängt, solange das zugrunde liegende Mandat gültig bleibt.</p>
+
+      <div class="cta-row" style="margin:32px 0;">
+        <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="lexoffice-lastschrift-mid">Jetzt registrieren</a>
+        <a class="btn btn-outline" href="/lexoffice-lastschrifteinzug">Zum Ablauf des Lastschrifteinzugs</a>
+      </div>
+
+      <p>Wie Sie Ihr lexoffice-Konto und Stripe technisch verbinden, beschreibt die Seite <a href="/lexoffice-stripe">lexoffice mit Stripe verbinden</a>.</p>
+
+      <div class="cta-row" style="margin:32px 0 12px;">
+        <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="lexoffice-lastschrift-final">Jetzt registrieren</a>
+        <a class="btn btn-outline" href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de" data-cta="lexoffice-lastschrift-final-login">Zum Login</a>
+      </div>
+    </div>
+  </article>
+</main>
+
+<div class="mobile-cta">
+  <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="mobile-sticky">Jetzt registrieren</a>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-wordmark"><span class="dot"></span>Lexware-Einzug</div>
+    <nav>
+      <a href="/impressum">Impressum</a>
+      <a href="/datenschutz">Datenschutz</a>
+      <a href="/agb">AGB</a>
+      <a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de">Login</a>
+    </nav>
+    <p class="disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+    <p class="operator-line">Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js"></script>
+</body>
+</html>

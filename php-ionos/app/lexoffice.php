@@ -1,8 +1,15 @@
 <?php
 /**
- * Lexoffice-API-Client (cURL, ohne Composer-Abhängigkeiten).
+ * Lexware Office Public-API-Client (cURL, ohne Composer-Abhängigkeiten).
+ *
+ * Lexware Office hieß bis 2024 lexoffice; die Public API ist heute unter
+ * https://api.lexware.io/v1 dokumentiert. Die frühere Domain
+ * api.lexoffice.io funktioniert weiterhin und wird bei Verbindungsfehlern
+ * automatisch als Ausweichadresse verwendet. Interne Bezeichner (Klassen,
+ * Spaltennamen "lexoffice_*") behalten aus Kompatibilitätsgründen den
+ * alten Namen; alle sichtbaren Texte sprechen von "Lexware Office".
+ *
  * Drosselung auf < 2 Requests/Sekunde, Retries bei 429 und 5xx.
- * Portiert aus lexoffice_service.py.
  */
 
 declare(strict_types=1);
@@ -16,15 +23,29 @@ class LexofficeException extends RuntimeException {}
 
 class LexofficeClient
 {
-    private const BASE_URL = 'https://api.lexoffice.io/v1';
+    public const DEFAULT_BASE_URL = 'https://api.lexware.io/v1';
+    public const LEGACY_BASE_URL  = 'https://api.lexoffice.io/v1';
     private const MIN_REQUEST_INTERVAL_US = 600000; // 0,6 s
 
     private string $apiKey;
+    private string $baseUrl;
+    private ?string $fallbackUrl;
+    private bool $fallbackTried = false;
     private float $lastRequestTime = 0.0;
 
-    public function __construct(string $apiKey)
+    public function __construct(string $apiKey, ?string $baseUrl = null)
     {
         $this->apiKey = $apiKey;
+        if ($baseUrl === null && function_exists('config')) {
+            $baseUrl = (string)config('lexware_api_base_url', self::DEFAULT_BASE_URL);
+        }
+        $this->baseUrl = rtrim($baseUrl ?: self::DEFAULT_BASE_URL, '/');
+        $this->fallbackUrl = $this->baseUrl === self::LEGACY_BASE_URL ? self::DEFAULT_BASE_URL : self::LEGACY_BASE_URL;
+    }
+
+    public function baseUrl(): string
+    {
+        return $this->baseUrl;
     }
 
     private function throttle(): void
@@ -37,10 +58,7 @@ class LexofficeClient
 
     private function request(string $endpoint, array $params = []): array
     {
-        $url = self::BASE_URL . $endpoint;
-        if ($params) {
-            $url .= '?' . http_build_query($params);
-        }
+        $query = $params ? '?' . http_build_query($params) : '';
 
         $retries429 = 0;
         $retries5xx = 0;
@@ -49,6 +67,7 @@ class LexofficeClient
             $this->throttle();
             $this->lastRequestTime = microtime(true);
 
+            $url = $this->baseUrl . $endpoint . $query;
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -64,25 +83,33 @@ class LexofficeClient
             curl_close($ch);
 
             if ($body === false) {
-                throw new LexofficeException("Verbindungsfehler zu Lexoffice: $err");
+                // Verbindungsfehler (DNS, TLS, Timeout): einmal auf die
+                // jeweils andere API-Domain ausweichen.
+                if (!$this->fallbackTried && $this->fallbackUrl) {
+                    $this->fallbackTried = true;
+                    error_log("Lexware Office API: {$this->baseUrl} nicht erreichbar ($err), Ausweich-URL {$this->fallbackUrl} wird versucht.");
+                    $this->baseUrl = $this->fallbackUrl;
+                    continue;
+                }
+                throw new LexofficeException("Verbindungsfehler zu Lexware Office: $err");
             }
 
             if ($status === 200) {
                 $data = json_decode($body, true);
                 if (!is_array($data)) {
-                    throw new LexofficeException('Ungültige Antwort von Lexoffice.');
+                    throw new LexofficeException('Ungültige Antwort von Lexware Office.');
                 }
                 return $data;
             }
 
             if ($status === 401) {
-                throw new LexofficeException('Lexoffice API-Key ungültig oder abgelaufen.');
+                throw new LexofficeException('Lexware Office API-Key ungültig oder abgelaufen.');
             }
 
             if ($status === 429) {
                 $retries429++;
                 if ($retries429 > 3) {
-                    throw new LexofficeException('Lexoffice Rate-Limit nach 3 Versuchen überschritten.');
+                    throw new LexofficeException('Lexware Office Rate-Limit nach 3 Versuchen überschritten.');
                 }
                 sleep(2 ** $retries429); // 2, 4, 8 s
                 continue;
@@ -91,14 +118,14 @@ class LexofficeClient
             if (in_array($status, [500, 502, 503], true)) {
                 $retries5xx++;
                 if ($retries5xx > 2) {
-                    throw new LexofficeException("Lexoffice Serverfehler $status nach Retries.");
+                    throw new LexofficeException("Lexware Office Serverfehler $status nach Retries.");
                 }
                 sleep(2 ** $retries5xx);
                 continue;
             }
 
             throw new LexofficeException(
-                "Unerwarteter Lexoffice-Status $status: " . substr($body, 0, 200)
+                "Unerwarteter Lexware Office Status $status: " . substr($body, 0, 200)
             );
         }
     }

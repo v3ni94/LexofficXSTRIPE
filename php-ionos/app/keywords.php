@@ -88,7 +88,7 @@ function sepa_name_for(string $displayName): string
 }
 
 /**
- * Analysiert Lexoffice-lineItems und gibt [display_name, sepa_name] zurück.
+ * Analysiert Lexware-Office-lineItems und gibt [display_name, sepa_name] zurück.
  * Wortgrenzen-Suche (\b), damit z.B. "miete" nicht in "indexmiete" trifft.
  */
 function extract_keyword(array $lineItems): array

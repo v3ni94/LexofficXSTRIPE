@@ -2,6 +2,7 @@
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
+require_once __DIR__ . '/app/sync_state.php';
 
 $ctx = require_login();
 if (!(int)$ctx['onboarding_completed']) {
@@ -10,8 +11,6 @@ if (!(int)$ctx['onboarding_completed']) {
 $tenantId = $ctx['org_id'];
 $pdo = db();
 
-// Kennzahlen
-$stats = [];
 $stmt = $pdo->prepare(
     "SELECT
         SUM(CASE WHEN lexoffice_status IN ('open','overdue') THEN 1 ELSE 0 END) AS open_invoices,
@@ -32,11 +31,24 @@ $stmt = $pdo->prepare(
 $stmt->execute([$tenantId]);
 $collStats = $stmt->fetch();
 
-// Letzte Einzüge
 $stmt = $pdo->prepare(
-    'SELECT pc.*, i.voucher_number, i.contact_name
+    "SELECT COUNT(*) FROM customers c WHERE c.tenant_id = ? AND c.is_walk_in = 0 AND c.sepa_debit_enabled = 1
+       AND NOT EXISTS (SELECT 1 FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1)"
+);
+$stmt->execute([$tenantId]);
+$missingIban = (int)$stmt->fetchColumn();
+
+$stmt = $pdo->prepare(
+    "SELECT COUNT(*) FROM sepa_mandates m WHERE m.tenant_id = ? AND m.is_active = 1 AND m.customer_iban_id IS NOT NULL AND m.signed_date IS NULL"
+);
+$stmt->execute([$tenantId]);
+$unsignedMandates = (int)$stmt->fetchColumn();
+
+$stmt = $pdo->prepare(
+    'SELECT pc.*, i.voucher_number, i.contact_name, u.email AS created_by_email
      FROM payment_collections pc
      JOIN invoices i ON i.id = pc.invoice_id
+     LEFT JOIN users u ON u.id = pc.created_by_user_id
      WHERE pc.tenant_id = ?
      ORDER BY pc.created_at DESC
      LIMIT 8'
@@ -44,10 +56,19 @@ $stmt = $pdo->prepare(
 $stmt->execute([$tenantId]);
 $recent = $stmt->fetchAll();
 
+$stmt = $pdo->prepare('SELECT lexoffice_last_sync, lexoffice_connected, stripe_connected FROM integrations WHERE tenant_id = ?');
+$stmt->execute([$tenantId]);
+$integration = $stmt->fetch() ?: ['lexoffice_last_sync' => null, 'lexoffice_connected' => 0, 'stripe_connected' => 0];
+$syncState = sync_state_get($tenantId);
+$syncRunning = sync_state_is_running($syncState);
+
 layout_header('Dashboard', $ctx);
 ?>
 <h1>Dashboard</h1>
-<p class="page-sub"><?= e($ctx['org_name']) ?></p>
+<p class="page-sub"><?= e($ctx['org_name']) ?> · Lexware Office: <?= (int)$integration['lexoffice_connected'] ? 'verbunden' : 'nicht verbunden' ?>
+    · Stripe: <?= (int)$integration['stripe_connected'] ? 'verbunden' : 'nicht verbunden' ?>
+    · letzte Synchronisation: <?= format_datetime($integration['lexoffice_last_sync']) ?>
+    <?php if ($syncRunning): ?> · <a href="invoices.php?syncing=1">Synchronisation läuft</a><?php endif; ?></p>
 
 <div class="card-grid">
     <div class="stat-card">
@@ -69,9 +90,23 @@ layout_header('Dashboard', $ctx);
     </div>
     <div class="stat-card">
         <div class="stat-value"><?= (int)($collStats['failed_count'] ?? 0) ?></div>
-        <div class="stat-label">Fehlgeschlagene Einzüge</div>
+        <div class="stat-label">Fehlgeschlagene Einzüge / Rücklastschriften</div>
     </div>
 </div>
+
+<?php if ($missingIban > 0 || $unsignedMandates > 0): ?>
+<div class="card">
+    <h2>Zu erledigen</h2>
+    <ul class="check-list plain">
+        <?php if ($missingIban > 0): ?>
+            <li><a href="sepa-pflegen.php"><?= $missingIban ?> Kunde(n) mit SEPA-Einzug, aber ohne IBAN</a></li>
+        <?php endif; ?>
+        <?php if ($unsignedMandates > 0): ?>
+            <li><a href="customers.php?only=no_mandate"><?= $unsignedMandates ?> Mandat(e) ohne erfasste Unterschrift</a></li>
+        <?php endif; ?>
+    </ul>
+</div>
+<?php endif; ?>
 
 <div class="card">
     <h2>Letzte Einzüge</h2>
@@ -84,7 +119,7 @@ layout_header('Dashboard', $ctx);
             <thead>
                 <tr>
                     <th>Rechnung</th><th>Kunde</th><th class="num">Betrag</th>
-                    <th>Status</th><th>Eingereicht</th>
+                    <th>Status</th><th>Eingereicht</th><th>Ausgelöst von</th>
                 </tr>
             </thead>
             <tbody>
@@ -95,6 +130,7 @@ layout_header('Dashboard', $ctx);
                     <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?></td>
                     <td><?= status_badge((string)$c['stripe_status'], $c['scheduled_date']) ?></td>
                     <td><?= format_datetime($c['submitted_at']) ?></td>
+                    <td class="hint"><?= e($c['created_by_email'] ?: 'System/Cron') ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

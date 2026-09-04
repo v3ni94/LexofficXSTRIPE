@@ -11,7 +11,10 @@ require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/customer_settings.php';
 
-$ctx = require_onboarded();
+$ctx = require_subscription();
+if (!(int)$ctx['onboarding_completed']) {
+    redirect('onboarding.php');
+}
 $tenantId = $ctx['org_id'];
 $pdo = db();
 
@@ -24,16 +27,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'save_iban') {
             $result = set_customer_iban(
                 $tenantId, $customerId, $ctx['user_id'],
-                $_POST['iban'] ?? '', $_POST['account_holder_name'] ?? '', $_POST['bic'] ?? null
+                $_POST['iban'] ?? '', $_POST['account_holder_name'] ?? '', $_POST['bic'] ?? null, $ctx
             );
             $msg = 'IBAN hinterlegt, SEPA-Einzug ist damit aktiviert.';
             $msg .= $result['stripe_registered']
                 ? ' Zahlungsmethode wurde direkt bei Stripe registriert.'
                 : ' Stripe-Registrierung erfolgt automatisch beim ersten Einzug'
                     . ($result['stripe_reason'] ? ' (' . $result['stripe_reason'] . ')' : '') . '.';
+            if ((int)$ctx['require_signed_mandate'] === 1) {
+                $msg .= ' Bitte in den Kundendetails das unterschriebene Mandat erfassen.';
+            }
             flash_set('success', $msg);
         } elseif ($action === 'disable_sepa') {
-            set_customer_sepa_debit($tenantId, $customerId, false);
+            set_customer_sepa_debit($tenantId, $customerId, false, $ctx);
             flash_set('success', 'SEPA-Einzug für diesen Kunden deaktiviert.');
         }
     } catch (Throwable $e) {
@@ -43,8 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('sepa-pflegen.php');
 }
 
-// Warteschlange: Stammkunden ohne aktive IBAN, bei denen SEPA-Einzug noch
-// nicht abgelehnt wurde (Laufkunden ausgeschlossen, siehe customer_settings.php).
 $stmt = $pdo->prepare(
     "SELECT c.*,
         (SELECT COUNT(*) FROM invoices i WHERE i.customer_id = c.id
@@ -80,9 +84,10 @@ layout_header('SEPA Pflegen', $ctx);
     <?php if (!$customer): ?>
         <p class="flash flash-success">Alles erledigt: Für alle Kunden liegt entweder eine
             IBAN vor oder SEPA-Einzug wurde abgelehnt.</p>
+        <p class="hint"><a href="customers.php?only=no_mandate">Kunden mit Mandat ohne erfasste Unterschrift anzeigen</a></p>
     <?php else: ?>
         <p class="hint">Noch <?= $remaining ?> Kunde(n) offen.</p>
-        <h2><?= e($customer['name']) ?></h2>
+        <h2><a href="customer.php?id=<?= e($customer['id']) ?>"><?= e($customer['name']) ?></a></h2>
         <p>
             Kundennummer: <strong><?= e($customer['customer_number']) ?></strong><br>
             E-Mail: <?= e($customer['email'] ?? '-') ?><br>
@@ -101,6 +106,7 @@ layout_header('SEPA Pflegen', $ctx);
             <input type="text" name="bic" maxlength="11">
             <div class="form-actions">
                 <button type="submit" class="btn">IBAN speichern (SEPA: Ja)</button>
+                <a class="btn btn-secondary" href="customer.php?id=<?= e($customer['id']) ?>">Kundendetails / Mandat</a>
             </div>
         </form>
 

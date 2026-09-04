@@ -11,7 +11,7 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # Interne Verzeichnisse und sensible Dateien vor Webzugriff schützen
 RewriteRule ^app/ - [F,L]
 RewriteRule ^sql/ - [F,L]
-<FilesMatch "\.(sql|md|example\.php)$">
+<FilesMatch "\.(sql|md|log|jar|example\.php)$">
     Require all denied
 </FilesMatch>
 

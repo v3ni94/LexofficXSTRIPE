@@ -2,10 +2,14 @@
 
 LexSEPA verbindet **Lexoffice** mit **Stripe** und automatisiert den SEPA-Lastschrifteinzug für offene Rechnungen.
 
-> **PHP-Variante für IONOS Webhosting:** Unter [`php-ionos/`](php-ionos/) liegt eine
-> eigenständige PHP/MariaDB-Version der Anwendung, die ohne Docker per FTP auf
-> normales IONOS Webhosting hochgeladen werden kann (Subdomain `sepa.muellerhv.de`).
-> Installation: siehe [`php-ionos/ANLEITUNG-IONOS.md`](php-ionos/ANLEITUNG-IONOS.md).
+> **Produktive Variante "Lexware-Einzug" (PHP für IONOS Webhosting):** Unter
+> [`php-ionos/`](php-ionos/) liegt die mehrmandantenfähige SaaS-Anwendung
+> (Betreiber Müller Holding AG) mit verpflichtender 2FA, Rollen Inhaber/Mitarbeiter,
+> Tarifen, Audit-Log, SEPA-Mandatsdokument und Plattform-Abrechnung. Sie läuft ohne
+> Docker per FTP auf IONOS (`app.lexware-einzug.de`, derzeit `sepa.muellerhv.de`).
+> Die beiden Marketingseiten liegen unter [`websites/`](websites/).
+> Installation und Betrieb: [`php-ionos/ANLEITUNG-IONOS.md`](php-ionos/ANLEITUNG-IONOS.md).
+> Die nachfolgend beschriebene FastAPI/React-Variante ist der ältere Prototyp.
 
 ## Features
 

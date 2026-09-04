@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offene Rechnungen aus Lexware Office für den Einzug nutzen</title>
+<meta name="description" content="Wie offene Rechnungen aus Lexware Office erkannt, synchronisiert und für den SEPA-Einzug über Stripe bereitgestellt werden, inklusive Fälligkeit und Vorlauf.">
+<link rel="canonical" href="https://lexware-einzug.de/lexware-office-offene-rechnungen">
+<meta property="og:title" content="Offene Rechnungen aus Lexware Office für den Einzug nutzen">
+<meta property="og:description" content="Wie offene Rechnungen aus Lexware Office erkannt, synchronisiert und für den SEPA-Einzug über Stripe bereitgestellt werden, inklusive Fälligkeit und Vorlauf.">
+<meta property="og:url" content="https://lexware-einzug.de/lexware-office-offene-rechnungen">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://lexware-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Offene Rechnungen aus Lexware Office",
+      "item": "https://lexware-einzug.de/lexware-office-offene-rechnungen"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="dot"></span>Lexware-Einzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/#produkt">Produkt</a></li>
+        <li><a href="/#funktionen">Funktionen</a></li>
+        <li><a href="/#so-funktioniert-es">So funktioniert es</a></li>
+        <li><a href="/#preise">Preise</a></li>
+        <li><a href="/#faq">FAQ</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li aria-current="page">Offene Rechnungen aus Lexware Office</li>
+  </ol>
+</nav>
+
+<main>
+  <article>
+    <header class="hero">
+      <div class="container">
+        <p class="eyebrow">Rechnungsabgleich</p>
+        <h1>Offene Rechnungen aus Lexware Office für den SEPA-Einzug nutzen</h1>
+        <span class="bar" aria-hidden="true"></span>
+        <p class="lead">Wie Lexware-Einzug offene Rechnungen aus Lexware Office erkennt, synchronisiert und für den Einzug bereitstellt.</p>
+        <div class="cta-row">
+          <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="offene-rechnungen-top">Jetzt registrieren</a>
+          <a href="/#funktionen" class="btn btn-outline">Funktionen ansehen</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="container">
+        <h2>Offene Rechnungen als Ausgangspunkt</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Grundlage jedes Einzugs ist eine offene, für den Einzug relevante Rechnung aus Lexware Office. Lexware-Einzug liest diese Rechnungen über die Lexware Public API aus und stellt die dazugehörigen Kundendaten in der eigenen Oberfläche bereit. Bereits vollständig beglichene oder stornierte Rechnungen werden dabei nicht als Einzugskandidaten geführt.</p>
+        <p>Damit entsteht ein zentraler Überblick über alle Rechnungen, die grundsätzlich für einen SEPA-Einzug infrage kommen, ohne dass Sie Ihre Rechnungsdaten ein zweites Mal pflegen müssen.</p>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <h2>Synchronisation im Hintergrund</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Die Synchronisation läuft serverseitig im Hintergrund, die Anwendung muss dafür nicht geöffnet bleiben. Beim erneuten Öffnen sehen Sie den aktuellen Stand Ihrer offenen Rechnungen. Dabei wird nicht bei jedem Lauf der gesamte historische Rechnungsbestand erneut verarbeitet, Änderungen werden inkrementell erfasst.</p>
+        <h3>Fälligkeit und Vorlauf steuern</h3>
+        <p>In den Einzugseinstellungen legen Sie fest, ab wann eine offene Rechnung für einen Einzug angeboten wird, wie viele Tage nach Fälligkeit gewartet wird, mit welchem Vorlauf ein Einzug geplant wird und welcher Verwendungszweck dabei verwendet wird. So bestimmen Sie selbst, wie eng oder großzügig der Zeitraum zwischen Fälligkeit und Einzug ausfällt.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Von der offenen Rechnung zum Einzug</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Damit aus einer offenen Rechnung tatsächlich ein Einzug werden kann, benötigt der jeweilige Kunde eine hinterlegte SEPA-Zuordnung mit gültigem Mandat. Wie Lexware-Einzug diese Mandatsreferenzen verwaltet, beschreibt die Seite <a href="/lexware-office-sepa-mandat">SEPA-Mandat für Lexware-Office-Kunden</a>. Ist die Zuordnung vorhanden, wählen Sie die Rechnung aus und starten den Einzug, der anschließend über Stripe verarbeitet wird, siehe <a href="/lexware-office-stripe">Lexware Office mit Stripe verbinden</a>.</p>
+      </div>
+    </section>
+
+    <section class="section section-dark">
+      <div class="container">
+        <h2>Offene Rechnungen jetzt synchronisieren</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p class="lead" style="color:#D6D5D3;">Registrieren Sie sich, verbinden Sie Lexware Office und behalten Sie offene Rechnungen zentral im Blick.</p>
+        <div class="cta-row">
+          <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="offene-rechnungen-bottom">Jetzt registrieren</a>
+        </div>
+        <p style="margin-top:24px;"><a href="/" style="color:#D6D5D3;">Zurück zur Startseite</a></p>
+      </div>
+    </section>
+  </article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="dot"></span>Lexware-Einzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum">Impressum</a></li>
+          <li><a href="/datenschutz">Datenschutz</a></li>
+          <li><a href="/agb">AGB</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js"></script>
+</body>
+</html>

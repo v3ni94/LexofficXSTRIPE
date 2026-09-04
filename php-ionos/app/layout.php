@@ -1,14 +1,12 @@
 <?php
 /**
- * Seitengerüst. Für die Hausverwaltung Müller GmbH wird das verbindliche
- * HVM-Corporate-Design (Skill hvm-ci) angezeigt (Logo, Kennlinie,
- * Pflichtangaben), gesteuert über organizations.use_hvm_ci. Andere Firmen
- * im selben Portal bekommen einen neutralen Aufbau ohne fremdes CI: nur
- * der eigene Firmenname, keine erfundenen Logos oder Pflichtangaben.
+ * Seitengerüst der Anwendung "Lexware-Einzug" (Betreiber: Müller Holding AG).
  *
- * Farben/Schrift für das HVM-Design sind in assets/css/style.css als
- * CSS-Variablen hinterlegt (Abschnitt 2 und 3 des CI-Handbuchs). Logo:
- * assets/img/logo.jpg (offizielle Datei aus dem CI-Handbuch, 1320x1143 px).
+ * Firmen mit organizations.use_hvm_ci = 1 (Hausverwaltung Müller GmbH) sehen
+ * ihr eigenes CI (Logo, Kennlinie, Pflichtangaben, Skill hvm-ci). Alle
+ * anderen Firmen sehen den neutralen Produktauftritt mit ihrem Firmennamen.
+ * Der Fußbereich nennt in jedem Fall den Plattformbetreiber mit Links auf
+ * Impressum, Datenschutz und AGB sowie den Markenhinweis zu Lexware Office.
  */
 
 declare(strict_types=1);
@@ -18,16 +16,28 @@ if (get_included_files()[0] === __FILE__) {
     exit('Forbidden');
 }
 
-function layout_header(string $title, ?array $ctx = null): void
+function product_name(): string
+{
+    return (string)config('product_name', 'Lexware-Einzug');
+}
+
+function marketing_url(string $path = ''): string
+{
+    $base = rtrim((string)config('marketing_url', ''), '/');
+    return $base !== '' ? $base . $path : '';
+}
+
+function layout_header(string $title, ?array $ctx = null, array $opts = []): void
 {
     $useHvmCi = $ctx && !empty($ctx['use_hvm_ci']);
     $orgName = $ctx['org_name'] ?? null;
     $logoPath = APP_ROOT . '/assets/img/logo.jpg';
     $hasLogo = $useHvmCi && is_file($logoPath);
+    $product = product_name();
 
-    $titleSuffix = $useHvmCi ? 'Hausverwaltung Müller GmbH' : ($orgName ?? 'SEPA-Portal');
-    $brandName = $useHvmCi ? 'Hausverwaltung Müller GmbH' : ($orgName ?? 'SEPA-Portal');
-    $brandMarkText = $useHvmCi ? 'HVM' : mb_strtoupper(mb_substr($brandName, 0, 3));
+    $brandName = $useHvmCi ? 'Hausverwaltung Müller GmbH' : $product;
+    $brandSub = $useHvmCi ? 'SEPA-Portal' : ($orgName ?? 'SEPA-Einzug für Lexware Office');
+    $titleSuffix = $useHvmCi ? 'Hausverwaltung Müller GmbH' : $product;
     ?>
 <!DOCTYPE html>
 <html lang="de">
@@ -35,42 +45,56 @@ function layout_header(string $title, ?array $ctx = null): void
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= e($title) ?> | SEPA-Portal | <?= e($titleSuffix) ?></title>
+    <title><?= e($title) ?> | <?= e($titleSuffix) ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <?php if (!$useHvmCi): ?>
+    <style>
+        :root { --brand-accent: #E3AC48; --brand-dark: #2E2D2E; }
+    </style>
+    <?php endif; ?>
+    <?= $opts['head'] ?? '' ?>
 </head>
-<body>
+<body class="<?= $useHvmCi ? 'theme-hvm' : 'theme-product' ?>">
 <?php if ($useHvmCi): ?>
 <div class="hvm-kennlinie" aria-hidden="true"></div>
+<?php else: ?>
+<div class="brand-seam" aria-hidden="true"><span></span></div>
 <?php endif; ?>
 <header class="site-header">
     <div class="header-inner">
-        <a class="brand" href="dashboard.php">
+        <a class="brand" href="<?= $ctx ? 'dashboard.php' : 'login.php' ?>">
             <?php if ($hasLogo): ?>
                 <img src="assets/img/logo.jpg" alt="<?= e($brandName) ?>" class="brand-logo">
+            <?php elseif ($useHvmCi): ?>
+                <span class="brand-mark">HVM</span>
             <?php else: ?>
-                <span class="brand-mark"><?= e($brandMarkText) ?></span>
+                <span class="brand-dot" aria-hidden="true"></span>
             <?php endif; ?>
             <span class="brand-text">
                 <span class="brand-name"><?= e($brandName) ?></span>
-                <span class="brand-sub">SEPA-Portal</span>
+                <span class="brand-sub"><?= e($brandSub) ?></span>
             </span>
         </a>
         <?php if ($ctx): ?>
-        <nav class="main-nav">
+        <nav class="main-nav" aria-label="Hauptnavigation">
             <a href="dashboard.php">Dashboard</a>
             <a href="invoices.php">Rechnungen</a>
             <a href="collections.php">Einzüge</a>
             <a href="customers.php">Kunden</a>
             <a href="sepa-pflegen.php">SEPA Pflegen</a>
-            <?php if (can_manage($ctx)): ?>
-                <a href="team.php">Team</a>
+            <a href="team.php">Firma</a>
+            <?php if (can_manage_settings($ctx)): ?>
                 <a href="settings.php">Einstellungen</a>
             <?php endif; ?>
-            <a href="companies.php">Firmen</a>
+            <?php if (!empty($ctx['is_superadmin'])): ?>
+                <a href="admin.php" class="nav-admin">Admin</a>
+            <?php endif; ?>
         </nav>
         <div class="user-menu">
-            <span class="user-email"><?= e($ctx['display_name'] ?: $ctx['email']) ?></span>
+            <span class="user-email"><?= e(user_display_name($ctx)) ?></span>
             <span class="user-role"><?= e(role_label($ctx['role'])) ?></span>
+            <a class="btn btn-ghost btn-sm" href="security.php" title="Passwort und Zwei-Faktor-Authentifizierung">Sicherheit</a>
+            <a class="btn btn-ghost btn-sm" href="companies.php" title="Firma wechseln oder anlegen">Firmen</a>
             <a class="btn btn-ghost btn-sm" href="logout.php">Abmelden</a>
         </div>
         <?php endif; ?>
@@ -80,13 +104,20 @@ function layout_header(string $title, ?array $ctx = null): void
     <?php foreach (flash_pull() as $msg): ?>
         <div class="flash flash-<?= e($msg['type']) ?>"><?= e($msg['message']) ?></div>
     <?php endforeach; ?>
+    <?php if ($ctx && billing_enabled() && !subscription_allows_operation($ctx) && current_script() !== 'subscription.php'): ?>
+        <div class="flash flash-info">Für diese Firma liegt noch kein aktives Abonnement vor.
+            <?php if ($ctx['role'] === 'owner'): ?><a href="subscription.php">Abonnement jetzt abschließen</a><?php else: ?>Bitte wenden Sie sich an den Inhaber des Firmenaccounts.<?php endif; ?>
+        </div>
+    <?php endif; ?>
     <?php
 }
 
 function layout_footer(?array $ctx = null): void
 {
     $useHvmCi = $ctx && !empty($ctx['use_hvm_ci']);
-    $orgName = $ctx['org_name'] ?? 'SEPA-Portal';
+    $op = (array)config('operator', []);
+    $product = product_name();
+    $mk = marketing_url();
     ?>
 </main>
 <footer class="site-footer">
@@ -96,11 +127,18 @@ function layout_footer(?array $ctx = null): void
         <span>Hausverwaltung Müller GmbH | Rheinpromenade 13 | 40789 Monheim am Rhein</span>
         <span>Amtsgericht Düsseldorf, HRB 104762 | Geschäftsführer: Timo Müller | www.muellerhv.de</span>
     </div>
-    <?php else: ?>
-    <div class="footer-inner">
-        <span><?= e($orgName) ?> | SEPA-Portal</span>
-    </div>
     <?php endif; ?>
+    <div class="footer-inner footer-legal">
+        <span><?= e($product) ?> ist ein Dienst der <?= e($op['name'] ?? 'Müller Holding AG') ?>,
+            <?= e($op['street'] ?? '') ?>, <?= e($op['zip_city'] ?? '') ?>.
+            <a href="impressum.php">Impressum</a>
+            <?php if ($mk !== ''): ?>
+                · <a href="<?= e($mk) ?>/datenschutz" rel="noopener">Datenschutz</a>
+                · <a href="<?= e($mk) ?>/agb" rel="noopener">AGB</a>
+            <?php endif; ?>
+        </span>
+        <span class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</span>
+    </div>
 </footer>
 </body>
 </html>
@@ -112,7 +150,7 @@ function role_label(string $role): string
     return match ($role) {
         'owner'  => 'Inhaber',
         'admin'  => 'Administrator',
-        default  => 'Mitglied',
+        default  => 'Mitarbeiter',
     };
 }
 
@@ -132,6 +170,15 @@ function status_badge(string $status, ?string $scheduledDate = null): string
         'succeeded'     => ['success', 'Erfolgreich'],
         'disputed'      => ['danger',  'Rücklastschrift'],
         'cancelled'     => ['neutral', 'Storniert'],
+        // Mandats-Status
+        'draft'         => ['warn',    'Entwurf'],
+        'active'        => ['success', 'Aktiv'],
+        'expired'       => ['danger',  'Verfallen'],
+        // Abo / Einladung
+        'pending'       => ['warn',    'Ausstehend'],
+        'accepted'      => ['success', 'Angenommen'],
+        'revoked'       => ['neutral', 'Widerrufen'],
+        'suspended'     => ['danger',  'Gesperrt'],
     ];
     [$class, $label] = $map[$status] ?? ['neutral', $status];
     $suffix = '';
@@ -141,7 +188,7 @@ function status_badge(string $status, ?string $scheduledDate = null): string
     return '<span class="badge badge-' . $class . '">' . e($label . $suffix) . '</span>';
 }
 
-/** Lesbare Bezeichnung für den Lexoffice-eigenen Rechnungsstatus (nicht den Einzugsstatus). */
+/** Lesbare Bezeichnung für den Rechnungsstatus aus Lexware Office (nicht den Einzugsstatus). */
 function lexoffice_status_label(string $status): string
 {
     $map = [

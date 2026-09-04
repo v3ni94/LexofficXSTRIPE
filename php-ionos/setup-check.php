@@ -12,6 +12,18 @@
 declare(strict_types=1);
 
 header('Content-Type: text/html; charset=utf-8');
+header('X-Robots-Tag: noindex');
+
+// Sobald eine Konfiguration existiert, ist die Prüfung nur noch mit dem
+// cron_token erreichbar (setup-check.php?token=...), damit keine
+// Systeminformationen öffentlich abrufbar sind.
+$preConfig = is_file(__DIR__ . '/app/config.php') ? (require __DIR__ . '/app/config.php') : null;
+if (is_array($preConfig) && strlen((string)($preConfig['cron_token'] ?? '')) >= 16 && !str_contains((string)$preConfig['cron_token'], 'HIER-')) {
+    if (!hash_equals((string)$preConfig['cron_token'], (string)($_GET['token'] ?? ''))) {
+        http_response_code(403);
+        exit('Zugriff nur mit Token: setup-check.php?token=<cron_token aus app/config.php>');
+    }
+}
 
 $checks = [];
 function add_check(string $name, bool $ok, string $detail = ''): void
@@ -27,7 +39,7 @@ add_check(
 );
 
 // --- 2. Erforderliche Erweiterungen ---
-foreach (['pdo_mysql' => 'MariaDB-Anbindung', 'curl' => 'Stripe/Lexoffice-API', 'openssl' => 'Verschlüsselung der API-Keys', 'mbstring' => 'Textverarbeitung'] as $ext => $zweck) {
+foreach (['pdo_mysql' => 'MariaDB-Anbindung', 'curl' => 'Stripe/Lexware-Office-API', 'openssl' => 'Verschlüsselung der API-Keys', 'mbstring' => 'Textverarbeitung'] as $ext => $zweck) {
     add_check("PHP-Modul $ext ($zweck)", extension_loaded($ext));
 }
 
@@ -63,6 +75,8 @@ $expectedTables = [
     'organizations', 'users', 'organization_members', 'invitations', 'integrations',
     'customers', 'customer_ibans', 'iban_history', 'sepa_mandates', 'invoices',
     'payment_collections',
+    // seit Migration 003 (SaaS-Ausbau)
+    'plans', 'user_recovery_codes', 'login_attempts', 'audit_log', 'sync_state', 'funnel_events', 'webhook_events',
 ];
 
 if ($config && !empty($config['db']['host'])) {

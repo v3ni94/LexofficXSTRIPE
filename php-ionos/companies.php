@@ -2,7 +2,7 @@
 /**
  * Firmen verwalten: zwischen den eigenen Firmen (Organisationen) wechseln
  * und neue anlegen. Jede Firma hat vollständig getrennte Kunden, Rechnungen,
- * Einzüge und eigene Lexoffice-/Stripe-Anbindung (unter "Einstellungen" der
+ * Einzüge und eigene Lexware Office-/Stripe-Anbindung (unter "Einstellungen" der
  * jeweils aktiven Firma zu hinterlegen).
  */
 require_once __DIR__ . '/app/bootstrap.php';
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException($result['error']);
             }
             switch_company($ctx['user_id'], $result['org_id']);
-            flash_set('success', 'Neue Firma angelegt und aktiviert. Bitte jetzt Lexoffice und Stripe verbinden.');
+            flash_set('success', 'Neue Firma angelegt und aktiviert. Bitte jetzt Lexware Office und Stripe verbinden.');
             redirect('onboarding.php');
 
         } elseif ($action === 'switch') {
@@ -48,7 +48,7 @@ layout_header('Firmen', $ctx);
 ?>
 <h1>Firmen</h1>
 <p class="page-sub">Mehrere Firmen mit jeweils vollständig getrennten Kunden, Rechnungen, Einzügen
-    und eigener Lexoffice-/Stripe-Anbindung verwalten.</p>
+    und eigener Lexware Office-/Stripe-Anbindung verwalten.</p>
 
 <div class="card">
     <h2>Ihre Firmen</h2>
@@ -99,7 +99,7 @@ layout_header('Firmen', $ctx);
             <button type="submit" class="btn">Firma anlegen</button>
         </div>
         <p class="hint">Sie werden automatisch Inhaber der neuen Firma und richten anschließend
-            eigene Lexoffice- und Stripe-Zugänge unter "Einstellungen" ein.</p>
+            eigene Lexware Office- und Stripe-Zugänge unter "Einstellungen" ein.</p>
     </form>
 </div>
 <?php layout_footer($ctx); ?>

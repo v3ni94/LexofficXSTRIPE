@@ -1,0 +1,513 @@
+/* Lexware-Einzug, lexoffice-einzug.de
+   Gestaltungssprache "Goldpunkt". Ein Stylesheet für alle Seiten der Domain. */
+
+:root {
+  --gold: #E3AC48;
+  --anthracite: #2E2D2E;
+  --black: #000000;
+  --grey: #9F9F9F;
+  --beige: #FBF6EC;
+  --white: #FFFFFF;
+  --hairline: #DDDBD6;
+  --maxw: 1120px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: Carlito, Calibri, 'Segoe UI', sans-serif;
+  color: var(--black);
+  background: var(--white);
+  line-height: 1.6;
+  font-size: 16px;
+}
+
+img { max-width: 100%; display: block; }
+
+a { color: inherit; }
+
+.container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Versal-Label über Abschnittsüberschriften */
+.label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--grey);
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+/* Goldbalken unter H1/H2 */
+.bar {
+  width: 48px;
+  height: 3px;
+  background: var(--gold);
+  border: 0;
+  margin: 14px 0 22px;
+}
+
+h1, h2, h3 {
+  color: var(--anthracite);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 0;
+}
+
+h1 { font-size: 34px; }
+h2 { font-size: 26px; }
+h3 { font-size: 19px; }
+
+@media (min-width: 720px) {
+  h1 { font-size: 44px; }
+  h2 { font-size: 30px; }
+}
+
+p { margin: 0 0 16px; color: var(--black); }
+
+.lead {
+  font-size: 18px;
+  color: var(--anthracite);
+}
+
+.muted { color: var(--grey); }
+
+ul, ol { padding-left: 20px; margin: 0 0 16px; }
+li { margin-bottom: 8px; }
+
+/* Aufzählungszeichen in Gold für nicht-nummerierte Listen */
+ul.gold-list { list-style: none; padding-left: 0; }
+ul.gold-list li {
+  position: relative;
+  padding-left: 22px;
+}
+ul.gold-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 8px;
+  height: 8px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+
+/* Kopfnaht: dünne Haarlinie mit kräftigem Goldsegment links */
+.seam {
+  height: 4px;
+  width: 100%;
+  background: var(--hairline);
+  display: flex;
+}
+.seam span {
+  display: block;
+  width: 96px;
+  max-width: 30%;
+  height: 100%;
+  background: var(--gold);
+}
+
+/* Header */
+header.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--white);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  gap: 16px;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--anthracite);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wordmark .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex: none;
+}
+
+nav.main-nav {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  nav.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  nav.main-nav a {
+    text-decoration: none;
+    color: var(--anthracite);
+    font-size: 15px;
+  }
+  nav.main-nav a:hover { color: var(--gold); }
+}
+
+.header-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 13px 24px;
+  border-radius: 2px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  text-align: center;
+  border: 1px solid transparent;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.btn-primary {
+  background: var(--gold);
+  color: var(--anthracite);
+}
+.btn-primary:hover { background: #d19c36; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--anthracite);
+  border-color: var(--anthracite);
+}
+.btn-outline:hover { background: var(--anthracite); color: var(--white); }
+
+.btn-small { padding: 9px 16px; font-size: 14px; }
+
+/* Sections */
+section {
+  padding: 56px 0;
+}
+
+section.alt {
+  background: var(--beige);
+}
+
+.section-head {
+  max-width: 760px;
+  margin-bottom: 32px;
+}
+
+/* Hero */
+.hero {
+  padding: 48px 0 56px;
+  background: var(--white);
+}
+
+.hero .badge-row {
+  margin-top: 20px;
+  font-size: 15px;
+  color: var(--anthracite);
+}
+
+.hero .cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+/* Nummerierte Schritt-Liste (So funktioniert es) */
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  counter-reset: step;
+}
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 16px 0 16px 56px;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 0;
+}
+.steps li:first-child { border-top: 1px solid var(--hairline); }
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--anthracite);
+  color: var(--white);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+.steps strong { display: block; color: var(--anthracite); margin-bottom: 2px; }
+
+/* Feature grid */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+@media (min-width: 720px) {
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+}
+
+.feature h3 { margin-bottom: 10px; }
+.feature .bar-small {
+  width: 32px;
+  height: 3px;
+  background: var(--gold);
+  margin: 0 0 12px;
+}
+
+/* Pricing */
+.price-card {
+  background: var(--anthracite);
+  color: var(--white);
+  padding: 40px 32px;
+  max-width: 460px;
+  margin: 0 auto;
+}
+.price-card .plan-name {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+.price-card .price {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.price-card .price span {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--grey);
+}
+.price-card .billing-note {
+  font-size: 13px;
+  color: var(--grey);
+  margin-bottom: 24px;
+}
+.price-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+}
+.price-card ul li {
+  padding: 10px 0 10px 22px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  position: relative;
+  color: var(--white);
+}
+.price-card ul li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 19px;
+  width: 7px;
+  height: 7px;
+  background: var(--gold);
+  border-radius: 50%;
+}
+.price-card .btn-primary { width: 100%; }
+
+/* Team / security box */
+.info-box {
+  background: var(--beige);
+  padding: 28px;
+}
+
+/* FAQ */
+.faq-item {
+  border-bottom: 1px solid var(--hairline);
+}
+.faq-item:first-child { border-top: 1px solid var(--hairline); }
+.faq-item summary {
+  cursor: pointer;
+  padding: 18px 28px 18px 0;
+  font-weight: 700;
+  color: var(--anthracite);
+  font-size: 16px;
+  position: relative;
+  list-style: none;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 0;
+  top: 16px;
+  font-size: 22px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.faq-item[open] summary::after { content: "\2212"; }
+.faq-item .faq-answer {
+  padding: 0 28px 20px 0;
+  color: var(--black);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  font-size: 13px;
+  color: var(--grey);
+  padding: 18px 0 0;
+}
+.breadcrumb a { color: var(--grey); text-decoration: underline; }
+.breadcrumb a:hover { color: var(--anthracite); }
+
+/* Closing CTA band */
+.closing {
+  background: var(--anthracite);
+  color: var(--white);
+  padding: 56px 0;
+  text-align: center;
+}
+.closing h2 { color: var(--white); }
+.closing .bar { margin-left: auto; margin-right: auto; }
+.closing p { color: var(--grey); max-width: 560px; margin-left: auto; margin-right: auto; }
+.closing .cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 24px;
+}
+.closing .btn-outline { border-color: var(--white); color: var(--white); }
+.closing .btn-outline:hover { background: var(--white); color: var(--anthracite); }
+
+/* Legal pages */
+.legal-notice {
+  background: var(--beige);
+  padding: 18px 22px;
+  margin-bottom: 32px;
+  font-size: 14px;
+  color: var(--anthracite);
+}
+.legal article h2 { margin-top: 40px; }
+.legal article h2:first-child { margin-top: 0; }
+.legal table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+.legal table th, .legal table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 15px;
+}
+
+/* Footer */
+footer.site-footer {
+  background: var(--anthracite);
+  color: var(--white);
+  border-top: 2px solid var(--gold);
+  padding: 40px 0 28px;
+  margin-top: 0;
+}
+footer.site-footer .footer-inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+footer.site-footer .footer-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--white);
+  margin-bottom: 18px;
+}
+footer.site-footer .footer-wordmark .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+footer.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+footer.site-footer nav a {
+  color: var(--white);
+  text-decoration: none;
+  font-size: 14px;
+}
+footer.site-footer nav a:hover { color: var(--gold); }
+footer.site-footer .disclaimer {
+  font-size: 13px;
+  color: var(--grey);
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 18px;
+  margin-bottom: 8px;
+}
+footer.site-footer .operator-line {
+  font-size: 13px;
+  color: var(--grey);
+}
+
+/* Sticky mobile CTA bar */
+.mobile-cta {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  background: var(--white);
+  border-top: 1px solid var(--hairline);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  display: none;
+}
+.mobile-cta.is-visible { display: block; }
+.mobile-cta a.btn { width: 100%; }
+
+body.has-mobile-cta { padding-bottom: 78px; }
+
+@media (min-width: 720px) {
+  .mobile-cta { display: none !important; }
+  body.has-mobile-cta { padding-bottom: 0; }
+}
+
+/* Utility */
+.text-center { text-align: center; }
+.mt-0 { margin-top: 0; }
+.small { font-size: 13px; color: var(--grey); }

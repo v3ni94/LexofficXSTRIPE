@@ -1,6 +1,6 @@
 <?php
 /**
- * Schneller Abgleich: Welche Rechnungsnummern zeigt Lexoffice aktuell als
+ * Schneller Abgleich: Welche Rechnungsnummern zeigt Lexware Office aktuell als
  * offen/überfällig, welche stehen lokal als offen/überfällig? Nutzt nur die
  * Voucherliste (Nummer + Status, keine Einzelabrufe), daher auch bei
  * mehreren hundert Rechnungen in wenigen Sekunden fertig.
@@ -11,7 +11,7 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/crypto.php';
 require_once __DIR__ . '/app/lexoffice.php';
 
-$ctx = require_role(['owner', 'admin']);
+$ctx = require_login();
 $tenantId = $ctx['org_id'];
 $pdo = db();
 
@@ -26,11 +26,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$tenantId]);
         $integration = $stmt->fetch();
         if (!$integration || !(int)$integration['lexoffice_connected']) {
-            throw new RuntimeException('Lexoffice ist nicht verbunden.');
+            throw new RuntimeException('Lexware Office ist nicht verbunden.');
         }
         $apiKey = decrypt_value($integration['lexoffice_api_key_encrypted']);
         if (!$apiKey) {
-            throw new RuntimeException('Lexoffice API-Key fehlt.');
+            throw new RuntimeException('Lexware Office API-Key fehlt.');
         }
 
         @set_time_limit(60);
@@ -74,8 +74,8 @@ foreach ($localRows as $r) {
     $localSum += (float)$r['total_gross_amount'];
 }
 
-$missingLocally = [];   // in Lexoffice, aber nicht lokal als offen/ueberfaellig
-$staleLocally = [];     // lokal offen/ueberfaellig, aber laut Lexoffice-Liste nicht (mehr) offen
+$missingLocally = [];   // in Lexware Office, aber nicht lokal als offen/ueberfaellig
+$staleLocally = [];     // lokal offen/ueberfaellig, aber laut Lexware-Office-Liste nicht (mehr) offen
 
 if ($lexList !== null) {
     foreach ($lexList as $lexId => $voucherNumber) {
@@ -92,15 +92,15 @@ if ($lexList !== null) {
 
 layout_header('Abgleich', $ctx);
 ?>
-<h1>Abgleich mit Lexoffice</h1>
-<p class="page-sub">Vergleicht die Rechnungsnummern aus Lexoffice (aktuell offen/überfällig) mit dem
+<h1>Abgleich mit Lexware Office</h1>
+<p class="page-sub">Vergleicht die Rechnungsnummern aus Lexware Office (aktuell offen/überfällig) mit dem
     lokalen Datenbestand. Prüft nur Nummern und Status, keine Beträge (dafür wäre ein Einzelabruf je
     Rechnung nötig, das würde zu lange dauern).</p>
 
 <div class="card">
     <form method="post">
         <?= csrf_field() ?>
-        <button type="submit" class="btn">Jetzt mit Lexoffice abgleichen</button>
+        <button type="submit" class="btn">Jetzt mit Lexware Office abgleichen</button>
     </form>
 
     <?php if ($error): ?>
@@ -111,7 +111,7 @@ layout_header('Abgleich', $ctx);
     <div class="card-grid" style="margin-top: 20px;">
         <div class="stat-card">
             <div class="stat-value"><?= count($lexList) ?></div>
-            <div class="stat-label">Offene Posten laut Lexoffice (gerade abgerufen)</div>
+            <div class="stat-label">Offene Posten laut Lexware Office (gerade abgerufen)</div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $localCount ?></div>
@@ -119,7 +119,7 @@ layout_header('Abgleich', $ctx);
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= format_eur((string)$localSum) ?></div>
-            <div class="stat-label">Bruttosumme im Portal (nur zum Vergleich mit Ihrer Lexoffice-Anzeige)</div>
+            <div class="stat-label">Bruttosumme im Portal (nur zum Vergleich mit Ihrer Lexware-Office-Anzeige)</div>
         </div>
     </div>
 
@@ -129,7 +129,7 @@ layout_header('Abgleich', $ctx);
     <?php else: ?>
 
         <?php if ($missingLocally): ?>
-        <h2 style="margin-top: 24px;">In Lexoffice offen, aber nicht im Portal
+        <h2 style="margin-top: 24px;">In Lexware Office offen, aber nicht im Portal
             (<?= count($missingLocally) ?>)</h2>
         <p class="hint">Diese Rechnungen fehlen lokal oder haben einen anderen Status.
             Empfehlung: auf "Rechnungen" erneut synchronisieren.</p>
@@ -138,7 +138,7 @@ layout_header('Abgleich', $ctx);
         <?php endif; ?>
 
         <?php if ($staleLocally): ?>
-        <h2 style="margin-top: 24px;">Im Portal offen, laut Lexoffice aber nicht mehr
+        <h2 style="margin-top: 24px;">Im Portal offen, laut Lexware Office aber nicht mehr
             (<?= count($staleLocally) ?>)</h2>
         <p class="hint">Diese Rechnungen sind vermutlich zwischenzeitlich bezahlt oder storniert
             worden, das Portal hat es noch nicht mitbekommen. Empfehlung: auf "Rechnungen" erneut

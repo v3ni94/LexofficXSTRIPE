@@ -397,5 +397,61 @@ code.copy {
 
 @media (max-width: 720px) {
     .header-inner { gap: 12px; padding-bottom: 10px; }
-    .user-menu { margin-left: 0; }
+    .user-menu { margin-left: 0; flex-wrap: wrap; }
 }
+
+/* ==========================================================================
+   Produktauftritt "Lexware-Einzug" (alle Firmen ohne HVM-CI). Betreiber:
+   Müller Holding AG. Eigene, zurückhaltende Gestaltung: Senfgold als Akzent,
+   Anthrazit für Überschriften, keine fremden CI-Elemente.
+   ========================================================================== */
+body.theme-product {
+    --hvm-orange: #E3AC48;
+    --hvm-orange-dark: #C9932F;
+    --hvm-anthracite: #2E2D2E;
+    --hvm-anthracite-surface: #2E2D2E;
+    --hvm-midgray: #9F9F9F;
+    --hvm-lightgray: #E8E6E1;
+    --hvm-outlinegray: #F3F1EC;
+    --color-text-muted: #6B6B6B;
+    --color-bg: #FBF9F4;
+    --font-family: Carlito, Calibri, "Segoe UI", system-ui, sans-serif;
+}
+body.theme-product .btn { color: #2E2D2E; }
+body.theme-product h1, body.theme-product h2 { color: #2E2D2E; }
+body.theme-product .stat-card { border-top-color: #E3AC48; }
+body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
+.brand-seam { height: 1px; background: #DDDBD6; position: relative; flex-shrink: 0; }
+.brand-seam span { position: absolute; left: 0; top: -1px; height: 3px; width: 140px; background: #E3AC48; }
+.brand-dot { width: 12px; height: 12px; border-radius: 50%; background: #E3AC48; display: inline-block; flex-shrink: 0; }
+.nav-admin { font-weight: 700; }
+
+/* --- Auth-Erweiterungen (2FA, Registrierung) --- */
+.auth-wide { max-width: 620px; }
+.code-input { font-size: 22px; letter-spacing: 4px; font-family: "Courier New", monospace; text-align: center; max-width: 260px; }
+.recovery-codes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin: 12px 0 20px; }
+.recovery-codes code { display: block; background: var(--hvm-outlinegray); padding: 8px 10px; border-radius: 4px; font-size: 15px; text-align: center; letter-spacing: 1px; }
+.setup-steps { padding-left: 20px; margin: 0 0 16px; }
+.setup-steps li { margin-bottom: 12px; }
+.qr-box { width: 196px; height: 196px; margin: 10px 0; background: #fff; border: 1px solid var(--color-border); padding: 4px; }
+.qr-box img, .qr-box canvas { display: block; }
+.checkbox-label { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 14px; color: var(--color-text); margin: 14px 0; }
+.checkbox-label input { margin-top: 3px; }
+.inline-check { font-weight: 400; font-size: 13px; margin: 0; display: inline-flex; gap: 4px; align-items: center; }
+.form-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.form-row > div { flex: 1 1 200px; }
+.form-row input { max-width: 100%; }
+.badge-warn { background: #FBF0D9; color: #8A5A00; }
+.placeholder { color: var(--color-danger); font-weight: 600; }
+.breadcrumb { font-size: 13px; color: var(--color-text-muted); margin: 0 0 8px; }
+.check-list { list-style: none; padding: 0; margin: 0 0 12px; }
+.check-list li { padding: 6px 0 6px 26px; position: relative; }
+.check-list li::before { content: "\2713"; position: absolute; left: 0; color: var(--hvm-orange); font-weight: 700; }
+.check-list.plain li::before { content: "\2022"; }
+.table-sm { font-size: 13px; }
+.table-sm th, .table-sm td { padding: 6px 8px; }
+
+/* --- Footer mit Betreiberangaben --- */
+.footer-legal { border-top: 1px solid var(--color-border); }
+.footer-legal a { color: var(--hvm-anthracite); }
+.footer-disclaimer { color: var(--color-text-muted); }

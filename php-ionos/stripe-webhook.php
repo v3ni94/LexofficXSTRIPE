@@ -37,8 +37,23 @@ $eventType = $event['type'] ?? '';
 $obj = $event['data']['object'] ?? [];
 $tenantId = $obj['metadata']['tenant_id'] ?? null;
 
+// Rücklastschriften (charge.dispute.created) tragen keine PaymentIntent-Metadaten:
+// Firma über den PaymentIntent der gespeicherten Collection ermitteln.
+$paymentIntentHint = $eventType === 'charge.dispute.created'
+    ? ($obj['payment_intent'] ?? null)
+    : ($obj['id'] ?? null);
+if (!$tenantId && is_string($paymentIntentHint) && $paymentIntentHint !== '') {
+    try {
+        $stmt = db()->prepare('SELECT tenant_id FROM payment_collections WHERE stripe_payment_intent_id = ? LIMIT 1');
+        $stmt->execute([$paymentIntentHint]);
+        $tenantId = $stmt->fetchColumn() ?: null;
+    } catch (Throwable $e) {
+        webhook_exit('Datenbankfehler bei Firmenzuordnung: ' . $e->getMessage());
+    }
+}
+
 if (!$tenantId) {
-    webhook_exit("tenant_id nicht in Metadaten gefunden (type=$eventType)");
+    webhook_exit("Firma nicht ermittelbar (type=$eventType)");
 }
 
 try {
@@ -112,6 +127,10 @@ try {
             )->execute([$reason, $collection['id']]);
             $pdo->prepare("UPDATE invoices SET collection_status = 'failed' WHERE id = ?")
                 ->execute([$collection['invoice_id']]);
+            require_once __DIR__ . '/app/audit.php';
+            audit_log($tenantId, null, 'collection_disputed', 'collection', $collection['id'], [
+                'amount_cents' => (int)$collection['amount_cents'], 'payment_intent' => $paymentIntentId,
+            ]);
             break;
 
         default:
