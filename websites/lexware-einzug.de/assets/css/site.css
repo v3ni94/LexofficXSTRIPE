@@ -517,3 +517,9 @@ main p a:not(.btn):hover, main li a:not(.btn):hover { color: var(--anthracite); 
   display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 19px; line-height: 1; flex: none;
 }
 .footer-wordmark .mark { background: var(--gold); color: var(--anthracite); }
+
+/* Einführungspreis */
+.plan-badge { display: inline-block; margin-left: 8px; padding: 3px 9px; border-radius: 999px; background: var(--gold); color: var(--anthracite); font-size: 0.68rem; letter-spacing: 0.06em; vertical-align: middle; }
+.price-card .plan-was { color: #B9B8B6; font-size: 0.98rem; margin: 0 0 2px; }
+.price-card .plan-was s { color: #D6D5D3; text-decoration-thickness: 2px; text-decoration-color: var(--gold); font-weight: 600; }
+.price-note { font-size: 0.85rem; color: var(--gray-text); margin: 14px 0 0; max-width: 640px; }
