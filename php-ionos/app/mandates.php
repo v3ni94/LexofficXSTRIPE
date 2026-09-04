@@ -186,6 +186,29 @@ function get_or_create_mandate(string $tenantId, string $customerId, ?string $cu
     return $stmt->fetch();
 }
 
+/**
+ * Braucht der Kunde ein ausdrücklich neu eingeholtes Mandat? Ja, wenn kein
+ * aktives Mandat besteht, aber ein früheres widerrufen oder verfallen ist.
+ * In diesem Fall darf der Einzug kein Mandat still neu anlegen; das neue
+ * Mandat wird über die Kundendetails (Dokument, Unterschrift) erfasst.
+ */
+function mandate_requires_manual_renewal(string $tenantId, string $customerId): bool
+{
+    $pdo = db();
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM sepa_mandates WHERE tenant_id = ? AND customer_id = ? AND is_active = 1 AND status IN ('draft', 'active')"
+    );
+    $stmt->execute([$tenantId, $customerId]);
+    if ((int)$stmt->fetchColumn() > 0) {
+        return false;
+    }
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM sepa_mandates WHERE tenant_id = ? AND customer_id = ? AND status IN ('cancelled', 'expired')"
+    );
+    $stmt->execute([$tenantId, $customerId]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
 /** Mandat laden (mandantensicher). */
 function mandate_load(string $tenantId, string $mandateId): ?array
 {

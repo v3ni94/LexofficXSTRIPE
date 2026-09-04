@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare('SELECT id FROM customer_ibans WHERE customer_id = ? AND tenant_id = ? AND is_active = 1 LIMIT 1');
             $stmt->execute([$customerId, $tenantId]);
             $ibanId = $stmt->fetchColumn() ?: null;
+            // Ausdrückliche Neuanlage über die Kundendetails (auch nach Widerruf/Verfall zulässig)
             $mandate = get_or_create_mandate($tenantId, $customerId, $ibanId ?: null, $ctx['user_id']);
             mandate_mark_document_generated($mandate['id'], $ctx['user_id']);
             audit_log($tenantId, $ctx, 'mandate_document', 'mandate', $mandate['id'], [

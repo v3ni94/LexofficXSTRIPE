@@ -360,6 +360,12 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
     }
 
     [$invoice, $customer, $iban] = _load_and_validate($tenantId, $invoiceId);
+    if (mandate_requires_manual_renewal($tenantId, $customer['id'])) {
+        throw new CollectionException(
+            'Das bisherige SEPA-Mandat dieses Kunden ist widerrufen oder verfallen. Bitte ein neues Mandat einholen '
+            . 'und unter Kundendetails erfassen (Mandatsdokument erzeugen, Unterschrift erfassen).'
+        );
+    }
     $mandate = get_or_create_mandate($tenantId, $customer['id'], $iban['id']);
     if ($problem = mandate_check_usable($mandate, $org)) {
         $ex = new MandateUnusableException($problem);
@@ -746,6 +752,9 @@ function _submit_single_scheduled(array $collection): void
         throw new RuntimeException('Für diesen Kunden ist keine aktive IBAN mehr hinterlegt');
     }
     if ($iban['id'] !== $collection['customer_iban_id']) {
+        if (mandate_requires_manual_renewal($tenantId, $customer['id'])) {
+            throw new RuntimeException('Das SEPA-Mandat ist widerrufen oder verfallen; ein neues Mandat muss erfasst werden');
+        }
         $mandate = get_or_create_mandate($tenantId, $customer['id'], $iban['id']);
         if ($problem = mandate_check_usable($mandate, _collection_org($tenantId))) {
             throw new RuntimeException($problem);
