@@ -76,13 +76,22 @@ return [
     // transport 'log' schreibt E-Mails nur in eine Datei (Test).
     // enabled=false: es werden keine E-Mails versendet; Einladungslinks werden
     // dann im Portal angezeigt und die E-Mail-Verifizierung entfällt.
+    // transport 'smtp' versendet über ein Postfach mit Benutzername und Passwort
+    // (IONOS: smtp.ionos.de, Port 587, encryption 'tls'; Benutzer = volle E-Mail-Adresse).
     'mail' => [
         'enabled'      => false,
-        'transport'    => 'mail',
-        'from_address' => 'noreply@lexware-einzug.de',
+        'transport'    => 'smtp',
+        'from_address' => 'noreply@lexware-einzug.de',   // muss zum SMTP-Postfach passen
         'from_name'    => 'Lexware-Einzug',
         'reply_to'     => 'info@mueller-holding.ag',
         'log_file'     => __DIR__ . '/../mail.log',
+        'smtp' => [
+            'host'       => 'smtp.ionos.de',
+            'port'       => 587,
+            'encryption' => 'tls',                       // 'tls' (Port 587) | 'ssl' (Port 465)
+            'user'       => 'noreply@lexware-einzug.de',
+            'pass'       => 'HIER-POSTFACH-PASSWORT',
+        ],
     ],
 
     // --- Lexware Office Public API ---

@@ -143,11 +143,104 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
         return true;
     }
 
+    if ($transport === 'smtp') {
+        try {
+            mail_smtp_send((array)($cfg['smtp'] ?? []), $fromAddress, $to,
+                'To: ' . $to . "\r\n" . 'Subject: ' . $encodedSubject . "\r\n" . $headers, $body);
+            return true;
+        } catch (Throwable $e) {
+            error_log('mail_send: SMTP-Versand fehlgeschlagen, Empfänger: ' . $to . ': ' . $e->getMessage());
+            return false;
+        }
+    }
+
     $result = @mail($to, $encodedSubject, $body, $headers);
     if (!$result) {
         error_log('mail_send: Versand über mail() fehlgeschlagen, Empfänger: ' . $to);
     }
     return $result;
+}
+
+/**
+ * Minimaler SMTP-Client (AUTH LOGIN, STARTTLS oder SSL), ohne Bibliotheken.
+ * Konfiguration: host, port (587 STARTTLS oder 465 SSL), encryption
+ * ('tls' | 'ssl' | 'none'), user, pass. Wirft RuntimeException bei Fehlern.
+ */
+function mail_smtp_send(array $smtp, string $from, string $to, string $headers, string $body): void
+{
+    $host = (string)($smtp['host'] ?? '');
+    $port = (int)($smtp['port'] ?? 587);
+    $enc = strtolower((string)($smtp['encryption'] ?? 'tls'));
+    $user = (string)($smtp['user'] ?? '');
+    $pass = (string)($smtp['pass'] ?? '');
+    if ($host === '' || $from === '') {
+        throw new RuntimeException('SMTP-Host oder Absenderadresse fehlt.');
+    }
+
+    $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'SNI_enabled' => true]]);
+    $remote = ($enc === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port;
+    $fp = @stream_socket_client($remote, $errno, $errstr, 20, STREAM_CLIENT_CONNECT, $ctx);
+    if (!$fp) {
+        throw new RuntimeException("Verbindung zu $host:$port fehlgeschlagen: $errstr ($errno)");
+    }
+    stream_set_timeout($fp, 20);
+
+    $read = function () use ($fp): string {
+        $lines = '';
+        while (($line = fgets($fp, 2048)) !== false) {
+            $lines .= $line;
+            if (strlen($line) >= 4 && $line[3] === ' ') {
+                break;
+            }
+        }
+        if ($lines === '') {
+            throw new RuntimeException('Keine Antwort vom SMTP-Server.');
+        }
+        return $lines;
+    };
+    $cmd = function (string $command, array $okCodes) use ($fp, $read): string {
+        fwrite($fp, $command . "\r\n");
+        $resp = $read();
+        if (!in_array((int)substr($resp, 0, 3), $okCodes, true)) {
+            throw new RuntimeException('SMTP-Fehler auf "' . preg_replace('/^(AUTH LOGIN|[A-Za-z0-9+\/=]{8,})$/', '***', $command) . '": ' . trim($resp));
+        }
+        return $resp;
+    };
+
+    $greeting = $read();
+    if ((int)substr($greeting, 0, 3) !== 220) {
+        throw new RuntimeException('SMTP-Begrüßung fehlgeschlagen: ' . trim($greeting));
+    }
+    $ehloHost = mail_message_id_host();
+    $cmd('EHLO ' . $ehloHost, [250]);
+
+    if ($enc === 'tls') {
+        $cmd('STARTTLS', [220]);
+        $crypto = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | (defined('STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT') ? STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT : 0);
+        if (!@stream_socket_enable_crypto($fp, true, $crypto)) {
+            throw new RuntimeException('STARTTLS-Verschlüsselung konnte nicht aufgebaut werden.');
+        }
+        $cmd('EHLO ' . $ehloHost, [250]);
+    }
+
+    if ($user !== '') {
+        $cmd('AUTH LOGIN', [334]);
+        $cmd(base64_encode($user), [334]);
+        $cmd(base64_encode($pass), [235]);
+    }
+
+    $cmd('MAIL FROM:<' . $from . '>', [250]);
+    $cmd('RCPT TO:<' . $to . '>', [250, 251]);
+    $cmd('DATA', [354]);
+    // Zeilen, die mit "." beginnen, gemäß SMTP verdoppeln
+    $data = preg_replace('/^\./m', '..', $headers . "\r\n\r\n" . $body);
+    fwrite($fp, $data . "\r\n.\r\n");
+    $resp = $read();
+    if ((int)substr($resp, 0, 3) !== 250) {
+        throw new RuntimeException('SMTP-Server hat die Nachricht abgelehnt: ' . trim($resp));
+    }
+    fwrite($fp, "QUIT\r\n");
+    fclose($fp);
 }
 
 /**
