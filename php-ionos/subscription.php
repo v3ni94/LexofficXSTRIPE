@@ -72,7 +72,7 @@ layout_header('Abonnement', $ctx);
 <div class="card-grid">
     <div class="stat-card">
         <div class="stat-value" style="font-size: 20px;"><?= e($plan['name']) ?></div>
-        <div class="stat-label">Tarif · <?= format_eur_cents((int)$plan['price_cents']) ?> je <?= (int)$plan['period_days'] ?> Tage</div>
+        <div class="stat-label">Tarif · <?= format_eur_cents((int)$plan['price_cents']) ?> netto je <?= (int)$plan['period_days'] ?> Tage<?= billing_vat_hint((int)$plan['price_cents']) ?></div>
     </div>
     <div class="stat-card">
         <div class="stat-value" style="font-size: 20px;"><?= e(subscription_status_label((string)$org['subscription_status'])) ?></div>
@@ -111,7 +111,8 @@ layout_header('Abonnement', $ctx);
         <form method="post">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="checkout">
-            <button type="submit" class="btn">Jetzt für <?= format_eur_cents((int)$plan['price_cents']) ?> je 4 Wochen abschließen</button>
+            <button type="submit" class="btn">Jetzt für <?= format_eur_cents((int)$plan['price_cents']) ?> netto je 4 Wochen abschließen</button>
+            <p class="hint">Alle Preise netto<?= billing_vat_hint((int)$plan['price_cents']) ?>. Die Umsatzsteuer wird auf der Stripe-Bezahlseite anhand Ihrer Rechnungsadresse berechnet und auf der Rechnung ausgewiesen.</p>
         </form>
     </div>
     <?php else: ?>

@@ -99,7 +99,7 @@ layout_header('Firmenaccount registrieren');
             <button type="submit" class="btn">Firmenaccount erstellen</button>
         </form>
         <p class="auth-links"><a href="login.php">Bereits registriert? Zur Anmeldung</a></p>
-        <p class="hint" style="text-align:center;">Starttarif UNLIMITED START: 25 EUR je 4 Wochen, unbegrenzte Einzüge, unbegrenzte Mitarbeiter.
+        <p class="hint" style="text-align:center;">Tarif UNLIMITED START: 25,00 EUR netto zzgl. USt. je 4 Wochen, unbegrenzte Einzüge, unbegrenzte Mitarbeiter.
             Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
     </div>
 </div>

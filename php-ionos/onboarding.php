@@ -37,7 +37,7 @@ $steps = [
 if (billing_enabled() && !(int)$ctx['billing_exempt']) {
     $steps[] = [
         'title' => 'Abonnement aktivieren',
-        'desc'  => 'UNLIMITED START, 25 EUR je 4 Wochen. Nur der Inhaber kann das Abonnement abschließen.',
+        'desc'  => 'UNLIMITED START, 25,00 EUR netto zzgl. USt. je 4 Wochen. Nur der Inhaber kann das Abonnement abschließen.',
         'done'  => !$needsSubscription,
         'link'  => $ctx['role'] === 'owner' ? 'subscription.php' : null,
     ];

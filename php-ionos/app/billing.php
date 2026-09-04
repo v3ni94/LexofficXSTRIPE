@@ -66,6 +66,13 @@ function billing_checkout_url(array $org, array $plan, array $owner): string
         'metadata'            => ['tenant_id' => $org['id'], 'plan_code' => $plan['code']],
         'subscription_data'   => ['metadata' => ['tenant_id' => $org['id'], 'plan_code' => $plan['code']]],
         'allow_promotion_codes' => 'true',
+        // Umsatzsteuer: Preise sind Nettopreise. Stripe Tax berechnet den gültigen Satz
+        // (derzeit 19 % in Deutschland) anhand der Rechnungsadresse und weist ihn auf der
+        // Rechnung aus. USt-IdNr. wird abgefragt (Reverse Charge im EU-Ausland).
+        'automatic_tax'       => ['enabled' => config('billing', [])['automatic_tax'] ?? true ? 'true' : 'false'],
+        'tax_id_collection'   => ['enabled' => 'true'],
+        'billing_address_collection' => 'required',
+        'customer_update'     => ['address' => 'auto', 'name' => 'auto'],
     ]);
     audit_log($org['id'], $owner, 'subscription_checkout', 'organization', $org['id'], ['plan' => $plan['code']]);
     return (string)$session['url'];

@@ -114,6 +114,8 @@ return [
         'enabled'                => false,
         'stripe_secret_key'      => '',      // sk_live_... des Plattform-Kontos
         'stripe_webhook_secret'  => '',      // whsec_... für billing-webhook.php
+        'automatic_tax'          => true,    // Stripe Tax berechnet die USt (Stripe Tax im Konto aktivieren, Preis mit tax_behavior exclusive)
+        'vat_rate_percent'       => 19,      // nur für die Anzeige des Bruttobetrags in der Anwendung
     ],
 
     // --- Zeitzone ---

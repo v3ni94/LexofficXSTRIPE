@@ -238,3 +238,14 @@ function subscription_status_label(string $status): string
         default    => 'Noch nicht abgeschlossen',
     };
 }
+
+/** Hinweis auf USt und Bruttobetrag für die Anzeige, z. B. ", zzgl. 19 % USt. (29,75 EUR brutto)". */
+function billing_vat_hint(int $netCents): string
+{
+    $rate = (float)(config('billing', [])['vat_rate_percent'] ?? 19);
+    if ($rate <= 0) {
+        return '';
+    }
+    $gross = (int)round($netCents * (1 + $rate / 100));
+    return sprintf(', zzgl. %s %% USt. (%s brutto)', rtrim(rtrim(number_format($rate, 2, ',', '.'), '0'), ','), format_eur_cents($gross));
+}
