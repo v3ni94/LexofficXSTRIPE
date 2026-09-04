@@ -18,6 +18,7 @@ return [
     // --- MariaDB (Zugangsdaten aus dem IONOS Kundenbereich: Hosting > Datenbanken) ---
     'db' => [
         'host'    => 'db5001234567.hosting-data.io', // IONOS DB-Hostname
+        'port'    => 3306,                           // Standard-Port, nur ändern wenn der Anbieter einen anderen nennt
         'name'    => 'dbs1234567',                   // Datenbankname
         'user'    => 'dbu1234567',                   // Datenbank-Benutzer
         'pass'    => 'HIER-DB-PASSWORT',
