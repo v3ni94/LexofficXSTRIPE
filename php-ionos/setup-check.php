@@ -17,7 +17,29 @@ header('X-Robots-Tag: noindex');
 // Sobald eine Konfiguration existiert, ist die Prüfung nur noch mit dem
 // cron_token erreichbar (setup-check.php?token=...), damit keine
 // Systeminformationen öffentlich abrufbar sind.
-$preConfig = is_file(__DIR__ . '/app/config.php') ? (require __DIR__ . '/app/config.php') : null;
+$preConfig = null;
+$configLoadError = null;
+if (is_file(__DIR__ . '/app/config.php')) {
+    // Kodierung prüfen (Windows-Editoren speichern gern mit BOM oder als UTF-16)
+    $raw = (string)file_get_contents(__DIR__ . '/app/config.php');
+    if (str_starts_with($raw, "\xEF\xBB\xBF")) {
+        $configLoadError = 'Die Datei beginnt mit einer Byte-Order-Markierung (BOM). Bitte im Editor als "UTF-8 ohne BOM" speichern.';
+    } elseif (str_starts_with($raw, "\xFF\xFE") || str_starts_with($raw, "\xFE\xFF")) {
+        $configLoadError = 'Die Datei ist als UTF-16 gespeichert. Bitte als UTF-8 speichern.';
+    } elseif (!str_starts_with(ltrim($raw), '<?php')) {
+        $configLoadError = 'Die Datei beginnt nicht mit "<?php". Vermutlich wurde eine falsche Datei hochgeladen.';
+    } else {
+        try {
+            $preConfig = require __DIR__ . '/app/config.php';
+            if (!is_array($preConfig)) {
+                $configLoadError = 'Die Datei liefert kein Konfigurations-Array (fehlt "return [" oder das abschließende "];"?).';
+            }
+        } catch (Throwable $e) {
+            $configLoadError = 'PHP-Fehler in app/config.php, Zeile ' . $e->getLine() . ': ' . $e->getMessage()
+                . ' (häufig ein fehlendes Anführungszeichen oder Komma in der Zeile davor).';
+        }
+    }
+}
 if (is_array($preConfig) && strlen((string)($preConfig['cron_token'] ?? '')) >= 16 && !str_contains((string)$preConfig['cron_token'], 'HIER-')) {
     if (!hash_equals((string)$preConfig['cron_token'], (string)($_GET['token'] ?? ''))) {
         http_response_code(403);
@@ -46,9 +68,11 @@ foreach (['pdo_mysql' => 'MariaDB-Anbindung', 'curl' => 'Stripe/Lexware-Office-A
 // --- 3. Konfiguration ---
 $configFile = __DIR__ . '/app/config.php';
 $config = null;
-if (is_file($configFile)) {
+if ($configLoadError !== null) {
+    add_check('Konfigurationsdatei app/config.php lesbar', false, $configLoadError);
+} elseif (is_file($configFile)) {
     add_check('Konfigurationsdatei app/config.php vorhanden', true);
-    $config = require $configFile;
+    $config = $preConfig;
 
     $secret = (string)($config['app_secret'] ?? '');
     add_check(
