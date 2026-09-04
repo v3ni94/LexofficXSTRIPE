@@ -8,6 +8,7 @@
 :root {
   --gold: #E3AC48;
   --gold-dark: #C9932F;
+  --gold-text: #8A5A00; /* Gold für kleine Texte, Kontrast 4.5:1 auf Weiß und Beige */
   --gold-soft: #F6E7C8;
   --gold-tint: #FBF2DF;
   --anthracite: #2E2D2E;
@@ -20,9 +21,9 @@
   --white: #FFFFFF;
   --hairline: #DDDBD6;
   --line: #ECE8DF;
-  --success: #1E7E4A;
+  --success: #176640;
   --success-bg: #E3F3EA;
-  --info: #1D5F8A;
+  --info: #1A527A;
   --info-bg: #E3EEF5;
   --danger: #A12622;
   --danger-bg: #F8E7E6;
@@ -81,7 +82,7 @@ main { display: block; }
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--gold-dark);
+  color: var(--gold-text);
   margin: 0 0 12px 0;
   font-weight: 700;
 }
@@ -204,7 +205,7 @@ main { display: block; }
 .app-mock-bar .url { margin-left: 8px; font-size: 11px; color: var(--gray-text); background: var(--white); border-radius: 999px; padding: 4px 12px; border: 1px solid var(--line); }
 .app-mock-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 6px; }
 .app-mock-head strong { font-size: 15px; }
-.app-mock-head .pill { font-size: 11px; background: var(--gold-tint); color: var(--gold-dark); border-radius: 999px; padding: 4px 10px; font-weight: 700; }
+.app-mock-head .pill { font-size: 11px; background: var(--gold-tint); color: var(--gold-text); border-radius: 999px; padding: 4px 10px; font-weight: 700; }
 .app-mock-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 8px 18px 14px; }
 .app-mock-kpis div { background: var(--beige); border-radius: 8px; padding: 10px 12px; border-top: 3px solid var(--gold); }
 .app-mock-kpis b { display: block; font-size: 18px; color: var(--anthracite); }
@@ -218,7 +219,7 @@ main { display: block; }
 .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
 .badge-success { background: var(--success-bg); color: var(--success); }
 .badge-info { background: var(--info-bg); color: var(--info); }
-.badge-warn { background: var(--gold-tint); color: var(--gold-dark); }
+.badge-warn { background: var(--gold-tint); color: var(--gold-text); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .mock-btn { display: inline-block; background: var(--gold); color: var(--anthracite); font-weight: 700; font-size: 11px; padding: 5px 10px; border-radius: 6px; }
 

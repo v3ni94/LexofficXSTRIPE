@@ -30,6 +30,8 @@ ErrorDocument 404 /404.html
   Header set Referrer-Policy "strict-origin-when-cross-origin"
   Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
   Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  Header set Cross-Origin-Opener-Policy "same-origin"
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://app.lexware-einzug.de; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://app.lexware-einzug.de; object-src 'none'"
   <FilesMatch "\.(html|xml|txt)$">
     Header set Cache-Control "public, max-age=0, must-revalidate"
   </FilesMatch>
