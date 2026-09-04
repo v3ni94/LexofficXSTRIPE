@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stripe mit Lexware-Einzug verbinden</title>
+<meta name="description" content="Schritt für Schritt zum Stripe Secret Key, zur Anbindung an Lexware-Einzug und zur Einrichtung des Webhook-Endpunkts.">
+<link rel="canonical" href="https://lexware-einzug.de/anleitung/stripe-verbinden">
+<meta property="og:title" content="Stripe mit Lexware-Einzug verbinden">
+<meta property="og:description" content="Schritt für Schritt zum Stripe Secret Key, zur Anbindung an Lexware-Einzug und zur Einrichtung des Webhook-Endpunkts.">
+<meta property="og:url" content="https://lexware-einzug.de/anleitung/stripe-verbinden">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904c">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://lexware-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Hilfe",
+      "item": "https://lexware-einzug.de/hilfe"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Stripe mit Lexware-Einzug verbinden",
+      "item": "https://lexware-einzug.de/anleitung/stripe-verbinden"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="dot"></span>Lexware-Einzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen">Funktionen</a></li>
+        <li><a href="/preise">Preise</a></li>
+        <li><a href="/sicherheit">Sicherheit</a></li>
+        <li><a href="/hilfe">Hilfe</a></li>
+        <li><a href="/faq">FAQ</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+<li><a href="/hilfe">Hilfe</a></li>
+<li aria-current="page">Stripe mit Lexware-Einzug verbinden</li>
+  </ol>
+</nav>
+
+<main>
+
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Anleitung</p>
+      <h1>Stripe mit Lexware-Einzug verbinden</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">So verbinden Sie Ihr eigenes Stripe-Konto mit Lexware-Einzug und richten den Webhook für den Statusabgleich ein.</p>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="anleitung-stripe-top">Jetzt registrieren</a>
+        <a href="/lexware-office-stripe" class="btn btn-outline">Hintergrund zu Stripe</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <h2>Schritt-für-Schritt-Anleitung</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Im Stripe-Dashboard anmelden</h3><p>Melden Sie sich mit Ihrem eigenen Stripe-Konto im Stripe-Dashboard an.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Entwicklerbereich öffnen</h3><p>Wechseln Sie in den Bereich Developers beziehungsweise Entwickler.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>API-Schlüssel aufrufen</h3><p>Öffnen Sie dort API keys beziehungsweise API-Schlüssel.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Test- oder Live-Modus wählen</h3><p>Entscheiden Sie, ob Sie zunächst im Testmodus (Schlüssel beginnt mit sk_test_) oder im Livemodus (sk_live_) arbeiten möchten.</p></div></li>
+        <li class="step"><span class="step-number">5</span><div><h3>Secret Key erstellen</h3><p>Erstellen Sie einen neuen Secret Key oder einen eingeschränkten Schlüssel mit den benötigten Berechtigungen.</p></div></li>
+        <li class="step"><span class="step-number">6</span><div><h3>Bezeichnung vergeben</h3><p>Vergeben Sie eine aussagekräftige Bezeichnung für den Schlüssel.</p></div></li>
+        <li class="step"><span class="step-number">7</span><div><h3>Schlüssel sofort kopieren</h3><p>Kopieren Sie den Schlüssel sofort, da er nur einmal vollständig angezeigt wird.</p></div></li>
+        <li class="step"><span class="step-number">8</span><div><h3>In Lexware-Einzug einfügen</h3><p>Fügen Sie den Schlüssel unter den Einstellungen von Lexware-Einzug in den Bereich Stripe-Anbindung ein.</p></div></li>
+        <li class="step"><span class="step-number">9</span><div><h3>Webhook einrichten</h3><p>Richten Sie in Stripe einen Webhook-Endpunkt auf https://app.lexware-einzug.de/stripe-webhook.php ein und aktivieren Sie die Events payment_intent.processing, payment_intent.succeeded, payment_intent.payment_failed und charge.dispute.created.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2>Testmodus und Livemodus</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Im Testmodus lassen sich Einzüge mit Testdaten ausprobieren, ohne dass echtes Geld bewegt wird. Für tatsächliche Einzüge bei Ihren Kunden benötigen Sie den Livemodus und einen entsprechenden Live-Schlüssel. Testmodus und Livemodus verwenden jeweils eigene Schlüssel und eigene Webhook-Konfigurationen in Stripe.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Verbindung prüfen oder trennen</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Nach der Einrichtung können Sie die Stripe-Verbindung in Lexware-Einzug jederzeit einsehen und bei Bedarf trennen. Historische Einzugsdaten bleiben dabei erhalten. Wie Sie anschließend Rechnungen einziehen, beschreibt die Seite <a href="/lexware-office-lastschrift">Lexware Office Lastschrift einziehen</a>.</p>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="anleitung-stripe-bottom">Jetzt registrieren</a>
+      </div>
+    </div>
+  </section>
+</article>
+
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="dot"></span>Lexware-Einzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum">Impressum</a></li>
+          <li><a href="/datenschutz">Datenschutz</a></li>
+          <li><a href="/agb">AGB</a></li>
+          <li><a href="/hilfe">Hilfe</a></li>
+          <li><a href="/ratgeber/">Ratgeber</a></li>
+          <li><a href="/sicherheit">Sicherheit</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260904c"></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

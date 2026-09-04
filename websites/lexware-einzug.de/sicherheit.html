@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sicherheit bei Lexware-Einzug</title>
+<meta name="description" content="Wie Lexware-Einzug Zugangsdaten, Mandantentrennung, Protokoll und Zahlungsdaten schützt: 2FA-Pflicht, verschlüsselte Schlüssel, Webhook-Signaturprüfung.">
+<link rel="canonical" href="https://lexware-einzug.de/sicherheit">
+<meta property="og:title" content="Sicherheit bei Lexware-Einzug">
+<meta property="og:description" content="Wie Lexware-Einzug Zugangsdaten, Mandantentrennung, Protokoll und Zahlungsdaten schützt: 2FA-Pflicht, verschlüsselte Schlüssel, Webhook-Signaturprüfung.">
+<meta property="og:url" content="https://lexware-einzug.de/sicherheit">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904c">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://lexware-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Sicherheit",
+      "item": "https://lexware-einzug.de/sicherheit"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="dot"></span>Lexware-Einzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen">Funktionen</a></li>
+        <li><a href="/preise">Preise</a></li>
+        <li><a href="/sicherheit">Sicherheit</a></li>
+        <li><a href="/hilfe">Hilfe</a></li>
+        <li><a href="/faq">FAQ</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+<li aria-current="page">Sicherheit</li>
+  </ol>
+</nav>
+
+<main>
+
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Vertrauen und Schutz</p>
+      <h1>Sicherheit bei Lexware-Einzug</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Ein Überblick über die technischen und organisatorischen Maßnahmen, mit denen Lexware-Einzug Zugangsdaten, Mandantendaten und Zahlungsvorgänge schützt.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div>
+          <h2>Zugang mit Zwei-Faktor-Authentifizierung</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Jeder Benutzeraccount wird zwingend mit einer Zwei-Faktor-Authentifizierung über eine Authenticator-App abgesichert. Für den Fall eines Geräteverlusts stehen Recovery-Codes zur Verfügung, die Sie bei der Einrichtung sicher aufbewahren sollten.</p>
+        </div>
+        <div class="split-visual">
+          <div class="tile"><span class="icon"><svg><use href="#i-shield"/></svg></span><h3>2FA-Pflicht</h3><p>Keine Anmeldung ohne zweiten Faktor, für jeden Mitarbeiter im Firmenaccount.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="split reverse">
+        <div>
+          <h2>Verschlüsselte Speicherung der Schlüssel</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Der API-Schlüssel für Lexware Office und der Secret Key für Stripe werden nach der Eingabe serverseitig verschlüsselt gespeichert. Im Klartext werden diese Schlüssel danach nicht mehr angezeigt.</p>
+        </div>
+        <div class="split-visual">
+          <div class="tile"><span class="icon"><svg><use href="#i-list"/></svg></span><h3>Einmalige Anzeige</h3><p>Schlüssel werden bei der Eingabe verschlüsselt und anschließend nicht erneut im Klartext ausgegeben.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div>
+          <h2>Mandantentrennung</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Die Daten jedes Firmenaccounts, einschließlich Rechnungen, Kunden, IBAN-Daten und Mandaten, sind logisch vom Firmenaccount anderer Nutzer getrennt. Mitarbeiter sehen und bearbeiten ausschließlich Daten des eigenen Firmenaccounts.</p>
+        </div>
+        <div class="split-visual">
+          <div class="tile"><span class="icon"><svg><use href="#i-building"/></svg></span><h3>Getrennte Firmenaccounts</h3><p>Jeder Firmenaccount arbeitet isoliert von anderen Kunden von Lexware-Einzug.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="split reverse">
+        <div>
+          <h2>Rollen, Protokoll und Sitzungsende</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Mitarbeiter erhalten die Rolle Inhaber, Administrator oder Mitarbeiter. Sicherheits- und geldrelevante Aktionen werden protokolliert und lassen sich im Nachhinein nachvollziehen. Wird ein Mitarbeiter aus dem Firmenaccount entfernt, endet dessen Zugriff auf laufende Sitzungen.</p>
+        </div>
+        <div class="split-visual">
+          <div class="tile"><span class="icon"><svg><use href="#i-users"/></svg></span><h3>Rollenmodell</h3><p>Inhaber, Administrator und Mitarbeiter mit unterschiedlichen Berechtigungen im selben Account.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div>
+          <h2>Webhook-Signaturprüfung und HTTPS</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Statusmeldungen von Stripe zum Einzugsstatus, etwa erfolgreich, fehlgeschlagen oder Rücklastschrift, treffen über einen Webhook-Endpunkt ein und werden signaturgeprüft entgegengenommen. Die gesamte Kommunikation mit Lexware-Einzug läuft verschlüsselt über HTTPS.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2>Einordnung</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Diese Maßnahmen reduzieren typische Risiken bei der Anbindung von Zahlungsdiensten und externen Schnittstellen, sie stellen jedoch keine absolute Sicherheit dar. Wie bei jeder vernetzten Anwendung bleibt ein Restrisiko bestehen, dem Lexware-Einzug mit den beschriebenen technischen und organisatorischen Maßnahmen begegnet.</p>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="sicherheit-bottom">Jetzt registrieren</a>
+        <a href="/funktionen" class="btn btn-outline">Funktionen ansehen</a>
+      </div>
+    </div>
+  </section>
+</article>
+
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="dot"></span>Lexware-Einzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum">Impressum</a></li>
+          <li><a href="/datenschutz">Datenschutz</a></li>
+          <li><a href="/agb">AGB</a></li>
+          <li><a href="/hilfe">Hilfe</a></li>
+          <li><a href="/ratgeber/">Ratgeber</a></li>
+          <li><a href="/sicherheit">Sicherheit</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260904c"></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

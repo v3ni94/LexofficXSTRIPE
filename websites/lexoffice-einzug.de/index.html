@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lexoffice SEPA Einzug | Lastschriften mit Stripe einziehen</title>
-<meta name="description" content="Sie nutzen lexoffice bzw. Lexware Office und möchten Rechnungen per SEPA einziehen? Rechnungen synchronisieren, Stripe verbinden, Lastschriften verwalten.">
+<title>Lexoffice Lastschrift einrichten: so funktioniert es</title>
+<meta name="description" content="Sie nutzen Lexoffice und möchten Rechnungen per Lastschrift einziehen? Verständlich erklärt: Umbenennung in Lexware Office, Voraussetzungen, Einrichtung mit Stripe.">
 <link rel="canonical" href="https://lexoffice-einzug.de/">
 <meta name="theme-color" content="#2E2D2E">
-<meta property="og:title" content="lexoffice SEPA Einzug | Lastschriften mit Stripe einziehen">
-<meta property="og:description" content="Sie nutzen lexoffice bzw. Lexware Office und möchten Rechnungen per SEPA einziehen? Rechnungen synchronisieren, Stripe verbinden, Lastschriften verwalten.">
+<meta property="og:title" content="Lexoffice Lastschrift einrichten: so funktioniert es">
+<meta property="og:description" content="Sie nutzen Lexoffice und möchten Rechnungen per Lastschrift einziehen? Verständlich erklärt: Umbenennung in Lexware Office, Voraussetzungen, Einrichtung mit Stripe.">
 <meta property="og:url" content="https://lexoffice-einzug.de/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://lexoffice-einzug.de/assets/img/og-image.png">
 <meta property="og:locale" content="de_DE">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/assets/css/site.css?v=20260904b">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904c">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -47,108 +47,7 @@
 }
 </script>
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Funktioniert die Anwendung noch mit lexoffice?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Ja. lexoffice wird heute als Lexware Office weitergeführt, Lexware-Einzug ist auf die aktuelle Schnittstelle von Lexware Office ausgerichtet und lässt sich mit einem bestehenden lexoffice-Konto verbinden."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Muss ich wegen der Umbenennung etwas ändern?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "In der Regel nicht. Ihr Zugang und Ihre Daten bleiben bei Lexware Office bestehen, lediglich der Name der Software hat sich geändert."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Ist das ein offizielles lexoffice-Modul?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Nein. Lexware-Einzug ist eine unabhängige Softwarelösung mit einer Schnittstelle zu Lexware Office und kein Produkt der Haufe-Lexware GmbH & Co. KG."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Welche Voraussetzungen brauche ich?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Sie benötigen ein bestehendes Lexware-Office-Konto, früher lexoffice genannt, einen Stripe-Account und die für den SEPA-Einzug erforderlichen Mandate Ihrer Kunden."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Wie kommen meine offenen Rechnungen in die Anwendung?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Nach dem Verbinden Ihres Kontos ruft Lexware-Einzug Ihre offenen Rechnungen über die Public API von Lexware Office ab und stellt sie zur Auswahl bereit."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Werden bezahlte Rechnungen erneut synchronisiert?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Die Synchronisierung erfolgt inkrementell. Bereits abgeglichene und bezahlte Rechnungen werden bei einem erneuten Lauf nicht doppelt zum Einzug vorgeschlagen."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Wer zieht das Geld ein?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Die Zahlung verarbeitet Stripe. Lexware-Einzug steuert den Ablauf, also Rechnungsauswahl, Mandatszuordnung und Auslösung des Einzugs, führt die Lastschrift selbst aber nicht als Zahlungsdienstleister aus."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Was passiert bei einer Rücklastschrift?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Eine Rücklastschrift wird von Stripe zurückgemeldet und in Lexware-Einzug als Zahlungsstatus sichtbar, sodass Sie die betroffene Rechnung erneut bearbeiten können."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Können mehrere Mitarbeiter arbeiten?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Ja. Der Tarif UNLIMITED START umfasst unbegrenzte Mitarbeiter-Zugänge mit jeweils einem eigenen Login."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Ist die Zwei-Faktor-Authentifizierung Pflicht?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Ja, jeder Mitarbeiter-Zugang wird mit einer verpflichtenden Zwei-Faktor-Authentifizierung gesichert."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Was kostet es?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Der Tarif UNLIMITED START kostet 25 € je 4 Wochen und umfasst unbegrenzte SEPA-Einzüge und unbegrenzte Mitarbeiter. Es gibt derzeit keinen weiteren öffentlichen Tarif."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Wie kündige ich?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Eine Kündigung wird jeweils zum Ende der laufenden vierwöchigen Abrechnungsperiode wirksam. Details regeln die Allgemeinen Geschäftsbedingungen."
-      }
-    }
-  ]
-}
+{"@context": "https://schema.org", "@type": "WebSite", "name": "lexoffice-einzug.de", "url": "https://lexoffice-einzug.de/", "description": "Ratgeber für Lexoffice-Nutzer: Rechnungen per SEPA-Lastschrift einziehen", "inLanguage": "de", "publisher": {"@type": "Organization", "name": "Müller Holding AG", "url": "https://mueller-holding.ag"}}
 </script>
 </head>
 <body>
@@ -175,13 +74,12 @@
     <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
     <nav class="main-nav" aria-label="Hauptnavigation">
       <ul>
-        <li><a href="#produkt">Produkt</a></li>
-        <li><a href="#funktionen">Funktionen</a></li>
-        <li><a href="#so-funktioniert-es">So funktioniert es</a></li>
-        <li><a href="#preise">Preise</a></li>
-        <li><a href="#faq">FAQ</a></li>
+        <li><a href="/lexoffice-lastschrift-einrichten">Anleitung</a></li>
+        <li><a href="/lexoffice-heisst-jetzt-lexware-office">Umbenennung</a></li>
+        <li><a href="/lexoffice-sepa-lastschrift">SEPA erklärt</a></li>
+        <li><a href="/ratgeber/">Ratgeber</a></li>
         <li><a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de" class="nav-login">Login</a></li>
-        <li><a href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Lastschrift einrichten</a></li>
       </ul>
     </nav>
   </div>
@@ -193,12 +91,13 @@
     <div class="container hero-grid">
       <div>
         <p class="eyebrow">Für lexoffice-Nutzer</p>
-        <h1>SEPA-Lastschriften für lexoffice</h1>
+        <h1>Sie nutzen Lexoffice und möchten Rechnungen per Lastschrift einziehen?</h1>
         <span class="bar" aria-hidden="true"></span>
-        <p class="lead">lexoffice heißt heute Lexware Office. Unsere unabhängige Erweiterung verbindet Ihre Rechnungsdaten mit Stripe und unterstützt Sie beim SEPA-Lastschrifteinzug.</p>
+        <p class="lead">Hier erfahren Sie, wie Sie Ihre offenen Rechnungen aus Lexoffice, heute Lexware Office, mit Stripe per SEPA-Lastschrift einziehen. Verständlich erklärt, Schritt für Schritt.</p>
+        <p class="hero-note">Lexoffice wird heute als Lexware Office angeboten. Die Einrichtung funktioniert mit Ihrem bestehenden Konto.</p>
         <div class="cta-row">
-          <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="hero">Jetzt registrieren</a>
-          <a class="btn btn-outline" href="#so-funktioniert-es">So funktioniert es</a>
+          <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="hero">Lastschrift einrichten</a>
+          <a class="btn btn-outline" href="/lexoffice-lastschrift-einrichten">Anleitung ansehen</a>
         </div>
         <div class="badge-row">
           <span>25 € je 4 Wochen</span>
@@ -247,6 +146,40 @@
             </ul>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="was-brauche-ich">
+    <div class="container">
+      <div class="section-head center">
+        <p class="eyebrow">Voraussetzungen</p>
+        <h2>Was brauche ich?</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Drei Bausteine greifen ineinander. Sie behalten dabei die volle Kontrolle über Ihre Buchhaltung und Ihre Zahlungen.</p>
+      </div>
+      <div class="flow">
+        <div class="flow-node">
+          <span class="icon"><svg><use href="#i-file"/></svg></span>
+          <h3>Lexware Office</h3>
+          <p>Ihr bestehendes Konto, früher Lexoffice. Hier entstehen Rechnungen und Kundendaten. Für die Anbindung wird ein Schlüssel der Public API benötigt.</p>
+        </div>
+        <div class="flow-arrow"><svg><use href="#i-arrow"/></svg></div>
+        <div class="flow-node is-core">
+          <span class="icon dark"><svg><use href="#i-sync"/></svg></span>
+          <h3>lexoffice-einzug.de</h3>
+          <p>Die unabhängige Anwendung dahinter holt offene Rechnungen ab, verwaltet SEPA-Mandate und löst Einzüge aus.</p>
+        </div>
+        <div class="flow-arrow"><svg><use href="#i-arrow"/></svg></div>
+        <div class="flow-node">
+          <span class="icon"><svg><use href="#i-card"/></svg></span>
+          <h3>Stripe</h3>
+          <p>Ihr eigenes Zahlungskonto. Stripe führt die SEPA-Lastschrift aus und meldet den Status zurück.</p>
+        </div>
+      </div>
+      <div class="cta-row" style="justify-content:center">
+        <a href="/lexoffice-lastschrift-einrichten" class="btn btn-outline">Zur Schritt-für-Schritt-Anleitung</a>
+        <a href="/lexoffice-public-api-xl" class="btn btn-ghost">Public API nicht gefunden?</a>
       </div>
     </div>
   </section>
@@ -456,6 +389,8 @@
       <a href="/impressum">Impressum</a>
       <a href="/datenschutz">Datenschutz</a>
       <a href="/agb">AGB</a>
+      <a href="/ratgeber/">Ratgeber</a>
+      <a href="/lexoffice-heisst-jetzt-lexware-office">Umbenennung</a>
       <a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de">Login</a>
     </nav>
     <p class="disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
@@ -463,6 +398,10 @@
   </div>
 </footer>
 
-<script src="/assets/js/site.js?v=20260904b"></script>
+<script src="/assets/js/site.js?v=20260904c"></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
 </body>
 </html>

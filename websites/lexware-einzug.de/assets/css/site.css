@@ -505,3 +505,7 @@ hr.hairline { border: none; border-top: 1px solid var(--hairline); margin: 40px 
   html { scroll-behavior: auto; }
   .btn, .tile, .sticky-cta, .mobile-cta { transition: none; }
 }
+
+/* Textlinks im Inhalt sichtbar machen */
+main p a:not(.btn), main li a:not(.btn), main td a { color: var(--gold-dark); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+main p a:not(.btn):hover, main li a:not(.btn):hover { color: var(--anthracite); }

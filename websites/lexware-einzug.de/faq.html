@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Häufige Fragen zu Lexware-Einzug</title>
+<meta name="description" content="Antworten auf elf häufige Fragen zu Lexware Office, Stripe, SEPA-Einzug, Datenspeicherung und Rücklastschriften bei Lexware-Einzug.">
+<link rel="canonical" href="https://lexware-einzug.de/faq">
+<meta property="og:title" content="Häufige Fragen zu Lexware-Einzug">
+<meta property="og:description" content="Antworten auf elf häufige Fragen zu Lexware Office, Stripe, SEPA-Einzug, Datenspeicherung und Rücklastschriften bei Lexware-Einzug.">
+<meta property="og:url" content="https://lexware-einzug.de/faq">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904c">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://lexware-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "FAQ",
+      "item": "https://lexware-einzug.de/faq"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="dot"></span>Lexware-Einzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen">Funktionen</a></li>
+        <li><a href="/preise">Preise</a></li>
+        <li><a href="/sicherheit">Sicherheit</a></li>
+        <li><a href="/hilfe">Hilfe</a></li>
+        <li><a href="/faq">FAQ</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+<li aria-current="page">FAQ</li>
+  </ol>
+</nav>
+
+<main>
+
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Fragen &amp; Antworten</p>
+      <h1>Häufige Fragen zu Lexware-Einzug</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Antworten auf die häufigsten Fragen rund um Lexware Office, Stripe und den SEPA-Einzug.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="faq-list faq-grid">
+        <details><summary>Wie verbinde ich Lexware Office?</summary><p class="faq-answer">Sie erstellen in Lexware Office unter Einstellungen, Erweiterungen, Weitere Apps, Public API einen neuen API-Schlüssel und hinterlegen diesen in den Einstellungen Ihres Lexware-Einzug-Accounts. Die ausführlichen Schritte finden Sie in der <a href=\"/anleitung/lexware-office-api\">Anleitung zum API-Schlüssel</a>.</p></details>
+<details><summary>Welchen Lexware-Tarif brauche ich?</summary><p class="faq-answer">Nach aktuellem Stand ist für die Nutzung der Public API der Tarif Lexware Office XL erforderlich. Da sich Tarifvoraussetzungen ändern können, prüfen Sie den aktuellen Stand am besten direkt in Ihrem Lexware-Office-Konto.</p></details>
+<details><summary>Wo finde ich die Public API?</summary><p class="faq-answer">In Lexware Office unter Einstellungen, Erweiterungen, im Bereich Weitere Apps unter dem Punkt Public API. Dort erstellen Sie über Verwalten einen neuen API-Schlüssel.</p></details>
+<details><summary>Wie verbinde ich Stripe?</summary><p class="faq-answer">Sie erstellen im Stripe-Dashboard unter Developers beziehungsweise Entwickler, API keys einen Secret Key und hinterlegen ihn in den Einstellungen von Lexware-Einzug. Details finden Sie in der <a href=\"/anleitung/stripe-verbinden\">Anleitung zu Stripe</a>.</p></details>
+<details><summary>Wie funktioniert der Lastschrifteinzug?</summary><p class="faq-answer">Lexware-Einzug übernimmt die relevanten Rechnungs- und Kundendaten aus Lexware Office und übergibt den Einzug an Ihr eigenes Stripe-Konto. Stripe verarbeitet die SEPA-Lastschrift und meldet den Status zurück.</p></details>
+<details><summary>Wie lange dauert SEPA?</summary><p class="faq-answer">Nach Einreichung der Lastschrift durch Stripe erfolgt die Gutschrift üblicherweise erst nach mehreren Bankarbeitstagen. Der Status steht in dieser Zeit zunächst auf in Bearbeitung.</p></details>
+<details><summary>Warum steht eine Zahlung auf \"in Verarbeitung\"?</summary><p class="faq-answer">Eine SEPA-Lastschrift wird nicht sofort gutgeschrieben. Solange die Bank des Kunden die Belastung noch verarbeitet, zeigt Lexware-Einzug den Status in Bearbeitung an, bis Stripe eine abschließende Rückmeldung liefert.</p></details>
+<details><summary>Wie werden offene Rechnungen synchronisiert?</summary><p class="faq-answer">Offene und überfällige Rechnungen sowie zugehörige Kunden werden serverseitig und inkrementell aus Lexware Office abgerufen. Bereits bezahlte oder stornierte Rechnungen werden dabei erkannt und nicht erneut verarbeitet.</p></details>
+<details><summary>Wo werden API-Schlüssel gespeichert?</summary><p class="faq-answer">API-Schlüssel und Secret Keys werden serverseitig verschlüsselt gespeichert und nach der Eingabe nicht mehr im Klartext angezeigt.</p></details>
+<details><summary>Kann ich Verbindungen wieder trennen?</summary><p class="faq-answer">Ja, die Verbindung zu Lexware Office und zu Stripe lässt sich jederzeit trennen. Historische Daten zu bereits verarbeiteten Rechnungen und Einzügen bleiben dabei erhalten.</p></details>
+<details><summary>Was passiert bei einer Rücklastschrift?</summary><p class="faq-answer">Eine Rücklastschrift kann bis zu acht Wochen nach der Belastung erfolgen, da Zahler bei autorisierten SEPA-Lastschriften ein Erstattungsrecht haben. Lexware-Einzug erkennt die Rückmeldung von Stripe und markiert den betroffenen Einzug entsprechend.</p></details>
+      </div>
+      <div class="cta-row" style="justify-content:center">
+        <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="faq-page">Jetzt registrieren</a>
+        <a href="/hilfe" class="btn btn-outline">Zur Hilfe-Übersicht</a>
+      </div>
+    </div>
+  </section>
+</article>
+
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="dot"></span>Lexware-Einzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum">Impressum</a></li>
+          <li><a href="/datenschutz">Datenschutz</a></li>
+          <li><a href="/agb">AGB</a></li>
+          <li><a href="/hilfe">Hilfe</a></li>
+          <li><a href="/ratgeber/">Ratgeber</a></li>
+          <li><a href="/sicherheit">Sicherheit</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260904c"></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

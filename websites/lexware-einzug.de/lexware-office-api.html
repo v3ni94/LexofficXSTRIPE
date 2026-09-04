@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexware Office Public API</title>
+<meta name="description" content="Was die Lexware Office Public API ist, wofür Lexware-Einzug sie nutzt, welcher Tarif erforderlich ist und wie der API-Schlüssel geschützt wird.">
+<link rel="canonical" href="https://lexware-einzug.de/lexware-office-api">
+<meta property="og:title" content="Lexware Office Public API">
+<meta property="og:description" content="Was die Lexware Office Public API ist, wofür Lexware-Einzug sie nutzt, welcher Tarif erforderlich ist und wie der API-Schlüssel geschützt wird.">
+<meta property="og:url" content="https://lexware-einzug.de/lexware-office-api">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260904c">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://lexware-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Lexware Office API",
+      "item": "https://lexware-einzug.de/lexware-office-api"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="dot"></span>Lexware-Einzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen">Funktionen</a></li>
+        <li><a href="/preise">Preise</a></li>
+        <li><a href="/sicherheit">Sicherheit</a></li>
+        <li><a href="/hilfe">Hilfe</a></li>
+        <li><a href="/faq">FAQ</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+<li aria-current="page">Lexware Office API</li>
+  </ol>
+</nav>
+
+<main>
+
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Schnittstelle</p>
+      <h1>Die Lexware Office Public API und Lexware-Einzug</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Wofür Lexware-Einzug die Public API von Lexware Office benötigt, welche Voraussetzungen gelten und wie der API-Schlüssel geschützt wird.</p>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="api-top">Jetzt registrieren</a>
+        <a href="/anleitung/lexware-office-api" class="btn btn-outline">Zur Anleitung</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <h2>Was die Public API ist</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Die Public API von Lexware Office ist eine Programmierschnittstelle, über die externe Anwendungen mit Erlaubnis des Nutzers auf Daten in Lexware Office zugreifen können. Lexware-Einzug nutzt diese Schnittstelle, um lesend auf Ihre offenen Rechnungen und die zugehörigen Kontakte zuzugreifen. Geschrieben wird in Lexware Office über diese Anbindung nicht, die Buchhaltung selbst bleibt vollständig in Lexware Office.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2>Wofür Lexware-Einzug die API benötigt</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Für den SEPA-Einzug muss Lexware-Einzug wissen, welche Rechnungen offen oder überfällig sind und welchem Kunden sie zuzuordnen sind. Über die Public API werden diese Rechnungen und die zugehörigen Kundendaten inkrementell synchronisiert. Bereits bezahlte oder stornierte Rechnungen werden dabei erkannt und nicht fortlaufend erneut verarbeitet.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Voraussetzung: Tarif prüfen</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Nach aktuellem Stand ist für die Nutzung der Public API in Lexware Office der Tarif Lexware Office XL erforderlich. Ob dies für Ihr Konto zutrifft, sollten Sie vor der Einrichtung in Ihrem Lexware-Office-Account prüfen, da sich Tarifvoraussetzungen ändern können.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <h2>Einrichtung in Kurzform</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Der API-Schlüssel wird in Lexware Office unter Einstellungen, Erweiterungen, im Bereich Public API erzeugt und anschließend in Lexware-Einzug hinterlegt. Die vollständige Schritt-für-Schritt-Anleitung finden Sie unter <a href="/anleitung/lexware-office-api">Lexware Office API-Schlüssel einrichten</a>.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>Sicherheit des API-Schlüssels</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Der API-Schlüssel wird nach der Eingabe serverseitig verschlüsselt gespeichert und im Klartext nicht erneut angezeigt. Weitere Angaben zum Umgang mit Zugangsdaten und zur Trennung von Mandanten finden Sie unter <a href="/sicherheit">Sicherheit bei Lexware-Einzug</a>.</p>
+    </div>
+  </section>
+
+  <section class="section section-dark">
+    <div class="container">
+      <h2>Lexware Office jetzt anbinden</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead" style="color:#D6D5D3;">Verbinden Sie Ihr Lexware-Office-Konto und beginnen Sie mit der Synchronisierung offener Rechnungen.</p>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="api-bottom">Jetzt registrieren</a>
+      </div>
+      <p style="margin-top:24px;"><a href="/" style="color:#D6D5D3;">Zurück zur Startseite</a></p>
+    </div>
+  </section>
+</article>
+
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="dot"></span>Lexware-Einzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum">Impressum</a></li>
+          <li><a href="/datenschutz">Datenschutz</a></li>
+          <li><a href="/agb">AGB</a></li>
+          <li><a href="/hilfe">Hilfe</a></li>
+          <li><a href="/ratgeber/">Ratgeber</a></li>
+          <li><a href="/sicherheit">Sicherheit</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=lexware-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260904c"></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>
