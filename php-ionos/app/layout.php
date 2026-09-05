@@ -66,7 +66,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
 <?php endif; ?>
 <header class="site-header">
     <div class="header-inner">
-        <a class="brand" href="<?= $ctx ? 'dashboard.php' : 'login.php' ?>">
+        <a class="brand" href="<?= $ctx ? (on_admin_host() ? 'admin.php' : 'dashboard.php') : 'login.php' ?>">
             <?php if ($hasLogo): ?>
                 <img src="assets/img/logo.jpg" alt="<?= e($brandName) ?>" class="brand-logo">
             <?php elseif ($useHvmCi): ?>
@@ -79,7 +79,12 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                 <span class="brand-sub"><?= e($brandSub) ?></span>
             </span>
         </a>
-        <?php if ($ctx): ?>
+        <?php if ($ctx && on_admin_host()): ?>
+        <nav class="main-nav" aria-label="Hauptnavigation">
+            <a href="admin.php" class="nav-admin">Plattform-Administration</a>
+            <a href="<?= e(app_base_url()) ?>/dashboard.php" title="Zur Kundenanwendung">Kundenanwendung</a>
+        </nav>
+        <?php elseif ($ctx): ?>
         <nav class="main-nav" aria-label="Hauptnavigation">
             <a href="dashboard.php">Dashboard</a>
             <a href="invoices.php">Rechnungen</a>
@@ -100,7 +105,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <span class="user-email"><?= e(user_display_name($ctx)) ?></span>
             <span class="user-role"><?= e(role_label($ctx['role'])) ?></span>
             <a class="btn btn-ghost btn-sm" href="security.php" title="Passwort und Zwei-Faktor-Authentifizierung">Sicherheit</a>
-            <a class="btn btn-ghost btn-sm" href="companies.php" title="Firma wechseln oder anlegen">Firmen</a>
+            <?php if (!on_admin_host()): ?><a class="btn btn-ghost btn-sm" href="companies.php" title="Firma wechseln oder anlegen">Firmen</a><?php endif; ?>
             <a class="btn btn-ghost btn-sm" href="logout.php">Abmelden</a>
         </div>
         <?php endif; ?>

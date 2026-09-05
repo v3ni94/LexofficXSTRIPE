@@ -76,6 +76,13 @@ function admin_base_url(): string
     return rtrim(trim((string)config('admin_base_url', '')), '/');
 }
 
+/** True, wenn ein Admin-Host konfiguriert ist und die aktuelle Anfrage darüber kommt. */
+function on_admin_host(): bool
+{
+    $adminHost = base_url_host(admin_base_url());
+    return $adminHost !== '' && request_host() === $adminHost;
+}
+
 /** Hostname aus einer Basisadresse (klein geschrieben) oder leerer String. */
 function base_url_host(string $url): string
 {
