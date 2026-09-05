@@ -46,7 +46,6 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="assets/img/favicon-32.png" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
     <title><?= e($title) ?> | <?= e($titleSuffix) ?></title>
@@ -73,10 +72,10 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <?php elseif ($useHvmCi): ?>
                 <span class="brand-mark">HVM</span>
             <?php else: ?>
-                <img class="brand-euro" src="assets/img/favicon.svg" alt="" width="34" height="34">
+                <img class="brand-image" src="assets/img/logo-horizontal.png" srcset="assets/img/logo-horizontal.png 1x, assets/img/logo-horizontal@2x.png 2x" alt="<?= e($brandName) ?>" height="48">
             <?php endif; ?>
             <span class="brand-text">
-                <span class="brand-name"><?= e($brandName) ?></span>
+                <?php if ($hasLogo || $useHvmCi): ?><span class="brand-name"><?= e($brandName) ?></span><?php endif; ?>
                 <span class="brand-sub"><?= e($brandSub) ?></span>
             </span>
         </a>

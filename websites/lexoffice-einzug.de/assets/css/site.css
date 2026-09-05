@@ -540,3 +540,9 @@ main p a:not(.btn):hover, main li a:not(.btn):hover { color: var(--anthracite); 
 
 /* Bildmarke als SVG-Kachel */
 .wordmark img.mark, .footer-wordmark img.mark { background: none; border-radius: 8px; display: inline-block; width: 30px; height: 30px; flex: none; }
+
+/* Logo-Bilder in Header und Footer */
+.wordmark img.logo { height: 56px; width: auto; display: block; }
+.footer-wordmark img.logo { height: 48px; width: auto; display: block; }
+.wordmark .wordmark-sub { margin-left: 12px; }
+@media (max-width: 600px) { .wordmark img.logo { height: 44px; } .wordmark .wordmark-sub { display: none; } }
