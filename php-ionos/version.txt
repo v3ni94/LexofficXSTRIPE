@@ -1,3 +1,3 @@
 SmartEinzug App
-Stand: 05.09.2026 23:40
-Diagramme als HTML/CSS, Adminbereich und Anwendung responsiv (Handy, Tablet)
+Stand: 06.09.2026 01:55
+Paket 1: Profilmenue, Dashboard-Karten, Glaeubiger-ID optional, automatische Migrationen

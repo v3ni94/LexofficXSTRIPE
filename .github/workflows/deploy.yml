@@ -161,17 +161,23 @@ jobs:
               fi
               echo "mkdir -pf \"$root/$dst\""
               echo "mirror --reverse --no-perms --parallel=2 \\"
-              echo "  --include '^sql/(\.htaccess|migrations/[0-9]{3}_[A-Za-z0-9_-]+\.sql)\$' \\"
               echo "  --exclude '(^|/)(\.git[^/]*|node_modules|storage|logs|cache|backups)(/|\$)' \\"
               echo "  --exclude '(^|/)(config\.php|mail\.log|\.env[^/]*)\$' \\"
               echo "  --exclude '(\.sql(\.gz)?|\.sqlite3?|\.db|\.log|\.pem|\.key|\.bak)\$' \\"
               echo "  \"$src/\" \"$root/$dst\""
             done
+            # Migrationsdateien getrennt hochladen (Ordner sql ist per .htaccess für den Webzugriff gesperrt).
+            # Der Cron bzw. migrate.php spielt sie automatisch ein.
+            if [[ -d php-ionos/sql/migrations ]]; then
+              echo "mkdir -pf \"$root/app/sql/migrations\""
+              echo "mirror --reverse --no-perms --parallel=2 --exclude '(^|/)\.git[^/]*(/|\$)' \"php-ionos/sql/migrations/\" \"$root/app/sql/migrations\""
+              echo "put -O \"$root/app/sql\" \"php-ionos/sql/.htaccess\""
+            fi
             echo "bye"
           } > "$script"
 
           echo "Upload-Plan:"
-          grep -E '^(mkdir|  \")' "$script" | sed 's/^/  /'
+          grep -E '^(mkdir|put|  \")' "$script" | sed 's/^/  /'
           # Verbindung wird im Skript selbst geöffnet (open ...), lftp führt das Skript aus und beendet sich.
           lftp -f "$script"
           echo "Upload abgeschlossen."
