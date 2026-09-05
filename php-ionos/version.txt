@@ -1,0 +1,3 @@
+SmartEinzug App
+Stand: 05.09.2026 22:50
+Zweck: Test des automatischen Uploads von GitHub zu IONOS (deploy.yml)

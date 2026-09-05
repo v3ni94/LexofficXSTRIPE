@@ -5,10 +5,17 @@ name: Automatisch zu IONOS-Webhosting hochladen
 # Kein Secret SSH_KNOWN_HOSTS erforderlich; die Serverpruefung bleibt aktiviert.
 # Vor Aktivierung Zielverzeichnis und Ausschluesse pruefen; Serverdateien sichern.
 # Erforderliche Secrets: SFTP_HOST, SFTP_USER, SFTP_PASSWORD, SFTP_PORT, SFTP_PATH.
-# main bei Bedarf durch den tatsächlichen Veröffentlichungs-Branch ersetzen.
+# SFTP_PATH ist das Wurzelverzeichnis des Webspace, in dem die Ordner app,
+# smart-einzug.de, lexware-einzug.de usw. liegen (bei IONOS meist "/").
+# Zuordnung Repository-Ordner zu Webspace-Ordner: siehe Schritt "Dateien hochladen".
+# Veröffentlichungs-Branch: claude/setup-lexsepa-monorepo-v5ZcZ (und main).
 on:
   push:
-    branches: [main]
+    branches: [main, claude/setup-lexsepa-monorepo-v5ZcZ]
+    paths:
+      - 'php-ionos/**'
+      - 'websites/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -21,7 +28,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/setup-lexsepa-monorepo-v5ZcZ'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -116,18 +123,50 @@ jobs:
           echo "IONOS-Webhosting-Hostschluessel erfolgreich verifiziert."
 
           # Keine --delete-Option: entfernte Dateien werden NICHT gelöscht.
-          # Ausschlüsse an die tatsächlichen Daten-/Konfigurationspfade anpassen.
           # Achtung: gleichnamige, nicht ausgeschlossene Dateien werden ersetzt.
-          lftp --env-password -u "$SFTP_USER" -p "$SFTP_PORT" "sftp://$SFTP_HOST" <<EOF
-          set cmd:fail-exit yes
-          set net:timeout 20
-          set net:max-retries 2
-          set sftp:auto-confirm no
-          set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$verified_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o VerifyHostKeyDNS=no -o ConnectTimeout=15"
-          mirror --reverse --no-perms --parallel=2 \
-            --exclude '(^|/)(\.git[^/]*|node_modules|uploads|backups|logs|cache|storage)(/|$)' \
-            --exclude '(^|/)\.env[^/]*$' \
-            --exclude '(\.sql(\.gz)?|\.sqlite3?|\.db|\.log|\.pem|\.key)$' \
-            ./ "$SFTP_PATH"
-          bye
-          EOF
+          # Nie hochgeladen: app/config.php (Zugangsdaten, liegt nur auf dem Server),
+          # app/storage (hochgeladene Mandatsdokumente), Logs, SQL-Dateien, .git.
+          # SQL-Migrationen werden weiterhin manuell über phpMyAdmin ausgeführt.
+          root="${SFTP_PATH%/}"
+
+          # Zuordnung Repository-Ordner -> Webspace-Ordner (Ordnernamen wie bei IONOS angelegt).
+          # Bei abweichenden Ordnernamen nur die rechte Seite anpassen.
+          mapping=(
+            "php-ionos|app"
+            "websites/smart-einzug.de|smart-einzug.de"
+            "websites/lexware-einzug.de|lexware-einzug.de"
+            "websites/lexoffice-einzug.de|lexoffice-einzug.de"
+            "websites/lastschrift-einfach.de|lastschrift-einfach.de"
+            "websites/aliases/smarteinzug.de|alias-smarteinzug"
+            "websites/aliases/smart-lastschrift.de|alias-smart-lastschrift"
+            "websites/aliases/einzug-direkt.de|alias-einzug-direkt"
+          )
+
+          script="$workdir/upload.lftp"
+          {
+            echo "set cmd:fail-exit yes"
+            echo "set net:timeout 20"
+            echo "set net:max-retries 2"
+            echo "set sftp:auto-confirm no"
+            echo "set sftp:connect-program \"ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$verified_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o VerifyHostKeyDNS=no -o ConnectTimeout=15\""
+            for entry in "${mapping[@]}"; do
+              src="${entry%%|*}"
+              dst="${entry##*|}"
+              if [[ ! -d "$src" ]]; then
+                echo "::warning::Ordner $src fehlt im Repository, wird übersprungen." >&2
+                continue
+              fi
+              echo "mkdir -pf \"$root/$dst\""
+              echo "mirror --reverse --no-perms --parallel=2 \\"
+              echo "  --exclude '(^|/)(\.git[^/]*|node_modules|storage|logs|cache|backups)(/|\$)' \\"
+              echo "  --exclude '(^|/)(config\.php|mail\.log|\.env[^/]*)\$' \\"
+              echo "  --exclude '(\.sql(\.gz)?|\.sqlite3?|\.db|\.log|\.pem|\.key|\.bak)\$' \\"
+              echo "  \"$src/\" \"$root/$dst\""
+            done
+            echo "bye"
+          } > "$script"
+
+          echo "Upload-Plan:"
+          grep -E '^(mkdir|  \")' "$script" | sed 's/^/  /'
+          lftp --env-password -u "$SFTP_USER" -p "$SFTP_PORT" "sftp://$SFTP_HOST" -f "$script"
+          echo "Upload abgeschlossen."
