@@ -113,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare('UPDATE integrations SET stripe_webhook_secret_encrypted = ? WHERE tenant_id = ?')
                 ->execute([encrypt_value($webhookSecret), $tenantId]);
             audit_log($tenantId, $ctx, 'stripe_connected', 'integration', $tenantId, ['webhook_secret_updated' => true]);
-            flash_set('success', 'Webhook-Secret gespeichert.');
+            flash_set('success', 'Webhook-Secret gespeichert und verschlüsselt hinterlegt. Stripe-Meldungen an den Webhook werden ab jetzt geprüft und verarbeitet.');
 
         } elseif ($action === 'disconnect_stripe') {
             support_guard();
@@ -244,12 +244,25 @@ layout_header('Einstellungen', $ctx);
             <p class="hint">Wechseln Sie später den Stripe-Schlüssel oder das Konto, legen Sie den Webhook im neuen Konto erneut an und tragen das neue Secret hier ein.</p>
         </details>
         <?php if ($canEdit): ?>
+        <?php if ($integration['stripe_webhook_secret_encrypted']): ?>
+        <details class="secret-change" style="margin-bottom: 12px;">
+            <summary class="btn btn-sm btn-ghost">Webhook-Secret ändern</summary>
+            <form method="post" class="inline-form" style="margin-top: 8px;">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="save_webhook_secret">
+                <input type="password" name="stripe_webhook_secret" placeholder="neues Secret, whsec_..." autocomplete="off" style="max-width: 320px;">
+                <button type="submit" class="btn btn-sm btn-secondary">Neues Webhook-Secret speichern</button>
+            </form>
+            <p class="hint">Das gespeicherte Secret wird nicht angezeigt. Nur nötig, wenn Sie den Webhook in Stripe neu angelegt haben.</p>
+        </details>
+        <?php else: ?>
         <form method="post" class="inline-form" style="margin-bottom: 12px;">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="save_webhook_secret">
             <input type="password" name="stripe_webhook_secret" placeholder="whsec_..." autocomplete="off" style="max-width: 320px;">
             <button type="submit" class="btn btn-sm btn-secondary">Webhook-Secret speichern</button>
         </form>
+        <?php endif; ?>
         <div class="form-actions" style="gap: 8px; display: flex; flex-wrap: wrap;">
             <form method="post">
                 <?= csrf_field() ?>
