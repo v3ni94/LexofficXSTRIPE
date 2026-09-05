@@ -37,7 +37,7 @@ return [
 
     // --- Basis-URL der Anwendung (ohne Slash am Ende) ---
     // Bisheriger Schlüssel, bleibt als Rückfallwert für app_base_url erhalten.
-    'base_url' => 'https://app.lexware-einzug.de',
+    'base_url' => 'https://app.smart-einzug.de',
 
     // --- Getrennte Basisadressen (alle ohne Slash am Ende) ---
     // app_base_url: Adresse der Kundenanwendung. Wird in allen absoluten Links
@@ -72,7 +72,7 @@ return [
     //   5. Zuletzt admin_base_url setzen; erst dann ist der Adminbereich vom
     //      Kundenhost getrennt.
     // Beispiel im Zielzustand:
-    //   'allowed_hosts' => ['app.lexware-einzug.de', 'app.smart-einzug.de', 'admin.smart-einzug.de'],
+    //   'allowed_hosts' => ['app.smart-einzug.de', 'admin.smart-einzug.de'],
     'allowed_hosts' => [],
 
     // --- Produktname (erscheint in Titel, E-Mails, 2FA-App) ---
@@ -99,7 +99,7 @@ return [
     ],
 
     // --- Erlaubte Herkunftsdomains für die Registrierung (signup_domain) ---
-    'signup_domains' => ['lexware-einzug.de', 'lexoffice-einzug.de'],
+    'signup_domains' => ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de'],
 
     // --- Registrierung neuer Firmen erlauben? ---
     'allow_registration' => true,

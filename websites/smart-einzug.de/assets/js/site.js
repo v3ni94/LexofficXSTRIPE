@@ -12,8 +12,8 @@
 (function () {
   'use strict';
 
-  var APP_HOST = 'app.lexware-einzug.de';
-  var TRACK_ENDPOINT = 'https://app.lexware-einzug.de/track.php';
+  var APP_HOST = 'app.smart-einzug.de';
+  var TRACK_ENDPOINT = 'https://app.smart-einzug.de/track.php';
   var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
   var GA_IDS = {
     'lexware-einzug.de': 'G-SXEH8K7HP7',

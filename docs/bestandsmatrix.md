@@ -6,7 +6,7 @@ Grundlage: Code im Repository (php-ionos, websites, tools), keine Geldflussprüf
 
 | Funktion | Nachweis | Zustand | Änderung (Paket) | Abnahme |
 |---|---|---|---|---|
-| App unter app.lexware-einzug.de, `base_url` in config | `app/config.php`, alle Links über `config('base_url')` | vorhanden | Getrennte `public_base_url`, `app_base_url`, `admin_base_url`, `allowed_hosts` (C) | Setup-Check, E2E |
+| App unter app.smart-einzug.de, `base_url` in config | `app/config.php`, alle Links über `config('base_url')` | vorhanden | Getrennte `public_base_url`, `app_base_url`, `admin_base_url`, `allowed_hosts` (C) | Setup-Check, E2E |
 | Host-Allowlist | keine | nicht vorhanden | `bootstrap.php` prüft Host gegen Allowlist, sonst 404 (C) | E2E mit fremdem Host-Header |
 | Adminbereich | `admin.php`, `require_superadmin()` (is_superadmin + 2FA) | vorhanden, gleicher Host | Nur auf `admin.smart-einzug.de` ausliefern, sonst 404; Kundenrouten auf Adminhost sperren (C) | E2E |
 | Session-Cookie | `LXEINZUGSESSID`, hostgebunden, strict | vorhanden | keine Änderung (kein Domain-Cookie) | E2E |

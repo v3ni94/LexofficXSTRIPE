@@ -2,7 +2,7 @@
 """Überträgt Header (inkl. Navigation) und Footer der Startseite auf alle Unterseiten derselben Domain."""
 import glob, os, re
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'websites')
-for domain in ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de']:
+for domain in ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de']:
     base = os.path.join(ROOT, domain)
     idx = open(os.path.join(base, 'index.html'), encoding='utf-8').read()
     header = re.search(r'<header class="site-header">.*?</header>', idx, re.S).group(0)

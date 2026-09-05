@@ -7,7 +7,7 @@ Bestandteile des Repositories:
 
 | Ordner | Inhalt | Ziel |
 |---|---|---|
-| `php-ionos/` | Anwendung (Registrierung, Login mit 2FA, Dashboard, Rechnungen, Einzüge, Kunden, SEPA Pflegen, Firma, Einstellungen, Admin) | heute `app.lexware-einzug.de`, künftig `app.smart-einzug.de` und `admin.smart-einzug.de` (Abschnitt 11) |
+| `php-ionos/` | Anwendung (Registrierung, Login mit 2FA, Dashboard, Rechnungen, Einzüge, Kunden, SEPA Pflegen, Firma, Einstellungen, Admin) | heute `app.smart-einzug.de`, künftig `app.smart-einzug.de` und `admin.smart-einzug.de` (Abschnitt 11) |
 | `websites/smart-einzug.de/` | Hauptwebsite der Produktmarke SmartEinzug | `smart-einzug.de` |
 | `websites/lexware-einzug.de/` | Marketingseite für die aktuelle Bezeichnung Lexware Office | `lexware-einzug.de` |
 | `websites/lexoffice-einzug.de/` | eigenständige Marketingseite für den früheren Namen lexoffice | `lexoffice-einzug.de` |
@@ -57,7 +57,7 @@ unter "Firma" umstellbar).
 
 | Schlüssel | Bedeutung |
 |---|---|
-| `base_url` | Bisherige Adresse der Anwendung, z.B. `https://app.lexware-einzug.de`; Rückfallwert für `app_base_url` |
+| `base_url` | Bisherige Adresse der Anwendung, z.B. `https://app.smart-einzug.de`; Rückfallwert für `app_base_url` |
 | `app_base_url` | Adresse der Kundenanwendung für alle absoluten Links (leer = `base_url`) |
 | `admin_base_url` | Adresse des Adminbereichs; leer = Übergangsmodus, `admin.php` auf demselben Host erreichbar |
 | `public_base_url` | Öffentliche Produktwebsite, `https://smart-einzug.de` |
@@ -120,7 +120,7 @@ die E-Mail-Bestätigung entfällt.
 1. Im Stripe-Konto der Müller Holding AG ein Produkt "UNLIMITED START" mit
    wiederkehrendem Preis 25,00 EUR alle 4 Wochen anlegen; die Preis-ID
    (`price_...`) im Portal unter Admin > Tarife eintragen.
-2. Webhook-Endpunkt `https://app.lexware-einzug.de/billing-webhook.php` mit den
+2. Webhook-Endpunkt `https://app.smart-einzug.de/billing-webhook.php` mit den
    Events `checkout.session.completed`, `customer.subscription.created`,
    `customer.subscription.updated`, `customer.subscription.deleted`,
    `invoice.payment_failed` anlegen und das Signing Secret in
@@ -138,7 +138,7 @@ abgelehnt, solange mehr Benutzer oder offene Einladungen vorhanden sind.
 IONOS Kundenbereich > Hosting > Cronjobs, alle 5 bis 15 Minuten:
 
 ```
-https://app.lexware-einzug.de/cron.php?token=<cron_token aus config.php>
+https://app.smart-einzug.de/cron.php?token=<cron_token aus config.php>
 ```
 
 Der Cron reicht fällige terminierte Lastschriften ein und setzt laufende
@@ -176,7 +176,7 @@ Je Domain ein eigenes Verzeichnis im Hosting anlegen und den Inhalt von
 - Platzhalter in `impressum.html` (Telefon, USt-IdNr.) füllen.
 - `datenschutz.html` und `agb.html` sind Entwürfe und müssen rechtlich geprüft werden.
 - Markenrechtliche Prüfung der Domains (fremde Marken im Domainnamen).
-- Die Seiten senden cookielose Zählereignisse an `app.lexware-einzug.de/track.php`
+- Die Seiten senden cookielose Zählereignisse an `app.smart-einzug.de/track.php`
   und leiten Registrierungen mit `?src=<domain>` weiter; die Auswertung steht
   im Superadmin unter "Funnel je Domain".
 
@@ -189,7 +189,7 @@ Je Domain ein eigenes Verzeichnis im Hosting anlegen und den Inhalt von
 - Einladungslinks und Passwort-Links sind zufällig, zeitlich begrenzt und nur als
   Hash gespeichert.
 - `app/`, `sql/` und `.md`-Dateien sind per `.htaccess` gesperrt. Test:
-  `https://app.lexware-einzug.de/app/config.php` muss "Forbidden" liefern.
+  `https://app.smart-einzug.de/app/config.php` muss "Forbidden" liefern.
 - Rechtlicher Hinweis: SEPA-Lastschriften setzen ein gültiges Mandat des
   Zahlungspflichtigen voraus. Die Verantwortung für das Vorliegen der Mandate
   liegt bei der jeweiligen Firma.
@@ -205,13 +205,13 @@ prüfen, bevor der nächste folgt.
    `app.smart-einzug.de` und `admin.smart-einzug.de` anlegen und für beide ein
    SSL-Zertifikat aktivieren. Warten, bis beide Hosts per HTTPS antworten.
 2. Zielverzeichnis: Beide Hosts auf denselben App-Ordner zeigen lassen, in dem
-   heute `app.lexware-einzug.de` liegt. Keine zweite Kopie der Anwendung
+   heute `app.smart-einzug.de` liegt. Keine zweite Kopie der Anwendung
    anlegen (eine Datenbank, ein `app_secret`, ein Cron).
 3. Allowlist ergänzen: In `app/config.php` den Schlüssel `allowed_hosts` mit
    allen drei Hosts füllen, alte Adresse eingeschlossen:
 
    ```php
-   'allowed_hosts' => ['app.lexware-einzug.de', 'app.smart-einzug.de', 'admin.smart-einzug.de'],
+   'allowed_hosts' => ['app.smart-einzug.de', 'app.smart-einzug.de', 'admin.smart-einzug.de'],
    ```
 
    Danach `setup-check.php?token=<cron_token>` über die alte und die neue
@@ -226,7 +226,7 @@ prüfen, bevor der nächste folgt.
 5. Stripe-Webhooks: In jedem angebundenen Stripe-Konto der Kunden den Endpunkt
    `https://app.smart-einzug.de/stripe-webhook.php` zusätzlich anlegen und im
    Plattformkonto `https://app.smart-einzug.de/billing-webhook.php`. Die alten
-   Endpunkte auf `app.lexware-einzug.de` behalten; Ereignisse werden über
+   Endpunkte auf `app.smart-einzug.de` behalten; Ereignisse werden über
    `webhook_events` nur einmal verarbeitet. Kunden mit eigenem Webhook-Secret
    unter "Einstellungen" darauf hinweisen, dass die dort angezeigte Adresse
    jetzt die neue ist. Keine 301-Weiterleitung für POST-Anfragen einrichten.
@@ -235,7 +235,7 @@ prüfen, bevor der nächste folgt.
    `https://app.smart-einzug.de/cron.php?token=...` umstellen (eine Instanz).
 7. Adminbereich trennen: Erst wenn alles über die neue Adresse läuft,
    `admin_base_url` auf `https://admin.smart-einzug.de` setzen. Wirkung:
-   `admin.php` liefert auf `app.smart-einzug.de` und `app.lexware-einzug.de`
+   `admin.php` liefert auf `app.smart-einzug.de` und `app.smart-einzug.de`
    404; auf `admin.smart-einzug.de` sind nur `admin.php`, Anmeldung, 2FA,
    Passwort-Zurücksetzen, Sicherheit, Abmelden und die Assets erreichbar,
    alle Kundenseiten liefern dort 404. Die Sitzung ist an den Host gebunden,

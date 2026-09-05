@@ -11,7 +11,7 @@
  * Einrichtung im IONOS Kundenbereich (Hosting > Cronjobs) oder über einen
  * externen Cron-Dienst, z.B. alle 5 Minuten:
  *
- *   https://app.lexware-einzug.de/cron.php?token=<cron_token aus config.php>
+ *   https://app.smart-einzug.de/cron.php?token=<cron_token aus config.php>
  *
  * Alternativ per PHP-CLI: php cron.php <cron_token>
  */
