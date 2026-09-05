@@ -1,0 +1,133 @@
+name: Automatisch zu IONOS-Webhosting hochladen
+
+# Nur fuer IONOS-WEBHOSTING mit den unten verifizierten Server-Fingerabdruecken.
+# Nicht ungeprueft fuer VPS, Cloud-Server, dedizierte Server oder andere Hoster nutzen.
+# Kein Secret SSH_KNOWN_HOSTS erforderlich; die Serverpruefung bleibt aktiviert.
+# Vor Aktivierung Zielverzeichnis und Ausschluesse pruefen; Serverdateien sichern.
+# Erforderliche Secrets: SFTP_HOST, SFTP_USER, SFTP_PASSWORD, SFTP_PORT, SFTP_PATH.
+# main bei Bedarf durch den tatsächlichen Veröffentlichungs-Branch ersetzen.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Keine zwei Uploads aus diesem Repository gleichzeitig ausführen.
+concurrency:
+  group: production-sftp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Projekt aus GitHub laden
+        uses: actions/checkout@v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: SFTP-Werkzeug installieren
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lftp openssh-client
+
+      # Diese Vorlage ist für direkt auslieferbare Dateien gedacht.
+      # Nötige Build-/Testschritte müssen VOR dem Upload ergänzt werden.
+      # Bei einem Build unten ./ durch den tatsächlichen Ausgabeordner ersetzen.
+      - name: Dateien hochladen
+        shell: bash
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_PATH: ${{ secrets.SFTP_PATH }}
+          LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${SFTP_HOST:?SFTP_HOST fehlt}"
+          : "${SFTP_USER:?SFTP_USER fehlt}"
+          : "${SFTP_PORT:?SFTP_PORT fehlt}"
+          : "${SFTP_PATH:?SFTP_PATH fehlt}"
+          : "${LFTP_PASSWORD:?SFTP_PASSWORD fehlt}"
+
+          # Einfache, absolute Zielpfade ohne Steuerzeichen/Skript-Syntax.
+          [[ "$SFTP_PATH" =~ ^/[a-zA-Z0-9_./-]*$ ]] || {
+            echo "Zielpfad: / am Anfang; nur Buchstaben, Zahlen, _, ., / und -."
+            exit 1
+          }
+          # SFTP_HOST: nur Servername/IPv4, ohne sftp://, Port oder Pfad.
+          [[ "$SFTP_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || {
+            echo "::error::SFTP_HOST muss ein reiner Servername sein."
+            exit 1
+          }
+          [[ "$SFTP_PORT" =~ ^[0-9]{1,5}$ ]] || {
+            echo "::error::SFTP_PORT muss eine Zahl zwischen 1 und 65535 sein."
+            exit 1
+          }
+          port=$((10#$SFTP_PORT))
+          (( port >= 1 && port <= 65535 )) || exit 1
+
+          install -d -m 700 "$HOME/.ssh"
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+          verified_hosts="$HOME/.ssh/known_hosts_deploy"
+          : > "$verified_hosts"
+          chmod 600 "$verified_hosts"
+
+          # Abruf oeffentlicher Server-Schluessel: keine Anmeldung erforderlich.
+          # Der Abruf allein waere NICHT vertrauenswuerdig. Daher werden unten
+          # ausschliesslich Schluessel mit verifiziertem SHA256-Wert uebernommen.
+          if ! ssh-keyscan -T 10 -p "$port" -t ed25519,ecdsa,rsa \
+            "$SFTP_HOST" > "$workdir/candidates" 2> "$workdir/scan.log"; then
+            echo "::error::Server-Schluessel nicht abrufbar. SFTP_HOST, Port und Erreichbarkeit pruefen."
+            exit 1
+          fi
+
+          # Offizielle IONOS-Webhosting-Fingerabdruecke, abgerufen am 05.09.2026:
+          # https://www.ionos.de/hilfe/hosting/ssh-zugaenge-einrichten-und-verwalten/uebersicht-der-ssh-fingerabdruecke-im-ionos-webhosting/
+          # Bei Schluesselwechsel die neue Angabe bei IONOS verifizieren und
+          # diese Liste aktualisieren. Die Pruefung NICHT einfach deaktivieren.
+          while IFS= read -r hostkey || [[ -n "$hostkey" ]]; do
+            [[ -z "$hostkey" || "$hostkey" == \#* ]] && continue
+            printf '%s\n' "$hostkey" > "$workdir/one_key"
+            if ! key_info="$(ssh-keygen -E sha256 -lf "$workdir/one_key" 2>/dev/null)"; then
+              continue
+            fi
+            fingerprint="$(printf '%s\n' "$key_info" | awk '{print $2}')"
+            case "$fingerprint" in
+              SHA256:J4oM+B2g7zZWAI3DolXR1e4vdIMrGO301kEN14/slsQ|\
+              SHA256:psLDE8kfhoS9GWrc/GTrdlPvyKPcWcGZv2JxOCvwF3w|\
+              SHA256:1gx2w8Rtv3wCgi7Jh8myf/KVd72cRQbow03UP8P095Q)
+                printf '%s\n' "$hostkey" >> "$verified_hosts"
+                ;;
+            esac
+          done < "$workdir/candidates"
+
+          if [[ ! -s "$verified_hosts" ]]; then
+            echo "::error::Kein passender IONOS-Webhosting-Schluessel gefunden. Upload wurde NICHT gestartet."
+            echo "Servername, Hosting-Produkt und die aktuellen IONOS-Fingerabdruecke pruefen."
+            exit 1
+          fi
+          echo "IONOS-Webhosting-Hostschluessel erfolgreich verifiziert."
+
+          # Keine --delete-Option: entfernte Dateien werden NICHT gelöscht.
+          # Ausschlüsse an die tatsächlichen Daten-/Konfigurationspfade anpassen.
+          # Achtung: gleichnamige, nicht ausgeschlossene Dateien werden ersetzt.
+          lftp --env-password -u "$SFTP_USER" -p "$SFTP_PORT" "sftp://$SFTP_HOST" <<EOF
+          set cmd:fail-exit yes
+          set net:timeout 20
+          set net:max-retries 2
+          set sftp:auto-confirm no
+          set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$verified_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o VerifyHostKeyDNS=no -o ConnectTimeout=15"
+          mirror --reverse --no-perms --parallel=2 \
+            --exclude '(^|/)(\.git[^/]*|node_modules|uploads|backups|logs|cache|storage)(/|$)' \
+            --exclude '(^|/)\.env[^/]*$' \
+            --exclude '(\.sql(\.gz)?|\.sqlite3?|\.db|\.log|\.pem|\.key)$' \
+            ./ "$SFTP_PATH"
+          bye
+          EOF
