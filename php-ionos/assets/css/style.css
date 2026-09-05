@@ -472,4 +472,4 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 .kv dd { margin: 0; }
 
 /* Bildmarke: goldenes Euro auf Anthrazit-Kachel */
-.brand-euro { width: 34px; height: 34px; border-radius: 9px; background: #2E2D2E; color: #E3AC48; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 21px; line-height: 1; flex-shrink: 0; }
+.brand-euro { width: 34px; height: 34px; border-radius: 9px; display: inline-block; flex-shrink: 0; }

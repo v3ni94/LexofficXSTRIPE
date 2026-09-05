@@ -72,7 +72,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <?php elseif ($useHvmCi): ?>
                 <span class="brand-mark">HVM</span>
             <?php else: ?>
-                <span class="brand-euro" aria-hidden="true">€</span>
+                <img class="brand-euro" src="assets/img/favicon.svg" alt="" width="34" height="34">
             <?php endif; ?>
             <span class="brand-text">
                 <span class="brand-name"><?= e($brandName) ?></span>

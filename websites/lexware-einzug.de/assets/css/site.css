@@ -537,3 +537,6 @@ main p a:not(.btn):hover, main li a:not(.btn):hover { color: var(--anthracite); 
 .consent-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .consent-actions .btn { min-width: 160px; }
 @media (max-width: 600px) { .consent { padding: 10px; } .consent-box { padding: 18px; } .consent-actions .btn { flex: 1 1 100%; } }
+
+/* Bildmarke als SVG-Kachel */
+.wordmark img.mark, .footer-wordmark img.mark { background: none; border-radius: 8px; display: inline-block; width: 30px; height: 30px; flex: none; }
