@@ -372,6 +372,26 @@ CREATE TABLE IF NOT EXISTS payment_collections (
     CONSTRAINT fk_collection_iban    FOREIGN KEY (customer_iban_id) REFERENCES customer_ibans (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Support-Zugriff des Plattformbetreibers auf Firmenaccounts (Migration 008, siehe app/support.php)
+CREATE TABLE IF NOT EXISTS support_sessions (
+    id                  CHAR(36)     NOT NULL PRIMARY KEY,
+    admin_user_id       CHAR(36)     NOT NULL,
+    admin_email         VARCHAR(255) NOT NULL,
+    organization_id     CHAR(36)     NOT NULL,
+    reason              VARCHAR(255) NOT NULL,
+    token_hash          CHAR(64)     NULL,
+    redeem_expires_at   DATETIME     NOT NULL,
+    redeemed_at         DATETIME     NULL,
+    expires_at          DATETIME     NOT NULL,
+    ended_at            DATETIME     NULL,
+    ended_by            VARCHAR(20)  NULL,   -- admin|expired|revoked|logout
+    ip                  VARCHAR(45)  NULL,
+    created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY ix_support_org (organization_id, created_at),
+    KEY ix_support_token (token_hash),
+    KEY ix_support_admin (admin_user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Hochgeladene Mandatsdokumente (PDF/JPG/PNG), Dateien unter app/storage/mandates/
 CREATE TABLE IF NOT EXISTS mandate_files (
     id                  CHAR(36)     NOT NULL PRIMARY KEY,

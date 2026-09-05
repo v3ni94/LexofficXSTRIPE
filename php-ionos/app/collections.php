@@ -1029,6 +1029,12 @@ function _send_prenotification(array $org, array $customer, array $invoice, arra
 function submit_collection(string $tenantId, string $invoiceId, ?string $scheduledDate = null, ?array $actor = null, array $options = []): string
 {
     $pdo = db();
+    // Support-Modus des Plattformbetreibers: keine Einzüge im Namen der Firma
+    // (vor der Transaktion, damit der Protokolleintrag erhalten bleibt)
+    if (function_exists('support_mode') && support_mode()) {
+        audit_log($tenantId, $actor, 'support_access_blocked', 'invoice', $invoiceId, ['aktion' => 'submit_collection']);
+        throw new CollectionException('Im Support-Modus sind Einzüge gesperrt. Diese Aktion muss die Firma selbst ausführen.');
+    }
     // Firmenzeile sperren: verhindert doppelte Einzüge derselben Rechnung und
     // Kontingentüberschreitungen durch parallele Anfragen. Die Sperre gilt bis
     // zum Commit am Ende (auch der Stripe-Aufruf liegt darin, er dauert nur
@@ -1245,6 +1251,9 @@ function cancel_scheduled_collection(string $tenantId, string $collectionId, ?ar
 
 function reschedule_collection(string $tenantId, string $collectionId, string $newDate, ?array $actor = null): void
 {
+    if (function_exists('support_mode') && support_mode()) {
+        throw new CollectionException('Im Support-Modus sind Einzüge gesperrt. Diese Aktion muss die Firma selbst ausführen.');
+    }
     $org = _collection_org($tenantId);
     $preNotify = (int)($org['send_pre_notification'] ?? 0) === 1;
     validate_scheduled_date($newDate, $preNotify ? max(1, (int)$org['pre_notification_days']) : 1);

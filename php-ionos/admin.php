@@ -11,6 +11,7 @@ require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/alerts.php';
+require_once __DIR__ . '/app/admin_charts.php';
 
 // Host-Prüfung: ist admin_base_url gesetzt, antwortet diese Seite nur auf dem
 // Adminhost (bootstrap.php prüft dies bereits zentral, hier zusätzlich als
@@ -25,6 +26,59 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
 $ctx = require_superadmin();
 $pdo = db();
 
+/**
+ * Tarifwerte aus dem Formular lesen und prüfen. Preis als Dezimalbetrag (z.B. 25,00),
+ * leere Limits bedeuten "unbegrenzt". Wirft bei ungültigen Angaben eine Exception.
+ */
+function plan_input_from_post(array $post, array $old): array
+{
+    $name = trim((string)($post['name'] ?? ''));
+    if ($name === '' || mb_strlen($name) > 60) {
+        throw new RuntimeException('Der Tarifname muss zwischen 1 und 60 Zeichen lang sein.');
+    }
+    $priceRaw = str_replace([' ', 'EUR', '€'], '', (string)($post['price'] ?? ''));
+    $priceRaw = str_replace('.', '', $priceRaw);   // Tausenderpunkt
+    $priceRaw = str_replace(',', '.', $priceRaw);  // Dezimalkomma
+    if ($priceRaw === '' || !is_numeric($priceRaw) || (float)$priceRaw < 0 || (float)$priceRaw > 100000) {
+        throw new RuntimeException('Der Preis muss ein Betrag zwischen 0,00 und 100.000,00 EUR sein (z.B. 25,00).');
+    }
+    $priceCents = (int)round((float)$priceRaw * 100);
+    $period = (int)($post['period_days'] ?? 0);
+    if ($period < 1 || $period > 366) {
+        throw new RuntimeException('Die Periode muss zwischen 1 und 366 Tagen liegen.');
+    }
+    $limit = static function (string $raw, string $label): ?int {
+        $raw = trim($raw);
+        if ($raw === '' || mb_strtolower($raw) === 'unbegrenzt') {
+            return null;
+        }
+        if (!ctype_digit($raw) || (int)$raw < 1 || (int)$raw > 1000000) {
+            throw new RuntimeException($label . ': bitte eine ganze Zahl ab 1 eingeben oder leer lassen für unbegrenzt.');
+        }
+        return (int)$raw;
+    };
+    $maxCollections = $limit((string)($post['max_collections'] ?? ''), 'Einzüge je Periode');
+    $maxUsers = $limit((string)($post['max_users'] ?? ''), 'Benutzer');
+    $sort = (int)($post['sort_order'] ?? $old['sort_order'] ?? 0);
+    $stripePrice = trim((string)($post['stripe_price_id'] ?? ''));
+    if ($stripePrice !== '' && !preg_match('/^price_[A-Za-z0-9]+$/', $stripePrice)) {
+        throw new RuntimeException('Die Stripe-Preis-ID beginnt mit "price_" und enthält nur Buchstaben und Ziffern.');
+    }
+    return [
+        'name' => $name,
+        'price_cents' => $priceCents,
+        'period_days' => $period,
+        'max_collections_per_period' => $maxCollections,
+        'max_users' => $maxUsers,
+        'unlimited_users' => $maxUsers === null ? 1 : 0,
+        'user_invites_enabled' => ($maxUsers === null || $maxUsers > 1) ? 1 : 0,
+        'active' => !empty($post['active']) ? 1 : 0,
+        'public_visible' => !empty($post['public_visible']) ? 1 : 0,
+        'sort_order' => max(0, min(9999, $sort)),
+        'stripe_price_id' => $stripePrice !== '' ? $stripePrice : null,
+    ];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
@@ -37,23 +91,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log(null, $ctx, $pause ? 'collections_paused' : 'collections_resumed', 'platform', 'collections_paused', ['scope' => 'platform']);
             flash_set('success', $pause ? 'Plattformweiter Not-Stopp aktiv: keine neuen Einzüge für alle Firmen.' : 'Plattformweiter Not-Stopp aufgehoben.');
         } elseif ($action === 'plan_update') {
-            $code = $_POST['code'] ?? '';
+            // Zweitbestätigung: aktueller 2FA-Code des Administrators (Preise und Limits sind geldrelevant)
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            $code = (string)($_POST['plan_code'] ?? '');
             $stmt = $pdo->prepare('SELECT * FROM plans WHERE code = ?');
             $stmt->execute([$code]);
-            if (!$stmt->fetch()) {
+            $old = $stmt->fetch();
+            if (!$old) {
                 throw new RuntimeException('Tarif nicht gefunden.');
             }
-            $pdo->prepare('UPDATE plans SET active = ?, public_visible = ?, stripe_price_id = ? WHERE code = ?')
-                ->execute([
-                    !empty($_POST['active']) ? 1 : 0,
-                    !empty($_POST['public_visible']) ? 1 : 0,
-                    trim($_POST['stripe_price_id'] ?? '') ?: null,
-                    $code,
-                ]);
-            audit_log(null, $ctx, 'admin_plan_changed', 'plan', $code, [
-                'active' => !empty($_POST['active']), 'public_visible' => !empty($_POST['public_visible']),
+            $new = plan_input_from_post($_POST, $old);
+            $pdo->prepare(
+                'UPDATE plans SET name = ?, price_cents = ?, period_days = ?, max_collections_per_period = ?, max_users = ?,
+                        unlimited_users = ?, user_invites_enabled = ?, active = ?, public_visible = ?, sort_order = ?, stripe_price_id = ?
+                 WHERE code = ?'
+            )->execute([
+                $new['name'], $new['price_cents'], $new['period_days'], $new['max_collections_per_period'], $new['max_users'],
+                $new['unlimited_users'], $new['user_invites_enabled'], $new['active'], $new['public_visible'], $new['sort_order'],
+                $new['stripe_price_id'], $code,
             ]);
-            flash_set('success', 'Tarif ' . $code . ' aktualisiert.');
+            plan_get(''); // Cache leeren
+            $changes = [];
+            foreach ($new as $k => $v) {
+                if ((string)($old[$k] ?? '') !== (string)($v ?? '')) {
+                    $changes[$k] = ['alt' => $old[$k] ?? null, 'neu' => $v];
+                }
+            }
+            audit_log(null, $ctx, 'admin_plan_changed', 'plan', $code, ['aenderungen' => $changes]);
+            flash_set('success', $changes
+                ? 'Tarif ' . $code . ' aktualisiert (' . implode(', ', array_keys($changes)) . ').'
+                : 'Tarif ' . $code . ': keine Änderungen.');
 
         } elseif ($action === 'org_plan') {
             // Zweitbestätigung: aktueller 2FA-Code des Administrators
@@ -82,27 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             flash_set('success', 'Tarif der Firma ' . $org['name'] . ' auf ' . $plan['name'] . ' gesetzt.');
 
-        } elseif ($action === 'user_reset_2fa' || $action === 'user_unlock') {
-            $me = user_load($ctx['user_id']);
-            if ($err = verify_password_and_2fa($me, $_POST['password'] ?? '', $_POST['code'] ?? '')) {
-                throw new RuntimeException($err);
-            }
-            $email = mb_strtolower(trim($_POST['email'] ?? ''));
-            $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ?');
-            $stmt->execute([$email]);
-            $user = $stmt->fetch();
-            if (!$user) {
-                throw new RuntimeException('Benutzer nicht gefunden.');
-            }
-            if ($action === 'user_reset_2fa') {
-                twofa_reset($user, true, $ctx);
-                flash_set('success', '2FA für ' . $email . ' zurückgesetzt (Support-Reset, protokolliert). Der Benutzer richtet 2FA bei der nächsten Anmeldung neu ein.');
-            } else {
-                $pdo->prepare('UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE id = ?')->execute([$user['id']]);
-                $pdo->prepare('DELETE FROM login_attempts WHERE email = ? AND success = 0')->execute([$email]);
-                audit_log(null, $ctx, 'login_locked', 'user', $user['id'], ['unlocked_by_admin' => true, 'email' => $email]);
-                flash_set('success', 'Konto ' . $email . ' entsperrt.');
-            }
         }
     } catch (Throwable $e) {
         flash_set('error', 'Fehler: ' . $e->getMessage());
@@ -138,6 +184,28 @@ $funnelSteps = [
 $domains = array_unique(array_merge(array_column($byDomain, 'domain'), array_keys($funnelMap)));
 
 $plans = plan_list();
+
+// --- Diagrammdaten: letzte 12 Kalenderwochen ---
+$weekSlots = chart_week_slots(12);
+$regByWeek = array_fill_keys(array_keys($weekSlots), 0);
+foreach ($pdo->query("SELECT YEARWEEK(created_at, 3) AS wk, COUNT(*) AS cnt FROM organizations WHERE deleted_at IS NULL AND created_at >= DATE_SUB(CURDATE(), INTERVAL 13 WEEK) GROUP BY wk")->fetchAll() as $r) {
+    if (isset($regByWeek[$r['wk']])) { $regByWeek[$r['wk']] = (int)$r['cnt']; }
+}
+$volByWeek = array_fill_keys(array_keys($weekSlots), 0);
+$cntByWeek = array_fill_keys(array_keys($weekSlots), 0);
+foreach ($pdo->query("SELECT YEARWEEK(COALESCE(completed_at, submitted_at, created_at), 3) AS wk, SUM(amount_cents - COALESCE(refunded_cents, 0)) AS cents, COUNT(*) AS cnt
+    FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= DATE_SUB(CURDATE(), INTERVAL 13 WEEK) GROUP BY wk")->fetchAll() as $r) {
+    if (isset($volByWeek[$r['wk']])) { $volByWeek[$r['wk']] = (int)$r['cents']; $cntByWeek[$r['wk']] = (int)$r['cnt']; }
+}
+$chartRows = static fn(array $byWeek): array => array_map(static fn(string $wk, string $label): array => ['label' => $label, 'value' => $byWeek[$wk]], array_keys($weekSlots), $weekSlots);
+$funnelTotals = [];
+foreach ($funnelSteps as $ev => $label) {
+    $sum = 0;
+    foreach ($funnelMap as $d => $events) { $sum += (int)($events[$ev] ?? 0); }
+    $funnelTotals[] = ['label' => $label, 'value' => $sum];
+}
+$regByDomain = array_map(static fn(array $d): array => ['label' => $d['domain'], 'value' => (int)$d['registrations']], $byDomain);
+$fmtEur = static fn(float $v): string => number_format($v / 100, 0, ',', '.') . ' EUR';
 $planByCode = [];
 foreach ($plans as $p) {
     $planByCode[$p['code']] = $p;
@@ -165,6 +233,19 @@ layout_header('Administration', $ctx);
 ?>
 <h1>Administration</h1>
 <p class="page-sub">Plattform <?= e(product_name()) ?> · Betreiber <?= e((string)(config('operator')['name'] ?? 'Müller Holding AG')) ?></p>
+<nav class="admin-subnav" aria-label="Adminbereiche">
+    <a href="#kennzahlen">Kennzahlen</a> · <a href="#diagramme">Diagramme</a> · <a href="#notstopp">Not-Stopp</a> · <a href="#tarife">Tarife</a> · <a href="#firmen">Firmen</a> · <a href="admin-support.php">Support</a>
+</nav>
+<style>
+.admin-subnav { margin: -6px 0 18px; font-size: 14px; }
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.chart { width: 100%; height: auto; display: block; font-family: inherit; }
+.chart-title { font-size: 13px; font-weight: 700; fill: #2E2D2E; }
+.chart-label { font-size: 11px; fill: #6b6b6b; }
+.chart-value { font-size: 11px; fill: #2E2D2E; }
+.chart-axis { stroke: #ddd; stroke-width: 1; }
+.chart-empty { font-size: 13px; fill: #9F9F9F; }
+</style>
 
 <?php if ($platformAlerts): ?>
 <div class="flash flash-warn">
@@ -184,7 +265,7 @@ layout_header('Administration', $ctx);
     <div class="stat-card"><div class="stat-value" style="font-size: 20px;"><?= format_eur_cents((int)$totals['succeeded_cents']) ?></div><div class="stat-label">Eingezogenes Volumen (alle Firmen)</div></div>
 </div>
 
-<div class="card">
+<div class="card" id="kennzahlen">
     <h2>Kennzahlen je Akquisitionsquelle</h2>
     <div class="table-wrap">
         <table>
@@ -211,6 +292,18 @@ layout_header('Administration', $ctx);
             </tbody>
         </table>
     </div>
+</div>
+
+<div class="card" id="diagramme">
+    <h2>Diagramme</h2>
+    <div class="chart-grid">
+        <div><?= chart_bars($chartRows($regByWeek), 'Registrierungen je Kalenderwoche (12 Wochen)') ?></div>
+        <div><?= chart_bars($chartRows($volByWeek), 'Eingezogenes Volumen je Kalenderwoche, netto nach Erstattungen', $fmtEur, '#2E2D2E') ?></div>
+        <div><?= chart_bars($chartRows($cntByWeek), 'Erfolgreiche Einzüge je Kalenderwoche', null, '#9F9F9F') ?></div>
+        <div><?= chart_hbars($regByDomain, 'Registrierungen je Herkunft (gesamt)') ?></div>
+        <div style="grid-column: 1 / -1;"><?= chart_hbars($funnelTotals, 'Funnel über alle Herkünfte (gesamt)', null, '#E3AC48') ?></div>
+    </div>
+    <p class="hint">Serverseitig erzeugte Grafiken aus den Tabellen organizations, payment_collections und funnel_events, keine Datenübertragung an Dritte.</p>
 </div>
 
 <div class="card">
@@ -244,26 +337,33 @@ layout_header('Administration', $ctx);
     <p class="hint">Zweitbestätigung: Aktivieren und Aufheben erfordern den aktuellen Code aus Ihrer Authenticator-App.</p>
 </div>
 
-<div class="card">
+<div class="card" id="tarife">
     <h2>Tarife</h2>
+    <p class="hint">Name, Preis (netto je Periode), Limits und Sichtbarkeit lassen sich hier direkt ändern. Leere Limits bedeuten
+        unbegrenzt. Der angezeigte Preis muss zum hinterlegten Stripe-Preis passen, abgerechnet wird der Stripe-Preis.
+        Bestandskunden behalten ihren Tarifcode, geänderte Preise und Limits gelten für sie ab der nächsten Periode
+        bzw. sofort bei den Limits. Jede Änderung erfordert den aktuellen 2FA-Code und wird protokolliert.</p>
     <div class="table-wrap">
-        <table>
-            <thead><tr><th>Code</th><th>Name</th><th>Preis</th><th>Einzüge/Periode</th><th>Benutzer</th><th>Aktiv</th><th>Öffentlich</th><th>Stripe-Preis-ID</th><th></th></tr></thead>
+        <table class="plan-table">
+            <thead><tr><th>Code</th><th>Name</th><th>Preis netto (EUR)</th><th>Periode (Tage)</th><th>Einzüge/Periode</th><th>Benutzer</th><th>Sortierung</th><th>Aktiv</th><th>Öffentlich</th><th>Stripe-Preis-ID</th><th>2FA-Code</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($plans as $p): ?>
                 <tr>
                     <form method="post">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="plan_update">
-                    <input type="hidden" name="code" value="<?= e($p['code']) ?>">
-                    <td><?= e($p['code']) ?></td>
-                    <td><?= e($p['name']) ?></td>
-                    <td><?= format_eur_cents((int)$p['price_cents']) ?></td>
-                    <td><?= $p['max_collections_per_period'] === null ? 'unbegrenzt' : (int)$p['max_collections_per_period'] ?></td>
-                    <td><?= $p['max_users'] === null || (int)$p['unlimited_users'] ? 'unbegrenzt' : (int)$p['max_users'] ?></td>
+                    <input type="hidden" name="plan_code" value="<?= e($p['code']) ?>">
+                    <td><code><?= e($p['code']) ?></code></td>
+                    <td><input type="text" name="name" value="<?= e($p['name']) ?>" maxlength="60" required class="plan-input" style="min-width: 150px;"></td>
+                    <td><input type="text" name="price" inputmode="decimal" value="<?= e(number_format((int)$p['price_cents'] / 100, 2, ',', '.')) ?>" required class="plan-input" style="max-width: 100px;"></td>
+                    <td><input type="number" name="period_days" min="1" max="366" value="<?= (int)$p['period_days'] ?>" required class="plan-input" style="max-width: 80px;"></td>
+                    <td><input type="text" name="max_collections" inputmode="numeric" value="<?= $p['max_collections_per_period'] === null ? '' : (int)$p['max_collections_per_period'] ?>" placeholder="unbegrenzt" class="plan-input" style="max-width: 110px;"></td>
+                    <td><input type="text" name="max_users" inputmode="numeric" value="<?= ($p['max_users'] === null || (int)$p['unlimited_users']) ? '' : (int)$p['max_users'] ?>" placeholder="unbegrenzt" class="plan-input" style="max-width: 110px;"></td>
+                    <td><input type="number" name="sort_order" min="0" max="9999" value="<?= (int)$p['sort_order'] ?>" class="plan-input" style="max-width: 80px;"></td>
                     <td><input type="checkbox" name="active" value="1" <?= (int)$p['active'] ? 'checked' : '' ?>></td>
                     <td><input type="checkbox" name="public_visible" value="1" <?= (int)$p['public_visible'] ? 'checked' : '' ?>></td>
-                    <td><input type="text" name="stripe_price_id" value="<?= e($p['stripe_price_id'] ?? '') ?>" placeholder="price_..." style="max-width: 220px; padding: 5px 8px; font-size: 13px;"></td>
+                    <td><input type="text" name="stripe_price_id" value="<?= e($p['stripe_price_id'] ?? '') ?>" placeholder="price_..." class="plan-input" style="max-width: 220px;"></td>
+                    <td><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" required class="plan-input" style="max-width: 130px;"></td>
                     <td><button type="submit" class="btn btn-sm btn-secondary">Speichern</button></td>
                     </form>
                 </tr>
@@ -271,6 +371,7 @@ layout_header('Administration', $ctx);
             </tbody>
         </table>
     </div>
+    <style>.plan-table .plan-input { padding: 5px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }</style>
 </div>
 
 <div class="card" id="firmen">
@@ -315,18 +416,9 @@ layout_header('Administration', $ctx);
         als Zweitbestätigung den aktuellen 2FA-Code.</p>
 </div>
 
-<div class="card">
-    <h2>Support: Benutzer</h2>
-    <p class="hint">2FA-Reset nur nach eindeutiger Identitätsprüfung des Nutzers (z.B. Rückruf über bekannte Firmennummer). Wird als
-        Support-Reset besonders protokolliert; der Nutzer erhält eine Sicherheits-E-Mail. Zur Bestätigung sind Ihr Passwort und 2FA-Code nötig.</p>
-    <form method="post" class="inline-form" style="flex-wrap: wrap; gap: 10px;">
-        <?= csrf_field() ?>
-        <input type="email" name="email" placeholder="E-Mail des Benutzers" required style="max-width: 280px;">
-        <input type="password" name="password" placeholder="Ihr Passwort" required autocomplete="current-password" style="max-width: 200px;">
-        <input type="text" name="code" placeholder="Ihr 2FA-Code" required class="code-input" style="max-width: 140px;" autocomplete="one-time-code">
-        <button type="submit" name="action" value="user_unlock" class="btn btn-sm btn-secondary">Konto entsperren</button>
-        <button type="submit" name="action" value="user_reset_2fa" class="btn btn-sm btn-danger"
-                onclick="return confirm('2FA dieses Benutzers wirklich zurücksetzen?')">2FA zurücksetzen (Support)</button>
-    </form>
+<div class="card" id="support">
+    <h2>Support</h2>
+    <p>Firmenzugriff ("Auf Firma wechseln"), Konten entsperren, 2FA zurücksetzen und das Protokoll der Support-Zugriffe finden Sie im
+        Bereich <a href="admin-support.php">Support</a>.</p>
 </div>
 <?php layout_footer($ctx); ?>

@@ -65,7 +65,8 @@ unter "Firma" umstellbar).
 | `product_name` | Produktname in Titel, E-Mails und Authenticator-App (Standard SmartEinzug) |
 | `marketing_url` | Rückfallwert für `public_base_url` (Links auf Datenschutz und AGB) |
 | `operator` | Impressumsdaten der Müller Holding AG (Telefon und USt-IdNr. sind Platzhalter) |
-| `signup_domains` | Erlaubte Herkunftsdomains für `?src=` und `track.php` |
+| `signup_domains` | Erlaubte Herkunftsdomains für `?src=` und `track.php`; genau einmal in der Datei eintragen, bei doppeltem Schlüssel gilt nur der letzte |
+| `cron_time_budget_seconds` | Zeitbudget je Cron-Aufruf in Sekunden (Standard 20, Abschnitt 7) |
 | `allow_registration` | Registrierung neuer Firmen erlauben (für den Marktstart `true`) |
 | `require_2fa` | 2FA-Pflicht (immer `true`; nur im Notfall kurz `false`) |
 | `mail` | E-Mail-Versand (siehe Abschnitt 5) |
@@ -82,8 +83,11 @@ unter "Firma" umstellbar).
 - Mitarbeiter: voller operativer Zugriff (Synchronisieren, Rechnungen, Einzüge,
   Kunden, Mandate, SEPA pflegen). Jede Aktion wird namentlich protokolliert
   ("Firma" > Protokoll, Spalte "Ausgelöst von" bei Einzügen).
-- Plattform-Administrator (Superadmin, `admin.php`): Kennzahlen je Herkunft,
-  Tarife, Firmen, Support-Funktionen. Freischalten per SQL:
+- Plattform-Administrator (Superadmin, `admin.php`): Kennzahlen je Herkunft
+  mit Diagrammen, Tarife direkt bearbeiten (Name, Preis, Limits, Sichtbarkeit,
+  Stripe-Preis-ID, jede Änderung mit 2FA-Code), Firmen. Bereich Support
+  (`admin-support.php`): "Auf Firma wechseln" (Support-Zugriff, siehe unten),
+  Konten entsperren, 2FA zurücksetzen, Protokoll. Freischalten per SQL:
 
 ```sql
 UPDATE users SET is_superadmin = 1 WHERE email = 'ihre-adresse@example.de';
@@ -94,8 +98,17 @@ lassen; die Seite `admin.php` prüft die Berechtigung selbst. Sobald
 `admin_base_url` gesetzt ist, antwortet `admin.php` nur noch auf diesem Host
 (Abschnitt 11).
 
+Support-Zugriff ("Auf Firma wechseln", Migration 008): Der Superadmin gibt
+unter Support einen Grund (z.B. Ticketnummer) und den aktuellen 2FA-Code ein und
+arbeitet danach höchstens 60 Minuten in der Kundenanwendung dieser Firma mit
+der Rolle Administrator. Der Einmal-Link ist 5 Minuten gültig, der Inhaber der
+Firma erhält eine Sicherheits-E-Mail, jede Aktion trägt im Protokoll der Firma
+den Vermerk `support_session`. Gesperrt sind im Support-Modus Einzüge, IBAN-
+Änderungen und Zugangsdaten (Lexware-Schlüssel, Stripe-Schlüssel, Webhook-
+Secret). Beenden über den gelben Hinweis oder unter Support > Aktive Sitzungen.
+
 Notfall (Authenticator und Recovery-Codes eines Benutzers verloren): der
-Superadmin setzt die 2FA unter Admin > Support zurück (wird als Support-Reset
+Superadmin setzt die 2FA unter Support zurück (wird als Support-Reset
 protokolliert, Benutzer erhält eine Sicherheits-E-Mail). Ohne Superadmin per SQL:
 
 ```sql
@@ -133,18 +146,31 @@ Spätere Tarife (BASIC, PLUS, PRO, UNLIMITED) sind angelegt, aber inaktiv und
 nicht öffentlich. Ein Wechsel auf einen Tarif mit weniger Benutzern wird
 abgelehnt, solange mehr Benutzer oder offene Einladungen vorhanden sind.
 
-## 7. Cronjob (optional, empfohlen)
+## 7. Cronjob (empfohlen)
 
-IONOS Kundenbereich > Hosting > Cronjobs, alle 5 bis 15 Minuten:
+Externer Dienst (cron-job.org) oder IONOS Kundenbereich > Hosting > Cronjobs,
+Intervall 5 Minuten (mindestens alle 15 Minuten), nur eine Instanz:
 
 ```
 https://app.smart-einzug.de/cron.php?token=<cron_token aus config.php>
 ```
 
-Der Cron reicht fällige terminierte Lastschriften ein und setzt laufende
-Synchronisationen im Hintergrund fort. Ohne Cron funktioniert alles weiterhin
-über die Buttons; die Synchronisation läuft dann, solange die Rechnungsseite
-geöffnet ist, und wird beim nächsten Öffnen fortgesetzt.
+Der Cron reicht fällige terminierte Lastschriften ein, klärt unklare
+Einzugsversuche, versendet Alarm-E-Mails, räumt abgelaufene Support-Sitzungen
+auf und setzt laufende Synchronisationen fort. Ohne Cron funktioniert alles
+weiterhin über die Buttons; die Synchronisation läuft dann, solange die
+Rechnungsseite geöffnet ist, und wird beim nächsten Öffnen fortgesetzt.
+
+Laufzeit: Externe Cron-Dienste brechen nach 30 Sekunden ab. `cron.php` begrenzt
+die Gesamtlaufzeit deshalb auf `cron_time_budget_seconds` (Standard 20). Die
+Synchronisation arbeitet in kleinen Schritten und verteilt die Zeit im
+Round-Robin auf alle Firmen (am längsten wartende zuerst, zwei Schritte je
+Firma und Runde), ein Erstimport einer Firma blockiert die anderen also nicht.
+Nicht erledigte Schritte laufen beim nächsten Aufruf weiter. Faustregel für die
+Kapazität: 20 Sekunden je Aufruf, alle 5 Minuten, ergibt rund 96 Minuten
+Synchronisationszeit je Tag; reicht das bei vielen Firmen nicht mehr, Intervall
+verkürzen (cron-job.org erlaubt 1 Minute) oder auf IONOS-Cron ohne 30-Sekunden-
+Grenze wechseln und `cron_time_budget_seconds` auf 90 erhöhen.
 
 ## 8. SEPA-Mandate
 

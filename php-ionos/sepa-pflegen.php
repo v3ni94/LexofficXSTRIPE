@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if ($action === 'save_iban') {
+            support_guard();
             $result = set_customer_iban(
                 $tenantId, $customerId, $ctx['user_id'],
                 $_POST['iban'] ?? '', $_POST['account_holder_name'] ?? '', $_POST['bic'] ?? null, $ctx
@@ -44,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', mandate_file_handle_upload($ctx, $customerId, $_POST, $_FILES));
             redirect('sepa-pflegen.php?customer=' . urlencode($customerId));
         } elseif ($action === 'disable_sepa') {
+            support_guard();
             set_customer_sepa_debit($tenantId, $customerId, false, $ctx);
             flash_set('success', 'SEPA-Einzug für diesen Kunden deaktiviert.');
         }

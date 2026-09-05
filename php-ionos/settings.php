@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if ($action === 'save_lexoffice') {
+            support_guard();
             $key = trim($_POST['lexoffice_api_key'] ?? '');
             if ($key === '') {
                 throw new RuntimeException('Bitte einen API-Schlüssel eingeben.');
@@ -58,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Lexware-Office-Verbindung geprüft: Zugriff funktioniert' . ($info['company_name'] ? ' (' . $info['company_name'] . ')' : '') . '.');
 
         } elseif ($action === 'disconnect_lexoffice') {
+            support_guard();
             $pdo->prepare(
                 'UPDATE integrations SET lexoffice_api_key_encrypted = NULL, lexoffice_connected = 0, lexoffice_disconnected_at = NOW() WHERE tenant_id = ?'
             )->execute([$tenantId]);
@@ -66,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Lexware-Office-Verbindung getrennt. Bereits synchronisierte Rechnungen und Kunden bleiben erhalten.');
 
         } elseif ($action === 'save_stripe') {
+            support_guard();
             $secretKey = trim($_POST['stripe_secret_key'] ?? '');
             $webhookSecret = trim($_POST['stripe_webhook_secret'] ?? '');
             if ($secretKey === '') {
@@ -102,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Stripe-Verbindung geprüft: Zugriff auf ' . ($info['business_name'] ?: $info['account_id']) . ' funktioniert.');
 
         } elseif ($action === 'save_webhook_secret') {
+            support_guard();
             $webhookSecret = trim($_POST['stripe_webhook_secret'] ?? '');
             if ($webhookSecret === '') {
                 throw new RuntimeException('Bitte das Webhook-Secret eingeben.');
@@ -112,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Webhook-Secret gespeichert.');
 
         } elseif ($action === 'disconnect_stripe') {
+            support_guard();
             $pdo->prepare(
                 'UPDATE integrations SET stripe_secret_key_encrypted = NULL, stripe_webhook_secret_encrypted = NULL, stripe_connected = 0, stripe_disconnected_at = NOW() WHERE tenant_id = ?'
             )->execute([$tenantId]);

@@ -156,33 +156,61 @@ function sync_state_step(string $tenantId, int $batchSize = 6): array
 
 /**
  * Für den Cron: alle laufenden Synchronisationen im Zeitbudget fortsetzen.
- * @return array{tenants:int,steps:int,finished:int,errors:int}
+ *
+ * Fairness: Die Firmen werden im Round-Robin bedient, die am längsten nicht
+ * bearbeitete zuerst. Je Runde erhält jede Firma höchstens $stepsPerRound
+ * Schritte, dann kommt die nächste Firma dran; solange Zeit bleibt, beginnt
+ * eine neue Runde. So blockiert ein Erstimport mit vielen Rechnungen nicht die
+ * übrigen Firmen, auch wenn der Aufruf (z.B. cron-job.org, 30 s) knapp ist.
+ *
+ * @return array{tenants:int,steps:int,finished:int,errors:int,rounds:int,open:int}
  */
-function sync_run_pending(int $maxSeconds = 50): array
+function sync_run_pending(int $maxSeconds = 50, int $stepsPerRound = 2): array
 {
     $deadline = microtime(true) + $maxSeconds;
-    $stats = ['tenants' => 0, 'steps' => 0, 'finished' => 0, 'errors' => 0];
+    $stats = ['tenants' => 0, 'steps' => 0, 'finished' => 0, 'errors' => 0, 'rounds' => 0, 'open' => 0];
 
-    $rows = db()->query("SELECT tenant_id FROM sync_state WHERE status = 'running'")->fetchAll();
-    foreach ($rows as $row) {
-        $stats['tenants']++;
-        while (microtime(true) < $deadline) {
-            try {
-                $r = sync_state_step($row['tenant_id']);
-            } catch (Throwable $e) {
-                error_log('Sync-Cron für Firma ' . $row['tenant_id'] . ' fehlgeschlagen: ' . $e->getMessage());
-                $stats['errors']++;
-                break;
+    $queue = db()->query(
+        "SELECT tenant_id FROM sync_state WHERE status = 'running' AND (lock_until IS NULL OR lock_until < NOW())
+         ORDER BY updated_at ASC"
+    )->fetchAll(PDO::FETCH_COLUMN);
+    $stats['tenants'] = count($queue);
+
+    while ($queue && microtime(true) < $deadline) {
+        $stats['rounds']++;
+        $next = [];
+        foreach ($queue as $tenantId) {
+            if (microtime(true) >= $deadline) {
+                $next[] = $tenantId;
+                continue;
             }
-            if ($r['skipped']) {
-                break;
+            $keep = true;
+            for ($i = 0; $i < max(1, $stepsPerRound) && microtime(true) < $deadline; $i++) {
+                try {
+                    $r = sync_state_step((string)$tenantId);
+                } catch (Throwable $e) {
+                    error_log('Sync-Cron für Firma ' . $tenantId . ' fehlgeschlagen: ' . $e->getMessage());
+                    $stats['errors']++;
+                    $keep = false;
+                    break;
+                }
+                if ($r['skipped']) { // fremde Sperre (z.B. Nutzer synchronisiert gerade selbst)
+                    $keep = false;
+                    break;
+                }
+                $stats['steps']++;
+                if ($r['done']) {
+                    $stats['finished']++;
+                    $keep = false;
+                    break;
+                }
             }
-            $stats['steps']++;
-            if ($r['done']) {
-                $stats['finished']++;
-                break;
+            if ($keep) {
+                $next[] = $tenantId;
             }
         }
+        $queue = $next;
     }
+    $stats['open'] = count($queue);
     return $stats;
 }

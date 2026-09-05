@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ));
 
         } elseif ($action === 'resolve_attempts') {
+            support_guard();
             $result = collection_attempts_resolve($tenantId, $ctx);
             flash_set('success', sprintf(
                 'Unklare Versuche geprüft: %d geprüft, %d Einzug/Einzüge bei Stripe gefunden und nachgetragen, %d ohne Einzug freigegeben, %d noch offen (Prüfung später wiederholen).',

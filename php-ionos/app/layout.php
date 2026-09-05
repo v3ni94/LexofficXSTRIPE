@@ -82,6 +82,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
         <?php if ($ctx && on_admin_host()): ?>
         <nav class="main-nav" aria-label="Hauptnavigation">
             <a href="admin.php" class="nav-admin">Plattform-Administration</a>
+            <a href="admin-support.php" class="nav-admin">Support</a>
             <a href="<?= e(app_base_url()) ?>/dashboard.php" title="Zur Kundenanwendung">Kundenanwendung</a>
         </nav>
         <?php elseif ($ctx): ?>
@@ -98,14 +99,14 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                 <a href="settings.php">Einstellungen</a>
             <?php endif; ?>
             <?php if (!empty($ctx['is_superadmin'])): ?>
-                <a href="admin.php" class="nav-admin">Admin</a>
+                <a href="<?= e(admin_base_url() !== '' ? admin_base_url() . '/admin.php' : 'admin.php') ?>" class="nav-admin">Admin</a>
             <?php endif; ?>
         </nav>
         <div class="user-menu">
             <span class="user-email"><?= e(user_display_name($ctx)) ?></span>
             <span class="user-role"><?= e(role_label($ctx['role'])) ?></span>
             <a class="btn btn-ghost btn-sm" href="security.php" title="Passwort und Zwei-Faktor-Authentifizierung">Sicherheit</a>
-            <?php if (!on_admin_host()): ?><a class="btn btn-ghost btn-sm" href="companies.php" title="Firma wechseln oder anlegen">Firmen</a><?php endif; ?>
+            <?php if (!on_admin_host() && empty($ctx['support_mode'])): ?><a class="btn btn-ghost btn-sm" href="companies.php" title="Firma wechseln oder anlegen">Firmen</a><?php endif; ?>
             <a class="btn btn-ghost btn-sm" href="logout.php">Abmelden</a>
         </div>
         <?php endif; ?>
@@ -115,6 +116,13 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
     <?php foreach (flash_pull() as $msg): ?>
         <div class="flash flash-<?= e($msg['type']) ?>"><?= e($msg['message']) ?></div>
     <?php endforeach; ?>
+    <?php if ($ctx && !empty($ctx['support_mode'])): ?>
+        <div class="flash flash-warn support-banner"><strong>SUPPORT-MODUS.</strong> Sie arbeiten als Plattform-Support in der Firma
+            <strong><?= e($ctx['org_name']) ?></strong> (Rolle Administrator). Einzüge, IBAN-Änderungen und Zugangsdaten sind gesperrt,
+            alle Aktionen werden mit Support-Vermerk protokolliert. Endet um <?= e(date('H:i', strtotime((string)$ctx['support_expires_at']))) ?> Uhr.
+            <a href="support-end.php">Support beenden</a>
+        </div>
+    <?php endif; ?>
     <?php if ($ctx && integration_stripe_test_mode($ctx['org_id'])): ?>
         <div class="flash flash-warn testmode-banner"><strong>TESTMODUS.</strong> Diese Firma ist mit einem Stripe-Testschlüssel verbunden. Es werden keine echten Lastschriften ausgeführt.
             <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Live-Schlüssel hinterlegen</a><?php endif; ?>

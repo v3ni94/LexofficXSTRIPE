@@ -35,7 +35,15 @@ if (strlen($expected) < 16 || !hash_equals($expected, (string)$token)) {
 }
 
 @set_time_limit(120);
+@ignore_user_abort(true); // Bricht der Aufrufer (z.B. cron-job.org) ab, läuft der begonnene Schritt sauber zu Ende
 $start = microtime(true);
+// Gesamtlaufzeit: externe Cron-Dienste brechen häufig nach 30 Sekunden ab. Ziel sind
+// höchstens etwa 20 bis 25 Sekunden je Aufruf; die Synchronisation arbeitet in Schritten
+// und setzt beim nächsten Aufruf fort (config: cron_time_budget_seconds, Standard 20).
+$totalBudget = max(10, min(110, (int)config('cron_time_budget_seconds', 20)));
+
+require_once __DIR__ . '/app/support.php';
+try { support_sessions_expire(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 008 */ }
 
 $result = process_scheduled_collections();
 echo sprintf(
@@ -75,13 +83,15 @@ try {
     error_log('Cron Alarmierung fehlgeschlagen: ' . $e->getMessage());
 }
 
-$budget = (int)max(10, 50 - (microtime(true) - $start));
+$budget = (int)max(3, $totalBudget - (microtime(true) - $start));
 $sync = sync_run_pending($budget);
 echo sprintf(
-    "[%s] Synchronisation: %d Firma/Firmen, %d Schritte, %d abgeschlossen, %d Fehler\n",
+    "[%s] Synchronisation: %d Firma/Firmen, %d Schritte in %d Runde(n), %d abgeschlossen, %d Fehler, %d noch offen (Fortsetzung beim nächsten Aufruf)\n",
     date('d.m.Y H:i:s'),
     $sync['tenants'],
     $sync['steps'],
+    $sync['rounds'] ?? 0,
     $sync['finished'],
-    $sync['errors']
+    $sync['errors'],
+    $sync['open'] ?? 0
 );

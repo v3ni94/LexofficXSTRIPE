@@ -165,7 +165,7 @@ function enforce_host_rules(): void
     $onAdminHost = $host !== '' && $host === $adminHost && $adminHost !== $appHost;
 
     if ($onAdminHost) {
-        $adminAllowed = ['admin.php', 'login.php', 'twofa-verify.php', 'twofa-setup.php', 'logout.php',
+        $adminAllowed = ['admin.php', 'admin-support.php', 'login.php', 'twofa-verify.php', 'twofa-setup.php', 'logout.php',
             'security.php', 'forgot-password.php', 'reset-password.php'];
         $uri = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
         $isAsset = str_starts_with($uri, '/assets/') || $uri === '/favicon.ico';
@@ -177,7 +177,7 @@ function enforce_host_rules(): void
         if (!$isAsset && !in_array($script, $adminAllowed, true)) {
             host_not_found();
         }
-    } elseif ($script === 'admin.php') {
+    } elseif ($script === 'admin.php' || $script === 'admin-support.php') {
         host_not_found();
     }
 }

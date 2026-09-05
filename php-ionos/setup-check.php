@@ -170,12 +170,13 @@ if ($config && !empty($config['db']['host'])) {
             $missing ? 'Fehlend: ' . implode(', ', $missing) . ' – bitte sql/schema.sql per phpMyAdmin importieren.' : ''
         );
 
-        // Migrationen 004 bis 007: Tabellen und Spalten einzeln prüfen
+        // Migrationen 004 bis 008: Tabellen und Spalten einzeln prüfen
         $migrationChecks = [
             '004' => [['table' => 'integrations', 'column' => 'stripe_account_id']],
             '005' => [['table' => 'mandate_files']],
             '006' => [['table' => 'collection_attempts'], ['table' => 'platform_settings'], ['table' => 'mandate_requests'], ['table' => 'collection_rules'], ['table' => 'integration_providers'], ['table' => 'invoices', 'column' => 'open_amount'], ['table' => 'organizations', 'column' => 'collections_paused'], ['table' => 'sepa_mandates', 'column' => 'stripe_mandate_id']],
             '007' => [['table' => 'payment_collections', 'column' => 'refunded_cents'], ['table' => 'invoices', 'column' => 'requires_review']],
+            '008' => [['table' => 'support_sessions']],
         ];
         foreach ($migrationChecks as $mig => $items) {
             $lack = [];

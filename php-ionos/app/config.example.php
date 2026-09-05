@@ -34,6 +34,9 @@ return [
 
     // --- Cron-Token (Schutz für cron.php, mind. 32 Zufallszeichen) ---
     'cron_token' => 'HIER-32-ZUFALLSZEICHEN-EINTRAGEN',
+    // Zeitbudget je Cron-Aufruf in Sekunden. Externe Cron-Dienste (cron-job.org) brechen oft nach 30 s ab,
+    // deshalb Standard 20 (ein laufender Schritt darf kurz überziehen). Die Synchronisation setzt beim nächsten Aufruf fort.
+    'cron_time_budget_seconds' => 20,
 
     // --- Basis-URL der Anwendung (ohne Slash am Ende) ---
     // Bisheriger Schlüssel, bleibt als Rückfallwert für app_base_url erhalten.

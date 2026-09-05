@@ -40,6 +40,9 @@ function audit_log(
     ?string $targetId = null,
     array $details = []
 ): void {
+    if (!empty($_SESSION['support_session_id']) && PHP_SAPI !== 'cli') {
+        $details['support_session'] = (string)$_SESSION['support_session_id'];
+    }
     try {
         db()->prepare(
             'INSERT INTO audit_log (tenant_id, user_id, user_email, action, target_type, target_id, details_json, ip)
@@ -146,6 +149,10 @@ function audit_action_label(string $action): string
         'subscription_cancelled'   => 'Abo gekündigt',
         'admin_plan_changed'       => 'Tarif durch Administrator geändert',
         'onboarding_completed'     => 'Einrichtung abgeschlossen',
+        'support_access_created'   => 'Support-Zugriff vorbereitet (Plattformbetreiber)',
+        'support_access_started'   => 'Support-Zugriff begonnen (Plattformbetreiber)',
+        'support_access_ended'     => 'Support-Zugriff beendet',
+        'support_access_blocked'   => 'Aktion im Support-Modus gesperrt',
     ];
     return $map[$action] ?? $action;
 }

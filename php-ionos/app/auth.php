@@ -27,6 +27,7 @@ require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/totp.php';
 require_once __DIR__ . '/audit.php';
 require_once __DIR__ . '/plans.php';
+require_once __DIR__ . '/support.php';
 
 const LOGIN_MAX_FAILS_EMAIL = 5;    // Fehlversuche je E-Mail in 15 Minuten
 const LOGIN_MAX_FAILS_IP    = 30;   // Fehlversuche je IP in 15 Minuten
@@ -53,6 +54,12 @@ function current_user(): ?array
     $orgId  = $_SESSION['org_id'] ?? null;
     if (!$userId || !$orgId) {
         return null;
+    }
+
+    // Support-Modus: Superadmin arbeitet zeitlich begrenzt in einer fremden Firma
+    if (!empty($_SESSION['support_session_id'])) {
+        $ctx = _current_user_support((string)$userId, (string)$orgId, (string)$_SESSION['support_session_id']);
+        return $ctx;
     }
 
     $stmt = db()->prepare(
@@ -88,6 +95,81 @@ function current_user(): ?array
 
     $ctx = $row;
     return $ctx;
+}
+
+/**
+ * Kontext im Support-Modus: kein Mitgliedschaftseintrag nötig, Rolle Administrator,
+ * Sitzung muss aktiv, nicht abgelaufen und dem angemeldeten Superadmin zugeordnet sein.
+ * Abgelaufene Sitzungen werden beendet; danach gilt wieder die eigene Firma
+ * (falls vorhanden) oder die Abmeldung.
+ */
+function _current_user_support(string $userId, string $orgId, string $supportId): ?array
+{
+    $support = support_session_load_active($supportId);
+    $valid = $support && $support['admin_user_id'] === $userId && $support['organization_id'] === $orgId && $support['redeemed_at'] !== null;
+    if ($valid) {
+        $stmt = db()->prepare(
+            'SELECT u.id AS user_id, u.email, u.display_name, u.first_name, u.last_name,
+                    u.totp_enabled, u.email_verified_at, u.is_superadmin, u.session_epoch, u.last_login_at,
+                    o.id AS org_id, o.name AS org_name, o.mandate_prefix, o.use_hvm_ci,
+                    o.onboarding_completed, o.onboarding_step,
+                    o.plan_code, o.subscription_status, o.subscription_period_end, o.cancel_at_period_end,
+                    o.billing_exempt, o.signup_domain, o.street, o.zip, o.city, o.country,
+                    o.creditor_identifier, o.pre_notification_days, o.send_pre_notification,
+                    o.require_signed_mandate
+             FROM users u, organizations o
+             WHERE u.id = ? AND u.is_active = 1 AND u.is_superadmin = 1 AND u.totp_enabled = 1
+               AND o.id = ? AND o.deleted_at IS NULL'
+        );
+        $stmt->execute([$userId, $orgId]);
+        $row = $stmt->fetch();
+        if ($row && (int)($_SESSION['session_epoch'] ?? -1) === (int)$row['session_epoch']) {
+            $row['role'] = 'admin';
+            $row['member_status'] = 'active';
+            $row['support_mode'] = true;
+            $row['support_session_id'] = $support['id'];
+            $row['support_expires_at'] = $support['expires_at'];
+            return $row;
+        }
+    }
+    // Sitzung ungültig oder abgelaufen: beenden und zur eigenen Firma zurück
+    if ($support && $support['ended_at'] === null) {
+        support_session_end($supportId, 'expired');
+    }
+    $prevOrg = (string)($_SESSION['support_prev_org_id'] ?? '');
+    unset($_SESSION['support_session_id'], $_SESSION['support_prev_org_id']);
+    if ($prevOrg !== '' && switch_company($userId, $prevOrg)) {
+        return current_user_reload();
+    }
+    auth_logout();
+    return null;
+}
+
+/** Kontext nach einem Firmenwechsel innerhalb derselben Anfrage neu laden. */
+function current_user_reload(): ?array
+{
+    $userId = $_SESSION['user_id'] ?? null;
+    $orgId  = $_SESSION['org_id'] ?? null;
+    if (!$userId || !$orgId) {
+        return null;
+    }
+    $stmt = db()->prepare(
+        'SELECT u.id AS user_id, u.email, u.display_name, u.first_name, u.last_name,
+                u.totp_enabled, u.email_verified_at, u.is_superadmin, u.session_epoch, u.last_login_at,
+                o.id AS org_id, o.name AS org_name, o.mandate_prefix, o.use_hvm_ci,
+                o.onboarding_completed, o.onboarding_step,
+                o.plan_code, o.subscription_status, o.subscription_period_end, o.cancel_at_period_end,
+                o.billing_exempt, o.signup_domain, o.street, o.zip, o.city, o.country,
+                o.creditor_identifier, o.pre_notification_days, o.send_pre_notification,
+                o.require_signed_mandate,
+                m.role, m.status AS member_status
+         FROM users u
+         JOIN organization_members m ON m.user_id = u.id AND m.organization_id = :org
+         JOIN organizations o ON o.id = m.organization_id
+         WHERE u.id = :uid AND u.is_active = 1 AND o.deleted_at IS NULL AND m.status = \'active\''
+    );
+    $stmt->execute(['uid' => $userId, 'org' => $orgId]);
+    return $stmt->fetch() ?: null;
 }
 
 /** Dateiname des aktuell ausgeführten Skripts (z.B. "login.php"). */
@@ -467,6 +549,9 @@ function user_revoke_sessions(string $userId): void
 
 function auth_logout(): void
 {
+    if (!empty($_SESSION['support_session_id'])) {
+        try { support_session_end((string)$_SESSION['support_session_id'], 'logout'); } catch (Throwable $e) { /* Abmeldung nie blockieren */ }
+    }
     $_SESSION = [];
     if (ini_get('session.use_cookies') && PHP_SAPI !== 'cli') {
         $p = session_get_cookie_params();
