@@ -10,6 +10,8 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/customer_settings.php';
+require_once __DIR__ . '/app/mandates.php';
+require_once __DIR__ . '/app/mandate_files.php';
 
 $ctx = require_subscription();
 if (!(int)$ctx['onboarding_completed']) {
@@ -38,6 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $msg .= ' Bitte in den Kundendetails das unterschriebene Mandat erfassen.';
             }
             flash_set('success', $msg);
+        } elseif ($action === 'upload_mandate_file') {
+            flash_set('success', mandate_file_handle_upload($ctx, $customerId, $_POST, $_FILES));
+            redirect('sepa-pflegen.php?customer=' . urlencode($customerId));
         } elseif ($action === 'disable_sepa') {
             set_customer_sepa_debit($tenantId, $customerId, false, $ctx);
             flash_set('success', 'SEPA-Einzug für diesen Kunden deaktiviert.');
@@ -49,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('sepa-pflegen.php');
 }
 
+$pinned = (string)($_GET['customer'] ?? '');
 $stmt = $pdo->prepare(
     "SELECT c.*,
         (SELECT COUNT(*) FROM invoices i WHERE i.customer_id = c.id
@@ -58,11 +64,26 @@ $stmt = $pdo->prepare(
        AND NOT EXISTS (
            SELECT 1 FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1
        )
-     ORDER BY c.name ASC
+     ORDER BY (c.id = ?) DESC, c.name ASC
      LIMIT 1"
 );
-$stmt->execute([$tenantId]);
+$stmt->execute([$tenantId, $pinned]);
 $customer = $stmt->fetch();
+$customerMandates = $customer ? mandates_for_customer($tenantId, $customer['id']) : [];
+$activeMandate = null;
+foreach ($customerMandates as $m) { if ((int)$m['is_active'] === 1) { $activeMandate = $m; break; } }
+$fileCount = $customer ? mandate_file_count_for_customer($tenantId, $customer['id']) : 0;
+
+// Kunden mit aktivem Mandat, aber ohne hochgeladenes Dokument (Nachweis fehlt)
+$stmt = $pdo->prepare(
+    "SELECT c.id, c.name, c.customer_number, m.mandate_reference, m.signed_date
+     FROM sepa_mandates m JOIN customers c ON c.id = m.customer_id
+     WHERE m.tenant_id = ? AND m.is_active = 1
+       AND NOT EXISTS (SELECT 1 FROM mandate_files f WHERE f.customer_id = c.id AND f.tenant_id = m.tenant_id)
+     ORDER BY c.name ASC LIMIT 25"
+);
+$stmt->execute([$tenantId]);
+$withoutFile = $stmt->fetchAll();
 
 $stmt = $pdo->prepare(
     "SELECT COUNT(*) FROM customers c
@@ -116,6 +137,55 @@ layout_header('SEPA Pflegen', $ctx);
             <input type="hidden" name="customer_id" value="<?= e($customer['id']) ?>">
             <button type="submit" class="btn btn-danger">Kein SEPA</button>
         </form>
+
+        <hr style="margin: 24px 0; border: 0; border-top: 1px solid #e5e2dc;">
+        <h3>Unterschriebenes Mandat hochladen</h3>
+        <p class="hint">Liegt das unterschriebene SEPA-Mandat als Scan oder Foto vor (PDF, JPG, PNG, bis 10 MB), hier hochladen. Es wird mit dem Kunden
+            <?= $activeMandate ? 'und dem Mandat ' . e($activeMandate['mandate_reference']) : '' ?> verknüpft.
+            <?= $fileCount ? 'Bereits hochgeladen: ' . $fileCount . ' Dokument(e).' : '' ?></p>
+        <form method="post" enctype="multipart/form-data">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="upload_mandate_file">
+            <input type="hidden" name="customer_id" value="<?= e($customer['id']) ?>">
+            <input type="hidden" name="MAX_FILE_SIZE" value="<?= MANDATE_FILE_MAX_BYTES ?>">
+            <label>Datei</label>
+            <input type="file" name="mandate_file" required accept="application/pdf,image/jpeg,image/png">
+            <?php if ($activeMandate && !$activeMandate['signed_date']): ?>
+            <div class="inline-form" style="margin-top: 10px; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+                    <input type="checkbox" name="mark_signed" value="1" checked> Unterschrift gleich erfassen
+                </label>
+                <input type="date" name="signed_date" max="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d') ?>" style="max-width: 170px;">
+                <input type="text" name="signed_place" placeholder="Ort der Unterschrift" style="max-width: 200px;">
+            </div>
+            <?php elseif (!$activeMandate): ?>
+            <p class="hint">Für diesen Kunden gibt es noch kein Mandat. Die Datei wird dem Kunden zugeordnet; das Mandat erzeugen Sie in den Kundendetails.</p>
+            <?php endif; ?>
+            <div class="form-actions"><button type="submit" class="btn btn-secondary">Dokument hochladen</button></div>
+        </form>
     <?php endif; ?>
 </div>
+
+<?php if ($withoutFile): ?>
+<div class="card">
+    <h2>Mandate ohne hochgeladenes Dokument</h2>
+    <p class="hint">Aktive Mandate, zu denen noch kein Scan oder Foto des unterschriebenen Mandats hinterlegt ist. Der Upload erfolgt in den Kundendetails.</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Kunde</th><th>Kundennummer</th><th>Mandat</th><th>Unterschrift</th><th></th></tr></thead>
+            <tbody>
+            <?php foreach ($withoutFile as $w): ?>
+                <tr>
+                    <td><?= e($w['name']) ?></td>
+                    <td><?= e($w['customer_number']) ?></td>
+                    <td><?= e($w['mandate_reference']) ?></td>
+                    <td><?= $w['signed_date'] ? format_date($w['signed_date']) : '<span class="badge badge-warn">nicht erfasst</span>' ?></td>
+                    <td><a class="btn btn-sm btn-secondary" href="customer.php?id=<?= e($w['id']) ?>#mandatsdokumente">Dokument hochladen</a></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
 <?php layout_footer($ctx); ?>

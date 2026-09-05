@@ -157,6 +157,13 @@ if ($config && !empty($config['base_url']) && function_exists('curl_init')) {
     }
 }
 
+$storageDir = __DIR__ . '/app/storage/mandates';
+@mkdir($storageDir, 0750, true);
+add_check('Ablageordner app/storage/mandates beschreibbar (Mandats-Uploads)', is_dir($storageDir) && is_writable($storageDir), $storageDir);
+add_check('Upload-Limit mindestens 10 MB (upload_max_filesize, post_max_size)',
+    (int)ini_get('upload_max_filesize') >= 10 && (int)ini_get('post_max_size') >= 10,
+    'upload_max_filesize=' . ini_get('upload_max_filesize') . ', post_max_size=' . ini_get('post_max_size'));
+
 $allOk = array_reduce($checks, fn($carry, $c) => $carry && $c['ok'], true);
 ?>
 <!DOCTYPE html>

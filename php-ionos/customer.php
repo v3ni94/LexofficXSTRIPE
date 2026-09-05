@@ -10,6 +10,7 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/iban.php';
 require_once __DIR__ . '/app/customer_settings.php';
 require_once __DIR__ . '/app/mandates.php';
+require_once __DIR__ . '/app/mandate_files.php';
 
 $ctx = require_subscription();
 $tenantId = $ctx['org_id'];
@@ -71,6 +72,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             flash_set('success', 'Unterschrift erfasst. Das Mandat ' . $mandate['mandate_reference'] . ' ist einsatzbereit.');
 
+        } elseif ($action === 'upload_mandate_file') {
+            flash_set('success', mandate_file_handle_upload($ctx, $customerId, $_POST, $_FILES));
+
+        } elseif ($action === 'delete_mandate_file') {
+            if (!can_manage_settings($ctx)) {
+                throw new RuntimeException('Mandatsdokumente dürfen nur Inhaber und Administratoren löschen.');
+            }
+            $file = mandate_file_delete($tenantId, (string)($_POST['file_id'] ?? ''));
+            audit_log($tenantId, $ctx, 'mandate_file_deleted', 'mandate_file', $file['id'], ['name' => $file['original_name'], 'customer_id' => $customerId]);
+            flash_set('success', 'Mandatsdokument "' . $file['original_name'] . '" gelöscht.');
+
         } elseif ($action === 'cancel_mandate') {
             $mandate = mandate_load($tenantId, $_POST['mandate_id'] ?? '');
             if (!$mandate) {
@@ -103,6 +115,7 @@ foreach ($ibans as $ib) {
 }
 
 $mandates = mandates_for_customer($tenantId, $customerId);
+$mandateFiles = mandate_files_for_customer($tenantId, $customerId);
 
 $stmt = $pdo->prepare(
     "SELECT * FROM invoices WHERE customer_id = ? AND tenant_id = ? ORDER BY lexoffice_status IN ('open','overdue') DESC, due_date DESC LIMIT 100"
@@ -144,6 +157,10 @@ layout_header('Kunde ' . $customer['name'], $ctx);
         <?php $act = null; foreach ($mandates as $m) { if ((int)$m['is_active']) { $act = $m; break; } } ?>
         <div class="stat-value" style="font-size: 20px;"><?= $act ? e($act['mandate_reference']) : 'Kein Mandat' ?></div>
         <div class="stat-label">Mandat · <?= $act ? ($act['signed_date'] ? 'unterschrieben am ' . format_date($act['signed_date']) : 'Unterschrift nicht erfasst') : 'noch nicht erzeugt' ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="font-size: 20px;"><?= count($mandateFiles) ?></div>
+        <div class="stat-label">Hochgeladene Mandatsdokumente</div>
     </div>
 </div>
 
@@ -230,6 +247,77 @@ layout_header('Kunde ' . $customer['name'], $ctx);
             <?= (int)$org['require_signed_mandate'] ? 'Einzüge sind erst nach erfasster Unterschrift möglich.' : 'Einzüge sind ohne erfasste Unterschrift möglich (Einstellung unter "Firma").' ?></p>
     <?php endif; ?>
 </div>
+
+<?php if (!$isWalkIn): ?>
+<div class="card" id="mandatsdokumente">
+    <h2>Unterschriebenes Mandat hochladen</h2>
+    <p class="hint">Scan oder Foto des vom Kunden unterschriebenen SEPA-Mandats (PDF, JPG oder PNG, bis 10 MB). Die Datei wird dem Kunden
+        <?= $act ? 'und dem aktiven Mandat ' . e($act['mandate_reference']) : '' ?> zugeordnet und außerhalb des Webzugriffs gespeichert.
+        Sie ersetzt nicht die Aufbewahrungspflicht des Originals, erleichtert aber Nachweis und Prüfung.</p>
+    <form method="post" enctype="multipart/form-data">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="upload_mandate_file">
+        <input type="hidden" name="customer_id" value="<?= e($customerId) ?>">
+        <input type="hidden" name="MAX_FILE_SIZE" value="<?= MANDATE_FILE_MAX_BYTES ?>">
+        <label for="mandate_file">Datei (PDF, JPG, PNG)</label>
+        <input type="file" id="mandate_file" name="mandate_file" required accept="application/pdf,image/jpeg,image/png">
+        <?php $unsigned = array_values(array_filter($mandates, fn($m) => (int)$m['is_active'] === 1)); ?>
+        <?php if (count($unsigned) > 1): ?>
+        <label for="mandate_id">Zuordnen zu Mandat</label>
+        <select id="mandate_id" name="mandate_id">
+            <?php foreach ($unsigned as $m): ?><option value="<?= e($m['id']) ?>"><?= e($m['mandate_reference']) ?></option><?php endforeach; ?>
+        </select>
+        <?php endif; ?>
+        <label for="note">Notiz (optional)</label>
+        <input type="text" id="note" name="note" maxlength="255" placeholder="z. B. per Post erhalten am ...">
+        <?php if ($act && !$act['signed_date']): ?>
+        <div class="inline-form" style="margin-top: 10px; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+                <input type="checkbox" name="mark_signed" value="1" checked> Unterschrift gleich erfassen
+            </label>
+            <input type="date" name="signed_date" max="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d') ?>" style="max-width: 170px;">
+            <input type="text" name="signed_place" placeholder="Ort der Unterschrift" style="max-width: 200px;">
+        </div>
+        <p class="hint">Mit erfasster Unterschrift ist das Mandat <?= e($act['mandate_reference']) ?> sofort für Einzüge nutzbar.</p>
+        <?php endif; ?>
+        <div class="form-actions"><button type="submit" class="btn">Dokument hochladen</button></div>
+    </form>
+
+    <?php if ($mandateFiles): ?>
+    <div class="table-wrap" style="margin-top: 18px;">
+        <table>
+            <thead><tr><th>Datei</th><th>Mandat</th><th>Typ</th><th class="num">Größe</th><th>Hochgeladen</th><th>Von</th><th>Notiz</th><th></th></tr></thead>
+            <tbody>
+            <?php foreach ($mandateFiles as $f): ?>
+                <tr>
+                    <td><a href="mandate-file.php?id=<?= e($f['id']) ?>" target="_blank" rel="noopener"><?= e($f['original_name']) ?></a></td>
+                    <td><?= $f['mandate_reference'] ? e($f['mandate_reference']) : '<span class="hint">ohne Zuordnung</span>' ?></td>
+                    <td><?= e(MANDATE_FILE_TYPES[$f['mime_type']] ?? $f['mime_type']) ?></td>
+                    <td class="num"><?= e(format_bytes((int)$f['size_bytes'])) ?></td>
+                    <td><?= format_datetime($f['created_at']) ?></td>
+                    <td class="hint"><?= e($f['uploaded_by_email'] ?: '-') ?></td>
+                    <td class="hint"><?= e($f['note'] ?: '') ?></td>
+                    <td>
+                        <a class="btn btn-sm btn-secondary" href="mandate-file.php?id=<?= e($f['id']) ?>&amp;download=1">Herunterladen</a>
+                        <?php if (can_manage_settings($ctx)): ?>
+                        <form method="post" class="inline-form" style="margin-top: 6px;"
+                              onsubmit="return confirm(<?= e(json_encode('Dokument "' . $f['original_name'] . '" wirklich löschen?', JSON_UNESCAPED_UNICODE)) ?>)">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="delete_mandate_file">
+                            <input type="hidden" name="customer_id" value="<?= e($customerId) ?>">
+                            <input type="hidden" name="file_id" value="<?= e($f['id']) ?>">
+                            <button type="submit" class="btn btn-sm btn-danger">Löschen</button>
+                        </form>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <div class="card">
     <h2>Bankverbindung</h2>

@@ -22,3 +22,7 @@ frontend/dist/
 Thumbs.db
 php-ionos/app/config.php
 php-ionos/mail.log
+
+# Hochgeladene Mandatsdokumente (Laufzeitdaten, nie ins Repository)
+php-ionos/app/storage/mandates/*
+!php-ionos/app/storage/mandates/.gitkeep
