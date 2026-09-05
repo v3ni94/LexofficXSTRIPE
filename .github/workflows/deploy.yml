@@ -149,6 +149,8 @@ jobs:
             echo "set net:max-retries 2"
             echo "set sftp:auto-confirm no"
             echo "set sftp:connect-program \"ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$verified_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o VerifyHostKeyDNS=no -o ConnectTimeout=15\""
+            # Passwort kommt aus der Umgebungsvariable LFTP_PASSWORD (--env-password), nie aus dem Skript.
+            echo "open --env-password -u \"$SFTP_USER\" -p $port \"sftp://$SFTP_HOST\""
             for entry in "${mapping[@]}"; do
               src="${entry%%|*}"
               dst="${entry##*|}"
@@ -168,5 +170,6 @@ jobs:
 
           echo "Upload-Plan:"
           grep -E '^(mkdir|  \")' "$script" | sed 's/^/  /'
-          lftp --env-password -u "$SFTP_USER" -p "$SFTP_PORT" "sftp://$SFTP_HOST"  "$script"
+          # Verbindung wird im Skript selbst geöffnet (open ...), lftp führt das Skript aus und beendet sich.
+          lftp -f "$script"
           echo "Upload abgeschlossen."
