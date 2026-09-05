@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funktionen von SmartEinzug</title>
+<meta name="description" content="SmartEinzug: Rechnungsabgleich mit Lexware Office, SEPA-Mandatsverwaltung, Einzug über das eigene Stripe-Konto und automatische Statusrückmeldung.">
+<link rel="canonical" href="https://smart-einzug.de/funktionen/">
+<meta property="og:title" content="Funktionen von SmartEinzug">
+<meta property="og:description" content="SmartEinzug: Rechnungsabgleich mit Lexware Office, SEPA-Mandatsverwaltung, Einzug über das eigene Stripe-Konto und automatische Statusrückmeldung.">
+<meta property="og:url" content="https://smart-einzug.de/funktionen/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905a">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon.svg?v=20260905a" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905a" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905a">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260905a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Startseite", "item": "https://smart-einzug.de/"},
+    {"@type": "ListItem", "position": 2, "name": "Funktionen", "item": "https://smart-einzug.de/funktionen/"}
+  ]
+}
+</script>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M3 21v-5h5"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9.5C7.5 20.5 4 17 4 12V6l8-3z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li aria-current="page">Funktionen</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Leistungsumfang</p>
+      <h1>SmartEinzug im Überblick: alle Funktionen</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Vom Rechnungsabgleich mit Lexware Office bis zur ausgeführten SEPA-Lastschrift über Ihr eigenes Stripe-Konto, an einer Stelle gebündelt.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Rechnungen</p>
+        <h2>Offene Forderungen im Griff</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><span class="icon"><svg><use href="#i-file"/></svg></span><h3>Fällige und überfällige Rechnungen</h3><p>Alle für den Einzug relevanten Rechnungen aus Lexware Office in einer Liste, mit Betrag, Fälligkeit und Kunde.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-sync"/></svg></span><h3>Inkrementeller Abgleich</h3><p>Der Datenabgleich läuft serverseitig im Hintergrund, bereits abgeschlossene Rechnungen werden nicht erneut verarbeitet.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-list"/></svg></span><h3>Rechnungsarchiv</h3><p>Verarbeitete Rechnungen und die zugehörigen Einzüge bleiben nachvollziehbar dokumentiert.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">SEPA-Mandate</p>
+          <h2>Mandatsverwaltung je Kunde</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Für jeden Kunden lässt sich eine Mandatsreferenz anlegen und der Gültigkeitszeitraum im Blick behalten. Ob ein handschriftlicher Nachweis vorliegt, können Sie je Mandat vermerken.</p>
+          <p>Ohne erfasstes Mandat lässt sich ein Einzug in den Einstellungen sperren, damit keine Lastschrift ohne Grundlage ausgelöst wird.</p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card" role="img" aria-label="Beispiel für ein SEPA-Mandat">
+            <div class="setting"><span>Mandatsreferenz</span><span class="val">SE-2026-00417</span></div>
+            <div class="setting"><span>Gläubiger-ID</span><span class="val">DE98ZZZ00000000000</span></div>
+            <div class="setting"><span>Handschriftlicher Nachweis</span><span class="val">Vorhanden</span></div>
+            <div class="setting"><span>Nur mit erfasstem Mandat einziehen</span><span class="toggle" aria-hidden="true"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split reverse">
+        <div>
+          <p class="eyebrow">Einzug</p>
+          <h2>Sofort oder terminiert über Ihr Stripe-Konto</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Eine freigegebene Rechnung lässt sich sofort einziehen oder auf einen künftigen Werktag legen. Die Vorabankündigung an den Kunden gehört zur Terminierung dazu.</p>
+          <p>Die eigentliche Lastschrift verarbeitet Stripe. SmartEinzug übergibt die notwendigen Angaben und übernimmt die Rückmeldung zum Status.</p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card">
+            <ul class="timeline">
+              <li class="done"><strong>Einzug freigegeben</strong>RE-3302, 1.475,20 €, Fälligkeit erreicht</li>
+              <li class="done"><strong>An Stripe übergeben</strong>Lastschrift zur Ausführung eingereicht</li>
+              <li><strong>Rückmeldung ausstehend</strong>Status wird automatisch aktualisiert, sobald Stripe meldet</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Status und Rücklastschrift</p>
+        <h2>Rückmeldung ohne Handarbeit</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><span class="icon"><svg><use href="#i-sync"/></svg></span><h3>Automatische Statussynchronisation</h3><p>Eingezogen, im Einzug oder fehlgeschlagen: Der Status kommt automatisch von Stripe zurück.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-bell"/></svg></span><h3>Rücklastschriften erkannt</h3><p>Eine widerrufene Lastschrift wird markiert, damit Sie zeitnah reagieren können.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-clock"/></svg></span><h3>Individuelle Vorlaufzeiten</h3><p>Wartezeit nach Fälligkeit, Vorlauf für die Terminierung und Verwendungszweck legen Sie selbst fest.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Team und Zugriffsschutz</p>
+          <h2>Mitarbeiter mit persönlichem Zugang</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Mitarbeiter arbeiten mit eigenen Zugängen im selben Firmenaccount. Jeder Account wird zwingend mit Zwei-Faktor-Authentifizierung abgesichert, sicherheitsrelevante Änderungen werden protokolliert.</p>
+          <p><strong>Unbegrenzte Mitarbeiter im Tarif UNLIMITED START.</strong></p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card" role="img" aria-label="Beispiel für Mitarbeiter im Firmenaccount">
+            <div class="row"><span class="who"><span class="avatar gold">RH</span>Ronja Hartmann</span><span class="badge badge-info">Inhaberin</span></div>
+            <div class="row"><span class="who"><span class="avatar">DP</span>David Petras</span><span class="badge badge-success">Mitarbeiter</span></div>
+            <div class="row"><span class="who"><span class="avatar" style="background:var(--gold-tint);color:var(--gold-dark)">+</span>Mitarbeiter einladen</span><span class="mock-btn">Einladung senden</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Alle Funktionen im eigenen Account testen</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="funktionen-final">Jetzt registrieren</a>
+        <a href="/preise/" class="btn btn-outline">Zu den Preisen</a>
+      </div>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260905a" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

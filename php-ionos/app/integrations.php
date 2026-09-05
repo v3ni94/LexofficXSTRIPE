@@ -14,6 +14,7 @@ if (get_included_files()[0] === __FILE__) { http_response_code(403); exit; }
 
 require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/lexoffice.php';
+require_once __DIR__ . '/invoice_source.php';
 require_once __DIR__ . '/stripe.php';
 
 function integration_load(string $tenantId): array
@@ -63,7 +64,7 @@ function integration_verify_stripe(string $tenantId, string $secretKey): array
  */
 function integration_verify_lexoffice(string $tenantId, string $apiKey): array
 {
-    $profile = (new LexofficeClient($apiKey))->getProfile();
+    $profile = invoice_source_from_key(LexwareOfficeSource::CODE, $apiKey)->getProfile();
     $company = $profile['companyName'] ?? null;
     db()->prepare(
         'UPDATE integrations SET lexoffice_company_name = ?, lexoffice_last_verified_at = NOW() WHERE tenant_id = ?'

@@ -3,7 +3,7 @@
 import glob, os, re, datetime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'websites')
 today = datetime.date.today().isoformat()
-for domain in ['lexware-einzug.de', 'lexoffice-einzug.de']:
+for domain in ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de']:
     base = os.path.join(ROOT, domain); urls = []
     for f in sorted(glob.glob(os.path.join(base, '**', '*.html'), recursive=True)):
         s = open(f, encoding='utf-8').read()

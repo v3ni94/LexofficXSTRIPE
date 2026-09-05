@@ -1,6 +1,6 @@
 <?php
 /**
- * Lexware-Einzug (SEPA-Portal) – Konfiguration
+ * SmartEinzug (SEPA-Portal, Betreiber Müller Holding AG), Konfiguration
  *
  * Diese Datei nach config.php kopieren und Werte eintragen.
  * config.php wird per .htaccess vor Webzugriff geschützt und darf
@@ -36,13 +36,51 @@ return [
     'cron_token' => 'HIER-32-ZUFALLSZEICHEN-EINTRAGEN',
 
     // --- Basis-URL der Anwendung (ohne Slash am Ende) ---
+    // Bisheriger Schlüssel, bleibt als Rückfallwert für app_base_url erhalten.
     'base_url' => 'https://app.lexware-einzug.de',
 
+    // --- Getrennte Basisadressen (alle ohne Slash am Ende) ---
+    // app_base_url: Adresse der Kundenanwendung. Wird in allen absoluten Links
+    //   verwendet (E-Mail-Bestätigung, Passwort-Zurücksetzen, Einladungen,
+    //   Rückkehr aus dem Stripe Checkout, Anzeige der Webhook-Adresse).
+    //   Leer = base_url wird verwendet (Hilfsfunktion app_base_url()).
+    // admin_base_url: Adresse des Adminbereichs (admin.php). Leer = Übergangsmodus,
+    //   admin.php ist auf demselben Host wie die Anwendung erreichbar. Gesetzt =
+    //   admin.php antwortet nur auf diesem Host; auf dem Adminhost sind nur
+    //   Anmeldung, 2FA, Passwort-Zurücksetzen, Sicherheit, Abmelden und die
+    //   Assets erreichbar, alle Kundenseiten liefern dort 404.
+    // public_base_url: öffentliche Produktwebsite (Marketing, Preise, Hilfe).
+    'app_base_url'    => '',
+    'admin_base_url'  => '',
+    'public_base_url' => 'https://smart-einzug.de',
+
+    // --- Erlaubte Hostnamen (Allowlist) ---
+    // Leer = keine Prüfung (Übergangsmodus). Gefüllt = jede Anfrage, deren
+    // Host-Header nicht in der Liste steht, erhält HTTP 404. Ausgenommen sind
+    // cron.php, stripe-webhook.php, billing-webhook.php und track.php, die sich
+    // selbst über Token oder Signatur absichern. Nur Hostnamen ohne Schema und
+    // ohne Port eintragen.
+    //
+    // Migrationsreihenfolge beim Umzug auf neue Hosts (siehe ANLEITUNG-IONOS.md):
+    //   1. DNS und SSL der neuen Hosts bei IONOS einrichten und beide Hosts auf
+    //      diesen App-Ordner zeigen lassen.
+    //   2. Die neuen Hosts hier in allowed_hosts ERGÄNZEN, die alten Hosts
+    //      stehen lassen. Erst prüfen, dass alte und neue Adresse antworten.
+    //   3. Danach app_base_url (bzw. base_url) auf die neue Adresse umstellen.
+    //   4. Stripe-Webhook-Endpunkte zusätzlich für die neue Adresse anlegen,
+    //      die alten Endpunkte bleiben aktiv.
+    //   5. Zuletzt admin_base_url setzen; erst dann ist der Adminbereich vom
+    //      Kundenhost getrennt.
+    // Beispiel im Zielzustand:
+    //   'allowed_hosts' => ['app.lexware-einzug.de', 'app.smart-einzug.de', 'admin.smart-einzug.de'],
+    'allowed_hosts' => [],
+
     // --- Produktname (erscheint in Titel, E-Mails, 2FA-App) ---
-    'product_name' => 'Lexware-Einzug',
+    'product_name' => 'SmartEinzug',
 
     // --- Marketing-Webseite (für Links auf Impressum/Datenschutz/AGB, ohne Slash) ---
-    'marketing_url' => 'https://lexware-einzug.de',
+    // Wird als Rückfallwert für public_base_url weiter ausgewertet.
+    'marketing_url' => 'https://smart-einzug.de',
 
     // --- Betreiber der Plattform (Impressum in der Anwendung) ---
     // Verbindliche Stammdaten der Müller Holding AG. Platzhalter in eckigen
@@ -82,7 +120,7 @@ return [
         'enabled'      => false,
         'transport'    => 'smtp',
         'from_address' => 'noreply@lexware-einzug.de',   // muss zum SMTP-Postfach passen
-        'from_name'    => 'Lexware-Einzug',
+        'from_name'    => 'SmartEinzug',
         'reply_to'     => 'info@mueller-holding.ag',
         'log_file'     => __DIR__ . '/../mail.log',
         'smtp' => [
@@ -116,6 +154,14 @@ return [
         'stripe_webhook_secret'  => '',      // whsec_... für billing-webhook.php
         'automatic_tax'          => true,    // Stripe Tax berechnet die USt (Stripe Tax im Konto aktivieren, Preis mit tax_behavior exclusive)
         'vat_rate_percent'       => 19,      // nur für die Anzeige des Bruttobetrags in der Anwendung
+    ],
+
+    // --- Feature-Schalter (Standard: aus) ---
+    // mandate_request: digitale Mandatsanforderung (Link per E-Mail, Stripe
+    // Checkout im Modus setup, öffentliche Seite mandat.php). Erst nach
+    // erfolgreichem Test im Stripe-Testmodus aktivieren, siehe docs/payment-safety.md.
+    'features' => [
+        'mandate_request' => false,
     ],
 
     // --- Zeitzone ---

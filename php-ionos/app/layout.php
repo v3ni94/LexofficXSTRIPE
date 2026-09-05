@@ -1,6 +1,7 @@
 <?php
 /**
- * Seitengerüst der Anwendung "Lexware-Einzug" (Betreiber: Müller Holding AG).
+ * Seitengerüst der Anwendung (Produktname aus config, Standard SmartEinzug,
+ * Betreiber: Müller Holding AG).
  *
  * Firmen mit organizations.use_hvm_ci = 1 (Hausverwaltung Müller GmbH) sehen
  * ihr eigenes CI (Logo, Kennlinie, Pflichtangaben, Skill hvm-ci). Alle
@@ -18,14 +19,12 @@ if (get_included_files()[0] === __FILE__) {
     exit('Forbidden');
 }
 
-function product_name(): string
-{
-    return (string)config('product_name', 'Lexware-Einzug');
-}
+// product_name() ist in bootstrap.php definiert (Standard SmartEinzug).
 
+/** Öffentliche Produktwebsite (public_base_url, sonst marketing_url) mit optionalem Pfad. */
 function marketing_url(string $path = ''): string
 {
-    $base = rtrim((string)config('marketing_url', ''), '/');
+    $base = public_base_url();
     return $base !== '' ? $base . $path : '';
 }
 
@@ -85,6 +84,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <a href="dashboard.php">Dashboard</a>
             <a href="invoices.php">Rechnungen</a>
             <a href="collections.php">Einzüge</a>
+            <a href="export.php" title="Einzugsjournal als CSV">Export</a>
             <a href="customers.php">Kunden</a>
             <a href="sepa-pflegen.php">SEPA Pflegen</a>
             <a href="team.php">Firma</a>

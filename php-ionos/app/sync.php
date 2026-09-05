@@ -28,6 +28,7 @@ if (get_included_files()[0] === __FILE__) {
 }
 
 require_once __DIR__ . '/lexoffice.php';
+require_once __DIR__ . '/invoice_source.php';
 require_once __DIR__ . '/keywords.php';
 
 /**
@@ -37,7 +38,7 @@ require_once __DIR__ . '/keywords.php';
  *                           einen neuen Durchlauf.
  * @return array{done:bool,cursor:array|null,result:array{synced:int,new:int,updated:int,removed:int}}
  */
-function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $cursor, int $batchSize = 6): array
+function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor, int $batchSize = 6): array
 {
     if ($cursor === null) {
         $cursor = [
@@ -227,7 +228,7 @@ function sync_invoices_step(string $tenantId, LexofficeClient $lex, ?array $curs
  *
  * @return array{synced:int,new:int,updated:int,removed:int}
  */
-function sync_invoices(string $tenantId, LexofficeClient $lex): array
+function sync_invoices(string $tenantId, InvoiceSource $lex): array
 {
     @set_time_limit(0);
 
@@ -319,7 +320,7 @@ function _voucher_sort_key(string $voucherNumber): int
  * Lexware-Office-Kontaktabrufe, wenn mehrere Rechnungen im selben Lauf zum
  * gleichen Kunden gehören (z.B. mehrere offene Monate desselben Mieters).
  */
-function _sync_process_voucher(string $tenantId, array $voucher, LexofficeClient $lex, array &$contactCache): bool
+function _sync_process_voucher(string $tenantId, array $voucher, InvoiceSource $lex, array &$contactCache): bool
 {
     $pdo = db();
     $voucherId = $voucher['id'];
@@ -398,7 +399,7 @@ function _sync_upsert_customer(
     string $tenantId,
     string $contactId,
     string $fallbackName,
-    LexofficeClient $lex,
+    InvoiceSource $lex,
     array &$contactCache
 ): string {
     $pdo = db();

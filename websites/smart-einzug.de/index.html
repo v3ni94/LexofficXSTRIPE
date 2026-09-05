@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEinzug: SEPA-Lastschrift für Lexware Office</title>
+<meta name="description" content="SmartEinzug verbindet Lexware Office, ehemals lexoffice, mit Ihrem eigenen Stripe-Konto und zieht offene Rechnungen per SEPA-Lastschrift ein.">
+<link rel="canonical" href="https://smart-einzug.de/">
+<meta property="og:title" content="SmartEinzug: SEPA-Lastschrift für Lexware Office">
+<meta property="og:description" content="SmartEinzug verbindet Lexware Office, ehemals lexoffice, mit Ihrem eigenen Stripe-Konto und zieht offene Rechnungen per SEPA-Lastschrift ein.">
+<meta property="og:url" content="https://smart-einzug.de/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905a">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon.svg?v=20260905a" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905a" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905a">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260905a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Müller Holding AG",
+  "url": "https://mueller-holding.ag",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Rheinpromenade 13",
+    "postalCode": "40789",
+    "addressLocality": "Monheim am Rhein",
+    "addressCountry": "DE"
+  },
+  "email": "kontakt@mueller-holding.ag"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "SmartEinzug",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "25.00",
+    "priceCurrency": "EUR",
+    "description": "je 4 Wochen"
+  }
+}
+</script>
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "WebSite", "name": "SmartEinzug", "url": "https://smart-einzug.de/", "description": "SEPA-Lastschriften für Lexware-Office-Rechnungen über das eigene Stripe-Konto", "inLanguage": "de", "publisher": {"@type": "Organization", "name": "Müller Holding AG", "url": "https://mueller-holding.ag"}}
+</script>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M3 21v-5h5"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-euro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6.5A7 7 0 0 0 6.5 9M18 17.5A7 7 0 0 1 6.5 15"/><path d="M4 11h10M4 14h10"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9.5C7.5 20.5 4 17 4 12V6l8-3z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="3"/><path d="M16 15.5a5.5 5.5 0 0 1 5.5 4.5"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5l8-2v18M12 21V9l8 2v10M4 21h16"/><path d="M8 8h1M8 12h1M8 16h1M16 14h1M16 18h1"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 12h6M9 16h4"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero" id="produkt">
+    <div class="container hero-grid">
+      <div>
+        <p class="eyebrow">Lexware Office &amp; eigenes Stripe-Konto</p>
+        <h1>Lexware-Office-Rechnungen einfach per <span class="nowrap">SEPA-Lastschrift</span> einziehen.</h1>
+        <span class="bar" aria-hidden="true"></span>
+        <p class="lead">Verbinden Sie Lexware Office, ehemals lexoffice, und Ihr Stripe-Konto mit SmartEinzug. Ziehen Sie offene Kundenrechnungen ein, ohne Ihren bisherigen Rechnungsprozess neu aufzubauen.</p>
+        <div class="cta-row">
+          <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="hero">Jetzt registrieren</a>
+          <a href="/so-funktionierts/" class="btn btn-outline">So funktioniert's</a>
+        </div>
+        <p class="hero-note">Voraussetzungen: Lexware Office XL (nach Angaben von Lexware für die Public API erforderlich, bitte im eigenen Konto prüfen) und ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto.</p>
+        <ul class="kennzeichen">
+          <li>Einführungspreis 25,00 EUR statt 50,00 EUR je 4 Wochen*</li>
+          <li>Keine Jahresbindung</li>
+          <li>Unbegrenzte Mitarbeiter</li>
+        </ul>
+      </div>
+
+      <div class="app-mock" role="img" aria-label="Beispielansicht der Anwendung mit offenen Rechnungen und Einzugsstatus">
+        <div class="app-mock-bar"><i></i><i></i><i></i><span class="url">app.smart-einzug.de</span></div>
+        <div class="app-mock-head"><strong>Einzüge</strong><span class="pill">Verbunden mit Lexware Office</span></div>
+        <div class="app-mock-kpis">
+          <div><b>21</b><span>Offene Rechnungen</span></div>
+          <div><b>7</b><span>Freigegeben</span></div>
+          <div><b>3</b><span>Terminiert</span></div>
+        </div>
+        <table>
+          <thead><tr><th>Rechnung</th><th>Kunde</th><th class="num">Betrag</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>RE-3301</td><td>Nordkontor GmbH</td><td class="num">890,00 €</td><td><span class="badge badge-success">Eingezogen</span></td><td></td></tr>
+            <tr><td>RE-3302</td><td>Fritz Bauelemente</td><td class="num">1.475,20 €</td><td><span class="badge badge-info">Im Einzug</span></td><td></td></tr>
+            <tr><td>RE-3303</td><td>Ateliergarten KG</td><td class="num">312,50 €</td><td><span class="badge badge-warn">Terminiert</span></td><td></td></tr>
+            <tr><td>RE-3304</td><td>Blume &amp; Söhne</td><td class="num">64,90 €</td><td><span class="badge badge-warn">Mandat prüfen</span></td><td><span class="mock-btn">Freigeben</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Auf einen Blick</p>
+        <h2>Für Lexware-Office-Kunden gebaut, nicht für ein neues System</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="trust-strip">
+        <div class="trust-item"><span class="icon"><svg><use href="#i-building"/></svg></span><div><strong>Rechnungsdaten aus Lexware Office</strong><span>Offene Forderungen kommen direkt aus Ihrem bestehenden Konto.</span></div></div>
+        <div class="trust-item"><span class="icon"><svg><use href="#i-card"/></svg></span><div><strong>Eigenes Stripe-Konto</strong><span>Die Lastschrift läuft über Ihre Zahlungsinfrastruktur, nicht über ein Sammelkonto.</span></div></div>
+        <div class="trust-item"><span class="icon"><svg><use href="#i-euro"/></svg></span><div><strong>SEPA auf Zuruf oder terminiert</strong><span>Einzelne Rechnung, mehrere zugleich oder auf einen festen Tag geplant.</span></div></div>
+        <div class="trust-item"><span class="icon"><svg><use href="#i-sync"/></svg></span><div><strong>Rückmeldung ohne Handarbeit</strong><span>Erfolg, Fehlschlag und Rücklastschrift kommen automatisch von Stripe zurück.</span></div></div>
+        <div class="trust-item"><span class="icon"><svg><use href="#i-users"/></svg></span><div><strong>Mehrere Mitarbeiter</strong><span>Ein Firmenaccount, mehrere persönliche Zugänge, keine geteilten Passwörter.</span></div></div>
+        <div class="trust-item"><span class="icon"><svg><use href="#i-plan"/></svg></span><div><strong>Ein Einführungspreis</strong><span>25,00 EUR netto je vier Wochen für Firmenaccounts bis 31.12.2026.</span></div></div>
+      </div>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="trust">Jetzt Account erstellen</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Ausgangslage</p>
+          <h2>Rechnungen schreiben Sie in Lexware Office. Den Einzug erledigt bisher niemand automatisch.</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Kunden, die per SEPA-Lastschrift zahlen sollen, bedeuten für viele Unternehmen zusätzliche Handarbeit: Beträge und Kontodaten müssen aus Lexware Office in ein weiteres Werkzeug übertragen werden, bevor überhaupt ein Einzug ausgelöst werden kann.</p>
+          <p>SmartEinzug setzt genau an dieser Stelle an. Die Anwendung liest die für den Einzug relevanten Rechnungen aus Ihrem Lexware-Office-Konto, gleicht sie mit Ihrem eigenen Stripe-Konto ab und macht daraus einen durchgehenden Ablauf bis zum Zahlungsstatus.</p>
+          <p>Den vollständigen Ablauf in drei Schritten zeigt die Seite <a href="/so-funktionierts/">So funktioniert's</a>.</p>
+          <div class="cta-row">
+            <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="problem">Lexware Office verbinden</a>
+          </div>
+        </div>
+        <div class="split-visual">
+          <div class="flow" style="margin-top:0">
+            <div class="flow-node">
+              <span class="icon"><svg><use href="#i-file"/></svg></span>
+              <h3>Lexware Office</h3>
+              <p>Rechnungs- und Kundendaten</p>
+            </div>
+            <div class="flow-arrow"><svg><use href="#i-arrow"/></svg></div>
+            <div class="flow-node is-core">
+              <span class="icon dark"><svg><use href="#i-sync"/></svg></span>
+              <h3>SmartEinzug</h3>
+              <p>Mandat, Auswahl, Freigabe</p>
+            </div>
+            <div class="flow-arrow"><svg><use href="#i-arrow"/></svg></div>
+            <div class="flow-node">
+              <span class="icon"><svg><use href="#i-card"/></svg></span>
+              <h3>Ihr Stripe-Konto</h3>
+              <p>führt die Lastschrift aus</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="so-funktioniert-es">
+    <div class="container">
+      <div class="section-head center">
+        <p class="eyebrow">Ablauf</p>
+        <h2>Einrichtung in drei Schritten</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Alle drei Schritte durchlaufen Sie direkt im Anschluss an die Registrierung, geführt und ohne Vorwissen.</p>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Account anlegen</h3><p>Registrieren Sie Ihren Firmenaccount und richten Sie die verpflichtende Zwei-Faktor-Authentifizierung ein.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Konten verbinden</h3><p>Hinterlegen Sie den Public-API-Schlüssel Ihres Lexware-Office-Kontos und den Secret Key Ihres eigenen Stripe-Kontos.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Rechnungen mit gültigem Mandat freigeben</h3><p>Wählen Sie offene Rechnungen aus, prüfen Sie das hinterlegte SEPA-Mandat und geben Sie den Einzug frei. Stripe führt die Lastschrift aus.</p></div></li>
+      </ol>
+      <div class="cta-row" style="justify-content:center">
+        <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="howto">Jetzt einrichten</a>
+        <a href="/so-funktionierts/" class="btn btn-outline">Alle Details ansehen</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="funktionen">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Leistungsumfang</p>
+        <h2>Was SmartEinzug im Alltag übernimmt</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Der komplette Weg von der offenen Rechnung bis zur eingezogenen Lastschrift läuft über eine Oberfläche, ohne doppelte Datenpflege.</p>
+      </div>
+      <div class="tiles">
+        <div class="tile"><span class="icon"><svg><use href="#i-file"/></svg></span><h3>Offene Rechnungen</h3><p>Fällige und überfällige Rechnungen aus Lexware Office an einem Ort, mit Betrag, Fälligkeit und Kunde.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-list"/></svg></span><h3>SEPA-Mandate</h3><p>Mandatsreferenz je Kunde, Gültigkeit im Blick, handschriftlicher Nachweis optional hinterlegbar.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-card"/></svg></span><h3>Zahlungsdaten je Kunde</h3><p>IBAN und Zahlungsmethode direkt bei Stripe registriert, Historie nachvollziehbar.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-clock"/></svg></span><h3>Sofort oder terminiert</h3><p>Einzug auslösen oder auf einen Werktag legen, inklusive Vorabankündigung an den Kunden.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-sync"/></svg></span><h3>Automatischer Status</h3><p>Eingezogen, fehlgeschlagen oder zurückgebucht: Stripe meldet den Status ohne Zutun zurück.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-shield"/></svg></span><h3>Pflicht-2FA</h3><p>Jeder Benutzeraccount ist zwingend mit Zwei-Faktor-Authentifizierung abgesichert.</p></div>
+      </div>
+      <div class="cta-row" style="justify-content:center">
+        <a href="/funktionen/" class="btn btn-outline">Alle Funktionen ansehen</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="preise">
+    <div class="container">
+      <div class="pricing-wrap">
+        <div>
+          <p class="eyebrow">Konditionen</p>
+          <h2>Preise</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p class="lead">Ein Tarif für den vollständigen Funktionsumfang. Keine Einrichtungsgebühr, keine gestaffelten Stufen.</p>
+          <div class="price-aside" style="margin-top:28px">
+            <div class="trust-item"><span class="icon"><svg><use href="#i-clock"/></svg></span><div><strong>Abrechnung alle vier Wochen</strong><span>Keine Jahresbindung. Kündbar zum Ende der laufenden Vierwochenperiode.</span></div></div>
+            <div class="trust-item" style="margin-top:12px"><span class="icon"><svg><use href="#i-card"/></svg></span><div><strong>Stripe-Gebühren zusätzlich</strong><span>Die Gebühren Ihres eigenen Stripe-Kontos rechnet Stripe direkt mit Ihnen ab.</span></div></div>
+          </div>
+        </div>
+        <div class="price-card">
+          <div class="plan-head">
+            <p class="plan-name">UNLIMITED START <span class="plan-badge">50 % Rabatt, nur für kurze Zeit</span></p>
+            <p class="plan-was">Bisher <s>50,00 EUR</s> je 4 Wochen</p>
+            <p class="plan-price">25,00 EUR<small>je 4 Wochen*</small></p>
+            <p class="plan-billing">Einführungspreis für Firmenaccounts, die bis 31.12.2026 angelegt werden. Der Preis bleibt für diese Accounts bestehen, solange das Abonnement läuft.</p>
+          </div>
+          <div class="plan-body">
+            <ul class="checklist two-col">
+              <li>Unbegrenzt SEPA-Einzüge</li>
+              <li>Unbegrenzt Mitarbeiter</li>
+              <li>Lexware-Office-Anbindung</li>
+              <li>Anbindung des eigenen Stripe-Kontos</li>
+              <li>Hintergrundsynchronisation</li>
+              <li>SEPA-Mandatsverwaltung</li>
+              <li>Einzugshistorie</li>
+              <li>Statussynchronisation</li>
+              <li>Rechnungsarchiv</li>
+              <li>Support</li>
+            </ul>
+            <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="pricing">Jetzt registrieren</a>
+          </div>
+        </div>
+        <p class="price-note">* Alle Preise netto zzgl. gesetzlicher Umsatzsteuer, zuzüglich der Stripe-Gebühren Ihres eigenen Stripe-Kontos. Der Einführungspreis von 25,00 EUR gilt für Firmenaccounts, die bis 31.12.2026 angelegt werden, und bleibt für diese Accounts erhalten. Bisheriger Preis für denselben Leistungsumfang: 50,00 EUR je 4 Wochen. Keine Jahresbindung, kündbar zum Ende der laufenden Vierwochenperiode.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <div class="container">
+      <div class="section-head center">
+        <p class="eyebrow">Fragen &amp; Antworten</p>
+        <h2>Häufige Fragen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="faq-list faq-grid">
+        <details><summary>Zieht SmartEinzug selbst Geld von meinen Kunden ein?</summary><p class="faq-answer">Nein. Die SEPA-Lastschrift wird über Ihr eigenes Stripe-Konto ausgeführt. SmartEinzug bereitet den Einzug vor und steuert den Ablauf zwischen Lexware Office und Stripe, das Geld fließt direkt an Sie.</p></details>
+        <details><summary>Ist SmartEinzug ein Produkt von Lexware?</summary><p class="faq-answer">Nein. SmartEinzug ist eine unabhängige Softwarelösung mit einer Schnittstelle zu Lexware Office und kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p></details>
+        <details><summary>Welcher Lexware-Office-Tarif wird benötigt?</summary><p class="faq-answer">Nach Angaben von Lexware ist für die Public API der Tarif Lexware Office XL erforderlich. Da sich Tarifvoraussetzungen ändern können, prüfen Sie den aktuellen Stand bitte in Ihrem eigenen Lexware-Office-Konto.</p></details>
+        <details><summary>Brauche ich zusätzlich ein eigenes Stripe-Konto?</summary><p class="faq-answer">Ja. Für den Einzug ist ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto erforderlich.</p></details>
+        <details><summary>Werden bereits bezahlte Rechnungen erneut verarbeitet?</summary><p class="faq-answer">Nein. Die Synchronisation mit Lexware Office erfolgt inkrementell, bereits abgeschlossene Rechnungen werden nicht fortlaufend erneut abgerufen.</p></details>
+        <details><summary>Kann ich mehrere Mitarbeiter einladen?</summary><p class="faq-answer">Ja, im Tarif UNLIMITED START ist die Anzahl der Mitarbeiter im Firmenaccount nicht begrenzt.</p></details>
+        <details><summary>Wie lange läuft der Vertrag?</summary><p class="faq-answer">Es besteht keine Jahresbindung. Das Abonnement ist zum Ende der jeweils laufenden Vierwochenperiode kündbar.</p></details>
+        <details><summary>Fallen neben dem Grundpreis weitere Kosten an?</summary><p class="faq-answer">Zusätzlich zum Einführungspreis von 25,00 EUR netto je vier Wochen rechnet Stripe die Gebühren Ihres eigenen Stripe-Kontos direkt mit Ihnen ab.</p></details>
+      </div>
+      <div class="cta-row" style="justify-content:center">
+        <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="faq">Jetzt registrieren</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Bereit, Ihre Lexware-Office-Rechnungen automatisch einzuziehen?</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Konten verbinden, Rechnungen mit gültigem Mandat freigeben, Stripe erledigt den Rest.</p>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="final">Jetzt zum Einführungspreis von 25,00 EUR starten</a>
+        <a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de" class="btn btn-outline">Zum Login</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260905a" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

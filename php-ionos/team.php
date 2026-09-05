@@ -45,7 +45,7 @@ function send_invitation_mail(array $ctx, string $email, string $rawToken, strin
     if (!mail_enabled()) {
         return false;
     }
-    $url = rtrim((string)config('base_url'), '/') . '/invite.php?token=' . $rawToken;
+    $url = app_base_url() . '/invite.php?token=' . $rawToken;
     $tpl = mail_tpl_invitation($ctx['org_name'], user_display_name($ctx), $url, format_date($expiresAt));
     return mail_send($email, $tpl['subject'], $tpl['text'], $tpl['html']);
 }
@@ -159,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Ohne Mailversand: Link einmalig anzeigen
                 $_SESSION['invite_link_show'] = [
                     'email' => $email,
-                    'url' => rtrim((string)config('base_url'), '/') . '/invite.php?token=' . $rawToken,
+                    'url' => app_base_url() . '/invite.php?token=' . $rawToken,
                 ];
                 flash_set('success', 'Einladung erstellt. Der Einladungslink wird unten einmalig angezeigt und ist 7 Tage gültig.');
             }
@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $_SESSION['invite_link_show'] = [
                     'email' => $inv['email'],
-                    'url' => rtrim((string)config('base_url'), '/') . '/invite.php?token=' . $rawToken,
+                    'url' => app_base_url() . '/invite.php?token=' . $rawToken,
                 ];
                 flash_set('success', 'Neuer Einladungslink erzeugt (wird unten einmalig angezeigt).');
             }
@@ -383,8 +383,7 @@ layout_header('Firma', $ctx);
                 terminiert und die Ankündigung wird beim Terminieren versendet (Kunde braucht eine E-Mail-Adresse).</span>
         </label>
         <label class="checkbox-label">
-            <input type="checkbox" name="require_signed_mandate" value="1" <?= (int)$org['require_signed_mandate'] ? 'checked' : '' ?>>
-            <span>Einzüge nur mit erfasstem, unterschriebenem Mandat zulassen (Unterschriftsdatum in den Kundendetails erfassen).</span>
+            <input type="checkbox" name="require_signed_mandate" value="1" <?= (int)$org['require_signed_mandate'] ? 'checked' : '' ?> Handschriftlicher Nachweis erforderlich (Einzug erst nach erfasster Unterschrift oder hochgeladenem Mandat)<span>Handschriftlicher Nachweis erforderlich: Einzüge nur mit erfasster Unterschrift oder hochgeladenem Mandat zulassen (in den Kundendetails erfassen).</span>
         </label>
         <div class="form-actions"><button type="submit" class="btn">Speichern</button></div>
     </form>

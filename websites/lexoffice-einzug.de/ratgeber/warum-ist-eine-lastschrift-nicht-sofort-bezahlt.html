@@ -72,7 +72,7 @@
 <header class="site-header">
   <div class="seam"><span></span></div>
   <div class="header-inner">
-    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</a>
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für lexoffice / Lexware Office</span></a>
     <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
     <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
     <nav class="main-nav" aria-label="Hauptnavigation">
@@ -104,16 +104,16 @@
       <p class="lead">Wer zum ersten Mal eine Rechnung aus Lexware Office per SEPA einzieht, wundert sich häufig, dass der Status nicht sofort auf "bezahlt" springt. Das liegt am üblichen Ablauf einer SEPA-Lastschrift.</p>
 
       <h2>Der Weg vom Einzug zur Gutschrift</h2>
-      <p>Wenn Sie in Lexware-Einzug einen Einzug auslösen, reicht Stripe die SEPA-Lastschrift bei der Bank des Kunden ein. Die tatsächliche Gutschrift auf Ihrem Konto erfolgt jedoch erst nach mehreren Bankarbeitstagen. In dieser Zwischenzeit zeigt Lexware-Einzug den Status "in Bearbeitung" an, nicht "bezahlt".</p>
+      <p>Wenn Sie in SmartEinzug einen Einzug auslösen, reicht Stripe die SEPA-Lastschrift bei der Bank des Kunden ein. Die tatsächliche Gutschrift auf Ihrem Konto erfolgt jedoch erst nach mehreren Bankarbeitstagen. In dieser Zwischenzeit zeigt SmartEinzug den Status "in Bearbeitung" an, nicht "bezahlt".</p>
 
       <h2>Ein Beispiel</h2>
-      <p>Zieht die Beispiel GmbH am Montag eine Rechnung der Nordwind Service GmbH ein, bleibt der Status zunächst "in Bearbeitung". Erst wenn Stripe den erfolgreichen Einzug zurückmeldet, üblicherweise nach einigen Bankarbeitstagen, wechselt der Status in Lexware-Einzug auf erfolgreich abgeschlossen.</p>
+      <p>Zieht die Beispiel GmbH am Montag eine Rechnung der Nordwind Service GmbH ein, bleibt der Status zunächst "in Bearbeitung". Erst wenn Stripe den erfolgreichen Einzug zurückmeldet, üblicherweise nach einigen Bankarbeitstagen, wechselt der Status in SmartEinzug auf erfolgreich abgeschlossen.</p>
 
       <h2>Warum ist das so?</h2>
       <p>Anders als bei einer Kartenzahlung liegt bei der SEPA-Lastschrift zwischen Einreichung und endgültiger Gutschrift ein technisch und rechtlich bedingter Zeitraum, in dem die Bank des Zahlungspflichtigen die Belastung noch prüfen und im Fall einer autorisierten Lastschrift bis zu acht Wochen später rückgängig machen kann. Der Status "in Bearbeitung" bildet diesen Schwebezustand korrekt ab, statt eine Zahlung vorschnell als endgültig abgeschlossen darzustellen.</p>
 
       <h2>Wie erkenne ich den endgültigen Status?</h2>
-      <p>Lexware-Einzug gleicht den Status jeder Lastschrift per Webhook mit Stripe ab und bietet zusätzlich einen manuellen Abgleich an. Erst wenn Stripe den Einzug als erfolgreich zurückmeldet, zeigt Lexware-Einzug die Rechnung als eingezogen an. Bleibt der Einzug erfolglos oder kommt es zu einer Rücklastschrift, wird dies ebenfalls im Status sichtbar.</p>
+      <p>SmartEinzug gleicht den Status jeder Lastschrift per Webhook mit Stripe ab und bietet zusätzlich einen manuellen Abgleich an. Erst wenn Stripe den Einzug als erfolgreich zurückmeldet, zeigt SmartEinzug die Rechnung als eingezogen an. Bleibt der Einzug erfolglos oder kommt es zu einer Rücklastschrift, wird dies ebenfalls im Status sichtbar.</p>
 
       <h2>Was bedeutet das für Ihre Buchhaltung?</h2>
       <p>Solange der Status "in Bearbeitung" lautet, sollten Sie die Rechnung in Ihrer Buchhaltung entsprechend als noch nicht endgültig ausgeglichen behandeln. Erst der Status "erfolgreich" bestätigt, dass der Einzug ohne Rücklastschrift abgeschlossen wurde. Bei steuerlichen Detailfragen zur Verbuchung empfiehlt sich die Abstimmung mit Ihrem Steuerberater.</p>
@@ -135,7 +135,7 @@
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <div class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</div>
+    <div class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für lexoffice / Lexware Office</span></div>
     <nav>
       <a href="/impressum">Impressum</a>
       <a href="/datenschutz">Datenschutz</a>
@@ -146,6 +146,7 @@
       <a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de">Login</a>
     </nav>
     <p class="disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+    <p class="footer-brandline">SmartEinzug ist ein Angebot der Müller Holding AG.</p>
     <p class="operator-line">Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
   </div>
 </footer>

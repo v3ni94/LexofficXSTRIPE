@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SEPA-Lastschrift für lexoffice einrichten | Lexware-Einzug</title>
+<title>SEPA-Lastschrift für lexoffice einrichten | SmartEinzug</title>
 <meta name="description" content="Schritt für Schritt vom bestehenden lexoffice-Konto zum ersten SEPA-Einzug: Registrierung, Lexware Office und Stripe verbinden, Mandat, Einzug, Status.">
 <link rel="canonical" href="https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten">
 <meta name="theme-color" content="#2E2D2E">
-<meta property="og:title" content="SEPA-Lastschrift für lexoffice einrichten | Lexware-Einzug">
+<meta property="og:title" content="SEPA-Lastschrift für lexoffice einrichten | SmartEinzug">
 <meta property="og:description" content="Schritt für Schritt vom bestehenden lexoffice-Konto zum ersten SEPA-Einzug: Registrierung, Lexware Office und Stripe verbinden, Mandat, Einzug, Status.">
 <meta property="og:url" content="https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten">
 <meta property="og:type" content="article">
@@ -45,7 +45,7 @@
 <header class="site-header">
   <div class="seam"><span></span></div>
   <div class="header-inner">
-    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</a>
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für lexoffice / Lexware Office</span></a>
     <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
     <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
     <nav class="main-nav" aria-label="Hauptnavigation">
@@ -82,14 +82,14 @@
     <div class="container">
       <ol class="steps">
         <li class="step"><span class="step-number">1</span><div><h3>Voraussetzungen prüfen</h3><p>Sie benötigen ein bestehendes Lexware-Office-Konto (früher lexoffice), einen eigenen Stripe-Account und gültige SEPA-Mandate der Kunden, die Sie einziehen möchten. Für den Zugriff auf die Public API ist nach Angaben von Lexware derzeit der Tarif Lexware Office XL erforderlich, bitte im eigenen Konto prüfen.</p></div></li>
-        <li class="step"><span class="step-number">2</span><div><h3>Account bei Lexware-Einzug anlegen</h3><p>Sie registrieren sich mit Ihrer geschäftlichen E-Mail-Adresse und hinterlegen grundlegende Firmendaten.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Account bei SmartEinzug anlegen</h3><p>Sie registrieren sich mit Ihrer geschäftlichen E-Mail-Adresse und hinterlegen grundlegende Firmendaten.</p></div></li>
         <li class="step"><span class="step-number">3</span><div><h3>Zwei-Faktor-Authentifizierung einrichten</h3><p>Die Registrierung verlangt zwingend eine Authenticator-App. Sie scannen einen QR-Code, hinterlegen die App und speichern die angezeigten Recovery-Codes an einem sicheren Ort, bevor Sie fortfahren.</p></div></li>
         <li class="step"><span class="step-number">4</span><div><h3>Lexware Office verbinden</h3><p>Sie hinterlegen einen API-Schlüssel aus der Public API Ihres Lexware-Office-Kontos. Der Schlüssel wird verschlüsselt gespeichert und Ihnen danach nicht erneut angezeigt. Die genauen Schritte dazu beschreibt die Seite <a href="/lexoffice-public-api-xl">Public API und Tarif XL</a>.</p></div></li>
         <li class="step"><span class="step-number">5</span><div><h3>Stripe verbinden</h3><p>Sie hinterlegen den Secret Key Ihres Stripe-Kontos unter Einstellungen. Über diese Verbindung wickelt Stripe später die eigentlichen SEPA-Lastschriften ab.</p></div></li>
-        <li class="step"><span class="step-number">6</span><div><h3>Erste Synchronisierung abwarten</h3><p>Lexware-Einzug ruft offene und überfällige Rechnungen sowie die zugehörigen Kunden aus Lexware Office ab. Der Abgleich läuft serverseitig und inkrementell, bereits bezahlte oder stornierte Rechnungen werden dabei erkannt.</p></div></li>
+        <li class="step"><span class="step-number">6</span><div><h3>Erste Synchronisierung abwarten</h3><p>SmartEinzug ruft offene und überfällige Rechnungen sowie die zugehörigen Kunden aus Lexware Office ab. Der Abgleich läuft serverseitig und inkrementell, bereits bezahlte oder stornierte Rechnungen werden dabei erkannt.</p></div></li>
         <li class="step"><span class="step-number">7</span><div><h3>IBAN und SEPA-Mandat je Kunde hinterlegen</h3><p>Unter "SEPA Pflegen" tragen Sie die IBAN eines Kunden ein und erzeugen ein SEPA-Mandatsdokument mit automatisch vergebener Mandatsreferenz. Die Unterschrift des Kunden erfassen Sie im Anschluss, danach aktivieren Sie den SEPA-Einzug für diesen Kunden.</p></div></li>
         <li class="step"><span class="step-number">8</span><div><h3>Ersten Einzug auslösen</h3><p>Sie wählen eine offene Rechnung mit hinterlegtem Mandat aus und lösen den Einzug sofort, terminiert auf einen Werktag oder als Sammel-Einzug aus. Stripe reicht die Lastschrift bei der Bank des Kunden ein.</p></div></li>
-        <li class="step"><span class="step-number">9</span><div><h3>Status verfolgen</h3><p>Der Status durchläuft zunächst "in Bearbeitung", da die Gutschrift erst nach mehreren Bankarbeitstagen erfolgt. Lexware-Einzug gleicht den Status per Webhook und auf Wunsch manuell mit Stripe ab und zeigt erfolgreiche Einzüge sowie Rücklastschriften an.</p></div></li>
+        <li class="step"><span class="step-number">9</span><div><h3>Status verfolgen</h3><p>Der Status durchläuft zunächst "in Bearbeitung", da die Gutschrift erst nach mehreren Bankarbeitstagen erfolgt. SmartEinzug gleicht den Status per Webhook und auf Wunsch manuell mit Stripe ab und zeigt erfolgreiche Einzüge sowie Rücklastschriften an.</p></div></li>
       </ol>
       <div class="cta-row" style="justify-content:center">
         <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="einrichten-steps">Lastschrifteinzug einrichten</a>
@@ -100,10 +100,10 @@
   <section class="section">
     <div class="container">
       <h2>Was tun, wenn ein Kunde noch keine IBAN hinterlegt hat?</h2>
-      <p>Ohne IBAN und unterschriebenes SEPA-Mandat ist kein Einzug möglich. In diesem Fall tragen Sie die Bankverbindung nach, sobald der Kunde sie Ihnen mitgeteilt hat, und erzeugen anschließend das Mandatsdokument. Bis dahin bleibt die Rechnung in Lexware-Einzug als offen sichtbar, ohne dass ein Einzug ausgelöst werden kann.</p>
+      <p>Ohne IBAN und unterschriebenes SEPA-Mandat ist kein Einzug möglich. In diesem Fall tragen Sie die Bankverbindung nach, sobald der Kunde sie Ihnen mitgeteilt hat, und erzeugen anschließend das Mandatsdokument. Bis dahin bleibt die Rechnung in SmartEinzug als offen sichtbar, ohne dass ein Einzug ausgelöst werden kann.</p>
 
       <h2>Wie unterscheidet sich der sofortige vom terminierten Einzug?</h2>
-      <p>Beim sofortigen Einzug übergibt Lexware-Einzug den Auftrag umgehend an Stripe. Beim terminierten Einzug legen Sie einen künftigen Werktag fest, an dem die Lastschrift eingereicht werden soll, etwa passend zu einem vereinbarten Zahlungsziel. Der Sammel-Einzug fasst mehrere ausgewählte Rechnungen zu einem gemeinsamen Lauf zusammen.</p>
+      <p>Beim sofortigen Einzug übergibt SmartEinzug den Auftrag umgehend an Stripe. Beim terminierten Einzug legen Sie einen künftigen Werktag fest, an dem die Lastschrift eingereicht werden soll, etwa passend zu einem vereinbarten Zahlungsziel. Der Sammel-Einzug fasst mehrere ausgewählte Rechnungen zu einem gemeinsamen Lauf zusammen.</p>
 
       <div class="cta-row" style="margin:32px 0;">
         <a class="btn btn-primary" href="https://app.lexware-einzug.de/register.php?src=lexoffice-einzug.de" data-cta="einrichten-mid">Jetzt registrieren</a>
@@ -127,7 +127,7 @@
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <div class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</div>
+    <div class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für lexoffice / Lexware Office</span></div>
     <nav>
       <a href="/impressum">Impressum</a>
       <a href="/datenschutz">Datenschutz</a>
@@ -138,6 +138,7 @@
       <a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de">Login</a>
     </nav>
     <p class="disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+    <p class="footer-brandline">SmartEinzug ist ein Angebot der Müller Holding AG.</p>
     <p class="operator-line">Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
   </div>
 </footer>

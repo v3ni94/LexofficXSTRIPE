@@ -1,4 +1,12 @@
-# HVM SEPA-Portal – Apache-Konfiguration (IONOS)
+# SmartEinzug (SEPA-Portal, Müller Holding AG), Apache-Konfiguration (IONOS)
+#
+# Hosts: Dieselbe Verzeichniskopie bedient app.lexware-einzug.de, künftig
+# app.smart-einzug.de und admin.smart-einzug.de. Die Zuordnung der Hosts
+# (Allowlist, Trennung Admin/Kunden) erfolgt NICHT hier, sondern in PHP über
+# app/config.php (allowed_hosts, app_base_url, admin_base_url), siehe
+# app/bootstrap.php. Keine Host-Weiterleitungen in dieser Datei eintragen:
+# Stripe-Webhooks (POST) dürfen nicht per 301 umgeleitet werden, die alten
+# Endpunkte bleiben parallel gültig.
 
 # Startseite explizit festlegen
 DirectoryIndex index.php

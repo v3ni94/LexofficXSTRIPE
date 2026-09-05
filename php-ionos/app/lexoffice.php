@@ -181,4 +181,33 @@ class LexofficeClient
     {
         return $this->request('/contacts/' . rawurlencode($contactId));
     }
+
+    /**
+     * Zahlungsstand eines Belegs (GET /v1/payments/{voucherId}).
+     *
+     * Die Antwort enthält nach der Lexware-Dokumentation u. a. openAmount
+     * (offener Restbetrag), currency, paymentStatus (z. B. balanced,
+     * openRevenue), voucherStatus, paidDate und paymentItems. Da die
+     * Dokumentation beim Bau nicht online geprüft werden konnte, wird die
+     * Antwort defensiv normalisiert: open_amount ist null, wenn kein
+     * numerischer Wert vorliegt. Der Aufrufer darf dann NICHT einziehen.
+     *
+     * @return array{open_amount:?float,currency:?string,payment_status:?string,voucher_status:?string,paid_date:?string,raw:array}
+     */
+    public function getPayment(string $voucherId): array
+    {
+        $data = $this->request('/payments/' . rawurlencode($voucherId));
+        $open = $data['openAmount'] ?? null;
+        if (is_string($open) && is_numeric(str_replace(',', '.', $open))) {
+            $open = (float)str_replace(',', '.', $open);
+        }
+        return [
+            'open_amount'    => is_int($open) || is_float($open) ? (float)$open : null,
+            'currency'       => isset($data['currency']) ? (string)$data['currency'] : null,
+            'payment_status' => isset($data['paymentStatus']) ? (string)$data['paymentStatus'] : null,
+            'voucher_status' => isset($data['voucherStatus']) ? (string)$data['voucherStatus'] : null,
+            'paid_date'      => isset($data['paidDate']) ? substr((string)$data['paidDate'], 0, 10) : null,
+            'raw'            => $data,
+        ];
+    }
 }

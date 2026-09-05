@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexware-Office-Integration von SmartEinzug</title>
+<meta name="description" content="Die Lexware-Office-Integration von SmartEinzug: Anbindung über die Public API, benötigter Tarif, synchronisierte Daten und der Weg zum ersten SEPA-Einzug.">
+<link rel="canonical" href="https://smart-einzug.de/integrationen/lexware-office/">
+<meta property="og:title" content="Lexware-Office-Integration von SmartEinzug">
+<meta property="og:description" content="Die Lexware-Office-Integration von SmartEinzug: Anbindung über die Public API, benötigter Tarif, synchronisierte Daten und der Weg zum ersten SEPA-Einzug.">
+<meta property="og:url" content="https://smart-einzug.de/integrationen/lexware-office/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905a">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon.svg?v=20260905a" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905a" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905a">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260905a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Startseite", "item": "https://smart-einzug.de/"},
+    {"@type": "ListItem", "position": 2, "name": "Integrationen", "item": "https://smart-einzug.de/integrationen/"},
+    {"@type": "ListItem", "position": 3, "name": "Lexware Office", "item": "https://smart-einzug.de/integrationen/lexware-office/"}
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li><a href="/integrationen/">Integrationen</a></li>
+    <li aria-current="page">Lexware Office</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Integration</p>
+      <h1>Lexware-Office-Integration von SmartEinzug</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Lexware Office, ehemals lexoffice, ist die erste und derzeit einzige verfügbare Anbindung von SmartEinzug.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Technik</p>
+        <h2>Wie die Anbindung funktioniert</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>SmartEinzug ruft über die Public API von Lexware Office die für den Einzug relevanten Rechnungs- und Kundendaten ab. Nach Angaben von Lexware ist für die Nutzung der Public API der Tarif Lexware Office XL erforderlich, bitte prüfen Sie den aktuellen Stand in Ihrem eigenen Konto.</p>
+        <p>Der Abgleich läuft serverseitig und inkrementell: Bereits abgeschlossene Rechnungen werden nicht fortlaufend erneut abgerufen, neue und geänderte Vorgänge erscheinen automatisch.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Einrichtung</p>
+        <h2>API-Schlüssel hinterlegen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>API-Schlüssel erzeugen</h3><p>In Lexware Office unter Einstellungen, Erweiterungen, Weitere Apps, Public API einen neuen Schlüssel anlegen.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Schlüssel hinterlegen</h3><p>Den Schlüssel in den Einstellungen Ihres SmartEinzug-Accounts eintragen, die Anwendung prüft die Verbindung.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Rechnungen abrufen</h3><p>Offene und überfällige Rechnungen stehen anschließend in SmartEinzug zur weiteren Verarbeitung bereit.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Lexware Office jetzt verbinden</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="lexware-office-final">Jetzt registrieren</a>
+        <a href="/integrationen/" class="btn btn-outline">Alle Integrationen</a>
+      </div>
+    </div>
+  </section>
+</article>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260905a" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

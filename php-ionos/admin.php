@@ -3,12 +3,22 @@
  * Superadmin (Plattformbetreiber): Kennzahlen je Akquisitionsquelle,
  * Firmen, Tarife und Support-Funktionen (2FA-Reset, Entsperren).
  * Zugriff nur für users.is_superadmin = 1 mit aktiver 2FA. Alle Aktionen
- * werden protokolliert. Vorgesehen für admin.lexware-einzug.de (gleiches
- * Verzeichnis, eigene Subdomain, siehe ANLEITUNG).
+ * werden protokolliert. Vorgesehen für admin.smart-einzug.de (gleiches
+ * Verzeichnis, eigene Subdomain, siehe ANLEITUNG-IONOS.md).
  */
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
+
+// Host-Prüfung: ist admin_base_url gesetzt, antwortet diese Seite nur auf dem
+// Adminhost (bootstrap.php prüft dies bereits zentral, hier zusätzlich als
+// zweite Sicherung, falls die Datei ohne bootstrap-Regeln ausgeliefert wird).
+if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
+    $adminHost = base_url_host(admin_base_url());
+    if ($adminHost !== '' && $adminHost !== base_url_host(app_base_url()) && request_host() !== $adminHost) {
+        host_not_found();
+    }
+}
 
 $ctx = require_superadmin();
 $pdo = db();

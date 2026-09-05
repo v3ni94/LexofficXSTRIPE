@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stripe mit Lexware-Einzug verbinden</title>
-<meta name="description" content="Schritt für Schritt zum Stripe Secret Key, zur Anbindung an Lexware-Einzug und zur Einrichtung des Webhook-Endpunkts.">
+<title>Stripe mit SmartEinzug verbinden</title>
+<meta name="description" content="Schritt für Schritt zum Stripe Secret Key, zur Anbindung an SmartEinzug und zur Einrichtung des Webhook-Endpunkts.">
 <link rel="canonical" href="https://lexware-einzug.de/anleitung/stripe-verbinden">
-<meta property="og:title" content="Stripe mit Lexware-Einzug verbinden">
-<meta property="og:description" content="Schritt für Schritt zum Stripe Secret Key, zur Anbindung an Lexware-Einzug und zur Einrichtung des Webhook-Endpunkts.">
+<meta property="og:title" content="Stripe mit SmartEinzug verbinden">
+<meta property="og:description" content="Schritt für Schritt zum Stripe Secret Key, zur Anbindung an SmartEinzug und zur Einrichtung des Webhook-Endpunkts.">
 <meta property="og:url" content="https://lexware-einzug.de/anleitung/stripe-verbinden">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png?v=20260905b">
@@ -40,7 +40,7 @@
     {
       "@type": "ListItem",
       "position": 3,
-      "name": "Stripe mit Lexware-Einzug verbinden",
+      "name": "Stripe mit SmartEinzug verbinden",
       "item": "https://lexware-einzug.de/anleitung/stripe-verbinden"
     }
   ]
@@ -51,7 +51,7 @@
 <header class="site-header">
   <div class="kopfnaht"></div>
   <div class="header-inner">
-    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</a>
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für Lexware Office</span></a>
     <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
     <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
     <nav class="main-nav" aria-label="Hauptnavigation">
@@ -71,7 +71,7 @@
   <ol>
     <li><a href="/">Startseite</a></li>
 <li><a href="/hilfe">Hilfe</a></li>
-<li aria-current="page">Stripe mit Lexware-Einzug verbinden</li>
+<li aria-current="page">Stripe mit SmartEinzug verbinden</li>
   </ol>
 </nav>
 
@@ -81,9 +81,9 @@
   <header class="hero">
     <div class="container">
       <p class="eyebrow">Anleitung</p>
-      <h1>Stripe mit Lexware-Einzug verbinden</h1>
+      <h1>Stripe mit SmartEinzug verbinden</h1>
       <span class="bar" aria-hidden="true"></span>
-      <p class="lead">So verbinden Sie Ihr eigenes Stripe-Konto mit Lexware-Einzug und richten den Webhook für den Statusabgleich ein.</p>
+      <p class="lead">So verbinden Sie Ihr eigenes Stripe-Konto mit SmartEinzug und richten den Webhook für den Statusabgleich ein.</p>
       <div class="cta-row">
         <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="anleitung-stripe-top">Jetzt registrieren</a>
         <a href="/lexware-office-stripe" class="btn btn-outline">Hintergrund zu Stripe</a>
@@ -103,7 +103,7 @@
         <li class="step"><span class="step-number">5</span><div><h3>Secret Key erstellen</h3><p>Erstellen Sie einen neuen Secret Key oder einen eingeschränkten Schlüssel mit den benötigten Berechtigungen.</p></div></li>
         <li class="step"><span class="step-number">6</span><div><h3>Bezeichnung vergeben</h3><p>Vergeben Sie eine aussagekräftige Bezeichnung für den Schlüssel.</p></div></li>
         <li class="step"><span class="step-number">7</span><div><h3>Schlüssel sofort kopieren</h3><p>Kopieren Sie den Schlüssel sofort, da er nur einmal vollständig angezeigt wird.</p></div></li>
-        <li class="step"><span class="step-number">8</span><div><h3>In Lexware-Einzug einfügen</h3><p>Fügen Sie den Schlüssel unter den Einstellungen von Lexware-Einzug in den Bereich Stripe-Anbindung ein.</p></div></li>
+        <li class="step"><span class="step-number">8</span><div><h3>In SmartEinzug einfügen</h3><p>Fügen Sie den Schlüssel unter den Einstellungen von SmartEinzug in den Bereich Stripe-Anbindung ein.</p></div></li>
         <li class="step"><span class="step-number">9</span><div><h3>Webhook einrichten</h3><p>Richten Sie in Stripe einen Webhook-Endpunkt auf https://app.lexware-einzug.de/stripe-webhook.php ein und aktivieren Sie die Events payment_intent.processing, payment_intent.succeeded, payment_intent.payment_failed und charge.dispute.created.</p></div></li>
       </ol>
     </div>
@@ -121,7 +121,7 @@
     <div class="container">
       <h2>Verbindung prüfen oder trennen</h2>
       <span class="bar" aria-hidden="true"></span>
-      <p>Nach der Einrichtung können Sie die Stripe-Verbindung in Lexware-Einzug jederzeit einsehen und bei Bedarf trennen. Historische Einzugsdaten bleiben dabei erhalten. Wie Sie anschließend Rechnungen einziehen, beschreibt die Seite <a href="/lexware-office-lastschrift">Lexware Office Lastschrift einziehen</a>.</p>
+      <p>Nach der Einrichtung können Sie die Stripe-Verbindung in SmartEinzug jederzeit einsehen und bei Bedarf trennen. Historische Einzugsdaten bleiben dabei erhalten. Wie Sie anschließend Rechnungen einziehen, beschreibt die Seite <a href="/lexware-office-lastschrift">Lexware Office Lastschrift einziehen</a>.</p>
       <div class="cta-row">
         <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="anleitung-stripe-bottom">Jetzt registrieren</a>
       </div>
@@ -137,7 +137,7 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
-      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</span>
+      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für Lexware Office</span></span>
       <nav class="footer-nav" aria-label="Rechtliches">
         <ul>
           <li><a href="/impressum">Impressum</a></li>
@@ -152,6 +152,7 @@
     </div>
     <div class="footer-legal">
       <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p class="footer-brandline">SmartEinzug ist ein Angebot der Müller Holding AG.</p>
       <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
     </div>
   </div>

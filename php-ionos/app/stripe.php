@@ -19,6 +19,8 @@ if (get_included_files()[0] === __FILE__) {
 class StripeException extends RuntimeException
 {
     public ?string $stripeCode = null;
+    /** true, wenn nicht feststeht, ob Stripe die Anfrage verarbeitet hat (Timeout, Netzwerk, kein JSON). */
+    public bool $outcomeUnknown = false;
 }
 
 class StripeClient
@@ -40,16 +42,23 @@ class StripeClient
      * @param string $method GET|POST|DELETE
      * @param array  $params Formular-Parameter (verschachtelt erlaubt)
      */
-    private function request(string $method, string $endpoint, array $params = [], ?string $apiVersion = null): array
+    private function request(string $method, string $endpoint, array $params = [], ?string $apiVersion = null, ?string $idempotencyKey = null): array
     {
         $url = self::BASE_URL . $endpoint;
         $ch = curl_init();
 
+        $headers = ['Stripe-Version: ' . ($apiVersion ?? self::API_VERSION)];
+        if ($idempotencyKey !== null && $idempotencyKey !== '') {
+            // Stripe führt einen POST mit demselben Schlüssel innerhalb von 24 Stunden
+            // nicht erneut aus, sondern liefert die gespeicherte Antwort (Doppelbelastung
+            // bei Wiederholung nach Zeitüberschreitung ausgeschlossen).
+            $headers[] = 'Idempotency-Key: ' . substr(preg_replace('/[^A-Za-z0-9_\-]/', '', $idempotencyKey) ?? '', 0, 255);
+        }
         $opts = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 30,
             CURLOPT_USERPWD        => $this->secretKey . ':',
-            CURLOPT_HTTPHEADER     => ['Stripe-Version: ' . ($apiVersion ?? self::API_VERSION)],
+            CURLOPT_HTTPHEADER     => $headers,
         ];
 
         if ($method === 'GET') {
@@ -71,12 +80,17 @@ class StripeClient
         curl_close($ch);
 
         if ($body === false) {
-            throw new StripeException("Verbindungsfehler zu Stripe: $err");
+            $ex = new StripeException("Verbindungsfehler zu Stripe: $err");
+            $ex->outcomeUnknown = true;
+            throw $ex;
         }
 
         $data = json_decode($body, true);
         if (!is_array($data)) {
-            throw new StripeException('Ungültige Antwort von Stripe.');
+            $ex = new StripeException('Ungültige Antwort von Stripe.');
+            // Kein JSON (z. B. Gateway-Fehlerseite): Ergebnis des Aufrufs ist unbekannt.
+            $ex->outcomeUnknown = $status === 0 || $status >= 500;
+            throw $ex;
         }
 
         if ($status >= 400) {
@@ -105,6 +119,70 @@ class StripeClient
     public function getPaymentIntent(string $paymentIntentId): array
     {
         return $this->request('GET', '/payment_intents/' . rawurlencode($paymentIntentId));
+    }
+
+    /** Charge abrufen (enthält payment_method_details.sepa_debit.mandate). */
+    public function getCharge(string $chargeId): array
+    {
+        return $this->request('GET', '/charges/' . rawurlencode($chargeId));
+    }
+
+    /** Stripe-Mandat abrufen (payment_method_details.sepa_debit.reference = Mandatsreferenz bei Stripe). */
+    public function getMandate(string $mandateId): array
+    {
+        return $this->request('GET', '/mandates/' . rawurlencode($mandateId));
+    }
+
+    /** Zahlungsmethode abrufen (sepa_debit.last4, country, bank_code; billing_details.name). */
+    public function getPaymentMethod(string $paymentMethodId): array
+    {
+        return $this->request('GET', '/payment_methods/' . rawurlencode($paymentMethodId));
+    }
+
+    /** SetupIntent abrufen (payment_method, mandate nach erfolgreichem Checkout mode=setup). */
+    public function getSetupIntent(string $setupIntentId): array
+    {
+        return $this->request('GET', '/setup_intents/' . rawurlencode($setupIntentId));
+    }
+
+    /** Checkout Session abrufen. */
+    public function getCheckoutSession(string $sessionId): array
+    {
+        return $this->request('GET', '/checkout/sessions/' . rawurlencode($sessionId));
+    }
+
+    /**
+     * PaymentIntents per Suche finden (Stripe Search API, Index mit bis zu
+     * etwa einer Minute Verzögerung). Für die Klärung unbekannter Versuche.
+     */
+    public function searchPaymentIntents(string $query): array
+    {
+        return $this->request('GET', '/payment_intents/search', ['query' => $query, 'limit' => 10]);
+    }
+
+    /**
+     * Stripe Checkout Session im Modus "setup" für ein SEPA-Mandat anlegen.
+     * Es wird keine Zahlung ausgelöst; der Kunde gibt seine IBAN bei Stripe
+     * ein und bestätigt dort das Mandat.
+     */
+    public function createSetupCheckoutSession(
+        string $customerId,
+        string $successUrl,
+        string $cancelUrl,
+        array $metadata,
+        ?string $customerEmail = null
+    ): array {
+        $params = [
+            'mode'                 => 'setup',
+            'payment_method_types' => ['sepa_debit'],
+            'customer'             => $customerId,
+            'success_url'          => $successUrl,
+            'cancel_url'           => $cancelUrl,
+            'locale'               => 'de',
+            'metadata'             => $metadata,
+            'setup_intent_data'    => ['metadata' => $metadata],
+        ];
+        return $this->request('POST', '/checkout/sessions', $params);
     }
 
     /** Kunde per Metadaten suchen, sonst anlegen. */
@@ -158,7 +236,8 @@ class StripeClient
         string $paymentMethodId,
         string $description,
         array $metadata,
-        ?string $mandateReferencePrefix = null
+        ?string $mandateReferencePrefix = null,
+        ?string $idempotencyKey = null
     ): array {
         $params = [
             'amount'               => $amountCents,
@@ -184,7 +263,9 @@ class StripeClient
                 'sepa_debit' => ['mandate_options' => ['reference_prefix' => $prefix]],
             ];
             try {
-                return $this->request('POST', '/payment_intents', $withPrefix, self::API_VERSION_MANDATE_PREFIX);
+                // Abgeleiteter Schlüssel: Stripe verlangt je Parametersatz einen eigenen Idempotenz-Schlüssel.
+                return $this->request('POST', '/payment_intents', $withPrefix, self::API_VERSION_MANDATE_PREFIX,
+                    $idempotencyKey !== null ? $idempotencyKey . '-p' : null);
             } catch (StripeException $e) {
                 if ($e->stripeCode !== 'invalid_mandate_reference_prefix_format'
                     && !str_contains(strtolower($e->getMessage()), 'reference_prefix')) {
@@ -194,7 +275,7 @@ class StripeClient
             }
         }
 
-        return $this->request('POST', '/payment_intents', $params);
+        return $this->request('POST', '/payment_intents', $params, null, $idempotencyKey);
     }
 
     /**

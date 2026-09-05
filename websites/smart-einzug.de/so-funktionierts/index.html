@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>So funktioniert SmartEinzug</title>
+<meta name="description" content="So funktioniert SmartEinzug: Account anlegen, Lexware Office und Stripe verbinden, Rechnungen mit gültigem Mandat freigeben und den SEPA-Einzug auslösen.">
+<link rel="canonical" href="https://smart-einzug.de/so-funktionierts/">
+<meta property="og:title" content="So funktioniert SmartEinzug">
+<meta property="og:description" content="So funktioniert SmartEinzug: Account anlegen, Lexware Office und Stripe verbinden, Rechnungen mit gültigem Mandat freigeben und den SEPA-Einzug auslösen.">
+<meta property="og:url" content="https://smart-einzug.de/so-funktionierts/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905a">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon.svg?v=20260905a" type="image/svg+xml">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905a" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905a">
+<link rel="stylesheet" href="/assets/css/site.css?v=20260905a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Startseite", "item": "https://smart-einzug.de/"},
+    {"@type": "ListItem", "position": 2, "name": "So funktioniert's", "item": "https://smart-einzug.de/so-funktionierts/"}
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li aria-current="page">So funktioniert's</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Ablauf</p>
+      <h1>So funktioniert SmartEinzug</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Vom leeren Firmenaccount bis zum ersten ausgeführten SEPA-Einzug führt Sie SmartEinzug in drei Schritten.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Schritt für Schritt</p>
+        <h2>Die drei Schritte im Detail</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Account anlegen</h3><p>Sie registrieren einen Firmenaccount mit Ihrer geschäftlichen E-Mail-Adresse. Direkt im Anschluss richten Sie die verpflichtende Zwei-Faktor-Authentifizierung ein, weitere Mitarbeiter lassen sich später jederzeit einladen.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Konten verbinden</h3><p>In Lexware Office erzeugen Sie unter Einstellungen, Erweiterungen, Public API einen neuen API-Schlüssel und hinterlegen ihn in SmartEinzug. Anschließend tragen Sie den Secret Key Ihres eigenen Stripe-Kontos ein. SmartEinzug prüft beide Verbindungen und meldet, ob offene Rechnungen geladen und Zahlungen an Stripe übergeben werden können.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Rechnungen mit gültigem Mandat freigeben</h3><p>Aus der Liste offener Rechnungen wählen Sie einen Vorgang aus, prüfen das hinterlegte SEPA-Mandat der Kundin oder des Kunden und geben den Einzug frei, sofort oder terminiert. Stripe führt die Lastschrift aus und meldet den Status automatisch zurück.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Im Alltag</p>
+          <h2>Was nach der Einrichtung passiert</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Nach der einmaligen Einrichtung läuft der Abgleich zwischen Lexware Office und SmartEinzug serverseitig im Hintergrund weiter. Neue offene Rechnungen erscheinen automatisch, bereits erledigte Vorgänge werden nicht erneut angefasst.</p>
+          <p>Öffnen Sie SmartEinzug erneut, sehen Sie unmittelbar den aktuellen Stand: welche Rechnungen offen sind, welche Einzüge laufen und wo eine Rückmeldung von Stripe noch aussteht.</p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card">
+            <ul class="timeline">
+              <li class="done"><strong>Rechnungen abgeglichen</strong>4 neue, 17 unverändert seit dem letzten Lauf</li>
+              <li class="done"><strong>Mandat geprüft</strong>RE-3304 wartet auf ein hinterlegtes Mandat</li>
+              <li class="done"><strong>Rückmeldung übernommen</strong>RE-3301 als eingezogen markiert</li>
+              <li><strong>Nächster Abgleich läuft automatisch</strong>Der aktuelle Stand steht beim nächsten Öffnen bereit</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="app-mock" role="img" aria-label="Beispielansicht der Anwendung mit einer freizugebenden Rechnung">
+        <div class="app-mock-bar"><i></i><i></i><i></i><span class="url">app.smart-einzug.de</span></div>
+        <div class="app-mock-head"><strong>Freigabe</strong><span class="pill">Mandat vorhanden</span></div>
+        <table>
+          <thead><tr><th>Rechnung</th><th>Kunde</th><th class="num">Betrag</th><th>Mandat</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>RE-3305</td><td>Werkstatt Aicher</td><td class="num">540,00 €</td><td><span class="badge badge-success">Gültig</span></td><td><span class="mock-btn">Sofort einziehen</span></td></tr>
+            <tr><td>RE-3306</td><td>Praxis Dornbach</td><td class="num">128,40 €</td><td><span class="badge badge-success">Gültig</span></td><td><span class="mock-btn">Terminieren</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Jetzt Account anlegen und Konten verbinden</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="ablauf-final">Jetzt registrieren</a>
+        <a href="/funktionen/" class="btn btn-outline">Funktionen ansehen</a>
+      </div>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.lexware-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug</span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.lexware-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=20260905a" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

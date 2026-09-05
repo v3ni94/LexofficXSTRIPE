@@ -3,6 +3,7 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/sync_state.php';
+require_once __DIR__ . '/app/collections.php';
 
 $ctx = require_login();
 if (!(int)$ctx['onboarding_completed']) {
@@ -61,6 +62,8 @@ $stmt->execute([$tenantId]);
 $integration = $stmt->fetch() ?: ['lexoffice_last_sync' => null, 'lexoffice_connected' => 0, 'stripe_connected' => 0];
 $syncState = sync_state_get($tenantId);
 $syncRunning = sync_state_is_running($syncState);
+$pauseReason = collections_pause_reason($tenantId);
+$openAttempts = collection_attempts_open($tenantId);
 
 layout_header('Dashboard', $ctx);
 ?>
@@ -69,6 +72,17 @@ layout_header('Dashboard', $ctx);
     · Stripe: <?= (int)$integration['stripe_connected'] ? 'verbunden' : 'nicht verbunden' ?>
     · letzte Synchronisation: <?= format_datetime($integration['lexoffice_last_sync']) ?>
     <?php if ($syncRunning): ?> · <a href="invoices.php?syncing=1">Synchronisation läuft</a><?php endif; ?></p>
+
+<?php if ($pauseReason): ?>
+<div class="flash flash-error"><strong>Not-Stopp aktiv.</strong> <?= e($pauseReason) ?>
+    <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>
+<?php elseif (can_manage_settings($ctx)): ?>
+<p class="hint">Einzüge sind freigegeben. Im Zweifel: <a href="notstopp.php">Not-Stopp</a> hält alle Einreichungen dieser Firma sofort an.</p>
+<?php endif; ?>
+<?php if ($openAttempts): ?>
+<div class="flash flash-warn"><strong><?= count($openAttempts) ?> Einzugsversuch(e) mit unklarem Ergebnis.</strong> Die betroffenen Rechnungen werden nicht erneut eingereicht, bis der Versuch geklärt ist.
+    <a href="collections.php">Zu den Einzügen (Unklare Versuche prüfen)</a></div>
+<?php endif; ?>
 
 <div class="card-grid">
     <div class="stat-card">

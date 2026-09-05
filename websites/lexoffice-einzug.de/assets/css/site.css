@@ -426,6 +426,7 @@ details[open] summary::after { content: '\2212'; }
 .footer-legal p { margin: 0 0 8px; }
 .footer-disclaimer, .site-footer .disclaimer { font-weight: 700; color: #D6D5D3; }
 .site-footer .operator-line { margin-top: 8px; }
+.site-footer .footer-brandline { margin-top: 8px; font-size: 0.85rem; color: #B9B8B6; }
 
 /* -------------------------------------------------------------------------
    Sticky Mobile CTA
@@ -517,6 +518,9 @@ main p a:not(.btn):hover, main li a:not(.btn):hover { color: var(--anthracite); 
   display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 19px; line-height: 1; flex: none;
 }
 .footer-wordmark .mark { background: var(--gold); color: var(--anthracite); }
+
+/* Zusatz nach der Wortmarke: bisheriger Produktbezug */
+.wordmark-sub { font-size: 0.65rem; font-weight: 400; color: var(--gray-text); letter-spacing: 0.01em; white-space: nowrap; margin-left: 2px; }
 
 /* Einführungspreis */
 .plan-badge { display: inline-block; margin-left: 8px; padding: 3px 9px; border-radius: 999px; background: var(--gold); color: var(--anthracite); font-size: 0.68rem; letter-spacing: 0.06em; vertical-align: middle; }

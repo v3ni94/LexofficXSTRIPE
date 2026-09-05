@@ -1,10 +1,17 @@
 <?php
 /**
  * Stripe-Webhook-Endpunkt.
- * Multi-Tenant: tenant_id aus den PaymentIntent-Metadaten lesen, dann die
- * Signatur mit dem Webhook-Secret des Mandanten prüfen.
- * Antwortet immer mit HTTP 200, damit Stripe nicht endlos wiederholt.
- * Portiert aus routers/webhooks.py.
+ * Multi-Tenant: tenant_id aus den Metadaten des Objekts (PaymentIntent bzw.
+ * Checkout Session) lesen, dann die Signatur mit dem Webhook-Secret des
+ * Mandanten prüfen. Antwortet immer mit HTTP 200, damit Stripe nicht endlos
+ * wiederholt.
+ *
+ * Verarbeitete Ereignisse:
+ *  - payment_intent.processing / succeeded / payment_failed: Einzugsstatus,
+ *    bei Erfolg zusätzlich Charge und Stripe-Mandatsdaten speichern.
+ *  - charge.dispute.created: Rücklastschrift, Rechnung wieder offen (failed).
+ *  - checkout.session.completed (mode=setup): digitale Mandatserteilung,
+ *    Zuordnung über metadata.tenant_id und metadata.mandate_request_id.
  */
 
 require_once __DIR__ . '/app/bootstrap.php';
@@ -36,12 +43,13 @@ if (!is_array($event)) {
 $eventType = $event['type'] ?? '';
 $obj = $event['data']['object'] ?? [];
 $tenantId = $obj['metadata']['tenant_id'] ?? null;
+$isCheckout = $eventType === 'checkout.session.completed';
 
 // Rücklastschriften (charge.dispute.created) tragen keine PaymentIntent-Metadaten:
 // Firma über den PaymentIntent der gespeicherten Collection ermitteln.
 $paymentIntentHint = $eventType === 'charge.dispute.created'
     ? ($obj['payment_intent'] ?? null)
-    : ($obj['id'] ?? null);
+    : ($isCheckout ? null : ($obj['id'] ?? null));
 if (!$tenantId && is_string($paymentIntentHint) && $paymentIntentHint !== '') {
     try {
         $stmt = db()->prepare('SELECT tenant_id FROM payment_collections WHERE stripe_payment_intent_id = ? LIMIT 1');
@@ -52,7 +60,7 @@ if (!$tenantId && is_string($paymentIntentHint) && $paymentIntentHint !== '') {
     }
 }
 
-if (!$tenantId) {
+if (!$tenantId || !is_string($tenantId)) {
     webhook_exit("Firma nicht ermittelbar (type=$eventType)");
 }
 
@@ -76,6 +84,40 @@ try {
         webhook_exit("Signaturprüfung fehlgeschlagen für tenant $tenantId");
     }
 
+    // --- Digitale Mandatserteilung (Checkout mode=setup) ---
+    if ($isCheckout) {
+        if (($obj['mode'] ?? '') !== 'setup') {
+            webhook_exit('Checkout Session ohne mode=setup ignoriert');
+        }
+        $requestId = (string)($obj['metadata']['mandate_request_id'] ?? '');
+        $sessionId = (string)($obj['id'] ?? '');
+        $setupIntentId = is_array($obj['setup_intent'] ?? null) ? ($obj['setup_intent']['id'] ?? '') : (string)($obj['setup_intent'] ?? '');
+        if ($requestId === '' || $setupIntentId === '') {
+            webhook_exit('Checkout Session ohne mandate_request_id oder setup_intent');
+        }
+        require_once __DIR__ . '/app/mandate_requests.php';
+        require_once __DIR__ . '/app/collections.php';
+        $stmt = $pdo->prepare('SELECT r.*, c.name AS customer_name FROM mandate_requests r JOIN customers c ON c.id = r.customer_id WHERE r.id = ? AND r.tenant_id = ?');
+        $stmt->execute([$requestId, $tenantId]);
+        $req = $stmt->fetch();
+        if (!$req) {
+            webhook_exit("Mandatsanforderung $requestId nicht gefunden für tenant $tenantId");
+        }
+        if ($req['stripe_checkout_session_id'] && $req['stripe_checkout_session_id'] !== $sessionId) {
+            webhook_exit("Checkout Session $sessionId passt nicht zur Anforderung $requestId");
+        }
+        if (!in_array($req['status'], ['requested', 'pending'], true)) {
+            webhook_exit("Mandatsanforderung $requestId bereits verarbeitet (" . $req['status'] . ')');
+        }
+        $stripe = _get_stripe_client($tenantId);
+        $setupIntent = $stripe->getSetupIntent($setupIntentId);
+        if (($setupIntent['status'] ?? '') !== 'succeeded') {
+            webhook_exit("SetupIntent $setupIntentId nicht erfolgreich (" . ($setupIntent['status'] ?? '?') . ')');
+        }
+        $granted = mandate_request_grant($req, $stripe, $setupIntent);
+        webhook_exit($granted ? "Mandat digital erteilt (Anforderung $requestId)" : "Anforderung $requestId nicht erneut verarbeitet");
+    }
+
     // --- Collection zum PaymentIntent finden ---
     $paymentIntentId = $eventType === 'charge.dispute.created'
         ? ($obj['payment_intent'] ?? null)
@@ -92,12 +134,36 @@ try {
     $collection = $stmt->fetch();
 
     if (!$collection) {
-        webhook_exit("PaymentCollection nicht gefunden für PI $paymentIntentId");
+        // PaymentIntent aus einem Versuch, dessen Ergebnis lokal unbekannt blieb
+        // (Zeitüberschreitung): Einzug anhand des Versuchsjournals nachtragen.
+        $attemptKey = (string)($obj['metadata']['attempt_key'] ?? '');
+        if ($attemptKey !== '' && str_starts_with($eventType, 'payment_intent.')) {
+            require_once __DIR__ . '/app/collections.php';
+            $stmt = $pdo->prepare('SELECT * FROM collection_attempts WHERE idempotency_key = ? AND tenant_id = ?');
+            $stmt->execute([$attemptKey, $tenantId]);
+            $attempt = $stmt->fetch();
+            // Nur klar unbekannte oder ältere Versuche nachtragen: Bei einem laufenden
+            // Sofort-Einzug kann der Webhook vor dem Commit der Einzugs-Transaktion
+            // eintreffen; dann legt die Transaktion den Datensatz selbst an.
+            $ageSec = $attempt ? time() - (int)strtotime((string)$attempt['created_at']) : 0;
+            if ($attempt && in_array($attempt['status'], ['pending', 'unknown', 'succeeded'], true)
+                && ($attempt['status'] === 'unknown' || $ageSec >= 120)) {
+                $recoveredId = collection_attempt_recover($tenantId, $attempt, $obj);
+                if ($recoveredId) {
+                    $stmt = $pdo->prepare('SELECT * FROM payment_collections WHERE id = ? AND tenant_id = ?');
+                    $stmt->execute([$recoveredId, $tenantId]);
+                    $collection = $stmt->fetch();
+                }
+            }
+        }
+        if (!$collection) {
+            webhook_exit("PaymentCollection nicht gefunden für PI $paymentIntentId");
+        }
     }
 
     switch ($eventType) {
         case 'payment_intent.processing':
-            $pdo->prepare("UPDATE payment_collections SET stripe_status = 'processing' WHERE id = ?")
+            $pdo->prepare("UPDATE payment_collections SET stripe_status = 'processing' WHERE id = ? AND stripe_status <> 'succeeded'")
                 ->execute([$collection['id']]);
             break;
 
@@ -107,6 +173,13 @@ try {
             )->execute([$collection['id']]);
             $pdo->prepare("UPDATE invoices SET collection_status = 'collected' WHERE id = ?")
                 ->execute([$collection['invoice_id']]);
+            // Charge und Stripe-Mandatsdaten nachladen (reiner Lesezugriff, Fehler brechen nichts ab)
+            try {
+                require_once __DIR__ . '/app/collections.php';
+                store_stripe_mandate_data(_get_stripe_client($tenantId), $collection, $obj);
+            } catch (Throwable $e) {
+                error_log('Stripe-Webhook: Mandatsdaten nicht gespeichert: ' . $e->getMessage());
+            }
             break;
 
         case 'payment_intent.payment_failed':

@@ -85,7 +85,7 @@ $ibanBoxes = $iban ? str_split(str_replace(' ', '', $ibanFormatted)) : array_fil
 <div class="toolbar">
     <button type="button" onclick="window.print()">Drucken / Als PDF speichern</button>
     <a class="secondary" href="customer.php?id=<?= e($customer['id']) ?>">Zurück zum Kunden</a>
-    <span class="small">Mandatsreferenz <?= e($mandate['mandate_reference']) ?> · erzeugt aus <?= e((string)config('product_name', 'Lexware-Einzug')) ?>. Vor dem ersten Einsatz den Wortlaut mit Ihrer Rechtsberatung und den aktuellen Vorgaben Ihres Zahlungsdienstleisters abstimmen.</span>
+    <span class="small">Mandatsreferenz <?= e($mandate['mandate_reference']) ?> · erzeugt aus <?= e((string)config('product_name', 'SmartEinzug')) ?>. Vor dem ersten Einsatz den Wortlaut mit Ihrer Rechtsberatung und den aktuellen Vorgaben Ihres Zahlungsdienstleisters abstimmen.</span>
 </div>
 
 <div class="page">

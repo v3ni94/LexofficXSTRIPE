@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lexoffice Lastschriftverfahren erklärt | Lexware-Einzug</title>
+<title>lexoffice Lastschriftverfahren erklärt | SmartEinzug</title>
 <meta name="description" content="Wie funktioniert das SEPA-Lastschriftverfahren für Rechnungen aus lexoffice bzw. Lexware Office? Ablauf, Mandat und Rolle von Stripe im Überblick erklärt.">
 <link rel="canonical" href="https://lexoffice-einzug.de/lexoffice-lastschrift">
 <meta name="theme-color" content="#2E2D2E">
-<meta property="og:title" content="lexoffice Lastschriftverfahren erklärt | Lexware-Einzug">
+<meta property="og:title" content="lexoffice Lastschriftverfahren erklärt | SmartEinzug">
 <meta property="og:description" content="Wie funktioniert das SEPA-Lastschriftverfahren für Rechnungen aus lexoffice bzw. Lexware Office? Ablauf, Mandat und Rolle von Stripe im Überblick erklärt.">
 <meta property="og:url" content="https://lexoffice-einzug.de/lexoffice-lastschrift">
 <meta property="og:type" content="article">
@@ -35,7 +35,7 @@
 <header class="site-header">
   <div class="seam"><span></span></div>
   <div class="header-inner">
-    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</a>
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für lexoffice / Lexware Office</span></a>
     <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
     <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
     <nav class="main-nav" aria-label="Hauptnavigation">
@@ -63,25 +63,25 @@
       <span class="label">Lastschriftverfahren</span>
       <h1>Das SEPA-Lastschriftverfahren für lexoffice-Rechnungen</h1>
       <div class="bar"></div>
-      <p class="lead">lexoffice trägt seit der Umbenennung den Namen Lexware Office. Wenn Sie darüber Rechnungen stellen und diese künftig per Lastschrift statt per Überweisung einziehen möchten, bildet das SEPA-Lastschriftverfahren die Grundlage, die Lexware-Einzug für Sie organisiert.</p>
+      <p class="lead">lexoffice trägt seit der Umbenennung den Namen Lexware Office. Wenn Sie darüber Rechnungen stellen und diese künftig per Lastschrift statt per Überweisung einziehen möchten, bildet das SEPA-Lastschriftverfahren die Grundlage, die SmartEinzug für Sie organisiert.</p>
 
       <h2>Wie läuft das SEPA-Lastschriftverfahren technisch ab?</h2>
-      <p>Beim SEPA-Lastschriftverfahren beauftragt der Zahlungsempfänger, in diesem Fall Sie als Rechnungssteller, seine Bank über einen Zahlungsdienstleister, einen festgelegten Betrag vom Konto des Zahlungspflichtigen einzuziehen. Voraussetzung ist ein SEPA-Mandat, mit dem der Kunde diesen Einzug ausdrücklich gestattet hat. In Lexware-Einzug bilden Sie diesen Ablauf ab, indem Sie eine Rechnung aus Lexware Office auswählen, sie dem hinterlegten Mandat zuordnen und den Einzug auslösen.</p>
+      <p>Beim SEPA-Lastschriftverfahren beauftragt der Zahlungsempfänger, in diesem Fall Sie als Rechnungssteller, seine Bank über einen Zahlungsdienstleister, einen festgelegten Betrag vom Konto des Zahlungspflichtigen einzuziehen. Voraussetzung ist ein SEPA-Mandat, mit dem der Kunde diesen Einzug ausdrücklich gestattet hat. In SmartEinzug bilden Sie diesen Ablauf ab, indem Sie eine Rechnung aus Lexware Office auswählen, sie dem hinterlegten Mandat zuordnen und den Einzug auslösen.</p>
 
       <h2>Welche Rolle spielt Lexware Office im Lastschriftverfahren?</h2>
-      <p>Lexware Office, vormals lexoffice, ist in diesem Ablauf die Quelle Ihrer Rechnungs- und Kundendaten. Über die Public API von Lexware Office bezieht Lexware-Einzug Rechnungsbetrag, Fälligkeit und Kundendaten. Lexware Office selbst nimmt am eigentlichen Zahlungsvorgang nicht teil und führt keine Lastschrift aus, es bleibt bei der Rolle der Buchhaltungssoftware.</p>
+      <p>Lexware Office, vormals lexoffice, ist in diesem Ablauf die Quelle Ihrer Rechnungs- und Kundendaten. Über die Public API von Lexware Office bezieht SmartEinzug Rechnungsbetrag, Fälligkeit und Kundendaten. Lexware Office selbst nimmt am eigentlichen Zahlungsvorgang nicht teil und führt keine Lastschrift aus, es bleibt bei der Rolle der Buchhaltungssoftware.</p>
 
       <h2>Welche Rolle übernimmt Stripe im Einzug?</h2>
-      <p>Stripe ist der Zahlungsdienstleister, der die SEPA-Lastschrift technisch verarbeitet. Lexware-Einzug übergibt die von Ihnen freigegebenen Einzüge an Stripe, das den Kontakt zur Bank des Zahlungspflichtigen herstellt und den Betrag einzieht. Lexware-Einzug selbst ist damit die Schaltstelle zwischen Ihren Rechnungsdaten aus Lexware Office und der Zahlungsabwicklung bei Stripe, ohne selbst Zahlungsdienstleister zu sein.</p>
+      <p>Stripe ist der Zahlungsdienstleister, der die SEPA-Lastschrift technisch verarbeitet. SmartEinzug übergibt die von Ihnen freigegebenen Einzüge an Stripe, das den Kontakt zur Bank des Zahlungspflichtigen herstellt und den Betrag einzieht. SmartEinzug selbst ist damit die Schaltstelle zwischen Ihren Rechnungsdaten aus Lexware Office und der Zahlungsabwicklung bei Stripe, ohne selbst Zahlungsdienstleister zu sein.</p>
 
       <h2>Was unterscheidet Erst- und Folgelastschriften?</h2>
       <p>Bei einer erstmaligen Lastschrift zu einem neuen Mandat prüft die Bank des Zahlungspflichtigen den Einzug in der Regel genauer als bei einer bereits eingespielten, wiederkehrenden Folgelastschrift. Für die konkreten Fristen und Ablehnungsmöglichkeiten einer Lastschrift sind die Bedingungen Ihrer Bank sowie die Regeln von Stripe maßgeblich, eine pauschale Aussage dazu trifft diese Seite bewusst nicht.</p>
 
       <h2>Woran erkennen Sie den Status einer Lastschrift?</h2>
-      <p>Zu jeder aus Lexware Office übernommenen Rechnung zeigt Lexware-Einzug den aktuellen Zahlungsstatus, von eingezogen bis Rücklastschrift. Damit behalten Sie den Überblick, ohne den Status einzelner Zahlungen manuell in Lexware Office oder bei Stripe nachschlagen zu müssen.</p>
+      <p>Zu jeder aus Lexware Office übernommenen Rechnung zeigt SmartEinzug den aktuellen Zahlungsstatus, von eingezogen bis Rücklastschrift. Damit behalten Sie den Überblick, ohne den Status einzelner Zahlungen manuell in Lexware Office oder bei Stripe nachschlagen zu müssen.</p>
 
       <h2>Welche Angaben braucht eine SEPA-Lastschrift zu einer lexoffice-Rechnung?</h2>
-      <p>Damit ein Einzug ausgelöst werden kann, müssen mehrere Angaben zusammenkommen: der Rechnungsbetrag und die Fälligkeit aus Lexware Office, die Bankverbindung des Kunden sowie die Referenz des SEPA-Mandats, mit dem der Kunde dem Einzug zugestimmt hat. Fehlt eine dieser Angaben, etwa weil noch kein Mandat hinterlegt ist, lässt sich die betroffene Rechnung in Lexware-Einzug erkennen und vor dem nächsten Einzugslauf ergänzen.</p>
+      <p>Damit ein Einzug ausgelöst werden kann, müssen mehrere Angaben zusammenkommen: der Rechnungsbetrag und die Fälligkeit aus Lexware Office, die Bankverbindung des Kunden sowie die Referenz des SEPA-Mandats, mit dem der Kunde dem Einzug zugestimmt hat. Fehlt eine dieser Angaben, etwa weil noch kein Mandat hinterlegt ist, lässt sich die betroffene Rechnung in SmartEinzug erkennen und vor dem nächsten Einzugslauf ergänzen.</p>
 
       <h2>Wie unterscheidet sich das Lastschriftverfahren von einer Kartenzahlung?</h2>
       <p>Bei einer Kartenzahlung wird der Betrag durch eine aktive Handlung des Kunden ausgelöst, bei der Lastschrift durch Sie als Rechnungssteller auf Grundlage des erteilten Mandats. Für lexoffice-Nutzer mit wiederkehrenden Rechnungen bedeutet das planbarere Zahlungseingänge, weil der Einzug nicht von einer erneuten aktiven Zahlung des Kunden abhängt, solange das zugrunde liegende Mandat gültig bleibt.</p>
@@ -107,7 +107,7 @@
 
 <footer class="site-footer">
   <div class="footer-inner">
-    <div class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</div>
+    <div class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für lexoffice / Lexware Office</span></div>
     <nav>
       <a href="/impressum">Impressum</a>
       <a href="/datenschutz">Datenschutz</a>
@@ -118,6 +118,7 @@
       <a href="https://app.lexware-einzug.de/login.php?src=lexoffice-einzug.de">Login</a>
     </nav>
     <p class="disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+    <p class="footer-brandline">SmartEinzug ist ein Angebot der Müller Holding AG.</p>
     <p class="operator-line">Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
   </div>
 </footer>

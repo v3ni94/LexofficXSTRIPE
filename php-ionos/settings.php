@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $integration = integration_load($tenantId);
-$webhookUrl = rtrim((string)config('base_url'), '/') . '/stripe-webhook.php';
+$webhookUrl = app_base_url() . '/stripe-webhook.php';
 $productName = product_name();
 
 layout_header('Einstellungen', $ctx);

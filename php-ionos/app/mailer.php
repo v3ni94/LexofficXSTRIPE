@@ -29,10 +29,21 @@ function mail_sanitize_header(string $value): string
     return trim(str_replace(["\r", "\n"], '', $value));
 }
 
-/** Hostname für die Message-ID, abgeleitet aus config('base_url'). */
+/** Produktname für Vorlagen (Standard SmartEinzug; product_name() aus bootstrap.php, falls geladen). */
+function mail_product_name(): string
+{
+    if (function_exists('product_name')) {
+        return product_name();
+    }
+    $name = trim((string)config('product_name', ''));
+    return $name !== '' ? $name : 'SmartEinzug';
+}
+
+/** Hostname für die Message-ID, abgeleitet aus der Basisadresse der Anwendung. */
 function mail_message_id_host(): string
 {
-    $host = parse_url((string)config('base_url', ''), PHP_URL_HOST);
+    $base = function_exists('app_base_url') ? app_base_url() : (string)config('base_url', '');
+    $host = parse_url($base, PHP_URL_HOST);
     return is_string($host) && $host !== '' ? $host : 'localhost';
 }
 
@@ -100,7 +111,7 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
 
     $cfg = config('mail');
     $fromAddress = mail_sanitize_header((string)($cfg['from_address'] ?? ''));
-    $fromName = mail_sanitize_header((string)($cfg['from_name'] ?? config('product_name', 'Lexware-Einzug')));
+    $fromName = mail_sanitize_header((string)($cfg['from_name'] ?? mail_product_name()));
     $replyTo = isset($cfg['reply_to']) && $cfg['reply_to'] !== null
         ? mail_sanitize_header((string)$cfg['reply_to'])
         : null;
@@ -254,9 +265,9 @@ function mail_smtp_send(array $smtp, string $from, string $to, string $headers, 
  */
 function mail_layout(string $title, array $paragraphs, ?array $button = null, ?string $footerNote = null): array
 {
-    $productName = (string)config('product_name', 'Lexware-Einzug');
+    $productName = mail_product_name();
     $font = "Carlito, Calibri, 'Segoe UI', sans-serif";
-    $mandatoryFooter = 'Lexware-Einzug ist ein Dienst der Müller Holding AG, Rheinpromenade 13, '
+    $mandatoryFooter = $productName . ' ist ein Dienst der Müller Holding AG, Rheinpromenade 13, '
         . '40789 Monheim am Rhein. Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. '
         . 'Kein Produkt der Haufe-Lexware GmbH & Co. KG.';
     $autoNote = $productName . '. Diese E-Mail wurde automatisch erzeugt.';
@@ -334,7 +345,7 @@ function mail_layout(string $title, array $paragraphs, ?array $button = null, ?s
 /** Einladung eines neuen Mitarbeiters zu einem Firmenaccount. */
 function mail_tpl_invitation(string $orgName, ?string $inviterName, string $acceptUrl, string $expiresAtFormatted): array
 {
-    $productName = (string)config('product_name', 'Lexware-Einzug');
+    $productName = mail_product_name();
     $subject = sprintf('%s hat Sie zu %s eingeladen', $orgName, $productName);
     $title = sprintf('Einladung zu %s', $productName);
 

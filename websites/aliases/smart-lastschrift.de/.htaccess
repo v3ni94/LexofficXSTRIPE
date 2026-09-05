@@ -1,0 +1,83 @@
+# Alias-Domain smart-lastschrift.de, 301 auf https://smart-einzug.de (Apache, IONOS)
+RewriteEngine On
+Options -Indexes -MultiViews
+
+# utm_*-Parameter aus der Anfrage einsammeln, alle anderen Parameter werden verworfen (QSD)
+RewriteRule ^ - [E=UTMQS:]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_source=[^&]*)
+RewriteRule ^ - [E=UTMQS:%1]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_source=[^&]*)
+RewriteRule ^ - [E=UTMQS:%{ENV:UTMQS}&%1]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_medium=[^&]*)
+RewriteRule ^ - [E=UTMQS:%1]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_medium=[^&]*)
+RewriteRule ^ - [E=UTMQS:%{ENV:UTMQS}&%1]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_campaign=[^&]*)
+RewriteRule ^ - [E=UTMQS:%1]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_campaign=[^&]*)
+RewriteRule ^ - [E=UTMQS:%{ENV:UTMQS}&%1]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_term=[^&]*)
+RewriteRule ^ - [E=UTMQS:%1]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_term=[^&]*)
+RewriteRule ^ - [E=UTMQS:%{ENV:UTMQS}&%1]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_content=[^&]*)
+RewriteRule ^ - [E=UTMQS:%1]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteCond %{QUERY_STRING} (?:^|&)(utm_content=[^&]*)
+RewriteRule ^ - [E=UTMQS:%{ENV:UTMQS}&%1]
+
+# Bekannte Pfade auf das jeweilige Ziel mit Schrägstrich weiterleiten
+RewriteCond %{ENV:UTMQS} ^$
+RewriteRule ^preise/?$ https://smart-einzug.de/preise/ [R=301,L,QSD]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteRule ^preise/?$ https://smart-einzug.de/preise/?%{ENV:UTMQS} [R=301,L,QSD]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteRule ^funktionen/?$ https://smart-einzug.de/funktionen/ [R=301,L,QSD]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteRule ^funktionen/?$ https://smart-einzug.de/funktionen/?%{ENV:UTMQS} [R=301,L,QSD]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteRule ^hilfe/?$ https://smart-einzug.de/hilfe/ [R=301,L,QSD]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteRule ^hilfe/?$ https://smart-einzug.de/hilfe/?%{ENV:UTMQS} [R=301,L,QSD]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteRule ^impressum/?$ https://smart-einzug.de/impressum/ [R=301,L,QSD]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteRule ^impressum/?$ https://smart-einzug.de/impressum/?%{ENV:UTMQS} [R=301,L,QSD]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteRule ^datenschutz/?$ https://smart-einzug.de/datenschutz/ [R=301,L,QSD]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteRule ^datenschutz/?$ https://smart-einzug.de/datenschutz/?%{ENV:UTMQS} [R=301,L,QSD]
+
+RewriteCond %{ENV:UTMQS} ^$
+RewriteRule ^agb/?$ https://smart-einzug.de/agb/ [R=301,L,QSD]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteRule ^agb/?$ https://smart-einzug.de/agb/?%{ENV:UTMQS} [R=301,L,QSD]
+
+# Startseite
+RewriteCond %{ENV:UTMQS} ^$
+RewriteRule ^$ https://smart-einzug.de/ [R=301,L,QSD]
+RewriteCond %{ENV:UTMQS} !^$
+RewriteRule ^$ https://smart-einzug.de/?%{ENV:UTMQS} [R=301,L,QSD]
+
+# Alle sonstigen Pfade: 404
+RewriteRule ^ - [R=404,L]
+
+ErrorDocument 404 /404.html

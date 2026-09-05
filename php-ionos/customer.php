@@ -11,6 +11,7 @@ require_once __DIR__ . '/app/iban.php';
 require_once __DIR__ . '/app/customer_settings.php';
 require_once __DIR__ . '/app/mandates.php';
 require_once __DIR__ . '/app/mandate_files.php';
+require_once __DIR__ . '/app/mandate_requests.php';
 
 $ctx = require_subscription();
 $tenantId = $ctx['org_id'];
@@ -83,6 +84,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log($tenantId, $ctx, 'mandate_file_deleted', 'mandate_file', $file['id'], ['name' => $file['original_name'], 'customer_id' => $customerId]);
             flash_set('success', 'Mandatsdokument "' . $file['original_name'] . '" gelöscht.');
 
+        } elseif ($action === 'request_mandate_digital') {
+            if (!mandate_request_feature_enabled()) {
+                throw new RuntimeException('Die digitale Mandatsanforderung ist nicht freigeschaltet.');
+            }
+            if (empty($customer['email'])) {
+                throw new RuntimeException('Für diesen Kunden ist keine E-Mail-Adresse hinterlegt; der Link kann nicht versendet werden.');
+            }
+            $res = mandate_request_create($tenantId, $customer, $ctx);
+            if ($res['mailed']) {
+                flash_set('success', 'Mandatsanforderung an ' . $customer['email'] . ' versendet. Der Link ist 14 Tage gültig.');
+            } else {
+                // Kein Mailversand eingerichtet: Link einmalig anzeigen (nicht in der Datenbank gespeichert)
+                $_SESSION['mandate_request_link_show'] = ['customer_id' => $customerId, 'url' => $res['url']];
+                flash_set('info', 'Mandatsanforderung erzeugt. Der E-Mail-Versand ist nicht eingerichtet; der Link wird unten einmalig angezeigt und ist 14 Tage gültig.');
+            }
+
+        } elseif ($action === 'revoke_mandate_request') {
+            mandate_request_revoke($tenantId, (string)($_POST['request_id'] ?? ''), $ctx);
+            flash_set('success', 'Mandatsanforderung widerrufen. Der Link ist ungültig.');
+
         } elseif ($action === 'cancel_mandate') {
             $mandate = mandate_load($tenantId, $_POST['mandate_id'] ?? '');
             if (!$mandate) {
@@ -116,6 +137,14 @@ foreach ($ibans as $ib) {
 
 $mandates = mandates_for_customer($tenantId, $customerId);
 $mandateFiles = mandate_files_for_customer($tenantId, $customerId);
+$mandateRequestFeature = mandate_request_feature_enabled();
+$mandateRequests = $mandateRequestFeature ? mandate_requests_for_customer($tenantId, $customerId) : [];
+$mandateRequestActive = $mandateRequestFeature ? mandate_request_active($tenantId, $customerId) : null;
+$mandateRequestLink = null;
+if (!empty($_SESSION['mandate_request_link_show']) && ($_SESSION['mandate_request_link_show']['customer_id'] ?? '') === $customerId) {
+    $mandateRequestLink = $_SESSION['mandate_request_link_show']['url'];
+    unset($_SESSION['mandate_request_link_show']);
+}
 
 $stmt = $pdo->prepare(
     "SELECT * FROM invoices WHERE customer_id = ? AND tenant_id = ? ORDER BY lexoffice_status IN ('open','overdue') DESC, due_date DESC LIMIT 100"
@@ -204,11 +233,12 @@ layout_header('Kunde ' . $customer['name'], $ctx);
                 <tbody>
                 <?php foreach ($mandates as $m): ?>
                     <tr>
-                        <td><strong><?= e($m['mandate_reference']) ?></strong>
+                        <td><strong><?= e($m['mandate_reference']) ?></strong> <span class="hint">(interne Referenz)</span>
+                            <div class="hint">Stripe-Referenz: <?= $m['stripe_mandate_reference'] ? e($m['stripe_mandate_reference']) : 'noch nicht bekannt (wird beim ersten erfolgreichen Einzug gespeichert)' ?></div>
                             <?php if ($m['document_generated_at']): ?><div class="hint">Dokument: <?= format_datetime($m['document_generated_at']) ?></div><?php endif; ?></td>
                         <td><?= status_badge($m['status']) ?><?php if ($m['cancel_reason']): ?><div class="hint"><?= e($m['cancel_reason']) ?></div><?php endif; ?></td>
                         <td><?= $m['mandate_type'] === 'one_off' ? 'Einmalig' : 'Wiederkehrend' ?></td>
-                        <td><?= $m['signed_date'] ? format_date($m['signed_date']) . ($m['signed_place'] ? ', ' . e($m['signed_place']) : '') : '<span class="badge badge-warn">nicht erfasst</span>' ?></td>
+                        <td><?= $m['signed_date'] ? format_date($m['signed_date']) . ($m['signed_place'] ? ', ' . e($m['signed_place']) : '') : '<span class="badge badge-warn">Nachweis nicht erfasst</span>' ?></td>
                         <td><?= $m['iban'] ? e(mask_iban($m['iban'])) : '<span class="hint">offen</span>' ?></td>
                         <td><?= format_datetime($m['last_used_at']) ?></td>
                         <td>
@@ -244,7 +274,56 @@ layout_header('Kunde ' . $customer['name'], $ctx);
         <?php endif; ?>
         <p class="hint">Regeln: Mandatsreferenz max. 35 Zeichen, je Firma eindeutig. Ein Mandat erlischt nach 36 Monaten ohne Einzug.
             Unterschriebene Mandate sind aufzubewahren (Empfehlung mindestens 36 Monate nach der letzten Nutzung); das Portal löscht Mandate nie, sondern widerruft sie.
-            <?= (int)$org['require_signed_mandate'] ? 'Einzüge sind erst nach erfasster Unterschrift möglich.' : 'Einzüge sind ohne erfasste Unterschrift möglich (Einstellung unter "Firma").' ?></p>
+            <?= (int)$org['require_signed_mandate']
+                ? 'Einstellung "Handschriftlicher Nachweis erforderlich" ist aktiv: Einzüge sind erst nach erfasster Unterschrift (oder digital erteiltem Mandat) möglich.'
+                : 'Einstellung "Handschriftlicher Nachweis erforderlich" ist aus: Einzüge sind ohne erfassten Nachweis möglich (Einstellung unter "Firma").' ?>
+            Die interne Mandatsreferenz vergibt das Portal; die Stripe-Referenz erzeugt der Zahlungsdienstleister und kann auf dem Kontoauszug des Kunden erscheinen.</p>
+        <?php if ($mandateRequestFeature): ?>
+        <h3 style="margin-top: 18px;">Mandat digital anfordern</h3>
+        <p class="hint">Der Kunde erhält per E-Mail einen 14 Tage gültigen Link, liest den Mandatstext und gibt seine Bankverbindung beim Zahlungsdienstleister Stripe ein (keine Zahlung). Nach Bestätigung ist das Mandat sofort einsatzbereit; die IBAN liegt dann nur maskiert vor.</p>
+        <?php if ($mandateRequestLink): ?>
+            <div class="flash flash-info">Link für den Kunden (einmalige Anzeige): <code class="copy"><?= e($mandateRequestLink) ?></code></div>
+        <?php endif; ?>
+        <form method="post" class="inline-form"
+              onsubmit="return confirm(<?= e(json_encode('Mandatsanforderung an ' . ($customer['email'] ?: 'den Kunden') . ' senden?' . ($mandateRequestActive ? ' Die bestehende Anforderung wird dabei widerrufen.' : ''), JSON_UNESCAPED_UNICODE)) ?>)">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="request_mandate_digital">
+            <input type="hidden" name="customer_id" value="<?= e($customerId) ?>">
+            <button type="submit" class="btn btn-secondary"<?= $customer['email'] ? '' : ' disabled title="Keine E-Mail-Adresse hinterlegt"' ?>>Mandat digital anfordern</button>
+            <?php if ($mandateRequestActive): ?>
+                <span class="hint">Offene Anforderung vom <?= format_datetime($mandateRequestActive['created_at']) ?> (<?= e(mandate_request_status_label($mandateRequestActive['status'])) ?>, gültig bis <?= format_datetime($mandateRequestActive['expires_at']) ?>)</span>
+            <?php endif; ?>
+        </form>
+        <?php if ($mandateRequests): ?>
+        <div class="table-wrap" style="margin-top: 12px;">
+            <table>
+                <thead><tr><th>Angefordert</th><th>Status</th><th>Gültig bis</th><th>Erinnerungen</th><th>Von</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($mandateRequests as $rq): ?>
+                    <tr>
+                        <td><?= format_datetime($rq['created_at']) ?></td>
+                        <td><?= e(mandate_request_status_label($rq['status'])) ?><?php if ($rq['granted_at']): ?><div class="hint">erteilt <?= format_datetime($rq['granted_at']) ?></div><?php endif; ?></td>
+                        <td><?= format_datetime($rq['expires_at']) ?></td>
+                        <td><?= (int)$rq['reminders_sent'] ?></td>
+                        <td class="hint"><?= e($rq['created_by_email'] ?: '-') ?></td>
+                        <td>
+                            <?php if (in_array($rq['status'], ['requested', 'pending'], true)): ?>
+                            <form method="post" class="inline-form">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="revoke_mandate_request">
+                                <input type="hidden" name="customer_id" value="<?= e($customerId) ?>">
+                                <input type="hidden" name="request_id" value="<?= e($rq['id']) ?>">
+                                <button type="submit" class="btn btn-sm btn-danger">Widerrufen</button>
+                            </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 
@@ -398,7 +477,7 @@ layout_header('Kunde ' . $customer['name'], $ctx);
             <?php foreach ($collections as $c): ?>
                 <tr>
                     <td><?= e($c['voucher_number']) ?></td>
-                    <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?></td>
+                    <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?><?php if (!empty($c['note'])): ?><div class="hint"><?= e($c['note']) ?></div><?php endif; ?></td>
                     <td><?= status_badge((string)$c['stripe_status'], $c['scheduled_date']) ?></td>
                     <td><?= format_datetime($c['submitted_at']) ?></td>
                     <td class="hint"><?= e($c['created_by_email'] ?: 'System/Cron') ?></td>

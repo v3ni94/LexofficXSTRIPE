@@ -41,12 +41,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('info', 'Synchronisation abgebrochen.');
 
         } elseif ($action === 'collect') {
-            submit_collection($tenantId, $_POST['invoice_id'] ?? '', null, $ctx);
-            flash_set('success', 'Lastschrift wurde bei Stripe eingereicht.');
+            $opts = ['confirm_amount_cents' => ($_POST['confirm_amount_cents'] ?? '') !== '' ? (int)$_POST['confirm_amount_cents'] : null];
+            $cid = submit_collection($tenantId, $_POST['invoice_id'] ?? '', null, $ctx, $opts);
+            $s = $pdo->prepare('SELECT amount_cents, note FROM payment_collections WHERE id = ?');
+            $s->execute([$cid]);
+            $c = $s->fetch();
+            flash_set('success', 'Lastschrift über ' . format_eur_cents((int)$c['amount_cents']) . ' wurde bei Stripe eingereicht.'
+                . ($c['note'] ? ' Vermerk: ' . $c['note'] : ''));
 
         } elseif ($action === 'schedule') {
             $date = $_POST['scheduled_date'] ?? '';
-            submit_collection($tenantId, $_POST['invoice_id'] ?? '', $date, $ctx);
+            $opts = ['confirm_amount_cents' => ($_POST['confirm_amount_cents'] ?? '') !== '' ? (int)$_POST['confirm_amount_cents'] : null];
+            submit_collection($tenantId, $_POST['invoice_id'] ?? '', $date, $ctx, $opts);
             flash_set('success', 'Lastschrift wurde für den ' . format_date($date) . ' terminiert.');
 
         } elseif ($action === 'sepa_disable' || $action === 'sepa_enable') {
@@ -165,6 +171,7 @@ while ((int)$suggest->format('N') >= 6) {
 }
 
 $quota = collections_quota_check($tenantId);
+$pauseReason = collections_pause_reason($tenantId);
 $stmt = $pdo->prepare('SELECT lexoffice_last_sync FROM integrations WHERE tenant_id = ?');
 $stmt->execute([$tenantId]);
 $lastSync = $stmt->fetchColumn();
@@ -198,6 +205,11 @@ layout_header('Rechnungen', $ctx);
         <a class="btn btn-sm <?= $sepaFilter === 'all' ? '' : 'btn-secondary' ?>"
            href="<?= e(invoices_url($filter, 'all')) ?>">Alle anzeigen</a>
     </div>
+    <?php if ($pauseReason): ?>
+        <div class="flash flash-error"><?= e($pauseReason) ?> <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>
+    <?php endif; ?>
+    <p class="hint">Vor jeder Einreichung wird der offene Restbetrag der Rechnung bei Lexware Office abgerufen. Weicht er vom Rechnungsbetrag ab
+        (Teilzahlung), wird nur nach ausdrücklicher Bestätigung der Restbetrag eingezogen; ist die Rechnung bezahlt, wird nichts eingereicht.</p>
     <?php if ($preNotify): ?>
         <p class="hint">Vorabankündigung per E-Mail ist aktiv (<?= (int)$ctx['pre_notification_days'] ?> Tage): Einzüge werden
             terminiert, frühester Termin <?= $suggest->format('d.m.Y') ?>. Die Ankündigung geht beim Terminieren an den Kunden.</p>
@@ -237,36 +249,55 @@ layout_header('Rechnungen', $ctx);
                             <span class="hint">KD <?= e($inv['customer_number']) ?></span>
                         <?php endif; ?>
                     </td>
-                    <td class="num"><?= format_eur($inv['total_gross_amount']) ?></td>
+                    <td class="num"><?= format_eur($inv['total_gross_amount']) ?>
+                        <?php if ($inv['open_amount'] !== null && $inv['open_amount_fetched_at']): ?>
+                            <div class="hint" title="Offener Betrag laut Lexware Office (Payments-Endpunkt)">Rest laut Lexware: <?= format_eur($inv['open_amount']) ?><br>Stand <?= format_datetime($inv['open_amount_fetched_at']) ?></div>
+                        <?php endif; ?>
+                    </td>
                     <td><?= format_date($inv['due_date']) ?></td>
                     <td><?= e($inv['keyword'] ?? '-') ?></td>
                     <td><?= status_badge($inv['collection_status']) ?></td>
                     <td>
                         <?php if ($collectable && (int)$inv['has_iban'] === 0): ?>
                             <span class="hint">Keine IBAN hinterlegt: <a href="customer.php?id=<?= e($inv['customer_id']) ?>">Kundendetails</a></span>
-                        <?php elseif ($collectable): ?>
+                        <?php elseif ($collectable):
+                            $totalCents = (int)round((float)$inv['total_gross_amount'] * 100);
+                            $cachedOpen = invoice_open_amount_cached($inv);
+                            $restCents = $cachedOpen !== null ? $cachedOpen - invoice_own_collections_cents($tenantId, $inv['id']) : null;
+                            $partial = $restCents !== null && $restCents > 0 && $restCents < $totalCents;
+                            $nothingOpen = $restCents !== null && $restCents <= 0;
+                        ?>
+                        <?php if ($nothingOpen): ?>
+                            <span class="hint">Laut Lexware Office kein Restbetrag offen (Stand <?= format_datetime($inv['open_amount_fetched_at']) ?>). Bitte synchronisieren.</span>
+                        <?php else: ?>
+                        <?php if ($partial): ?>
+                            <div class="hint">Teilzahlung erkannt: Es wird nur der Restbetrag von <strong><?= format_eur_cents($restCents) ?></strong> eingezogen.</div>
+                        <?php endif; ?>
                         <?php if (!$preNotify): ?>
                         <form method="post" class="inline-form"
-                              onsubmit="return confirm(<?= e(json_encode('Lastschrift für Rechnung ' . $inv['voucher_number'] . ' jetzt einreichen?', JSON_UNESCAPED_UNICODE)) ?>)">
+                              onsubmit="return confirm(<?= e(json_encode('Lastschrift für Rechnung ' . $inv['voucher_number'] . ($partial ? ' über den Restbetrag ' . format_eur_cents($restCents) : '') . ' jetzt einreichen?', JSON_UNESCAPED_UNICODE)) ?>)">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="collect">
                             <input type="hidden" name="invoice_id" value="<?= e($inv['id']) ?>">
+                            <?php if ($partial): ?><input type="hidden" name="confirm_amount_cents" value="<?= $restCents ?>"><?php endif; ?>
                             <input type="hidden" name="back_status" value="<?= e($filter) ?>">
                             <input type="hidden" name="back_sepa" value="<?= e($sepaFilter) ?>">
-                            <button type="submit" class="btn btn-sm">Einziehen</button>
+                            <button type="submit" class="btn btn-sm"<?= $pauseReason ? ' disabled title="Not-Stopp aktiv"' : '' ?>><?= $partial ? 'Restbetrag einziehen' : 'Einziehen' ?></button>
                         </form>
                         <?php endif; ?>
                         <form method="post" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="schedule">
                             <input type="hidden" name="invoice_id" value="<?= e($inv['id']) ?>">
+                            <?php if ($partial): ?><input type="hidden" name="confirm_amount_cents" value="<?= $restCents ?>"><?php endif; ?>
                             <input type="hidden" name="back_status" value="<?= e($filter) ?>">
                             <input type="hidden" name="back_sepa" value="<?= e($sepaFilter) ?>">
                             <input type="date" name="scheduled_date" required
                                    min="<?= $suggest->format('Y-m-d') ?>"
                                    value="<?= $suggest->format('Y-m-d') ?>">
-                            <button type="submit" class="btn btn-sm btn-secondary">Terminieren</button>
+                            <button type="submit" class="btn btn-sm btn-secondary"<?= $pauseReason ? ' disabled title="Not-Stopp aktiv"' : '' ?>>Terminieren</button>
                         </form>
+                        <?php endif; ?>
                         <?php elseif (!in_array($inv['lexoffice_status'], ['open', 'overdue'], true)): ?>
                             <span class="hint">Nicht mehr einziehbar (Lexware Office: <?= e(lexoffice_status_label($inv['lexoffice_status'])) ?>)</span>
                         <?php elseif (!$hasCustomer): ?>

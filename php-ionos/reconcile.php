@@ -9,7 +9,7 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/crypto.php';
-require_once __DIR__ . '/app/lexoffice.php';
+require_once __DIR__ . '/app/invoice_source.php';
 
 $ctx = require_login();
 $tenantId = $ctx['org_id'];
@@ -22,19 +22,8 @@ $lexSet = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     try {
-        $stmt = $pdo->prepare('SELECT * FROM integrations WHERE tenant_id = ?');
-        $stmt->execute([$tenantId]);
-        $integration = $stmt->fetch();
-        if (!$integration || !(int)$integration['lexoffice_connected']) {
-            throw new RuntimeException('Lexware Office ist nicht verbunden.');
-        }
-        $apiKey = decrypt_value($integration['lexoffice_api_key_encrypted']);
-        if (!$apiKey) {
-            throw new RuntimeException('Lexware Office API-Key fehlt.');
-        }
-
         @set_time_limit(60);
-        $lex = new LexofficeClient($apiKey);
+        $lex = invoice_source_for_tenant($tenantId); // prüft Verbindung und Schlüssel
         $lexList = [];
         foreach (['open', 'overdue'] as $status) {
             $page = 0;

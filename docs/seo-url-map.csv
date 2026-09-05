@@ -1,0 +1,69 @@
+host;pfad;suchabsicht;inhaltseigentuemer;status;indexierung;canonical;sitemap
+smart-einzug.de;/;informational/transaktional (Marke, Übersicht);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/funktionen/;informational (Funktionsumfang);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/preise/;transaktional (Preisvergleich, Kaufentscheidung);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/so-funktionierts/;informational (Ablauf, Vertrauen);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/integrationen/;informational (Integrationsübersicht);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/integrationen/lexware-office/;informational/transaktional (Lexware Office Anbindung);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/integrationen/sevdesk/;informational (sevdesk in Planung, kein Kaufbutton);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/hilfe/;informational (Support, Anleitungen);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/kontakt/;navigational (Kontaktaufnahme);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/impressum/;navigational (Rechtliches, Pflichtangaben);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/datenschutz/;navigational (Rechtliches);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/agb/;navigational (Rechtliches);smart-einzug.de;live;index,follow;self;ja
+smart-einzug.de;/vergleich/sepaheld-gocardless/;informational (Wettbewerbsvergleich, nur nach Freigabe bewerben);smart-einzug.de;live;noindex,follow;self;nein
+smart-einzug.de;/lp/lexware-lastschrift/;transaktional (Ads-Landingpage Lexware Office);smart-einzug.de;live;noindex,follow;self;nein
+smart-einzug.de;/lp/lexoffice-lastschrift/;transaktional (Ads-Landingpage lexoffice);smart-einzug.de;live;noindex,follow;self;nein
+smart-einzug.de;/404.html;keine (Fehlerseite);smart-einzug.de;live;noindex,nofollow;self;nein
+lexware-einzug.de;/;informational/transaktional (Marke, Übersicht, Bestandsdomain);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/funktionen.html;informational (Funktionsumfang);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/preise.html;transaktional (Preisvergleich);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/sicherheit.html;informational (Vertrauen, Sicherheitsnachweis);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/hilfe.html;informational (Support);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/faq.html;informational (FAQ);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/impressum.html;navigational (Rechtliches, Pflichtangaben);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/datenschutz.html;navigational (Rechtliches);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/agb.html;navigational (Rechtliches);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lexware-office-lastschrift.html;informational/transaktional (Keyword-Landingpage);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lexware-office-lastschrifteinzug.html;informational/transaktional (Keyword-Landingpage);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lexware-office-sepa-lastschrift.html;informational/transaktional (Keyword-Landingpage);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lexware-office-sepa-mandat.html;informational (Keyword-Landingpage Mandat);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lexware-office-stripe.html;informational/transaktional (Keyword-Landingpage Stripe);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lexware-office-api.html;informational (technische Voraussetzungen Public API);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lexware-sepa-einzug.html;informational/transaktional (Keyword-Landingpage);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/offene-rechnungen-per-lastschrift-einziehen.html;informational/transaktional (Keyword-Landingpage);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/anleitung/lexware-office-api.html;informational (Setup-Anleitung);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/anleitung/stripe-verbinden.html;informational (Setup-Anleitung);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/ratgeber/;informational (Ratgeber-Übersicht);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/ratgeber/mandatsreferenz-glaeubiger-id.html;informational (Ratgeberartikel);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/ratgeber/sepa-lastschrift-buchen-lexware-office.html;informational (Ratgeberartikel);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten.html;informational (Ratgeberartikel);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/ratgeber/vorabankuendigung-sepa-lastschrift.html;informational (Ratgeberartikel);lexware-einzug.de;live;index,follow;self;ja
+lexware-einzug.de;/lp/sepa-lastschrift/;transaktional (Ads-Landingpage);lexware-einzug.de;live;noindex,follow;self;nein
+lexware-einzug.de;/404.html;keine (Fehlerseite);lexware-einzug.de;live;noindex,nofollow;self;nein
+lexoffice-einzug.de;/;informational/transaktional (Marke, Übersicht, Bestandsdomain);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-lastschrift.html;informational/transaktional (Keyword-Landingpage);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-lastschrifteinzug.html;informational/transaktional (Keyword-Landingpage);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-lastschrift-einrichten.html;informational (Anleitung/Setup);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-sepa-lastschrift.html;informational/transaktional (Keyword-Landingpage);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-sepa-mandat.html;informational (Keyword-Landingpage Mandat);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-stripe-lastschrift.html;informational/transaktional (Keyword-Landingpage Stripe);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-public-api-xl.html;informational (technische Voraussetzungen Public API);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lexoffice-heisst-jetzt-lexware-office.html;informational (Umbenennungshinweis);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/impressum.html;navigational (Rechtliches, Pflichtangaben);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/datenschutz.html;navigational (Rechtliches);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/agb.html;navigational (Rechtliches);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/;informational (Ratgeber-Übersicht);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/kunden-und-rechnungen-richtig-zuordnen.html;informational (Ratgeberartikel);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/lexoffice-lastschrift-oder-ueberweisung.html;informational (Ratgeberartikel);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/sepa-mandat-einholen-bestandskunden.html;informational (Ratgeberartikel);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/warum-ist-eine-lastschrift-nicht-sofort-bezahlt.html;informational (Ratgeberartikel);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/was-brauche-ich-fuer-eine-sepa-lastschrift.html;informational (Ratgeberartikel);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/was-passiert-bei-einer-ruecklastschrift.html;informational (Ratgeberartikel);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/ratgeber/wie-funktioniert-ein-sepa-mandat.html;informational (Ratgeberartikel);lexoffice-einzug.de;live;index,follow;self;ja
+lexoffice-einzug.de;/lp/lastschrift-einrichten/;transaktional (Ads-Landingpage);lexoffice-einzug.de;live;noindex,follow;self;nein
+lexoffice-einzug.de;/404.html;keine (Fehlerseite);lexoffice-einzug.de;live;noindex,nofollow;self;nein
+einzug-direkt.de;/*;keine (technischer Alias);smart-einzug.de;live (Redirect);noindex,nofollow (Redirect-Ziel indexiert, nicht der Alias);smart-einzug.de (per 301);nein
+smart-lastschrift.de;/*;keine (technischer Alias);smart-einzug.de;live (Redirect);noindex,nofollow (Redirect-Ziel indexiert, nicht der Alias);smart-einzug.de (per 301);nein
+lastschrift-einfach.de;/*;keine (technischer Alias);smart-einzug.de;live (Redirect);noindex,nofollow (Redirect-Ziel indexiert, nicht der Alias);smart-einzug.de (per 301);nein
+smarteinzug.de;/*;keine (technischer Alias);smart-einzug.de;live (Redirect);noindex,nofollow (Redirect-Ziel indexiert, nicht der Alias);smart-einzug.de (per 301);nein

@@ -18,6 +18,7 @@ if (get_included_files()[0] === __FILE__) {
 }
 
 require_once __DIR__ . '/sync.php';
+require_once __DIR__ . '/invoice_source.php';
 require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/audit.php';
 
@@ -75,7 +76,18 @@ function sync_state_cancel(string $tenantId, ?array $actor): void
     audit_log($tenantId, $actor, 'sync_cancelled', 'organization', $tenantId);
 }
 
-/** Lexware-Office-Client für eine Firma (Schlüssel wird je Schritt neu gelesen). */
+/**
+ * Rechnungsquelle einer Firma für die Synchronisation (Schlüssel wird je
+ * Schritt neu gelesen). Kapselt invoice_source_for_tenant() aus
+ * app/invoice_source.php; der Testhaken lexsepa_lex_client_factory wird dort
+ * ausgewertet.
+ */
+function sync_invoice_source(string $tenantId): InvoiceSource
+{
+    return invoice_source_for_tenant($tenantId);
+}
+
+/** Lexware-Office-Client für eine Firma (Verbindungsprüfung, Abgleich). Bevorzugt sync_invoice_source() verwenden. */
 function sync_lex_client(string $tenantId): LexofficeClient
 {
     // Testhaken: erlaubt automatisierten Tests, einen Ersatz-Client ohne echte API zu liefern.
@@ -117,7 +129,7 @@ function sync_state_step(string $tenantId, int $batchSize = 6): array
 
     $state = sync_state_get($tenantId);
     try {
-        $lex = sync_lex_client($tenantId);
+        $lex = sync_invoice_source($tenantId);
         $step = sync_invoices_step($tenantId, $lex, $state['cursor'], $batchSize);
 
         if ($step['done']) {

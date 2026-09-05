@@ -31,6 +31,150 @@ function config(string $key, $default = null)
     return $GLOBALS['config'][$key] ?? $default;
 }
 
+// ---------------------------------------------------------------------------
+// Basisadressen und Host-Prüfung
+// ---------------------------------------------------------------------------
+
+/** Produktname (Standard SmartEinzug). Technische Kennungen bleiben unverändert. */
+function product_name(): string
+{
+    $name = trim((string)config('product_name', ''));
+    return $name !== '' ? $name : 'SmartEinzug';
+}
+
+/**
+ * Basisadresse der Kundenanwendung ohne Slash am Ende. Reihenfolge:
+ * app_base_url, dann base_url. Alle absoluten Links (Verifizierung, Passwort,
+ * Einladung, Rückkehr aus dem Checkout, Webhook-Anzeige) nutzen diese Funktion.
+ */
+function app_base_url(): string
+{
+    foreach (['app_base_url', 'base_url'] as $key) {
+        $v = rtrim(trim((string)config($key, '')), '/');
+        if ($v !== '') {
+            return $v;
+        }
+    }
+    return '';
+}
+
+/** Öffentliche Produktwebsite ohne Slash am Ende (public_base_url, sonst marketing_url). */
+function public_base_url(): string
+{
+    foreach (['public_base_url', 'marketing_url'] as $key) {
+        $v = rtrim(trim((string)config($key, '')), '/');
+        if ($v !== '') {
+            return $v;
+        }
+    }
+    return 'https://smart-einzug.de';
+}
+
+/** Basisadresse des Adminbereichs ohne Slash am Ende; leer = Übergangsmodus (gleicher Host). */
+function admin_base_url(): string
+{
+    return rtrim(trim((string)config('admin_base_url', '')), '/');
+}
+
+/** Hostname aus einer Basisadresse (klein geschrieben) oder leerer String. */
+function base_url_host(string $url): string
+{
+    $host = parse_url($url, PHP_URL_HOST);
+    return is_string($host) ? strtolower($host) : '';
+}
+
+/**
+ * Hostname der aktuellen Anfrage aus HTTP_HOST, ohne Port, klein geschrieben
+ * und per Regex validiert. Liefert leeren String bei fehlendem oder
+ * ungültigem Host (z. B. CLI).
+ */
+function request_host(): string
+{
+    $raw = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
+    if ($raw === '') {
+        return '';
+    }
+    // IPv6 in eckigen Klammern, sonst Port abtrennen
+    if ($raw[0] === '[') {
+        $end = strpos($raw, ']');
+        $raw = $end === false ? '' : substr($raw, 1, $end - 1);
+        return preg_match('/^[0-9a-f:.]{2,45}$/', $raw) ? $raw : '';
+    }
+    $raw = preg_replace('/:\d{1,5}$/', '', $raw) ?? '';
+    return preg_match('/^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/', $raw) ? $raw : '';
+}
+
+/**
+ * true, wenn keine Allowlist konfiguriert ist (Übergangsmodus) oder der
+ * Host der Anfrage in allowed_hosts steht.
+ */
+function host_allowed(): bool
+{
+    $allowed = array_values(array_filter(array_map(
+        fn($h) => strtolower(trim((string)$h)),
+        (array)config('allowed_hosts', [])
+    ), fn($h) => $h !== ''));
+    if (!$allowed) {
+        return true;
+    }
+    $host = request_host();
+    return $host !== '' && in_array($host, $allowed, true);
+}
+
+/** Antwortet mit HTTP 404 und kurzer Textmeldung, beendet das Skript. */
+function host_not_found(): void
+{
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Nicht gefunden.');
+}
+
+/**
+ * Host-Prüfung für die aktuelle Anfrage (nicht in der CLI).
+ *  1. Allowlist: Host nicht enthalten, dann 404. Ausgenommen sind Endpunkte,
+ *     die sich selbst über Token oder Signatur schützen.
+ *  2. Admin-Trennung (nur wenn admin_base_url gesetzt): auf dem Adminhost sind
+ *     nur Anmeldung, 2FA, Passwort, Sicherheit, Abmelden und Assets erreichbar;
+ *     admin.php auf jedem anderen Host liefert 404.
+ */
+function enforce_host_rules(): void
+{
+    if (PHP_SAPI === 'cli') {
+        return;
+    }
+    $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    $selfProtected = ['cron.php', 'stripe-webhook.php', 'billing-webhook.php', 'track.php'];
+
+    if (!in_array($script, $selfProtected, true) && !host_allowed()) {
+        host_not_found();
+    }
+
+    $adminHost = base_url_host(admin_base_url());
+    if ($adminHost === '') {
+        return; // Übergangsmodus: Admin auf demselben Host erlaubt
+    }
+    $host = request_host();
+    $appHost = base_url_host(app_base_url());
+    $onAdminHost = $host !== '' && $host === $adminHost && $adminHost !== $appHost;
+
+    if ($onAdminHost) {
+        $adminAllowed = ['admin.php', 'login.php', 'twofa-verify.php', 'twofa-setup.php', 'logout.php',
+            'security.php', 'forgot-password.php', 'reset-password.php'];
+        $uri = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+        $isAsset = str_starts_with($uri, '/assets/') || $uri === '/favicon.ico';
+        if ($script === 'index.php' || $script === 'dashboard.php') {
+            // Startseite und Ziel nach der Anmeldung: auf dem Adminhost zum Adminbereich
+            header('Location: /admin.php', true, 302);
+            exit;
+        }
+        if (!$isAsset && !in_array($script, $adminAllowed, true)) {
+            host_not_found();
+        }
+    } elseif ($script === 'admin.php') {
+        host_not_found();
+    }
+}
+
 /** PDO-Verbindung (Singleton) */
 function db(): PDO
 {
@@ -101,6 +245,9 @@ function format_datetime(?string $dt): string
     $ts = strtotime($dt);
     return $ts ? date('d.m.Y H:i', $ts) : '-';
 }
+
+// Host-Prüfung vor dem Start der Session (kein Cookie für abgewiesene Hosts)
+enforce_host_rules();
 
 // ---------------------------------------------------------------------------
 // Session (nicht für Webhook/Cron, die binden bootstrap ohne Session-Bedarf ein,

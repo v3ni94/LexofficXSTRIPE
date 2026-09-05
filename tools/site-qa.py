@@ -16,8 +16,9 @@ import glob, json, os, re, sys, html
 from difflib import SequenceMatcher
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'websites')
-DOMAINS = ['lexware-einzug.de', 'lexoffice-einzug.de']
+DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de']
 NOINDEX_FILES = {'404.html'}
+import itertools
 SIM_WARN, SIM_FAIL = 0.35, 0.50
 
 errors, warnings = [], []
@@ -81,6 +82,7 @@ def check_domain(domain):
         if '—' in strip_tags(s) or ' – ' in strip_tags(s): err(f'{tag}: Gedankenstrich im Text')
         if 'Kein Produkt der Haufe-Lexware' not in s: err(f'{tag}: Markenhinweis fehlt')
         if 'In Liebe zu Charlotte' not in s: warn(f'{tag}: Signaturkommentar fehlt')
+        if 'noindex' in s and rel.startswith('lp/') and 'follow' not in s: err(f'{tag}: Landingpage braucht noindex,follow')
         if s.count('In Liebe zu Charlotte') > 1: warn(f'{tag}: Signaturkommentar mehrfach')
         for ld in re.findall(r'<script type="application/ld\+json">(.*?)</script>', s, re.S):
             try:
@@ -129,25 +131,28 @@ def similarity_report():
             if os.path.basename(rel) in legal: continue
             out[rel] = main_content(open(f, encoding='utf-8').read())
         return out
-    a, b = texts(DOMAINS[0]), texts(DOMAINS[1])
     def shingles(t, n=8):
         w = re.findall(r'\w+', t.lower())
         return set(' '.join(w[i:i + n]) for i in range(max(0, len(w) - n + 1)))
     worst = 0.0
     rows = []
-    for fa, ta in a.items():
-        sa = shingles(ta)
-        best = (0.0, None, 0)
-        for fb, tb in b.items():
-            sb = shingles(tb)
-            if not sa or not sb: continue
-            jac = len(sa & sb) / len(sa | sb)
-            ratio = SequenceMatcher(None, ta[:6000], tb[:6000]).ratio()
-            score = max(jac, ratio)
-            if score > best[0]: best = (score, fb, len(sa & sb))
-        rows.append((best[0], fa, best[1], best[2]))
-        worst = max(worst, best[0])
-    for score, fa, fb, common in sorted(rows, reverse=True)[:8]:
+    for da, db_ in itertools.combinations(DOMAINS, 2):
+        a, b = texts(da), texts(db_)
+        for fa, ta in a.items():
+            if fa.startswith('lp/'): continue
+            sa = shingles(ta)
+            best = (0.0, None, 0)
+            for fb, tb in b.items():
+                if fb.startswith('lp/'): continue
+                sb = shingles(tb)
+                if not sa or not sb: continue
+                jac = len(sa & sb) / len(sa | sb)
+                ratio = SequenceMatcher(None, ta[:6000], tb[:6000]).ratio()
+                score = max(jac, ratio)
+                if score > best[0]: best = (score, fb, len(sa & sb))
+            rows.append((best[0], f'{da}/{fa}', f'{db_}/{best[1]}', best[2]))
+            worst = max(worst, best[0])
+    for score, fa, fb, common in sorted(rows, reverse=True)[:10]:
         print(f'  {score:5.1%}  {fa}  <->  {fb}  (gemeinsame 8-Wort-Folgen: {common})')
     if worst > SIM_FAIL: err(f'Content-Ähnlichkeit {worst:.0%} über {SIM_FAIL:.0%}')
     elif worst > SIM_WARN: warn(f'Content-Ähnlichkeit {worst:.0%} über internem Ziel {SIM_WARN:.0%}')
@@ -159,8 +164,9 @@ def similarity_report():
             s = open(f, encoding='utf-8').read()
             hs |= set(strip_tags(h) for h in re.findall(r'<h[12][^>]*>(.*?)</h[12]>', s, re.S))
         return hs
-    same = heads(DOMAINS[0]) & heads(DOMAINS[1])
-    if same: warn(f'identische H1/H2 auf beiden Domains: {sorted(same)}')
+    for da, db_ in itertools.combinations(DOMAINS, 2):
+        same = heads(da) & heads(db_)
+        if same: warn(f'identische H1/H2 auf {da} und {db_}: {sorted(same)}')
 
 if __name__ == '__main__':
     total = 0

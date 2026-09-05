@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lexware Office mit Stripe verbinden</title>
-<meta name="description" content="Wie Lexware Office und Stripe über Lexware-Einzug zusammenarbeiten: eigenes Stripe-Konto, Datenfluss, Zahlungsverarbeitung und Rückmeldung des Einzugsstatus.">
+<meta name="description" content="Wie Lexware Office und Stripe über SmartEinzug zusammenarbeiten: eigenes Stripe-Konto, Datenfluss, Zahlungsverarbeitung und Rückmeldung des Einzugsstatus.">
 <link rel="canonical" href="https://lexware-einzug.de/lexware-office-stripe">
 <meta property="og:title" content="Lexware Office mit Stripe verbinden">
-<meta property="og:description" content="Wie Lexware Office und Stripe über Lexware-Einzug zusammenarbeiten: eigenes Stripe-Konto, Datenfluss, Zahlungsverarbeitung und Rückmeldung des Einzugsstatus.">
+<meta property="og:description" content="Wie Lexware Office und Stripe über SmartEinzug zusammenarbeiten: eigenes Stripe-Konto, Datenfluss, Zahlungsverarbeitung und Rückmeldung des Einzugsstatus.">
 <meta property="og:url" content="https://lexware-einzug.de/lexware-office-stripe">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png?v=20260905b">
@@ -45,7 +45,7 @@
 <header class="site-header">
   <div class="kopfnaht"></div>
   <div class="header-inner">
-    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</a>
+    <a href="/" class="wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für Lexware Office</span></a>
     <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
     <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
     <nav class="main-nav" aria-label="Hauptnavigation">
@@ -76,7 +76,7 @@
         <p class="eyebrow">Zahlungsabwicklung</p>
         <h1>Lexware Office und Stripe miteinander verbinden</h1>
         <span class="bar" aria-hidden="true"></span>
-        <p class="lead">Welche Rolle Stripe im Zusammenspiel mit Lexware Office und Lexware-Einzug übernimmt und was Sie für die Anbindung benötigen.</p>
+        <p class="lead">Welche Rolle Stripe im Zusammenspiel mit Lexware Office und SmartEinzug übernimmt und was Sie für die Anbindung benötigen.</p>
         <div class="cta-row">
           <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="stripe-top">Jetzt registrieren</a>
           <a href="/#funktionen" class="btn btn-outline">Funktionen ansehen</a>
@@ -88,8 +88,8 @@
       <div class="container">
         <h2>Drei Systeme, klar getrennte Aufgaben</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Lexware-Einzug verknüpft Lexware Office und Stripe, ohne die Aufgaben der beiden Systeme zu vermischen. Lexware Office bleibt die Quelle für Rechnungs- und Kundendaten. Stripe ist der Zahlungsdienstleister, der die SEPA-Lastschrift tatsächlich verarbeitet. Lexware-Einzug selbst führt keine Zahlung aus, sondern steuert den Workflow dazwischen: Es liest die relevanten Daten aus Lexware Office, bereitet sie für den Einzug auf und übergibt den Einzug an Stripe.</p>
-        <p>Für die Nutzung benötigen Sie ein eigenes Stripe-Konto. Es wird im Rahmen des geführten Einrichtungsprozesses mit Ihrem Lexware-Einzug-Account verbunden.</p>
+        <p>SmartEinzug verknüpft Lexware Office und Stripe, ohne die Aufgaben der beiden Systeme zu vermischen. Lexware Office bleibt die Quelle für Rechnungs- und Kundendaten. Stripe ist der Zahlungsdienstleister, der die SEPA-Lastschrift tatsächlich verarbeitet. SmartEinzug selbst führt keine Zahlung aus, sondern steuert den Workflow dazwischen: Es liest die relevanten Daten aus Lexware Office, bereitet sie für den Einzug auf und übergibt den Einzug an Stripe.</p>
+        <p>Für die Nutzung benötigen Sie ein eigenes Stripe-Konto. Es wird im Rahmen des geführten Einrichtungsprozesses mit Ihrem SmartEinzug-Account verbunden.</p>
       </div>
     </section>
 
@@ -97,9 +97,9 @@
       <div class="container">
         <h2>Datenfluss beim Einzug</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Beim Einzug einer Rechnung stellt Lexware-Einzug die notwendigen Angaben, etwa Betrag, Verwendungszweck und die SEPA-Zuordnung des Kunden, für Stripe bereit. Stripe verarbeitet daraufhin die SEPA-Lastschrift und meldet den Verlauf zurück: ob der Einzug angenommen wurde, ob er erfolgreich war oder ob es zu einer Rücklastschrift kam. Diese Rückmeldungen werden in Lexware-Einzug im Einzugsstatus der jeweiligen Rechnung abgebildet.</p>
+        <p>Beim Einzug einer Rechnung stellt SmartEinzug die notwendigen Angaben, etwa Betrag, Verwendungszweck und die SEPA-Zuordnung des Kunden, für Stripe bereit. Stripe verarbeitet daraufhin die SEPA-Lastschrift und meldet den Verlauf zurück: ob der Einzug angenommen wurde, ob er erfolgreich war oder ob es zu einer Rücklastschrift kam. Diese Rückmeldungen werden in SmartEinzug im Einzugsstatus der jeweiligen Rechnung abgebildet.</p>
         <h3>Eigenes Stripe-Konto, eigene Konditionen</h3>
-        <p>Da der Zahlungseinzug über Ihr eigenes Stripe-Konto läuft, gelten dafür die eigenen Vertragsbedingungen und Entgelte von Stripe. Lexware-Einzug ist insoweit ein eigenständiges Produkt neben Stripe und Lexware Office, mit eigenem Abonnement für die Nutzung der Anwendung.</p>
+        <p>Da der Zahlungseinzug über Ihr eigenes Stripe-Konto läuft, gelten dafür die eigenen Vertragsbedingungen und Entgelte von Stripe. SmartEinzug ist insoweit ein eigenständiges Produkt neben Stripe und Lexware Office, mit eigenem Abonnement für die Nutzung der Anwendung.</p>
       </div>
     </section>
 
@@ -107,7 +107,7 @@
       <div class="container">
         <h2>Voraussetzung für einen reibungslosen Einzug</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Damit ein Einzug über Stripe zustande kommen kann, benötigt der jeweilige Kunde ein gültiges SEPA-Lastschriftmandat gegenüber Ihnen als Zahlungsempfänger. Wie Lexware-Einzug die entsprechenden Mandatsreferenzen verwaltet, erläutert die Seite <a href="/lexware-office-sepa-mandat">SEPA-Mandat für Lexware-Office-Kunden</a>. Welche Rechnungen für einen Einzug infrage kommen, beschreibt die Seite <a href="/offene-rechnungen-per-lastschrift-einziehen">Offene Rechnungen aus Lexware Office</a>.</p>
+        <p>Damit ein Einzug über Stripe zustande kommen kann, benötigt der jeweilige Kunde ein gültiges SEPA-Lastschriftmandat gegenüber Ihnen als Zahlungsempfänger. Wie SmartEinzug die entsprechenden Mandatsreferenzen verwaltet, erläutert die Seite <a href="/lexware-office-sepa-mandat">SEPA-Mandat für Lexware-Office-Kunden</a>. Welche Rechnungen für einen Einzug infrage kommen, beschreibt die Seite <a href="/offene-rechnungen-per-lastschrift-einziehen">Offene Rechnungen aus Lexware Office</a>.</p>
       </div>
     </section>
 
@@ -115,7 +115,7 @@
       <div class="container">
         <h2>Stripe-Konto jetzt anbinden</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p class="lead" style="color:#D6D5D3;">Verbinden Sie Ihr Stripe-Konto mit Lexware-Einzug und starten Sie Einzüge aus einer zentralen Oberfläche.</p>
+        <p class="lead" style="color:#D6D5D3;">Verbinden Sie Ihr Stripe-Konto mit SmartEinzug und starten Sie Einzüge aus einer zentralen Oberfläche.</p>
         <div class="cta-row">
           <a href="https://app.lexware-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="stripe-bottom">Jetzt registrieren</a>
         </div>
@@ -132,7 +132,7 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
-      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>Lexware-Einzug</span>
+      <span class="footer-wordmark"><span class="mark" aria-hidden="true">€</span>SmartEinzug<span class="wordmark-sub">Für Lexware Office</span></span>
       <nav class="footer-nav" aria-label="Rechtliches">
         <ul>
           <li><a href="/impressum">Impressum</a></li>
@@ -147,6 +147,7 @@
     </div>
     <div class="footer-legal">
       <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p class="footer-brandline">SmartEinzug ist ein Angebot der Müller Holding AG.</p>
       <p>Ein Dienst der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
     </div>
   </div>

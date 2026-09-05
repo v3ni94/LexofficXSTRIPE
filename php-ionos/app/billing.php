@@ -54,7 +54,7 @@ function billing_checkout_url(array $org, array $plan, array $owner): string
         throw new RuntimeException('Für diese Firma besteht bereits ein Abonnement. Änderungen bitte über das Kundenportal.');
     }
     $customerId = billing_ensure_customer($org, $owner);
-    $base = rtrim((string)config('base_url'), '/');
+    $base = app_base_url();
     $session = billing_client()->call('POST', '/checkout/sessions', [
         'mode'                => 'subscription',
         'customer'            => $customerId,
@@ -86,7 +86,7 @@ function billing_portal_url(array $org): string
     }
     $session = billing_client()->call('POST', '/billing_portal/sessions', [
         'customer'   => $org['platform_stripe_customer_id'],
-        'return_url' => rtrim((string)config('base_url'), '/') . '/subscription.php',
+        'return_url' => app_base_url() . '/subscription.php',
     ]);
     return (string)$session['url'];
 }

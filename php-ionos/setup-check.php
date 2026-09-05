@@ -2,7 +2,7 @@
 /**
  * Setup-Prüfung für das SEPA-Portal.
  *
- * Nach dem Hochladen aufrufen: https://sepa.muellerhv.de/setup-check.php
+ * Nach dem Hochladen aufrufen: https://<app-host>/setup-check.php?token=<cron_token>
  * Prüft PHP-Version, benötigte Module, Konfiguration, Datenbankverbindung
  * und ob das Schema importiert wurde. Gibt keine Zugangsdaten aus.
  *
@@ -89,6 +89,54 @@ if ($configLoadError !== null) {
         !empty($config['base_url']) && str_starts_with((string)$config['base_url'], 'https://'),
         'Aktuell: ' . ($config['base_url'] ?? '(leer)')
     );
+
+    // --- 3a. Basisadressen und Hosts (Paket C, Trennung App/Admin/Website) ---
+    $trim = fn($v) => rtrim(trim((string)$v), '/');
+    $appBase = $trim($config['app_base_url'] ?? '') !== '' ? $trim($config['app_base_url']) : $trim($config['base_url'] ?? '');
+    $publicBase = $trim($config['public_base_url'] ?? '') !== '' ? $trim($config['public_base_url']) : $trim($config['marketing_url'] ?? '');
+    $adminBase = $trim($config['admin_base_url'] ?? '');
+    $appHost = (string)(parse_url($appBase, PHP_URL_HOST) ?: '');
+    $adminHost = (string)(parse_url($adminBase, PHP_URL_HOST) ?: '');
+    add_check(
+        'Basisadresse Anwendung (app_base_url, sonst base_url)',
+        $appBase !== '' && str_starts_with($appBase, 'https://'),
+        'Aktuell: ' . ($appBase !== '' ? $appBase : '(leer)') . (empty($config['app_base_url']) ? ' (Rückfall auf base_url)' : '')
+    );
+    add_check(
+        'Basisadresse Website (public_base_url)',
+        $publicBase !== '' && str_starts_with($publicBase, 'https://'),
+        'Aktuell: ' . ($publicBase !== '' ? $publicBase : '(leer)')
+    );
+    add_check(
+        'Basisadresse Adminbereich (admin_base_url)',
+        true,
+        $adminBase === ''
+            ? 'Nicht gesetzt: Übergangsmodus, admin.php ist auf demselben Host wie die Anwendung erreichbar. Nach dem Umzug admin_base_url setzen (Anleitung, Abschnitt Umzug).'
+            : 'Aktuell: ' . $adminBase . ($adminHost !== '' && $adminHost === $appHost ? ' (gleicher Host wie die Anwendung, Trennung wirkt nicht)' : '')
+    );
+    $allowed = array_values(array_filter(array_map(fn($h) => strtolower(trim((string)$h)), (array)($config['allowed_hosts'] ?? [])), fn($h) => $h !== ''));
+    if (!$allowed) {
+        add_check('Host-Allowlist (allowed_hosts)', true, 'Leer: keine Prüfung, alle Hostnamen werden bedient (Übergangsmodus). Für den Umzug die erlaubten Hosts eintragen.');
+    } else {
+        $missing = [];
+        foreach ([$appHost, $adminHost] as $h) {
+            if ($h !== '' && !in_array(strtolower($h), $allowed, true)) {
+                $missing[] = $h;
+            }
+        }
+        add_check(
+            'Host-Allowlist (allowed_hosts)',
+            !$missing,
+            'Erlaubt: ' . implode(', ', $allowed)
+                . ($missing ? '. FEHLT in der Liste: ' . implode(', ', $missing) . ' (die Anwendung würde dort 404 liefern).' : '')
+        );
+        $reqHost = strtolower((string)preg_replace('/:\d{1,5}$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+        add_check(
+            'Aktueller Host in der Allowlist',
+            $reqHost !== '' && in_array($reqHost, $allowed, true),
+            'Diese Anfrage kam über: ' . ($reqHost !== '' ? $reqHost : '(unbekannt)')
+        );
+    }
 } else {
     add_check('Konfigurationsdatei app/config.php vorhanden', false,
         'Bitte app/config.example.php nach app/config.php kopieren und ausfüllen.');
@@ -140,8 +188,8 @@ if ($config && !empty($config['db']['host'])) {
 
 // --- 5. Schutz interner Verzeichnisse ---
 $base = null;
-if ($config && !empty($config['base_url']) && function_exists('curl_init')) {
-    $base = rtrim((string)$config['base_url'], '/');
+if ($config && !empty($appBase) && function_exists('curl_init')) {
+    $base = $appBase;
     $ch = curl_init($base . '/app/config.php');
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_NOBODY => true, CURLOPT_TIMEOUT => 8]);
     curl_exec($ch);
@@ -171,7 +219,7 @@ $allOk = array_reduce($checks, fn($carry, $c) => $carry && $c['ok'], true);
 <head>
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
-    <title>Setup-Prüfung | SEPA-Portal</title>
+    <title>Setup-Prüfung | SmartEinzug</title>
     <style>
         body { font-family: "Segoe UI", Arial, sans-serif; background: #f4f5f7; color: #1f2933; margin: 0; padding: 40px 16px; }
         .box { max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid #d9dde3; border-radius: 6px; padding: 28px; }
@@ -189,7 +237,7 @@ $allOk = array_reduce($checks, fn($carry, $c) => $carry && $c['ok'], true);
 </head>
 <body>
 <div class="box">
-    <h1>Setup-Prüfung SEPA-Portal</h1>
+    <h1>Setup-Prüfung SmartEinzug (SEPA-Portal)</h1>
     <ul>
         <?php foreach ($checks as $c): ?>
         <li class="<?= $c['ok'] ? 'ok' : 'fail' ?>">

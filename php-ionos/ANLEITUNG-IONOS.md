@@ -1,4 +1,4 @@
-# Lexware-Einzug (SEPA-Portal) auf IONOS Webhosting: Installation und Betrieb
+# SmartEinzug (SEPA-Portal) auf IONOS Webhosting: Installation und Betrieb
 
 Betreiber: Müller Holding AG. Die Anwendung läuft auf normalem IONOS Webhosting
 (PHP 8.1 oder neuer, MariaDB), ohne Composer, ohne Docker.
@@ -7,7 +7,8 @@ Bestandteile des Repositories:
 
 | Ordner | Inhalt | Ziel |
 |---|---|---|
-| `php-ionos/` | Anwendung (Registrierung, Login mit 2FA, Dashboard, Rechnungen, Einzüge, Kunden, SEPA Pflegen, Firma, Einstellungen, Admin) | `app.lexware-einzug.de` (heute noch `sepa.muellerhv.de`) |
+| `php-ionos/` | Anwendung (Registrierung, Login mit 2FA, Dashboard, Rechnungen, Einzüge, Kunden, SEPA Pflegen, Firma, Einstellungen, Admin) | heute `app.lexware-einzug.de`, künftig `app.smart-einzug.de` und `admin.smart-einzug.de` (Abschnitt 11) |
+| `websites/smart-einzug.de/` | Hauptwebsite der Produktmarke SmartEinzug | `smart-einzug.de` |
 | `websites/lexware-einzug.de/` | Marketingseite für die aktuelle Bezeichnung Lexware Office | `lexware-einzug.de` |
 | `websites/lexoffice-einzug.de/` | eigenständige Marketingseite für den früheren Namen lexoffice | `lexoffice-einzug.de` |
 
@@ -17,7 +18,9 @@ Bestandteile des Repositories:
    `app/config.php` auf dem Server NICHT überschreiben.
 2. `app/config.php` um die neuen Schlüssel ergänzen (Vorlage `app/config.example.php`):
    `product_name`, `marketing_url`, `operator`, `signup_domains`, `require_2fa`,
-   `mail`, `lexware_api_base_url`, `stripe_mandate_reference_prefix`, `billing`.
+   `mail`, `lexware_api_base_url`, `stripe_mandate_reference_prefix`, `billing`,
+   sowie `app_base_url`, `admin_base_url`, `public_base_url`, `allowed_hosts`
+   (Abschnitt 11).
    Fehlende Schlüssel werden mit sinnvollen Standardwerten behandelt, die
    Ergänzung ist aber empfohlen.
 3. Datenbank migrieren: phpMyAdmin öffnen, Datenbank wählen, Reiter SQL,
@@ -51,9 +54,13 @@ unter "Firma" umstellbar).
 
 | Schlüssel | Bedeutung |
 |---|---|
-| `base_url` | Adresse der Anwendung, z.B. `https://app.lexware-einzug.de` |
-| `product_name` | Produktname in Titel, E-Mails und Authenticator-App (Lexware-Einzug) |
-| `marketing_url` | Marketingseite für Links auf Datenschutz und AGB |
+| `base_url` | Bisherige Adresse der Anwendung, z.B. `https://app.lexware-einzug.de`; Rückfallwert für `app_base_url` |
+| `app_base_url` | Adresse der Kundenanwendung für alle absoluten Links (leer = `base_url`) |
+| `admin_base_url` | Adresse des Adminbereichs; leer = Übergangsmodus, `admin.php` auf demselben Host erreichbar |
+| `public_base_url` | Öffentliche Produktwebsite, `https://smart-einzug.de` |
+| `allowed_hosts` | Liste erlaubter Hostnamen; leer = keine Prüfung; gefüllt = andere Hosts erhalten 404 |
+| `product_name` | Produktname in Titel, E-Mails und Authenticator-App (Standard SmartEinzug) |
+| `marketing_url` | Rückfallwert für `public_base_url` (Links auf Datenschutz und AGB) |
 | `operator` | Impressumsdaten der Müller Holding AG (Telefon und USt-IdNr. sind Platzhalter) |
 | `signup_domains` | Erlaubte Herkunftsdomains für `?src=` und `track.php` |
 | `allow_registration` | Registrierung neuer Firmen erlauben (für den Marktstart `true`) |
@@ -79,8 +86,10 @@ unter "Firma" umstellbar).
 UPDATE users SET is_superadmin = 1 WHERE email = 'ihre-adresse@example.de';
 ```
 
-Für `admin.lexware-einzug.de` die Subdomain auf dasselbe Verzeichnis zeigen
-lassen; die Seite `admin.php` prüft die Berechtigung selbst.
+Für `admin.smart-einzug.de` die Subdomain auf dasselbe Verzeichnis zeigen
+lassen; die Seite `admin.php` prüft die Berechtigung selbst. Sobald
+`admin_base_url` gesetzt ist, antwortet `admin.php` nur noch auf diesem Host
+(Abschnitt 11).
 
 Notfall (Authenticator und Recovery-Codes eines Benutzers verloren): der
 Superadmin setzt die 2FA unter Admin > Support zurück (wird als Support-Reset
@@ -181,3 +190,60 @@ Je Domain ein eigenes Verzeichnis im Hosting anlegen und den Inhalt von
 - Rechtlicher Hinweis: SEPA-Lastschriften setzen ein gültiges Mandat des
   Zahlungspflichtigen voraus. Die Verantwortung für das Vorliegen der Mandate
   liegt bei der jeweiligen Firma.
+
+## 11. Umzug auf app.smart-einzug.de und admin.smart-einzug.de
+
+Die Anwendung bleibt in einem einzigen Ordner. Neue und alte Adresse laufen
+während des Umzugs parallel, damit E-Mail-Links, Lesezeichen und
+Stripe-Webhooks weiter funktionieren. Reihenfolge einhalten, jeden Schritt
+prüfen, bevor der nächste folgt.
+
+1. DNS und SSL: Im IONOS Kundenbereich (Domains & SSL) die Subdomains
+   `app.smart-einzug.de` und `admin.smart-einzug.de` anlegen und für beide ein
+   SSL-Zertifikat aktivieren. Warten, bis beide Hosts per HTTPS antworten.
+2. Zielverzeichnis: Beide Hosts auf denselben App-Ordner zeigen lassen, in dem
+   heute `app.lexware-einzug.de` liegt. Keine zweite Kopie der Anwendung
+   anlegen (eine Datenbank, ein `app_secret`, ein Cron).
+3. Allowlist ergänzen: In `app/config.php` den Schlüssel `allowed_hosts` mit
+   allen drei Hosts füllen, alte Adresse eingeschlossen:
+
+   ```php
+   'allowed_hosts' => ['app.lexware-einzug.de', 'app.smart-einzug.de', 'admin.smart-einzug.de'],
+   ```
+
+   Danach `setup-check.php?token=<cron_token>` über die alte und die neue
+   Adresse aufrufen. Die Prüfung "Aktueller Host in der Allowlist" muss
+   jeweils bestanden sein. Ein Host, der nicht in der Liste steht, erhält 404.
+4. Basisadresse umstellen: `app_base_url` auf `https://app.smart-einzug.de`
+   setzen (`base_url` kann stehen bleiben, es dient nur noch als Rückfall).
+   Ab jetzt zeigen neue E-Mail-Links, Einladungen, die Rückkehr aus dem
+   Stripe Checkout und die angezeigte Webhook-Adresse auf die neue Adresse.
+   Bereits versandte Links auf die alte Adresse bleiben gültig, solange der
+   alte Host in `allowed_hosts` steht.
+5. Stripe-Webhooks: In jedem angebundenen Stripe-Konto der Kunden den Endpunkt
+   `https://app.smart-einzug.de/stripe-webhook.php` zusätzlich anlegen und im
+   Plattformkonto `https://app.smart-einzug.de/billing-webhook.php`. Die alten
+   Endpunkte auf `app.lexware-einzug.de` behalten; Ereignisse werden über
+   `webhook_events` nur einmal verarbeitet. Kunden mit eigenem Webhook-Secret
+   unter "Einstellungen" darauf hinweisen, dass die dort angezeigte Adresse
+   jetzt die neue ist. Keine 301-Weiterleitung für POST-Anfragen einrichten.
+6. Prüfung: Anmeldung, 2FA, Einladung, Passwort-Zurücksetzen und ein Test-Einzug
+   im Stripe-Testmodus über die neue Adresse. Cron-URL bei IONOS auf
+   `https://app.smart-einzug.de/cron.php?token=...` umstellen (eine Instanz).
+7. Adminbereich trennen: Erst wenn alles über die neue Adresse läuft,
+   `admin_base_url` auf `https://admin.smart-einzug.de` setzen. Wirkung:
+   `admin.php` liefert auf `app.smart-einzug.de` und `app.lexware-einzug.de`
+   404; auf `admin.smart-einzug.de` sind nur `admin.php`, Anmeldung, 2FA,
+   Passwort-Zurücksetzen, Sicherheit, Abmelden und die Assets erreichbar,
+   alle Kundenseiten liefern dort 404. Die Sitzung ist an den Host gebunden,
+   der Superadmin meldet sich auf dem Adminhost separat an.
+8. Nachlauf: Marketingseiten und Redirect-Domains auf die neue Adresse
+   umstellen (Registrierungslinks `register.php?src=<domain>`), Tarif- und
+   Preisangaben prüfen. Die alte Adresse frühestens nach Ablauf aller
+   versandten Einladungen (7 Tage) und Bestätigungslinks (24 Stunden) aus
+   `allowed_hosts` entfernen; Stripe-Endpunkte der alten Adresse erst danach
+   löschen.
+
+Rückweg: Jeder Schritt lässt sich durch Zurücksetzen des jeweiligen
+Konfigurationsschlüssels aufheben. Datenbankänderungen sind für den Umzug
+nicht erforderlich.

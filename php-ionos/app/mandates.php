@@ -310,7 +310,8 @@ function mandate_check_usable(array $mandate, array $org): ?string
     }
 
     if ((int)($org['require_signed_mandate'] ?? 1) === 1 && empty($mandate['signed_date'])) {
-        return 'Für diesen Kunden ist noch kein unterschriebenes SEPA-Mandat erfasst (Kundendetails > Mandat > "Unterschrift erfassen").';
+        return 'Für diesen Kunden ist noch kein unterschriebenes SEPA-Mandat erfasst (Einstellung "Handschriftlicher Nachweis erforderlich" ist aktiv; '
+            . 'Kundendetails > Mandat > "Unterschrift erfassen" oder Mandat digital anfordern).';
     }
     return null;
 }

@@ -27,9 +27,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } elseif ($action === 'process_due') {
             $result = process_scheduled_collections($tenantId, $ctx);
+            flash_set(($result['skipped_paused'] > 0 || $result['unknown'] > 0) ? 'info' : 'success', sprintf(
+                'Fällige terminierte Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen, %d zurückgestellt, %d mit unbekanntem Ergebnis (Klärung erforderlich), %d wegen Not-Stopp übersprungen.',
+                $result['submitted'], $result['failed'], $result['deferred'], $result['unknown'], $result['skipped_paused']
+            ));
+
+        } elseif ($action === 'resolve_attempts') {
+            $result = collection_attempts_resolve($tenantId, $ctx);
             flash_set('success', sprintf(
-                'Fällige terminierte Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen.',
-                $result['submitted'], $result['failed']
+                'Unklare Versuche geprüft: %d geprüft, %d Einzug/Einzüge bei Stripe gefunden und nachgetragen, %d ohne Einzug freigegeben, %d noch offen (Prüfung später wiederholen).',
+                $result['checked'], $result['recovered'], $result['cleared'], $result['pending']
             ));
 
         } elseif ($action === 'sync_status') {
@@ -64,7 +71,7 @@ if (in_array($filter, $allowedFilters, true)) {
 }
 
 $stmt = $pdo->prepare(
-    "SELECT pc.*, i.voucher_number, i.contact_name, i.customer_id, m.mandate_reference,
+    "SELECT pc.*, i.voucher_number, i.contact_name, i.customer_id, m.mandate_reference, m.stripe_mandate_reference,
             u.email AS created_by_email, u.display_name AS created_by_name
      FROM payment_collections pc
      JOIN invoices i ON i.id = pc.invoice_id
@@ -99,21 +106,56 @@ $stmt->execute([$tenantId]);
 $processingCount = (int)$stmt->fetchColumn();
 
 $ready = count_ready_for_collection($tenantId);
+$pauseReason = collections_pause_reason($tenantId);
+$openAttempts = collection_attempts_open($tenantId);
 
 layout_header('Einzüge', $ctx);
 ?>
 <h1>SEPA-Einzüge</h1>
 <p class="page-sub">Alle eingereichten, terminierten und abgeschlossenen Lastschriften mit auslösender Person</p>
 
+<?php if ($pauseReason): ?>
+<div class="flash flash-error"><?= e($pauseReason) ?> <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>
+<?php endif; ?>
+<?php if ($openAttempts): ?>
+<div class="card">
+    <h2>Unklare Einzugsversuche</h2>
+    <p class="hint">Bei diesen Versuchen hat Stripe nicht geantwortet (Zeitüberschreitung oder Netzwerkfehler) oder der Aufruf wurde unterbrochen.
+        Ob eine Lastschrift entstanden ist, wird per Lesezugriff bei Stripe geprüft; bis dahin wird die Rechnung nicht erneut eingereicht.</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Rechnung</th><th class="num">Betrag</th><th>Status</th><th>Zeitpunkt</th><th>Fehler</th></tr></thead>
+            <tbody>
+            <?php foreach ($openAttempts as $a): ?>
+                <tr>
+                    <td><?= e($a['voucher_number']) ?></td>
+                    <td class="num"><?= format_eur_cents((int)$a['amount_cents']) ?></td>
+                    <td><?= $a['status'] === 'unknown' ? '<span class="badge badge-warn">Unbekannt</span>' : ($a['status'] === 'succeeded' ? '<span class="badge badge-warn">Ohne Einzugsdatensatz</span>' : '<span class="badge badge-info">Offen</span>') ?></td>
+                    <td><?= format_datetime($a['created_at']) ?></td>
+                    <td class="hint"><?= e(mb_substr((string)$a['error_text'], 0, 120)) ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <form method="post" style="margin-top: 12px;">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="resolve_attempts">
+        <button type="submit" class="btn">Unklare Versuche prüfen</button>
+    </form>
+</div>
+<?php endif; ?>
+
 <div class="card">
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <form method="post">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="process_due">
-            <button type="submit" class="btn"<?= $dueCount === 0 ? ' disabled' : '' ?>>
+            <button type="submit" class="btn"<?= ($dueCount === 0 || $pauseReason) ? ' disabled' : '' ?>>
                 Fällige terminierte Einzüge jetzt einreichen<?= $dueCount > 0 ? " ($dueCount)" : '' ?>
             </button>
         </form>
+        <a class="btn btn-secondary" href="export.php<?= $filter !== '' ? '?status=' . e($filter) : '' ?>">Journal als CSV exportieren</a>
         <form method="post">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="sync_status">
@@ -128,7 +170,7 @@ layout_header('Einzüge', $ctx);
               onsubmit="return confirm('Achtung: Löst echte SEPA-Lastschriften aus.\n\n<?= $ready['count'] ?> Rechnung(en) mit insgesamt <?= e(format_eur($ready['amount'])) ?> werden jetzt bei Stripe eingezogen.\n\nWirklich fortfahren?')">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="submit_all_ready">
-            <button type="submit" class="btn btn-danger"<?= $ready['count'] === 0 ? ' disabled' : '' ?>>
+            <button type="submit" class="btn btn-danger"<?= ($ready['count'] === 0 || $pauseReason) ? ' disabled' : '' ?>>
                 Alle bereiten Einzüge jetzt einreichen<?= $ready['count'] > 0 ? " ({$ready['count']}, " . format_eur($ready['amount']) . ')' : '' ?>
             </button>
         </form>
@@ -165,8 +207,8 @@ layout_header('Einzüge', $ctx);
                 <tr>
                     <td><?= e($c['voucher_number']) ?></td>
                     <td><?php if ($c['customer_id']): ?><a href="customer.php?id=<?= e($c['customer_id']) ?>"><?= e($c['contact_name']) ?></a><?php else: ?><?= e($c['contact_name']) ?><?php endif; ?></td>
-                    <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?></td>
-                    <td><?= e($c['mandate_reference']) ?></td>
+                    <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?><?php if (!empty($c['note'])): ?><div class="hint"><?= e(mb_substr($c['note'], 0, 120)) ?></div><?php endif; ?></td>
+                    <td><?= e($c['mandate_reference']) ?><?php if (!empty($c['stripe_mandate_reference'])): ?><div class="hint">Stripe: <?= e($c['stripe_mandate_reference']) ?></div><?php endif; ?></td>
                     <td>
                         <?= status_badge((string)$c['stripe_status']) ?>
                         <?php if ($c['failure_reason']): ?>

@@ -493,7 +493,7 @@ function twofa_begin_setup(): string
 /** otpauth-URI für die Authenticator-App. */
 function twofa_setup_uri(string $secret, string $email): string
 {
-    return totp_otpauth_uri((string)config('product_name', 'Lexware-Einzug'), $email, $secret);
+    return totp_otpauth_uri(product_name(), $email, $secret);
 }
 
 /**
@@ -676,7 +676,7 @@ function email_verification_send(array $user): bool
     db()->prepare(
         'UPDATE users SET email_verify_token_hash = ?, email_verify_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?'
     )->execute([token_hash($token), $user['id']]);
-    $url = rtrim((string)config('base_url'), '/') . '/verify-email.php?token=' . $token;
+    $url = app_base_url() . '/verify-email.php?token=' . $token;
     $tpl = mail_tpl_verify_email($url);
     return mail_send($user['email'], $tpl['subject'], $tpl['text'], $tpl['html']);
 }
@@ -732,7 +732,7 @@ function password_reset_request(string $email): void
     db()->prepare(
         'UPDATE users SET password_reset_token_hash = ?, password_reset_expires_at = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?'
     )->execute([token_hash($token), $user['id']]);
-    $url = rtrim((string)config('base_url'), '/') . '/reset-password.php?token=' . $token;
+    $url = app_base_url() . '/reset-password.php?token=' . $token;
     $tpl = mail_tpl_security('Passwort zurücksetzen', [
         'Für Ihr Konto wurde das Zurücksetzen des Passworts angefordert.',
         'Der Link ist eine Stunde gültig. Nach dem Zurücksetzen bleibt Ihre Zwei-Faktor-Authentifizierung unverändert bestehen.',
@@ -810,7 +810,7 @@ function signup_attribution_capture(): void
     }
     if (empty($_SESSION['signup']['referrer']) && !empty($_SERVER['HTTP_REFERER'])) {
         $host = parse_url((string)$_SERVER['HTTP_REFERER'], PHP_URL_HOST);
-        $ownHost = parse_url((string)config('base_url'), PHP_URL_HOST);
+        $ownHost = parse_url(app_base_url(), PHP_URL_HOST);
         if ($host && $host !== $ownHost) {
             $_SESSION['signup']['referrer'] = mb_substr((string)$host, 0, 500);
         }
