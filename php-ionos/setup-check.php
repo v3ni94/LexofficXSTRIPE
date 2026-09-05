@@ -170,6 +170,25 @@ if ($config && !empty($config['db']['host'])) {
             $missing ? 'Fehlend: ' . implode(', ', $missing) . ' – bitte sql/schema.sql per phpMyAdmin importieren.' : ''
         );
 
+        // Migrationen 004 bis 007: Tabellen und Spalten einzeln prüfen
+        $migrationChecks = [
+            '004' => [['table' => 'integrations', 'column' => 'stripe_account_id']],
+            '005' => [['table' => 'mandate_files']],
+            '006' => [['table' => 'collection_attempts'], ['table' => 'platform_settings'], ['table' => 'mandate_requests'], ['table' => 'collection_rules'], ['table' => 'integration_providers'], ['table' => 'invoices', 'column' => 'open_amount'], ['table' => 'organizations', 'column' => 'collections_paused'], ['table' => 'sepa_mandates', 'column' => 'stripe_mandate_id']],
+            '007' => [['table' => 'payment_collections', 'column' => 'refunded_cents'], ['table' => 'invoices', 'column' => 'requires_review']],
+        ];
+        foreach ($migrationChecks as $mig => $items) {
+            $lack = [];
+            foreach ($items as $it) {
+                if (!in_array($it['table'], $found, true)) { $lack[] = 'Tabelle ' . $it['table']; continue; }
+                if (isset($it['column'])) {
+                    $col = $pdo->query('SHOW COLUMNS FROM `' . $it['table'] . "` LIKE '" . $it['column'] . "'")->fetch();
+                    if (!$col) { $lack[] = 'Spalte ' . $it['table'] . '.' . $it['column']; }
+                }
+            }
+            add_check('Migration ' . $mig . ' eingespielt', !$lack, $lack ? 'Fehlend: ' . implode(', ', $lack) . ' – sql/migrations/' . $mig . '_*.sql in phpMyAdmin ausführen.' : '');
+        }
+
         if (!$missing) {
             $orgs = (int)$pdo->query('SELECT COUNT(*) FROM organizations')->fetchColumn();
             add_check(
