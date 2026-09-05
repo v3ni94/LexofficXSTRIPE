@@ -4,6 +4,7 @@ require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/sync_state.php';
 require_once __DIR__ . '/app/collections.php';
+require_once __DIR__ . '/app/alerts.php';
 
 $ctx = require_login();
 if (!(int)$ctx['onboarding_completed']) {
@@ -64,6 +65,7 @@ $syncState = sync_state_get($tenantId);
 $syncRunning = sync_state_is_running($syncState);
 $pauseReason = collections_pause_reason($tenantId);
 $openAttempts = collection_attempts_open($tenantId);
+$alerts = alerts_for_tenant($tenantId);
 
 layout_header('Dashboard', $ctx);
 ?>
@@ -73,6 +75,16 @@ layout_header('Dashboard', $ctx);
     · letzte Synchronisation: <?= format_datetime($integration['lexoffice_last_sync']) ?>
     <?php if ($syncRunning): ?> · <a href="invoices.php?syncing=1">Synchronisation läuft</a><?php endif; ?></p>
 
+<?php if ($alerts): ?>
+<div class="flash flash-warn" id="alerts">
+    <strong>Hinweise (<?= count($alerts) ?>)</strong>
+    <ul style="margin: 6px 0 0 18px; padding: 0;">
+    <?php foreach ($alerts as $a): ?>
+        <li><?= $a['level'] === 'hoch' ? '<strong>Wichtig:</strong> ' : '' ?><?= e($a['text']) ?> <a href="<?= e($a['link']) ?>">Öffnen</a></li>
+    <?php endforeach; ?>
+    </ul>
+</div>
+<?php endif; ?>
 <?php if ($pauseReason): ?>
 <div class="flash flash-error"><strong>Not-Stopp aktiv.</strong> <?= e($pauseReason) ?>
     <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>

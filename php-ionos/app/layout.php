@@ -56,6 +56,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
         :root { --brand-accent: #E3AC48; --brand-dark: #2E2D2E; }
     </style>
     <?php endif; ?>
+    <script src="assets/js/app.js" defer></script>
     <?= $opts['head'] ?? '' ?>
 </head>
 <body class="<?= $useHvmCi ? 'theme-hvm' : 'theme-product' ?>">
@@ -177,9 +178,11 @@ function status_badge(string $status, ?string $scheduledDate = null): string
         'failed'        => ['danger',  'Fehlgeschlagen'],
         'scheduled'     => ['info',    'Terminiert'],
         // Stripe-Status
+        'submitting'    => ['info',    'Wird eingereicht'],
         'processing'    => ['info',    'In Bearbeitung'],
         'succeeded'     => ['success', 'Erfolgreich'],
         'disputed'      => ['danger',  'Rücklastschrift'],
+        'refunded'      => ['warn',    'Erstattet'],
         'cancelled'     => ['neutral', 'Storniert'],
         // Mandats-Status
         'draft'         => ['warn',    'Entwurf'],

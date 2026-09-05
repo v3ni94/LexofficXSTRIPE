@@ -51,11 +51,16 @@ layout_header('Firmenaccount registrieren');
         <?php if ($error): ?>
             <div class="flash flash-error"><?= e($error) ?></div>
         <?php endif; ?>
+        <div class="flash flash-info">
+            <strong>Voraussetzungen:</strong> Lexware Office XL (nach Angaben von Lexware für die Public API erforderlich, bitte im eigenen Konto prüfen)
+            und ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto.
+        </div>
+        <p class="hint">Bereits registriert? <a href="login.php">Anmelden</a></p>
         <form method="post" action="register.php">
             <?= csrf_field() ?>
             <h2>Firma</h2>
             <label for="org_name">Firmenname (Zahlungsempfänger auf dem SEPA-Mandat)</label>
-            <input type="text" id="org_name" name="org_name" required maxlength="255"
+            <input type="text" id="org_name" name="org_name" required maxlength="255" autocomplete="organization"
                    value="<?= e($_POST['org_name'] ?? '') ?>">
             <label for="mandate_prefix">Mandatspräfix (2 bis 10 Zeichen, z.B. Firmenkürzel)</label>
             <input type="text" id="mandate_prefix" name="mandate_prefix" required maxlength="10"
@@ -78,12 +83,16 @@ layout_header('Firmenaccount registrieren');
                 </div>
             </div>
             <label for="email">E-Mail-Adresse (persönlich, kein Sammelpostfach)</label>
-            <input type="email" id="email" name="email" required autocomplete="username"
+            <input type="email" id="email" name="email" required autocomplete="email"
                    value="<?= e($_POST['email'] ?? '') ?>">
             <label for="password">Passwort (mindestens 10 Zeichen)</label>
             <input type="password" id="password" name="password" required minlength="10" autocomplete="new-password">
             <label for="password2">Passwort wiederholen</label>
             <input type="password" id="password2" name="password2" required minlength="10" autocomplete="new-password">
+            <label class="checkbox-label">
+                <input type="checkbox" data-toggle-password="password,password2">
+                <span>Passwort anzeigen</span>
+            </label>
 
             <label class="checkbox-label" style="margin-top: 16px;">
                 <input type="checkbox" name="accept_terms" value="1" required>
@@ -98,7 +107,10 @@ layout_header('Firmenaccount registrieren');
             </label>
             <button type="submit" class="btn">Firmenaccount erstellen</button>
         </form>
-        <p class="auth-links"><a href="login.php">Bereits registriert? Zur Anmeldung</a></p>
+        <p class="auth-links"><a href="login.php">Bereits registriert? Anmelden</a></p>
+        <p class="hint" style="text-align:center;"><?= billing_enabled()
+            ? 'Der Tarif wird erst mit Abschluss des Abonnements im Firmenbereich kostenpflichtig.'
+            : 'Derzeit entsteht mit der Registrierung keine Zahlungspflicht.' ?></p>
         <p class="hint" style="text-align:center;">Tarif UNLIMITED START: 25,00 EUR netto zzgl. USt. je 4 Wochen, unbegrenzte Einzüge, unbegrenzte Mitarbeiter.
             Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
     </div>

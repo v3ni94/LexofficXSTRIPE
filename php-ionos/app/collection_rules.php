@@ -62,6 +62,7 @@ function collection_rules_preview(string $tenantId, string $ruleId): array
             WHERE i.tenant_id = ?
               AND i.lexoffice_status IN ('open', 'overdue')
               AND i.collection_status NOT IN ('in_collection', 'scheduled', 'collected')
+              AND i.requires_review = 0
               AND c.sepa_debit_enabled = 1 AND c.is_walk_in = 0
               AND EXISTS (SELECT 1 FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1)";
     $params = [$tenantId];

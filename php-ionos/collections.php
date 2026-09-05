@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $filter = $_GET['status'] ?? '';
 $where = 'pc.tenant_id = ?';
 $params = [$tenantId];
-$allowedFilters = ['scheduled', 'processing', 'succeeded', 'failed', 'disputed', 'cancelled'];
+$allowedFilters = ['scheduled', 'processing', 'succeeded', 'refunded', 'failed', 'disputed', 'cancelled'];
 if (in_array($filter, $allowedFilters, true)) {
     $where .= ' AND pc.stripe_status = ?';
     $params[] = $filter;
@@ -179,7 +179,8 @@ layout_header('Einzüge', $ctx);
         <p class="hint">Vorabankündigung per E-Mail ist aktiv: Einzüge werden über "Rechnungen" terminiert (frühester Termin <?= $suggest->format('d.m.Y') ?>) und hier am Fälligkeitstag eingereicht.</p>
     <?php endif; ?>
     <p class="hint">"Status mit Stripe abgleichen" prüft laufende Einzüge (nur Lesezugriff, kein Geld
-        bewegt sich). Eine spätere Rücklastschrift erkennt nur der Stripe-Webhook (siehe Einstellungen).</p>
+        bewegt sich). Eine spätere Rücklastschrift oder Erstattung erkennt nur der Stripe-Webhook (siehe Einstellungen).
+        Nach einer Erstattung wird die Rechnung zur Klärung markiert und nicht automatisch erneut eingezogen.</p>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <a class="btn <?= $filter === '' ? '' : 'btn-secondary' ?> btn-sm" href="collections.php">Alle</a>
         <?php foreach ($allowedFilters as $f): ?>
@@ -207,12 +208,16 @@ layout_header('Einzüge', $ctx);
                 <tr>
                     <td><?= e($c['voucher_number']) ?></td>
                     <td><?php if ($c['customer_id']): ?><a href="customer.php?id=<?= e($c['customer_id']) ?>"><?= e($c['contact_name']) ?></a><?php else: ?><?= e($c['contact_name']) ?><?php endif; ?></td>
-                    <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?><?php if (!empty($c['note'])): ?><div class="hint"><?= e(mb_substr($c['note'], 0, 120)) ?></div><?php endif; ?></td>
+                    <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?><?php if (!empty($c['note'])): ?><div class="hint"><?= e(mb_substr($c['note'], 0, 120)) ?></div><?php endif; ?>
+                        <?php if ((int)($c['refunded_cents'] ?? 0) > 0): ?><div class="hint">Erstattet: <?= format_eur_cents((int)$c['refunded_cents']) ?> am <?= format_datetime($c['refunded_at'] ?? null) ?></div><?php endif; ?></td>
                     <td><?= e($c['mandate_reference']) ?><?php if (!empty($c['stripe_mandate_reference'])): ?><div class="hint">Stripe: <?= e($c['stripe_mandate_reference']) ?></div><?php endif; ?></td>
                     <td>
                         <?= status_badge((string)$c['stripe_status']) ?>
                         <?php if ($c['failure_reason']): ?>
                             <div class="hint"><?= e(mb_substr($c['failure_reason'], 0, 120)) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($c['refund_note'])): ?>
+                            <div class="hint"><?= e(mb_substr($c['refund_note'], 0, 120)) ?></div>
                         <?php endif; ?>
                     </td>
                     <td><?= (int)$c['is_scheduled'] ? format_date($c['scheduled_date']) : '-' ?></td>

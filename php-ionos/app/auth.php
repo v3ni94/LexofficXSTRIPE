@@ -542,6 +542,30 @@ function twofa_verify_user(array $user, string $code): bool
     return true;
 }
 
+/**
+ * Zweitbestätigung kritischer Aktionen: prüft den aktuellen TOTP-Code des
+ * angemeldeten Nutzers (wie bei der Anmeldung, mit Replay-Schutz über
+ * users.totp_last_step; ein Code gilt nur einmal). Recovery-Codes werden hier
+ * bewusst nicht akzeptiert. Wirft RuntimeException bei Fehler.
+ */
+function require_recent_totp(array $ctx, string $code): void
+{
+    $code = trim($code);
+    if ($code === '') {
+        throw new RuntimeException('Bitte geben Sie zur Bestätigung den aktuellen 2FA-Code aus Ihrer Authenticator-App ein.');
+    }
+    $user = user_load((string)($ctx['user_id'] ?? ''));
+    if (!$user || (int)($user['totp_enabled'] ?? 0) !== 1) {
+        throw new RuntimeException('Für diese Aktion ist eine eingerichtete Zwei-Faktor-Authentifizierung erforderlich.');
+    }
+    if (!twofa_verify_user($user, $code)) {
+        audit_log($ctx['org_id'] ?? ($_SESSION['org_id'] ?? null), $ctx, 'twofa_reauth_failed', 'user', $user['id'], [
+            'script' => current_script(),
+        ]);
+        throw new RuntimeException('Der 2FA-Code ist ungültig oder wurde bereits verwendet. Bitte den aktuellen Code aus der Authenticator-App eingeben.');
+    }
+}
+
 /** Passwort UND aktuellen 2FA-/Recovery-Code eines Benutzers prüfen (für kritische Aktionen). */
 function verify_password_and_2fa(array $user, string $password, string $code): ?string
 {
@@ -700,6 +724,14 @@ function email_verification_consume(string $token): ?array
         'UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()), email_verify_token_hash = NULL, email_verify_expires_at = NULL WHERE id = ?'
     )->execute([$user['id']]);
     audit_log(null, ['user_id' => $user['id'], 'email' => $user['email']], 'email_verified', 'user', $user['id']);
+    try {
+        $orgStmt = $pdo->prepare('SELECT organization_id FROM organization_members WHERE user_id = ? ORDER BY created_at ASC LIMIT 1');
+        $orgStmt->execute([$user['id']]);
+        $orgId = (string)($orgStmt->fetchColumn() ?: '');
+        if ($orgId !== '') {
+            funnel_event_for_org($orgId, 'email_verified', (string)$user['id']);
+        }
+    } catch (Throwable $e) { /* Messung darf nie blockieren */ }
     return $user;
 }
 

@@ -29,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (($_POST['confirm'] ?? '') !== '1') {
                 throw new RuntimeException('Bitte bestätigen Sie die Freigabe der Einzüge.');
             }
+            // Zweitbestätigung: aktueller 2FA-Code (Replay-Schutz, kein Recovery-Code)
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             collections_set_paused($tenantId, false, $ctx, (string)($_POST['reason'] ?? ''));
             flash_set('success', 'Not-Stopp aufgehoben. Einzüge sind wieder möglich; fällige terminierte Einzüge werden beim nächsten Lauf eingereicht.');
         }
@@ -81,6 +83,9 @@ layout_header('Not-Stopp', $ctx);
             <label style="display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;">
                 <input type="checkbox" name="confirm" value="1"> Ich habe geprüft, dass Einzüge wieder eingereicht werden dürfen.
             </label>
+            <label for="code" style="margin-top: 10px;">Aktueller 2FA-Code</label>
+            <input type="text" id="code" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" style="max-width: 160px;">
+            <p class="hint">Zweitbestätigung: Das Aufheben des Not-Stopps erfordert den aktuellen Code aus Ihrer Authenticator-App.</p>
             <div class="form-actions"><button type="submit" class="btn">Not-Stopp aufheben</button></div>
         </form>
     <?php else: ?>
@@ -104,7 +109,7 @@ layout_header('Not-Stopp', $ctx);
         <li>Fällige terminierte Einzüge werden nicht eingereicht, weder per Button noch per Cron; sie bleiben terminiert und werden protokolliert übersprungen.</li>
         <li>Statusabgleich, Rechnungssynchronisation und Webhooks laufen weiter (nur Lesezugriff bzw. Rückmeldungen von Stripe).</li>
         <li>Bereits bei Stripe eingereichte Lastschriften werden nicht gestoppt; Rücklastschriften erkennt der Webhook.</li>
-        <li>Aktivierung und Aufhebung werden mit Benutzer und Zeitpunkt im Protokoll festgehalten.</li>
+        <li>Aktivierung und Aufhebung werden mit Benutzer und Zeitpunkt im Protokoll festgehalten. Die Aufhebung erfordert zusätzlich den aktuellen 2FA-Code.</li>
     </ul>
 </div>
 

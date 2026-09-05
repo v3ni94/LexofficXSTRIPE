@@ -55,6 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             submit_collection($tenantId, $_POST['invoice_id'] ?? '', $date, $ctx, $opts);
             flash_set('success', 'Lastschrift wurde für den ' . format_date($date) . ' terminiert.');
 
+        } elseif ($action === 'review_clear') {
+            if (!can_manage_settings($ctx)) {
+                throw new RuntimeException('Die Klärung dürfen nur Inhaber und Administratoren abschließen.');
+            }
+            $inv = invoice_review_clear($tenantId, (string)($_POST['invoice_id'] ?? ''), $ctx);
+            flash_set('success', 'Klärung für Rechnung ' . $inv['voucher_number'] . ' abgeschlossen. Die Rechnung kann wieder eingezogen werden; ein Einzug erfolgt nur manuell.');
+
         } elseif ($action === 'sepa_disable' || $action === 'sepa_enable') {
             $updated = set_customer_sepa_debit($tenantId, $_POST['customer_id'] ?? '', $action === 'sepa_enable', $ctx);
             flash_set('success', sprintf(
@@ -209,7 +216,8 @@ layout_header('Rechnungen', $ctx);
         <div class="flash flash-error"><?= e($pauseReason) ?> <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>
     <?php endif; ?>
     <p class="hint">Vor jeder Einreichung wird der offene Restbetrag der Rechnung bei Lexware Office abgerufen. Weicht er vom Rechnungsbetrag ab
-        (Teilzahlung), wird nur nach ausdrücklicher Bestätigung der Restbetrag eingezogen; ist die Rechnung bezahlt, wird nichts eingereicht.</p>
+        (Teilzahlung), wird nur nach ausdrücklicher Bestätigung der Restbetrag eingezogen; ist die Rechnung bezahlt, wird nichts eingereicht.
+        Rechnungen mit Klärungsbedarf (z. B. nach einer Erstattung über Stripe) werden nicht eingezogen, bis ein Inhaber oder Administrator die Klärung abgeschlossen hat.</p>
     <?php if ($preNotify): ?>
         <p class="hint">Vorabankündigung per E-Mail ist aktiv (<?= (int)$ctx['pre_notification_days'] ?> Tage): Einzüge werden
             terminiert, frühester Termin <?= $suggest->format('d.m.Y') ?>. Die Ankündigung geht beim Terminieren an den Kunden.</p>
@@ -232,10 +240,12 @@ layout_header('Rechnungen', $ctx);
                     $isWalkIn = $hasCustomer && (int)($inv['is_walk_in'] ?? 0) === 1;
                     $sepaDisabled = $hasCustomer && (int)($inv['sepa_debit_enabled'] ?? 1) === 0;
                     $canToggleSepa = $hasCustomer && !$isWalkIn;
+                    $needsReview = (int)($inv['requires_review'] ?? 0) === 1;
                     $collectable = in_array($inv['lexoffice_status'], ['open', 'overdue'], true)
                         && !in_array($inv['collection_status'], ['in_collection', 'scheduled'], true)
                         && $hasCustomer
-                        && !$sepaDisabled;
+                        && !$sepaDisabled
+                        && !$needsReview;
                 ?>
                 <tr>
                     <td><?= e($inv['voucher_number']) ?></td>
@@ -256,9 +266,24 @@ layout_header('Rechnungen', $ctx);
                     </td>
                     <td><?= format_date($inv['due_date']) ?></td>
                     <td><?= e($inv['keyword'] ?? '-') ?></td>
-                    <td><?= status_badge($inv['collection_status']) ?></td>
+                    <td><?= status_badge($inv['collection_status']) ?><?php if ($needsReview): ?> <span class="badge badge-warn">Klärung offen</span><?php endif; ?></td>
                     <td>
-                        <?php if ($collectable && (int)$inv['has_iban'] === 0): ?>
+                        <?php if ($needsReview): ?>
+                            <div class="hint"><strong>Klärungsbedarf:</strong> <?= e((string)($inv['review_reason'] ?: 'Grund nicht vermerkt')) ?> Kein Einzug bis zum Abschluss der Klärung.</div>
+                            <?php if (can_manage_settings($ctx)): ?>
+                            <form method="post" class="inline-form" style="margin-top: 4px;"
+                                  onsubmit="return confirm(<?= e(json_encode('Klärung für Rechnung ' . $inv['voucher_number'] . ' abschließen? Die Rechnung wird danach wieder einziehbar (nur manuell).', JSON_UNESCAPED_UNICODE)) ?>)">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="review_clear">
+                                <input type="hidden" name="invoice_id" value="<?= e($inv['id']) ?>">
+                                <input type="hidden" name="back_status" value="<?= e($filter) ?>">
+                                <input type="hidden" name="back_sepa" value="<?= e($sepaFilter) ?>">
+                                <button type="submit" class="btn btn-sm btn-secondary">Klärung abgeschlossen</button>
+                            </form>
+                            <?php else: ?>
+                            <span class="hint">Abschluss der Klärung durch Inhaber oder Administrator.</span>
+                            <?php endif; ?>
+                        <?php elseif ($collectable && (int)$inv['has_iban'] === 0): ?>
                             <span class="hint">Keine IBAN hinterlegt: <a href="customer.php?id=<?= e($inv['customer_id']) ?>">Kundendetails</a></span>
                         <?php elseif ($collectable):
                             $totalCents = (int)round((float)$inv['total_gross_amount'] * 100);
@@ -298,7 +323,7 @@ layout_header('Rechnungen', $ctx);
                             <button type="submit" class="btn btn-sm btn-secondary"<?= $pauseReason ? ' disabled title="Not-Stopp aktiv"' : '' ?>>Terminieren</button>
                         </form>
                         <?php endif; ?>
-                        <?php elseif (!in_array($inv['lexoffice_status'], ['open', 'overdue'], true)): ?>
+                        <?php elseif (!$needsReview && !in_array($inv['lexoffice_status'], ['open', 'overdue'], true)): ?>
                             <span class="hint">Nicht mehr einziehbar (Lexware Office: <?= e(lexoffice_status_label($inv['lexoffice_status'])) ?>)</span>
                         <?php elseif (!$hasCustomer): ?>
                             <span class="hint">Kein Kunde verknüpft</span>

@@ -3,7 +3,10 @@
  * Cron-Endpunkt (optional, alles ist auch manuell über Buttons möglich):
  *  1. fällige terminierte SEPA-Einzüge bei Stripe einreichen,
  *  2. laufende Lexware-Office-Synchronisationen im Hintergrund fortsetzen
- *     (der Nutzer muss die Rechnungsseite dann nicht geöffnet lassen).
+ *     (der Nutzer muss die Rechnungsseite dann nicht geöffnet lassen),
+ *  3. unklare Einzugsversuche klären, Mandats-Erinnerungen versenden,
+ *  4. Alarmierung: einmal je Kalendertag pro Firma eine E-Mail an den Inhaber
+ *     bei Alarmen der Stufe 'hoch' (app/alerts.php).
  *
  * Einrichtung im IONOS Kundenbereich (Hosting > Cronjobs) oder über einen
  * externen Cron-Dienst, z.B. alle 5 Minuten:
@@ -17,6 +20,7 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/sync_state.php';
 require_once __DIR__ . '/app/mandate_requests.php';
+require_once __DIR__ . '/app/alerts.php';
 
 header('Content-Type: text/plain; charset=utf-8');
 
@@ -61,6 +65,14 @@ if (!empty(config('features', [])['mandate_request'])) {
     } catch (Throwable $e) {
         error_log('Cron Mandats-Erinnerung fehlgeschlagen: ' . $e->getMessage());
     }
+}
+
+// Alarmierung: einmal je Kalendertag pro Firma eine E-Mail an den Inhaber bei Alarmen der Stufe 'hoch'
+try {
+    $al = alerts_cron_notify();
+    echo sprintf("[%s] Alarmierung: %d Firmen geprüft, %d E-Mails versendet, %d übersprungen\n", date('d.m.Y H:i:s'), $al['checked'], $al['sent'], $al['skipped']);
+} catch (Throwable $e) {
+    error_log('Cron Alarmierung fehlgeschlagen: ' . $e->getMessage());
 }
 
 $budget = (int)max(10, 50 - (microtime(true) - $start));

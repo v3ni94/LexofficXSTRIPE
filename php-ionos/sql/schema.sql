@@ -351,7 +351,7 @@ CREATE TABLE IF NOT EXISTS payment_collections (
     amount_cents             INT          NOT NULL,
     currency                 CHAR(3)      NOT NULL DEFAULT 'EUR',
     stripe_payment_intent_id VARCHAR(255) NULL,
-    stripe_status            VARCHAR(50)  NULL, -- scheduled|processing|succeeded|failed|disputed|cancelled
+    stripe_status            VARCHAR(50)  NULL, -- scheduled|submitting|processing|succeeded|failed|disputed|refunded|cancelled
     submitted_at             DATETIME     NULL,
     completed_at             DATETIME     NULL,
     failure_reason           TEXT         NULL,
@@ -541,5 +541,31 @@ INSERT IGNORE INTO integration_providers (code, name, kind, status, capabilities
 -- Eine aktive Rechnungsquelle je Firma (integrations bleibt die Verbindungs-Tabelle)
 ALTER TABLE integrations
     ADD COLUMN IF NOT EXISTS invoice_source VARCHAR(32) NOT NULL DEFAULT 'lexware_office' AFTER tenant_id;
+
+-- ===========================================================================
+-- Ergänzungen aus Migration 007 (Erstattungen, Klärungsbedarf, Alarmierung).
+-- Identisch zu sql/migrations/007_refunds_alerts.sql, wiederholbar.
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- Erstattungen am Einzug. stripe_status 'refunded' = vollständig erstattet;
+-- bei Teilerstattung bleibt stripe_status 'succeeded' und refunded_cents > 0.
+-- ---------------------------------------------------------------------------
+ALTER TABLE payment_collections
+    ADD COLUMN IF NOT EXISTS refunded_cents INT          NOT NULL DEFAULT 0 AFTER failure_reason,
+    ADD COLUMN IF NOT EXISTS refunded_at    DATETIME     NULL AFTER refunded_cents,
+    ADD COLUMN IF NOT EXISTS refund_note    VARCHAR(255) NULL AFTER refunded_at;
+
+-- ---------------------------------------------------------------------------
+-- Klärungsbedarf je Rechnung: requires_review = 1 blockiert jede Einreichung,
+-- bis Inhaber oder Administrator die Klärung abschließt (invoices.php).
+-- ---------------------------------------------------------------------------
+ALTER TABLE invoices
+    ADD COLUMN IF NOT EXISTS requires_review TINYINT(1)   NOT NULL DEFAULT 0 AFTER collection_status,
+    ADD COLUMN IF NOT EXISTS review_reason   VARCHAR(255) NULL AFTER requires_review;
+
+-- Standardwert der Vorabankündigungsfrist (nur DEFAULT, keine Bestandsdaten)
+ALTER TABLE organizations
+    ALTER COLUMN pre_notification_days SET DEFAULT 14;
 
 SET FOREIGN_KEY_CHECKS = 1;

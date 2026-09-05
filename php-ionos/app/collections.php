@@ -14,6 +14,8 @@
  *     offenen Betrag abzüglich eigener laufender oder erfolgreicher Einzüge,
  *  4. Versuchsjournal mit Idempotenz-Schlüssel (collection_attempts), kein
  *     zweiter Versuch, solange ein Versuch offen oder unklar ist.
+ * Erstattungen aus Stripe (collection_apply_refund) setzen die Rechnung auf
+ * Klärungsbedarf (invoices.requires_review); es gibt keinen automatischen Neu-Einzug.
  */
 
 declare(strict_types=1);
@@ -613,6 +615,100 @@ function collection_attempts_resolve(string $tenantId, ?array $actor = null): ar
 }
 
 // ---------------------------------------------------------------------------
+// Erstattungen aus Stripe (charge.refunded, charge.refund.updated)
+// ---------------------------------------------------------------------------
+
+/**
+ * Erstattungsstand eines Einzugs übernehmen. $refundedCents ist der von Stripe
+ * gemeldete Gesamtbetrag der Erstattungen zur Charge (amount_refunded).
+ *
+ *  - Vollerstattung (>= Einzugsbetrag): stripe_status 'refunded'; die Rechnung
+ *    geht von 'collected' zurück auf 'open', aber NUR mit Vermerk: sie erhält
+ *    requires_review = 1 und wird nicht automatisch erneut eingereicht.
+ *  - Teilerstattung: refunded_cents wird gesetzt, stripe_status bleibt
+ *    'succeeded', Rechnung requires_review = 1.
+ *  - Unveränderter Stand (Wiederholung des Webhooks): keine Änderung, kein Audit.
+ *
+ * Es gibt keinen automatischen Neu-Einzug. Gibt true zurück, wenn sich der
+ * Stand geändert hat.
+ */
+function collection_apply_refund(string $tenantId, array $collection, int $refundedCents, ?string $chargeId = null, ?array $actor = null, string $source = 'webhook'): bool
+{
+    $pdo = db();
+    $refundedCents = max(0, $refundedCents);
+    if ((int)($collection['refunded_cents'] ?? 0) === $refundedCents) {
+        return false;
+    }
+    $amount = (int)$collection['amount_cents'];
+    $full = $refundedCents >= $amount;
+    $when = date('d.m.Y H:i');
+    $note = $full
+        ? sprintf('Vollständig erstattet über Stripe am %s (%s)', $when, format_eur_cents($refundedCents))
+        : sprintf('Teilerstattung über Stripe am %s: %s von %s', $when, format_eur_cents($refundedCents), format_eur_cents($amount));
+    if ($refundedCents === 0) {
+        $note = sprintf('Erstattung bei Stripe zurückgenommen am %s', $when);
+    }
+
+    $pdo->prepare(
+        "UPDATE payment_collections
+         SET refunded_cents = ?, refunded_at = NOW(), refund_note = ?,
+             stripe_status = CASE WHEN ? = 1 THEN 'refunded' WHEN stripe_status = 'refunded' THEN 'succeeded' ELSE stripe_status END,
+             stripe_charge_id = COALESCE(stripe_charge_id, ?)
+         WHERE id = ? AND tenant_id = ?"
+    )->execute([$refundedCents, mb_substr($note, 0, 255), $full ? 1 : 0, $chargeId, $collection['id'], $tenantId]);
+
+    // Rechnung: Klärungsbedarf setzen, bei Vollerstattung Einzugsstatus zurück auf offen.
+    $stmt = $pdo->prepare('SELECT voucher_number, collection_status FROM invoices WHERE id = ? AND tenant_id = ?');
+    $stmt->execute([$collection['invoice_id'], $tenantId]);
+    $invoice = $stmt->fetch();
+    if ($invoice) {
+        $reason = $full
+            ? sprintf('Einzug über %s am %s vollständig erstattet. Rechnung wieder offen, kein automatischer Neu-Einzug.', format_eur_cents($amount), $when)
+            : sprintf('Einzug über %s am %s teilweise erstattet (%s). Bitte Sachverhalt prüfen.', format_eur_cents($amount), $when, format_eur_cents($refundedCents));
+        if ($refundedCents === 0) {
+            $reason = sprintf('Erstattung zum Einzug über %s am %s bei Stripe zurückgenommen. Bitte Sachverhalt prüfen.', format_eur_cents($amount), $when);
+        }
+        $pdo->prepare(
+            "UPDATE invoices
+             SET requires_review = 1, review_reason = ?,
+                 collection_status = CASE WHEN ? = 1 AND collection_status = 'collected' THEN 'open' ELSE collection_status END
+             WHERE id = ? AND tenant_id = ?"
+        )->execute([mb_substr($reason, 0, 255), $full ? 1 : 0, $collection['invoice_id'], $tenantId]);
+    }
+
+    audit_log($tenantId, $actor, 'collection_refunded', 'collection', $collection['id'], [
+        'amount_cents' => $amount, 'refunded_cents' => $refundedCents, 'full' => $full,
+        'charge' => $chargeId, 'payment_intent' => $collection['stripe_payment_intent_id'] ?? null,
+        'voucher_number' => $invoice['voucher_number'] ?? null, 'source' => $source,
+    ]);
+    return true;
+}
+
+/**
+ * Klärung einer Rechnung abschließen (Inhaber oder Administrator): Flag
+ * requires_review zurücksetzen. Der Grund bleibt im Audit-Log erhalten.
+ */
+function invoice_review_clear(string $tenantId, string $invoiceId, array $actor): array
+{
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT * FROM invoices WHERE id = ? AND tenant_id = ?');
+    $stmt->execute([$invoiceId, $tenantId]);
+    $invoice = $stmt->fetch();
+    if (!$invoice) {
+        throw new CollectionException('Rechnung nicht gefunden.');
+    }
+    if ((int)$invoice['requires_review'] !== 1) {
+        throw new CollectionException('Für diese Rechnung ist keine Klärung offen.');
+    }
+    $pdo->prepare('UPDATE invoices SET requires_review = 0, review_reason = NULL WHERE id = ? AND tenant_id = ?')
+        ->execute([$invoiceId, $tenantId]);
+    audit_log($tenantId, $actor, 'invoice_review_cleared', 'invoice', $invoiceId, [
+        'voucher_number' => $invoice['voucher_number'], 'reason' => $invoice['review_reason'],
+    ]);
+    return $invoice;
+}
+
+// ---------------------------------------------------------------------------
 // Stripe-Mandatsdaten
 // ---------------------------------------------------------------------------
 
@@ -774,6 +870,13 @@ function _load_and_validate(string $tenantId, string $invoiceId): array
     }
     if (in_array($invoice['collection_status'], ['in_collection', 'scheduled'], true)) {
         throw new CollectionException('Rechnung befindet sich bereits im Einzugsverfahren.');
+    }
+    if ((int)($invoice['requires_review'] ?? 0) === 1) {
+        throw new CollectionException(sprintf(
+            'Rechnung %s ist zur Klärung markiert (%s). Es wird keine Lastschrift eingereicht, bis ein Inhaber oder '
+            . 'Administrator die Klärung unter "Rechnungen" mit "Klärung abgeschlossen" beendet hat.',
+            $invoice['voucher_number'], (string)($invoice['review_reason'] ?: 'Grund nicht vermerkt')
+        ));
     }
     if (!in_array($invoice['lexoffice_status'], ['open', 'overdue'], true)) {
         throw new CollectionException(
@@ -1273,6 +1376,7 @@ function submit_all_ready_collections(string $tenantId, ?array $actor = null): a
          WHERE i.tenant_id = ?
            AND i.lexoffice_status IN ('open', 'overdue')
            AND i.collection_status NOT IN ('in_collection', 'scheduled', 'collected')
+           AND i.requires_review = 0
            AND c.sepa_debit_enabled = 1
            AND EXISTS (
                SELECT 1 FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1
@@ -1327,6 +1431,7 @@ function count_ready_for_collection(string $tenantId): array
          WHERE i.tenant_id = ?
            AND i.lexoffice_status IN ('open', 'overdue')
            AND i.collection_status NOT IN ('in_collection', 'scheduled', 'collected')
+           AND i.requires_review = 0
            AND c.sepa_debit_enabled = 1
            AND EXISTS (
                SELECT 1 FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1

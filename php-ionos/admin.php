@@ -10,6 +10,7 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/collections.php';
+require_once __DIR__ . '/app/alerts.php';
 
 // Host-Prüfung: ist admin_base_url gesetzt, antwortet diese Seite nur auf dem
 // Adminhost (bootstrap.php prüft dies bereits zentral, hier zusätzlich als
@@ -29,6 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     try {
         if ($action === 'platform_pause') {
+            // Zweitbestätigung: aktueller 2FA-Code des Administrators
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             $pause = ($_POST['pause'] ?? '') === '1';
             platform_setting_set('collections_paused', $pause ? '1' : '0');
             audit_log(null, $ctx, $pause ? 'collections_paused' : 'collections_resumed', 'platform', 'collections_paused', ['scope' => 'platform']);
@@ -53,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Tarif ' . $code . ' aktualisiert.');
 
         } elseif ($action === 'org_plan') {
+            // Zweitbestätigung: aktueller 2FA-Code des Administrators
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             $orgId = $_POST['org_id'] ?? '';
             $stmt = $pdo->prepare('SELECT * FROM organizations WHERE id = ?');
             $stmt->execute([$orgId]);
@@ -154,10 +159,23 @@ $totals = $pdo->query(
             (SELECT COALESCE(SUM(amount_cents),0) FROM payment_collections WHERE stripe_status = 'succeeded') AS succeeded_cents"
 )->fetch();
 
+$platformAlerts = alerts_platform();
+
 layout_header('Administration', $ctx);
 ?>
 <h1>Administration</h1>
 <p class="page-sub">Plattform <?= e(product_name()) ?> · Betreiber <?= e((string)(config('operator')['name'] ?? 'Müller Holding AG')) ?></p>
+
+<?php if ($platformAlerts): ?>
+<div class="flash flash-warn">
+    <strong>Hinweise (<?= count($platformAlerts) ?>)</strong>
+    <ul style="margin: 6px 0 0 18px; padding: 0;">
+    <?php foreach ($platformAlerts as $a): ?>
+        <li><?= $a['level'] === 'hoch' ? '<strong>Wichtig:</strong> ' : '' ?><?= e($a['text']) ?></li>
+    <?php endforeach; ?>
+    </ul>
+</div>
+<?php endif; ?>
 
 <div class="card-grid">
     <div class="stat-card"><div class="stat-value"><?= (int)$totals['orgs'] ?></div><div class="stat-label">Firmenaccounts</div></div>
@@ -211,7 +229,7 @@ layout_header('Administration', $ctx);
     <p class="hint">Seitenaufrufe und CTA-Klicks kommen cookielos von den Marketingseiten (track.php), alle weiteren Schritte aus der Anwendung.</p>
 </div>
 
-<div class="card">
+<div class="card" id="notstopp">
     <h2>Not-Stopp (Plattform)</h2>
     <?php $paused = platform_setting('collections_paused', '0') === '1'; ?>
     <p><?= $paused ? '<span class="badge badge-danger">Aktiv: alle neuen Einzüge sind angehalten.</span>' : '<span class="badge badge-success">Nicht aktiv, Einzüge laufen.</span>' ?>
@@ -220,8 +238,10 @@ layout_header('Administration', $ctx);
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="platform_pause">
         <input type="hidden" name="pause" value="<?= $paused ? '0' : '1' ?>">
+        <input type="text" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 190px;">
         <button type="submit" class="btn <?= $paused ? 'btn-secondary' : 'btn-danger' ?>"><?= $paused ? 'Not-Stopp aufheben' : 'Not-Stopp aktivieren' ?></button>
     </form>
+    <p class="hint">Zweitbestätigung: Aktivieren und Aufheben erfordern den aktuellen Code aus Ihrer Authenticator-App.</p>
 </div>
 
 <div class="card">
@@ -253,7 +273,7 @@ layout_header('Administration', $ctx);
     </div>
 </div>
 
-<div class="card">
+<div class="card" id="firmen">
     <h2>Firmenaccounts</h2>
     <div class="table-wrap">
         <table class="table-sm">
@@ -281,6 +301,7 @@ layout_header('Administration', $ctx);
                                 <?php endforeach; ?>
                             </select>
                             <label class="inline-check"><input type="checkbox" name="billing_exempt" value="1" <?= (int)$o['billing_exempt'] ? 'checked' : '' ?>> befreit</label>
+                            <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 150px; padding: 5px 8px; font-size: 13px;">
                             <button type="submit" class="btn btn-sm btn-secondary">OK</button>
                         </form>
                     </td>
@@ -290,7 +311,8 @@ layout_header('Administration', $ctx);
         </table>
     </div>
     <p class="hint">Grandfathering: Bestehende Firmen behalten ihren Tarif, bis er hier geändert wird. Ein Wechsel auf einen Tarif mit
-        weniger Benutzern wird abgelehnt, solange mehr Benutzer bzw. offene Einladungen vorhanden sind.</p>
+        weniger Benutzern wird abgelehnt, solange mehr Benutzer bzw. offene Einladungen vorhanden sind. Jede Tarifänderung erfordert
+        als Zweitbestätigung den aktuellen 2FA-Code.</p>
 </div>
 
 <div class="card">

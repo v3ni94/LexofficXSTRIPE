@@ -14,7 +14,7 @@ $tenantId = $ctx['org_id'];
 $pdo = db();
 
 $filter = (string)($_GET['status'] ?? '');
-$allowed = ['scheduled', 'processing', 'succeeded', 'failed', 'disputed', 'cancelled'];
+$allowed = ['scheduled', 'processing', 'succeeded', 'refunded', 'failed', 'disputed', 'cancelled'];
 $where = 'pc.tenant_id = ?';
 $params = [$tenantId];
 if (in_array($filter, $allowed, true)) {
@@ -67,6 +67,7 @@ function csv_status(?string $status): string
         'succeeded'  => 'Erfolgreich',
         'failed'     => 'Fehlgeschlagen',
         'disputed'   => 'Rücklastschrift',
+        'refunded'   => 'Erstattet',
         'cancelled'  => 'Storniert',
         default      => (string)$status,
     };
@@ -82,7 +83,8 @@ $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF");
 $header = [
     'Rechnungsnummer', 'Lexware-Rechnungs-ID', 'Kunde', 'Kundennummer', 'Einzugs-ID', 'Stripe PaymentIntent', 'Stripe Charge',
-    'Betrag EUR', 'Status', 'Eingereicht am', 'Erfolgreich am', 'Rücklastschrift am', 'Mandatsreferenz', 'Stripe-Mandatsreferenz',
+    'Betrag EUR', 'Status', 'Eingereicht am', 'Erfolgreich am', 'Rücklastschrift am', 'Erstattet EUR', 'Erstattet am',
+    'Mandatsreferenz', 'Stripe-Mandatsreferenz',
     'Restbetrag laut Lexware', 'Restbetrag abgerufen am', 'Ausgelöst von', 'Termin', 'Vermerk', 'Fehlergrund',
 ];
 fwrite($out, implode(';', array_map('csv_cell', $header)) . "\r\n");
@@ -102,13 +104,15 @@ foreach ($rows as $r) {
         $r['submitted_at'] ? format_datetime($r['submitted_at']) : '',
         $succeededAt ? format_datetime($succeededAt) : '',
         $disputedAt ? format_datetime($disputedAt) : '',
+        (int)($r['refunded_cents'] ?? 0) > 0 ? csv_amount((int)$r['refunded_cents']) : '',
+        !empty($r['refunded_at']) ? format_datetime($r['refunded_at']) : '',
         $r['mandate_reference'],
         $r['stripe_mandate_reference'],
         $r['open_amount'] !== null ? number_format((float)$r['open_amount'], 2, ',', '') : '',
         $r['open_amount_fetched_at'] ? format_datetime($r['open_amount_fetched_at']) : '',
         $r['created_by_name'] ?: ($r['created_by_email'] ?: 'System/Cron'),
         (int)$r['is_scheduled'] ? format_date($r['scheduled_date']) : '',
-        $r['note'],
+        trim((string)$r['note'] . (!empty($r['refund_note']) ? ' | ' . $r['refund_note'] : '')),
         $r['failure_reason'],
     ];
     fwrite($out, implode(';', array_map(fn($v) => csv_cell($v === null ? null : (string)$v), $line)) . "\r\n");

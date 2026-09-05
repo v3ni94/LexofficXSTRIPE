@@ -24,7 +24,10 @@ Bestandteile des Repositories:
    Fehlende Schlüssel werden mit sinnvollen Standardwerten behandelt, die
    Ergänzung ist aber empfohlen.
 3. Datenbank migrieren: phpMyAdmin öffnen, Datenbank wählen, Reiter SQL,
-   Inhalt von `sql/migrations/003_saas_2fa_roles_plans.sql` einfügen und ausführen
+   Inhalt von `sql/migrations/003_saas_2fa_roles_plans.sql` einfügen und ausführen,
+   danach in dieser Reihenfolge 004_integration_verification.sql, 005_mandate_files.sql,
+   006_payment_safety.sql und 007_refunds_alerts.sql (alle wiederholbar). Neuinstallationen
+   brauchen nur sql/schema.sql.
    (einmalig; die ALTER-Befehle sind wiederholbar, die UPDATE-Befehle am Ende
    sind für Bestandsdaten gedacht).
 4. `setup-check.php` aufrufen: alle 17 Tabellen müssen vorhanden sein.

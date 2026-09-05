@@ -264,9 +264,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'transfer_ownership') {
             require_owner_action($ctx);
             $me = user_load($ctx['user_id']);
-            if ($err = verify_password_and_2fa($me, $_POST['password'] ?? '', $_POST['code'] ?? '')) {
-                throw new RuntimeException($err);
+            if (!password_verify((string)($_POST['password'] ?? ''), $me['password_hash'])) {
+                throw new RuntimeException('Das Passwort ist falsch.');
             }
+            // Zweitbestätigung: aktueller 2FA-Code (Replay-Schutz, kein Recovery-Code)
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             $member = load_member($pdo, $_POST['member_id'] ?? '', $tenantId);
             if ($member['role'] === 'owner' || $member['status'] !== 'active') {
                 throw new RuntimeException('Ungültiges Zielmitglied.');
@@ -374,7 +376,8 @@ layout_header('Firma', $ctx);
                 <label for="pre_notification_days">Vorabankündigungsfrist (Tage vor Fälligkeit)</label>
                 <input type="number" id="pre_notification_days" name="pre_notification_days" min="1" max="30"
                        value="<?= (int)$org['pre_notification_days'] ?>" style="max-width: 120px;">
-                <p class="hint">Standard 14 Tage; eine kürzere Frist muss mit dem Kunden vereinbart sein (steht so im erzeugten Mandatsdokument).</p>
+                <p class="hint">Ohne abweichende Vereinbarung mit dem Zahler gilt nach Angaben der Deutschen Bundesbank eine Frist von 14 Kalendertagen.
+                    Eine kürzere Frist setzt eine Vereinbarung mit Ihren Kunden voraus (zum Beispiel in AGB oder Mandat). Der eingestellte Wert steht so im erzeugten Mandatsdokument.</p>
             </div>
         </div>
         <label class="checkbox-label">
@@ -522,7 +525,7 @@ layout_header('Firma', $ctx);
 <div class="card">
     <h2>Inhaberschaft übertragen</h2>
     <p class="hint">Der neue Inhaber muss aktives Mitglied mit eingerichteter 2FA sein. Sie werden danach Mitarbeiter
-        dieser Firma. Zur Bestätigung sind Ihr Passwort und Ihr aktueller 2FA-Code erforderlich.</p>
+        dieser Firma. Zur Bestätigung sind Ihr Passwort und der aktuelle 2FA-Code aus Ihrer Authenticator-App erforderlich (kein Recovery-Code).</p>
     <?php $candidates = array_filter($members, fn($m) => $m['role'] !== 'owner' && $m['status'] === 'active'); ?>
     <?php if (!$candidates): ?>
         <p class="hint">Derzeit gibt es kein aktives Mitglied, an das die Inhaberschaft übertragen werden könnte.</p>
@@ -538,7 +541,7 @@ layout_header('Firma', $ctx);
         </select>
         <div class="form-row">
             <div><label for="to_pw">Ihr Passwort</label><input type="password" id="to_pw" name="password" required autocomplete="current-password"></div>
-            <div><label for="to_code">Ihr 2FA-Code</label><input type="text" id="to_code" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code"></div>
+            <div><label for="to_code">Aktueller 2FA-Code</label><input type="text" id="to_code" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code" placeholder="123 456"></div>
         </div>
         <div class="form-actions"><button type="submit" class="btn btn-danger">Inhaberschaft übertragen</button></div>
     </form>

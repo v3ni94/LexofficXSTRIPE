@@ -118,6 +118,19 @@ $op = (array)config('operator', []);
             <p class="hint">Die Mandatsreferenz wird Ihnen nach der Bestätigung mitgeteilt und erscheint auf der Vorabankündigung. Ihre Bankverbindung geben Sie im nächsten Schritt direkt beim Zahlungsdienstleister Stripe ein; <?= e($req['org_name']) ?> und <?= e($product) ?> erhalten davon nur eine maskierte Fassung.</p>
         </div>
         <div class="card">
+            <h2>Hinweis zum Datenschutz</h2>
+            <?php
+            // Entwurf: Formulierung vor Produktivstart durch Rechtsberatung prüfen lassen
+            // (Rollenverteilung Verantwortlicher / Auftragsverarbeiter, Verweis auf Datenschutzerklärung).
+            $dsUrl = public_base_url() . '/datenschutz/';
+            ?>
+            <p class="hint">Verantwortlich für die Verarbeitung Ihrer Daten im Rahmen dieses Mandats ist <?= e($req['org_name']) ?> als Zahlungsempfänger.
+                Die Bankverbindung geben Sie direkt beim Zahlungsdienstleister Stripe Payments Europe Ltd. ein, der im Auftrag von <?= e($req['org_name']) ?> tätig wird.
+                <?= e($product) ?> verarbeitet die Mandatsdaten im Auftrag des Zahlungsempfängers und erhält Ihre Bankverbindung nur in maskierter Form.
+                Eine Weitergabe an sonstige Dritte findet nicht statt. Weitere Informationen zur Plattform finden Sie in der
+                <a href="<?= e($dsUrl) ?>" rel="noopener">Datenschutzerklärung</a>.</p>
+        </div>
+        <div class="card">
             <form method="post" action="mandat.php?t=<?= e($token) ?>">
                 <?= csrf_field() ?>
                 <input type="hidden" name="t" value="<?= e($token) ?>">

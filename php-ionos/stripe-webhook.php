@@ -10,6 +10,9 @@
  *  - payment_intent.processing / succeeded / payment_failed: Einzugsstatus,
  *    bei Erfolg zusätzlich Charge und Stripe-Mandatsdaten speichern.
  *  - charge.dispute.created: Rücklastschrift, Rechnung wieder offen (failed).
+ *  - charge.refunded / charge.refund.updated: Erstattung übernehmen
+ *    (collection_apply_refund), Rechnung erhält Klärungsbedarf, kein Neu-Einzug.
+ *    Zuordnung über payment_intent bzw. charge zu payment_collections der Firma.
  *  - checkout.session.completed (mode=setup): digitale Mandatserteilung,
  *    Zuordnung über metadata.tenant_id und metadata.mandate_request_id.
  */
@@ -45,15 +48,39 @@ $obj = $event['data']['object'] ?? [];
 $tenantId = $obj['metadata']['tenant_id'] ?? null;
 $isCheckout = $eventType === 'checkout.session.completed';
 
-// Rücklastschriften (charge.dispute.created) tragen keine PaymentIntent-Metadaten:
-// Firma über den PaymentIntent der gespeicherten Collection ermitteln.
-$paymentIntentHint = $eventType === 'charge.dispute.created'
+// Charge-Ereignisse (Rücklastschrift, Erstattung) tragen nicht zwingend die
+// PaymentIntent-Metadaten: Firma über PaymentIntent bzw. Charge der gespeicherten
+// Collection ermitteln. Bei charge.refund.updated ist das Objekt ein Refund
+// (Felder payment_intent und charge), bei charge.refunded und
+// charge.dispute.created eine Charge bzw. ein Dispute (payment_intent, charge).
+$isChargeEvent = in_array($eventType, ['charge.dispute.created', 'charge.refunded', 'charge.refund.updated'], true);
+$isRefundEvent = in_array($eventType, ['charge.refunded', 'charge.refund.updated'], true);
+$paymentIntentHint = $isChargeEvent
     ? ($obj['payment_intent'] ?? null)
     : ($isCheckout ? null : ($obj['id'] ?? null));
+$chargeHint = null;
+if ($isChargeEvent) {
+    $chargeHint = $eventType === 'charge.refunded' ? ($obj['id'] ?? null) : ($obj['charge'] ?? null);
+    if (is_array($chargeHint)) {
+        $chargeHint = $chargeHint['id'] ?? null;
+    }
+}
+if (is_array($paymentIntentHint)) {
+    $paymentIntentHint = $paymentIntentHint['id'] ?? null;
+}
 if (!$tenantId && is_string($paymentIntentHint) && $paymentIntentHint !== '') {
     try {
         $stmt = db()->prepare('SELECT tenant_id FROM payment_collections WHERE stripe_payment_intent_id = ? LIMIT 1');
         $stmt->execute([$paymentIntentHint]);
+        $tenantId = $stmt->fetchColumn() ?: null;
+    } catch (Throwable $e) {
+        webhook_exit('Datenbankfehler bei Firmenzuordnung: ' . $e->getMessage());
+    }
+}
+if (!$tenantId && is_string($chargeHint) && $chargeHint !== '') {
+    try {
+        $stmt = db()->prepare('SELECT tenant_id FROM payment_collections WHERE stripe_charge_id = ? LIMIT 1');
+        $stmt->execute([$chargeHint]);
         $tenantId = $stmt->fetchColumn() ?: null;
     } catch (Throwable $e) {
         webhook_exit('Datenbankfehler bei Firmenzuordnung: ' . $e->getMessage());
@@ -116,6 +143,51 @@ try {
         }
         $granted = mandate_request_grant($req, $stripe, $setupIntent);
         webhook_exit($granted ? "Mandat digital erteilt (Anforderung $requestId)" : "Anforderung $requestId nicht erneut verarbeitet");
+    }
+
+    // --- Erstattungen: Zuordnung über PaymentIntent oder Charge, nur Lesezugriff bei Stripe ---
+    if ($isRefundEvent) {
+        require_once __DIR__ . '/app/collections.php';
+        $collection = null;
+        if (is_string($paymentIntentHint) && $paymentIntentHint !== '') {
+            $stmt = $pdo->prepare('SELECT * FROM payment_collections WHERE stripe_payment_intent_id = ? AND tenant_id = ?');
+            $stmt->execute([$paymentIntentHint, $tenantId]);
+            $collection = $stmt->fetch() ?: null;
+        }
+        if (!$collection && is_string($chargeHint) && $chargeHint !== '') {
+            $stmt = $pdo->prepare('SELECT * FROM payment_collections WHERE stripe_charge_id = ? AND tenant_id = ?');
+            $stmt->execute([$chargeHint, $tenantId]);
+            $collection = $stmt->fetch() ?: null;
+        }
+        if (!$collection) {
+            webhook_exit("Erstattung ohne zugehörigen Einzug (PI " . ($paymentIntentHint ?? '-') . ", Charge " . ($chargeHint ?? '-') . ")");
+        }
+        if ($eventType === 'charge.refunded') {
+            // Objekt ist die Charge: amount_refunded ist der Gesamtstand der Erstattungen.
+            $refundedCents = (int)($obj['amount_refunded'] ?? 0);
+            $chargeId = (string)($obj['id'] ?? $chargeHint);
+        } else {
+            // Objekt ist ein Refund (z. B. Status succeeded, failed, canceled):
+            // Gesamtstand verbindlich aus der Charge lesen (reiner Lesezugriff).
+            $chargeId = (string)($chargeHint ?: ($collection['stripe_charge_id'] ?? ''));
+            if ($chargeId === '') {
+                webhook_exit('Refund ohne Charge-ID, keine Zuordnung möglich');
+            }
+            try {
+                $charge = _get_stripe_client($tenantId)->getCharge($chargeId);
+            } catch (Throwable $e) {
+                webhook_exit('Charge ' . $chargeId . ' nicht abrufbar: ' . $e->getMessage());
+            }
+            if (($charge['payment_intent'] ?? null) && ($collection['stripe_payment_intent_id'] ?? null)
+                && $charge['payment_intent'] !== $collection['stripe_payment_intent_id']) {
+                webhook_exit('Charge ' . $chargeId . ' gehört nicht zum Einzug ' . $collection['id']);
+            }
+            $refundedCents = (int)($charge['amount_refunded'] ?? 0);
+        }
+        $changed = collection_apply_refund($tenantId, $collection, $refundedCents, $chargeId, null, 'webhook:' . $eventType);
+        webhook_exit($changed
+            ? "Erstattung übernommen (Einzug {$collection['id']}, $refundedCents Cent)"
+            : "Erstattungsstand unverändert (Einzug {$collection['id']})");
     }
 
     // --- Collection zum PaymentIntent finden ---

@@ -218,7 +218,7 @@ layout_header('Einstellungen', $ctx);
         <p class="hint">Webhook-Endpunkt für das Stripe-Dashboard (Developers &gt; Webhooks &gt; Add endpoint):</p>
         <p><code class="copy"><?= e($webhookUrl) ?></code></p>
         <p class="hint">Zu abonnierende Events: payment_intent.processing, payment_intent.succeeded,
-            payment_intent.payment_failed, charge.dispute.created.</p>
+            payment_intent.payment_failed, charge.dispute.created, charge.refunded, charge.refund.updated, checkout.session.completed.</p>
         <?php if ($canEdit): ?>
         <form method="post" class="inline-form" style="margin-bottom: 12px;">
             <?= csrf_field() ?>
