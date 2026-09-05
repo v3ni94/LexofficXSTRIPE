@@ -88,6 +88,20 @@
 
   <section class="section section-alt">
     <div class="container">
+      <span class="eyebrow">Stripe</span>
+      <h2>Webhook einrichten, damit Stripe den Status zurückmeldet</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p>Nach dem Verbinden Ihres Stripe-Kontos richten Sie einmalig einen Webhook ein. Darüber meldet Stripe, ob eine Lastschrift eingereicht, erfolgreich, fehlgeschlagen, zurückgebucht oder erstattet wurde. Ohne Webhook aktualisiert SmartEinzug den Status nur beim manuellen Abgleich und im Hintergrundlauf.</p>
+      <div class="tiles">
+        <div class="tile"><h3>1. Endpunkt anlegen</h3><p>Stripe-Dashboard, Entwickler, Webhooks, "Endpunkt hinzufügen". Adresse: https://app.smart-einzug.de/stripe-webhook.php</p></div>
+        <div class="tile"><h3>2. Genau sieben Ereignisse</h3><p>payment_intent.processing, payment_intent.succeeded, payment_intent.payment_failed, charge.dispute.created, charge.refunded, charge.refund.updated, checkout.session.completed. Nicht "alle Ereignisse" wählen, das erzeugt nur Leerlauf.</p></div>
+        <div class="tile"><h3>3. Secret speichern</h3><p>Das Signing Secret (whsec_...) aus Stripe in SmartEinzug unter Einstellungen bei Stripe als Webhook-Secret eintragen. Fertig.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
       <div class="section-head">
         <p class="eyebrow">Mehr erfahren</p>
         <h2>Weiterführende Seiten</h2>

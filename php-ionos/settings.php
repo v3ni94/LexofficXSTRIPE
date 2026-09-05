@@ -215,10 +215,29 @@ layout_header('Einstellungen', $ctx);
             <dt>Zuletzt geprüft</dt><dd><?= $integration['stripe_last_verified_at'] ? e(format_datetime($integration['stripe_last_verified_at'])) : 'noch nicht geprüft' ?></dd>
             <dt>Webhook-Secret</dt><dd><?= $integration['stripe_webhook_secret_encrypted'] ? '<span class="badge badge-success">hinterlegt</span>' : '<span class="badge badge-warn">fehlt (Statusänderungen und Rücklastschriften werden nur beim manuellen Abgleich erkannt)</span>' ?></dd>
         </dl>
-        <p class="hint">Webhook-Endpunkt für das Stripe-Dashboard (Developers &gt; Webhooks &gt; Add endpoint):</p>
-        <p><code class="copy"><?= e($webhookUrl) ?></code></p>
-        <p class="hint">Zu abonnierende Events: payment_intent.processing, payment_intent.succeeded,
-            payment_intent.payment_failed, charge.dispute.created, charge.refunded, charge.refund.updated, checkout.session.completed.</p>
+        <details class="guide" <?= $integration['stripe_webhook_secret_encrypted'] ? '' : 'open' ?>>
+            <summary>Webhook einrichten: so meldet Stripe den Einzugsstatus automatisch zurück</summary>
+            <p class="hint" style="margin-top:8px">Ohne Webhook erfährt <?= e($productName) ?> nur beim manuellen Abgleich und über den Cronjob, ob eine Lastschrift erfolgreich war, fehlgeschlagen ist oder zurückgebucht wurde. Mit Webhook kommt die Rückmeldung sofort. Der Webhook wird in Ihrem eigenen Stripe-Konto angelegt, einmalig, in etwa drei Minuten.</p>
+            <ol>
+                <li>Im Stripe-Dashboard <span class="path">Entwickler</span> &gt; <span class="path">Webhooks</span> öffnen und <span class="path">Endpunkt hinzufügen</span> wählen. Prüfen Sie, dass der Modus (Test oder Live) zu Ihrem hinterlegten Schlüssel passt.</li>
+                <li>Als Endpunkt-URL genau diese Adresse eintragen: <code class="copy"><?= e($webhookUrl) ?></code></li>
+                <li>Unter <span class="path">Ereignisse auswählen</span> nur die folgenden sieben Ereignisse anhaken. Bitte nicht "alle Ereignisse" wählen: Stripe würde dann bei jeder Kontobewegung Meldungen schicken, die verworfen werden und den Abgleich nur verlangsamen.
+                    <ul style="margin:8px 0 0 18px">
+                        <li><span class="path">payment_intent.processing</span> (Lastschrift eingereicht)</li>
+                        <li><span class="path">payment_intent.succeeded</span> (Lastschrift erfolgreich)</li>
+                        <li><span class="path">payment_intent.payment_failed</span> (Lastschrift fehlgeschlagen)</li>
+                        <li><span class="path">charge.dispute.created</span> (Rücklastschrift)</li>
+                        <li><span class="path">charge.refunded</span> (Erstattung ausgeführt)</li>
+                        <li><span class="path">charge.refund.updated</span> (Erstattungsstand geändert)</li>
+                        <li><span class="path">checkout.session.completed</span> (digital erteiltes Mandat)</li>
+                    </ul>
+                </li>
+                <li><span class="path">Endpunkt hinzufügen</span> klicken. Auf der Detailseite <span class="path">Signing Secret</span> anzeigen lassen (beginnt mit <span class="path">whsec_</span>) und kopieren.</li>
+                <li>Das Secret unten in das Feld eintragen und speichern. Es wird verschlüsselt abgelegt und dient nur zur Prüfung, dass Meldungen wirklich von Stripe stammen.</li>
+                <li>Prüfen: In Stripe auf der Endpunkt-Seite <span class="path">Testereignis senden</span> wählen. Der Endpunkt muss mit Status 200 antworten.</li>
+            </ol>
+            <p class="hint">Wechseln Sie später den Stripe-Schlüssel oder das Konto, legen Sie den Webhook im neuen Konto erneut an und tragen das neue Secret hier ein.</p>
+        </details>
         <?php if ($canEdit): ?>
         <form method="post" class="inline-form" style="margin-bottom: 12px;">
             <?= csrf_field() ?>
