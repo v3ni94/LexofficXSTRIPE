@@ -168,5 +168,5 @@ jobs:
 
           echo "Upload-Plan:"
           grep -E '^(mkdir|  \")' "$script" | sed 's/^/  /'
-          lftp --env-password -u "$SFTP_USER" -p "$SFTP_PORT" "sftp://$SFTP_HOST" -f "$script"
+          lftp --env-password -u "$SFTP_USER" -p "$SFTP_PORT" "sftp://$SFTP_HOST"  "$script"
           echo "Upload abgeschlossen."
