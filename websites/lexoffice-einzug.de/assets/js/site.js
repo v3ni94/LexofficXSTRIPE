@@ -4,7 +4,7 @@
  * 1) UTM-Parameter an Links zur App-Domain weiterreichen
  * 2) Anonyme, cookielose Reichweitenmessung (eigener Endpunkt, keine Cookies)
  * 3) Sticky Mobile-CTA-Leiste ein-/ausblenden
- * 4) Einwilligung (Consent) und Google Analytics 4: gtag.js wird erst nach
+ * 4) Einwilligung (Consent), Google Analytics 4 und Google Ads (nur lexoffice-einzug.de): gtag.js wird erst nach
  *    ausdrücklicher Zustimmung geladen. Ohne Zustimmung wird kein Google-Skript
  *    geladen und kein Cookie gesetzt. Entscheidung wird lokal gespeichert
  *    (localStorage, 12 Monate) und kann über "Cookie-Einstellungen" geändert werden.
@@ -20,6 +20,11 @@
     'www.lexware-einzug.de': 'G-SXEH8K7HP7',
     'lexoffice-einzug.de': 'G-9NCFJ1Y4Z3',
     'www.lexoffice-einzug.de': 'G-9NCFJ1Y4Z3'
+  };
+  /* Google Ads Conversion-Tag, nur auf lexoffice-einzug.de, ebenfalls nur nach Einwilligung */
+  var ADS_IDS = {
+    'lexoffice-einzug.de': 'AW-18431688840',
+    'www.lexoffice-einzug.de': 'AW-18431688840'
   };
   var CONSENT_KEY = 'le_consent_v1';
   var CONSENT_MAX_AGE = 365 * 24 * 60 * 60 * 1000;
@@ -120,15 +125,18 @@
   var gaLoaded = false;
   function loadAnalytics() {
     var id = GA_IDS[location.hostname];
+    var adsId = ADS_IDS[location.hostname];
     if (!id || gaLoaded) { return; }
     gaLoaded = true;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
     window.gtag('consent', 'default', {
-      ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'granted'
+      ad_storage: adsId ? 'granted' : 'denied', ad_user_data: adsId ? 'granted' : 'denied',
+      ad_personalization: 'denied', analytics_storage: 'granted'
     });
     window.gtag('js', new Date());
     window.gtag('config', id, { anonymize_ip: true });
+    if (adsId) { window.gtag('config', adsId); }
     var s = document.createElement('script');
     s.async = true;
     s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(id);
@@ -148,7 +156,8 @@
     title.textContent = 'Cookies und Reichweitenmessung';
     var text = document.createElement('p');
     text.className = 'consent-text';
-    text.appendChild(document.createTextNode('Wir nutzen Google Analytics, um zu verstehen, wie diese Seite genutzt wird. Dabei werden Cookies gesetzt und Daten an Google übertragen, auch in die USA. Das geschieht nur mit Ihrer Einwilligung, die Sie jederzeit über "Cookie-Einstellungen" im Fußbereich ändern können. Technisch notwendige Funktionen und unsere eigene cookielose Zählung laufen ohne Einwilligung. Details in der '));
+    var adsHint = ADS_IDS[location.hostname] ? ' und Google Ads (Messung, ob ein Besuch über eine Anzeige zu einer Registrierung führt)' : '';
+    text.appendChild(document.createTextNode('Wir nutzen Google Analytics' + adsHint + ', um zu verstehen, wie diese Seite genutzt wird. Dabei werden Cookies gesetzt und Daten an Google übertragen, auch in die USA. Das geschieht nur mit Ihrer Einwilligung, die Sie jederzeit über "Cookie-Einstellungen" im Fußbereich ändern können. Technisch notwendige Funktionen und unsere eigene cookielose Zählung laufen ohne Einwilligung. Details in der '));
     var link = document.createElement('a');
     link.href = '/datenschutz';
     link.textContent = 'Datenschutzerklärung';
