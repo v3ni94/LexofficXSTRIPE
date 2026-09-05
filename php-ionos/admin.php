@@ -205,7 +205,7 @@ foreach ($funnelSteps as $ev => $label) {
     $funnelTotals[] = ['label' => $label, 'value' => $sum];
 }
 $regByDomain = array_map(static fn(array $d): array => ['label' => $d['domain'], 'value' => (int)$d['registrations']], $byDomain);
-$fmtEur = static fn(float $v): string => number_format($v / 100, 0, ',', '.') . ' EUR';
+$fmtEur = static fn(float $v): string => number_format($v / 100, 0, ',', '.');
 $planByCode = [];
 foreach ($plans as $p) {
     $planByCode[$p['code']] = $p;
@@ -236,16 +236,6 @@ layout_header('Administration', $ctx);
 <nav class="admin-subnav" aria-label="Adminbereiche">
     <a href="#kennzahlen">Kennzahlen</a> · <a href="#diagramme">Diagramme</a> · <a href="#notstopp">Not-Stopp</a> · <a href="#tarife">Tarife</a> · <a href="#firmen">Firmen</a> · <a href="admin-support.php">Support</a>
 </nav>
-<style>
-.admin-subnav { margin: -6px 0 18px; font-size: 14px; }
-.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
-.chart { width: 100%; height: auto; display: block; font-family: inherit; }
-.chart-title { font-size: 13px; font-weight: 700; fill: #2E2D2E; }
-.chart-label { font-size: 11px; fill: #6b6b6b; }
-.chart-value { font-size: 11px; fill: #2E2D2E; }
-.chart-axis { stroke: #ddd; stroke-width: 1; }
-.chart-empty { font-size: 13px; fill: #9F9F9F; }
-</style>
 
 <?php if ($platformAlerts): ?>
 <div class="flash flash-warn">
@@ -298,10 +288,10 @@ layout_header('Administration', $ctx);
     <h2>Diagramme</h2>
     <div class="chart-grid">
         <div><?= chart_bars($chartRows($regByWeek), 'Registrierungen je Kalenderwoche (12 Wochen)') ?></div>
-        <div><?= chart_bars($chartRows($volByWeek), 'Eingezogenes Volumen je Kalenderwoche, netto nach Erstattungen', $fmtEur, '#2E2D2E') ?></div>
+        <div><?= chart_bars($chartRows($volByWeek), 'Eingezogenes Volumen je Kalenderwoche in EUR, netto nach Erstattungen', $fmtEur, '#2E2D2E') ?></div>
         <div><?= chart_bars($chartRows($cntByWeek), 'Erfolgreiche Einzüge je Kalenderwoche', null, '#9F9F9F') ?></div>
         <div><?= chart_hbars($regByDomain, 'Registrierungen je Herkunft (gesamt)') ?></div>
-        <div style="grid-column: 1 / -1;"><?= chart_hbars($funnelTotals, 'Funnel über alle Herkünfte (gesamt)', null, '#E3AC48') ?></div>
+        <div class="chart-wide"><?= chart_hbars($funnelTotals, 'Funnel über alle Herkünfte (gesamt)', null, '#E3AC48') ?></div>
     </div>
     <p class="hint">Serverseitig erzeugte Grafiken aus den Tabellen organizations, payment_collections und funnel_events, keine Datenübertragung an Dritte.</p>
 </div>

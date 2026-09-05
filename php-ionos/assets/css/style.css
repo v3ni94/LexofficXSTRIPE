@@ -475,3 +475,63 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 .brand-euro { width: 34px; height: 34px; border-radius: 9px; display: inline-block; flex-shrink: 0; }
 
 .brand-image { height: 48px; width: auto; display: block; flex-shrink: 0; }
+
+/* ==========================================================================
+   Diagramme (Adminbereich), HTML/CSS ohne Skripte, siehe app/admin_charts.php
+   ========================================================================== */
+.admin-subnav { margin: -6px 0 18px; font-size: 14px; line-height: 1.9; }
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px 28px; }
+.chart-grid .chart-wide { grid-column: 1 / -1; }
+.chart { margin: 0; padding: 0; min-width: 0; }
+.chart-title { font-size: 14px; font-weight: 700; color: var(--hvm-anthracite); margin: 0 0 10px; }
+.chart-empty { font-size: 13px; color: var(--color-text-muted); margin: 0; padding: 18px 0; border-bottom: 1px solid var(--color-border); }
+.chart-scroll { overflow-x: auto; overflow-y: hidden; }
+.chart-cols { display: flex; align-items: stretch; gap: 6px; min-width: calc(var(--n) * 40px); padding: 0 10px; }
+.chart-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.chart-plot { width: 100%; height: 190px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; border-bottom: 1px solid var(--color-border); }
+.chart-bar { display: block; width: 68%; max-width: 44px; min-height: 0; border-radius: 4px 4px 0 0; }
+.chart-value { font-size: 13px; font-weight: 600; color: var(--hvm-anthracite); margin-bottom: 4px; white-space: nowrap; }
+.chart-value-zero { color: var(--color-text-muted); font-weight: 400; }
+.chart-label { font-size: 12px; color: var(--color-text-muted); margin-top: 6px; white-space: nowrap; }
+.chart-rowlist { display: flex; flex-direction: column; gap: 8px; }
+.chart-row { display: grid; grid-template-columns: minmax(120px, 36%) 1fr max-content; align-items: center; gap: 10px; }
+.chart-row .chart-label { margin: 0; text-align: right; white-space: normal; font-size: 13px; color: var(--hvm-anthracite); }
+.chart-track { display: block; height: 18px; background: #f1efea; border-radius: 4px; overflow: hidden; }
+.chart-hbar { display: block; height: 100%; border-radius: 4px; }
+.chart-row .chart-value { margin: 0; min-width: 2.5em; }
+
+/* ==========================================================================
+   Responsive: Tablet und Handy
+   ========================================================================== */
+@media (max-width: 900px) {
+    .header-inner { flex-wrap: wrap; gap: 8px 16px; padding: 0 16px 8px; }
+    .main-nav { order: 3; width: 100%; gap: 2px; }
+    .main-nav a { padding: 7px 10px; font-size: 13px; }
+    .user-menu { margin-left: auto; }
+    .site-main { padding: 20px 16px 40px; }
+}
+@media (max-width: 720px) {
+    h1 { font-size: 20px; }
+    .card { padding: 16px; margin-bottom: 16px; }
+    .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .stat-card { padding: 12px 14px; }
+    .stat-value { font-size: 22px; }
+    .user-menu .user-email { display: none; }
+    .inline-form { display: flex; flex-wrap: wrap; }
+    .form-actions { flex-wrap: wrap; }
+    table { font-size: 13px; }
+    th, td { padding: 8px 8px; }
+    .flash { font-size: 14px; }
+    .chart-plot { height: 150px; }
+    .chart-cols { gap: 3px; min-width: calc(var(--n) * 26px); }
+    .chart-col:nth-child(even) .chart-label { visibility: hidden; }
+    .chart-value { font-size: 10px; }
+    .chart-label { font-size: 11px; }
+    .chart-cols { padding: 0 12px; }
+    .chart-row { grid-template-columns: minmax(96px, 40%) 1fr max-content; gap: 8px; }
+    .chart-row .chart-label { font-size: 12px; }
+}
+@media (max-width: 480px) {
+    .card-grid { grid-template-columns: 1fr; }
+    .brand-image { height: 40px; }
+}
