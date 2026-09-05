@@ -72,11 +72,12 @@ if (in_array($filter, $allowedFilters, true)) {
 }
 
 $stmt = $pdo->prepare(
-    "SELECT pc.*, i.voucher_number, i.contact_name, i.customer_id, m.mandate_reference, m.stripe_mandate_reference,
+    "SELECT pc.*, i.voucher_number, i.contact_name, i.customer_id,
+            COALESCE(m.mandate_reference, pc.imported_mandate_reference) AS mandate_reference, m.stripe_mandate_reference,
             u.email AS created_by_email, u.display_name AS created_by_name
      FROM payment_collections pc
      JOIN invoices i ON i.id = pc.invoice_id
-     JOIN sepa_mandates m ON m.id = pc.mandate_id
+     LEFT JOIN sepa_mandates m ON m.id = pc.mandate_id
      LEFT JOIN users u ON u.id = pc.created_by_user_id
      WHERE $where
      ORDER BY pc.created_at DESC
@@ -211,7 +212,8 @@ layout_header('Einzüge', $ctx);
                     <td><?php if ($c['customer_id']): ?><a href="customer.php?id=<?= e($c['customer_id']) ?>"><?= e($c['contact_name']) ?></a><?php else: ?><?= e($c['contact_name']) ?><?php endif; ?></td>
                     <td class="num"><?= format_eur_cents((int)$c['amount_cents']) ?><?php if (!empty($c['note'])): ?><div class="hint"><?= e(mb_substr($c['note'], 0, 120)) ?></div><?php endif; ?>
                         <?php if ((int)($c['refunded_cents'] ?? 0) > 0): ?><div class="hint">Erstattet: <?= format_eur_cents((int)$c['refunded_cents']) ?> am <?= format_datetime($c['refunded_at'] ?? null) ?></div><?php endif; ?></td>
-                    <td><?= e($c['mandate_reference']) ?><?php if (!empty($c['stripe_mandate_reference'])): ?><div class="hint">Stripe: <?= e($c['stripe_mandate_reference']) ?></div><?php endif; ?></td>
+                    <td><?= e((string)$c['mandate_reference']) ?><?php if (!empty($c['stripe_mandate_reference'])): ?><div class="hint">Stripe: <?= e($c['stripe_mandate_reference']) ?></div><?php endif; ?>
+                        <?php if (($c['source'] ?? 'app') === 'import'): ?><div><span class="badge badge-neutral" title="Aus Stripe übernommen, frühere Installation">Import</span></div><?php endif; ?></td>
                     <td>
                         <?= status_badge((string)$c['stripe_status']) ?>
                         <?php if ($c['failure_reason']): ?>

@@ -153,6 +153,9 @@ function audit_action_label(string $action): string
         'support_access_started'   => 'Support-Zugriff begonnen (Plattformbetreiber)',
         'support_access_ended'     => 'Support-Zugriff beendet',
         'support_access_blocked'   => 'Aktion im Support-Modus gesperrt',
+        'collections_import_started' => 'Stripe-Import gestartet (Vorschau bestehender Einzüge)',
+        'collections_imported'     => 'Bestehende Einzüge aus Stripe übernommen',
+        'collections_import_discarded' => 'Stripe-Import verworfen',
     ];
     return $map[$action] ?? $action;
 }

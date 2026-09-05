@@ -276,6 +276,10 @@ layout_header('Einstellungen', $ctx);
                         onclick="return confirm('Stripe-Verbindung wirklich trennen? Vorhandene Einzüge und Mandate bleiben erhalten.')">Verbindung trennen</button>
             </form>
         </div>
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--color-border);">
+            <a class="btn btn-secondary btn-sm" href="stripe-import.php">Bestehende Einzüge aus Stripe übernehmen</a>
+            <p class="hint">Einmalig nach einem Neuaufbau oder Wechsel der Installation: Lastschriften, die bereits über dieses Stripe-Konto eingereicht wurden, werden den Rechnungen zugeordnet, damit nichts doppelt eingezogen wird. Nur Lesezugriff auf Stripe.</p>
+        </div>
         <?php endif; ?>
     <?php elseif ($canEdit): ?>
         <details class="guide" open>

@@ -172,6 +172,19 @@ Synchronisationszeit je Tag; reicht das bei vielen Firmen nicht mehr, Intervall
 verkürzen (cron-job.org erlaubt 1 Minute) oder auf IONOS-Cron ohne 30-Sekunden-
 Grenze wechseln und `cron_time_budget_seconds` auf 90 erhöhen.
 
+## 7a. Bestehende Einzüge aus Stripe übernehmen (Migration 009)
+
+Nach einem Neuaufbau oder einer neuen Verknüpfung der Firma kennt die
+Anwendung Lastschriften nicht, die eine frühere Installation über dasselbe
+Stripe-Konto eingereicht hat. Unter Einstellungen > Stripe > "Bestehende
+Einzüge aus Stripe übernehmen" (`stripe-import.php`) lädt die Firma die
+Zahlungen eines Zeitraums (3 bis 24 Monate, nur Lesezugriff), sieht eine
+Vorschau mit Zuordnung über Rechnungsnummer und Betrag und übernimmt die
+eindeutigen Treffer mit 2FA-Code als Einzüge mit Herkunft "Import". Die
+Rechnungen erhalten den passenden Status, Erstattungen werden wie beim
+Webhook übernommen (Klärungsbedarf). Bekannte Zahlungen werden übersprungen,
+der Import ist wiederholbar. Mandate und IBANs werden nicht übernommen.
+
 ## 8. SEPA-Mandate
 
 - Unter "Firma": Anschrift, Gläubiger-Identifikationsnummer (Deutsche Bundesbank,

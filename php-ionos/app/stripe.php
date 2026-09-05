@@ -152,6 +152,22 @@ class StripeClient
     }
 
     /**
+     * PaymentIntents seitenweise auflisten (reiner Lesezugriff), ab einem
+     * Zeitpunkt, mit eingebetteter letzter Charge (Erstattung, Rücklastschrift).
+     * Für den Einmal-Import bestehender Einzüge aus einer früheren Installation.
+     * @return array{data:array,has_more:bool}
+     */
+    public function listPaymentIntents(int $createdGte, ?string $startingAfter = null, int $limit = 100): array
+    {
+        $params = ['created' => ['gte' => $createdGte], 'limit' => max(1, min(100, $limit)), 'expand' => ['data.latest_charge']];
+        if ($startingAfter !== null && $startingAfter !== '') {
+            $params['starting_after'] = $startingAfter;
+        }
+        $res = $this->request('GET', '/payment_intents', $params);
+        return ['data' => (array)($res['data'] ?? []), 'has_more' => !empty($res['has_more'])];
+    }
+
+    /**
      * PaymentIntents per Suche finden (Stripe Search API, Index mit bis zu
      * etwa einer Minute Verzögerung). Für die Klärung unbekannter Versuche.
      */

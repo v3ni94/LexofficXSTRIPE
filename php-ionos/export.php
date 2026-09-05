@@ -84,7 +84,7 @@ fwrite($out, "\xEF\xBB\xBF");
 $header = [
     'Rechnungsnummer', 'Lexware-Rechnungs-ID', 'Kunde', 'Kundennummer', 'Einzugs-ID', 'Stripe PaymentIntent', 'Stripe Charge',
     'Betrag EUR', 'Status', 'Eingereicht am', 'Erfolgreich am', 'Rücklastschrift am', 'Erstattet EUR', 'Erstattet am',
-    'Mandatsreferenz', 'Stripe-Mandatsreferenz',
+    'Mandatsreferenz', 'Stripe-Mandatsreferenz', 'Herkunft',
     'Restbetrag laut Lexware', 'Restbetrag abgerufen am', 'Ausgelöst von', 'Termin', 'Vermerk', 'Fehlergrund',
 ];
 fwrite($out, implode(';', array_map('csv_cell', $header)) . "\r\n");
@@ -106,8 +106,9 @@ foreach ($rows as $r) {
         $disputedAt ? format_datetime($disputedAt) : '',
         (int)($r['refunded_cents'] ?? 0) > 0 ? csv_amount((int)$r['refunded_cents']) : '',
         !empty($r['refunded_at']) ? format_datetime($r['refunded_at']) : '',
-        $r['mandate_reference'],
+        $r['mandate_reference'] ?? $r['imported_mandate_reference'] ?? '',
         $r['stripe_mandate_reference'],
+        ($r['source'] ?? 'app') === 'import' ? 'Import aus Stripe' : 'Anwendung',
         $r['open_amount'] !== null ? number_format((float)$r['open_amount'], 2, ',', '') : '',
         $r['open_amount_fetched_at'] ? format_datetime($r['open_amount_fetched_at']) : '',
         $r['created_by_name'] ?: ($r['created_by_email'] ?: 'System/Cron'),
