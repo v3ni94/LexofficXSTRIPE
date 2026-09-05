@@ -12,6 +12,7 @@ require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/mailer.php';
 require_once __DIR__ . '/app/mandates.php';
+require_once __DIR__ . '/app/profile.php';
 
 $ctx = require_login();
 $tenantId = $ctx['org_id'];
@@ -55,7 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     try {
-        if ($action === 'update_org') {
+        if ($action === 'update_profile') {
+            try {
+                db()->query('SELECT phone_business FROM users LIMIT 1');
+            } catch (Throwable $e) {
+                throw new RuntimeException('Für das Profil fehlt noch die Datenbankmigration 010. Bitte den Betreiber informieren.');
+            }
+            profile_update($ctx, (string)($_POST['display_name'] ?? ''), (string)($_POST['phone_private'] ?? ''), (string)($_POST['phone_business'] ?? ''));
+            if (!empty($_POST['remove_avatar'])) {
+                profile_avatar_delete($ctx);
+            } elseif (!empty($_FILES['avatar']['name'])) {
+                profile_avatar_store($ctx, $_FILES['avatar']);
+            }
+            flash_set('success', 'Profil gespeichert.');
+        } elseif ($action === 'update_org') {
             if (!can_manage_settings($ctx)) {
                 throw new RuntimeException('Nur Inhaber und Administratoren können Firmendaten ändern.');
             }
@@ -340,6 +354,42 @@ layout_header('Firma', $ctx);
     <?= $seatLimit === null ? $seatsUsed . ' Benutzer (unbegrenzt)' : $seatsUsed . ' von ' . $seatLimit . ' Sitzen belegt' ?>
     <?php if ($isOwner): ?> · <a href="subscription.php">Abonnement</a><?php endif; ?></p>
 
+<?php $me = user_load((string)$ctx['user_id']) ?? $ctx; ?>
+<div class="card" id="profil">
+    <h2>Mein Profil</h2>
+    <form method="post" enctype="multipart/form-data" class="profile-form">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="update_profile">
+        <div class="form-row" style="align-items: flex-start;">
+            <div style="flex: 0 0 auto;">
+                <span class="avatar avatar-lg"><?php if (!empty($me['avatar_path'])): ?><img src="avatar.php?u=<?= e($ctx['user_id']) ?>&amp;v=<?= e(substr(md5((string)$me['avatar_path'] . time()), 0, 6)) ?>" alt="Profilbild"><?php else: ?><span class="avatar-initials"><?= e(profile_initials($me)) ?></span><?php endif; ?></span>
+            </div>
+            <div style="flex: 1 1 260px;">
+                <label for="avatar">Profilbild oder Logo (JPG, PNG, WebP, GIF, bis 2 MB, freiwillig)</label>
+                <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif">
+                <?php if (!empty($me['avatar_path'])): ?><label class="checkbox" style="margin-top: 6px;"><input type="checkbox" name="remove_avatar" value="1"> Bild entfernen</label><?php endif; ?>
+                <p class="hint">Das Bild erscheint rechts oben im Kopf der Anwendung und ist nur für Mitglieder Ihrer Firma sichtbar. Es wird quadratisch beschnitten und auf 256 Pixel verkleinert.</p>
+            </div>
+        </div>
+        <div class="form-row">
+            <div>
+                <label for="display_name">Anzeigename</label>
+                <input type="text" id="display_name" name="display_name" value="<?= e(user_display_name($me)) ?>" maxlength="100" required>
+            </div>
+            <div>
+                <label for="phone_business">Telefon geschäftlich (freiwillig)</label>
+                <input type="text" id="phone_business" name="phone_business" value="<?= e((string)($me['phone_business'] ?? '')) ?>" maxlength="40" placeholder="+49 ...">
+            </div>
+            <div>
+                <label for="phone_private">Telefon privat (freiwillig)</label>
+                <input type="text" id="phone_private" name="phone_private" value="<?= e((string)($me['phone_private'] ?? '')) ?>" maxlength="40" placeholder="+49 ...">
+            </div>
+        </div>
+        <p class="hint">Telefonnummern sind nur für Sie und den Inhaber der Firma sichtbar und dienen der Erreichbarkeit bei Rückfragen, zum Beispiel beim Support.</p>
+        <div class="form-actions"><button type="submit" class="btn">Profil speichern</button></div>
+    </form>
+</div>
+
 <div class="card">
     <h2>Firmendaten und SEPA-Einstellungen</h2>
     <?php if (can_manage_settings($ctx)): ?>
@@ -366,11 +416,11 @@ layout_header('Firma', $ctx);
                 <input type="text" id="country" name="country" value="<?= e($org['country'] ?? 'DE') ?>" maxlength="2" style="max-width: 80px;">
             </div>
         </div>
-        <label for="creditor_identifier">Gläubiger-Identifikationsnummer (von der Deutschen Bundesbank)</label>
+        <label for="creditor_identifier">Gläubiger-Identifikationsnummer (von der Deutschen Bundesbank, freiwillig)</label>
         <input type="text" id="creditor_identifier" name="creditor_identifier" placeholder="DE98ZZZ09999999999"
                value="<?= e($org['creditor_identifier'] ?? '') ?>" maxlength="35">
-        <p class="hint">Pflichtangabe auf jedem SEPA-Lastschriftmandat. Wird mit Prüfziffer validiert. Hinweis: Da der
-            technische Einzug über Stripe läuft, kann auf dem Kontoauszug des Kunden die Gläubiger-ID von Stripe erscheinen.</p>
+        <p class="hint">Kein Pflichtfeld. Wenn hinterlegt, erscheint sie auf dem Mandatsdokument und wird mit Prüfziffer validiert. Da der
+            technische Einzug über Stripe läuft, erscheint auf dem Kontoauszug des Kunden in der Regel die Gläubiger-ID von Stripe.</p>
         <div class="form-row">
             <div>
                 <label for="pre_notification_days">Vorabankündigungsfrist (Tage vor Fälligkeit)</label>

@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $needsSubscription = billing_enabled() && !subscription_allows_operation($ctx);
-$hasCompanyData = !empty($ctx['creditor_identifier']) && !empty($ctx['street']) && !empty($ctx['city']);
+$hasCompanyData = !empty($ctx['street']) && !empty($ctx['zip']) && !empty($ctx['city']);
 
 $steps = [
     [
@@ -62,7 +62,7 @@ $steps[] = [
 ];
 $steps[] = [
     'title' => 'Firmendaten für SEPA-Mandate',
-    'desc'  => 'Anschrift und Gläubiger-Identifikationsnummer hinterlegen (Pflichtangaben auf dem Mandatsdokument). Kann später ergänzt werden.',
+    'desc'  => 'Anschrift der Firma hinterlegen (erscheint auf dem Mandatsdokument). Die Gläubiger-Identifikationsnummer ist freiwillig und kann jederzeit ergänzt werden.',
     'done'  => $hasCompanyData,
     'link'  => can_manage_settings($ctx) ? 'team.php' : null,
     'optional' => true,

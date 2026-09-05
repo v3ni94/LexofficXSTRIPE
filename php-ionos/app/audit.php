@@ -156,6 +156,8 @@ function audit_action_label(string $action): string
         'collections_import_started' => 'Stripe-Import gestartet (Vorschau bestehender Einzüge)',
         'collections_imported'     => 'Bestehende Einzüge aus Stripe übernommen',
         'collections_import_discarded' => 'Stripe-Import verworfen',
+        'profile_updated'          => 'Profil geändert (Name, Telefon, Bild)',
+        'migration_applied'        => 'Datenbankmigration eingespielt',
     ];
     return $map[$action] ?? $action;
 }

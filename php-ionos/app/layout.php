@@ -13,6 +13,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/integrations.php';
+require_once __DIR__ . '/profile.php';
 
 if (get_included_files()[0] === __FILE__) {
     http_response_code(403);
@@ -103,11 +104,30 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <?php endif; ?>
         </nav>
         <div class="user-menu">
-            <span class="user-email"><?= e(user_display_name($ctx)) ?></span>
-            <span class="user-role"><?= e(role_label($ctx['role'])) ?></span>
-            <a class="btn btn-ghost btn-sm" href="security.php" title="Passwort und Zwei-Faktor-Authentifizierung">Sicherheit</a>
-            <?php if (!on_admin_host() && empty($ctx['support_mode'])): ?><a class="btn btn-ghost btn-sm" href="companies.php" title="Firma wechseln oder anlegen">Firmen</a><?php endif; ?>
-            <a class="btn btn-ghost btn-sm" href="logout.php">Abmelden</a>
+            <details class="profile-menu" id="profile-menu">
+                <summary aria-label="Profilmenü öffnen" title="<?= e(user_display_name($ctx)) ?>">
+                    <?php $avatarName = profile_avatar_name($ctx); ?>
+                    <span class="avatar"><?php if ($avatarName !== null): ?><img src="avatar.php?u=<?= e($ctx['user_id']) ?>&amp;v=<?= e(substr(md5($avatarName . (string)@filemtime(avatar_dir() . '/' . $avatarName)), 0, 8)) ?>" alt="" width="36" height="36"><?php else: ?><span class="avatar-initials"><?= e(profile_initials($ctx)) ?></span><?php endif; ?></span>
+                    <span class="user-email"><?= e(user_display_name($ctx)) ?></span>
+                    <span class="menu-caret" aria-hidden="true">&#9662;</span>
+                </summary>
+                <div class="profile-dropdown">
+                    <div class="profile-head">
+                        <strong><?= e(user_display_name($ctx)) ?></strong>
+                        <span class="hint"><?= e($ctx['email']) ?></span>
+                        <span class="user-role"><?= e(role_label($ctx['role'])) ?><?= !on_admin_host() ? ' · ' . e($ctx['org_name']) : '' ?></span>
+                    </div>
+                    <?php if (!on_admin_host()): ?>
+                        <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Einstellungen</a><?php endif; ?>
+                        <a href="team.php">Firma</a>
+                        <a href="export.php">Export</a>
+                    <?php endif; ?>
+                    <a href="security.php">Sicherheit</a>
+                    <?php if (!on_admin_host() && empty($ctx['support_mode'])): ?><a href="companies.php">Firmen</a><?php endif; ?>
+                    <?php if (on_admin_host()): ?><a href="<?= e(app_base_url()) ?>/dashboard.php">Kundenanwendung</a><?php endif; ?>
+                    <a href="logout.php" class="menu-logout">Abmelden</a>
+                </div>
+            </details>
         </div>
         <?php endif; ?>
     </div>

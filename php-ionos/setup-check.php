@@ -170,7 +170,20 @@ if ($config && !empty($config['db']['host'])) {
             $missing ? 'Fehlend: ' . implode(', ', $missing) . ' – bitte sql/schema.sql per phpMyAdmin importieren.' : ''
         );
 
-        // Migrationen 004 bis 009: Tabellen und Spalten einzeln prüfen
+        // Automatische Migrationen: Stand laut schema_migrations und Marker
+        try {
+            $GLOBALS['setupCheckPdo'] = $pdo;
+            if (!function_exists('db')) {
+                function db(): PDO { return $GLOBALS['setupCheckPdo']; }
+            }
+            require_once __DIR__ . '/app/migrate.php';
+            $pendingMig = array_filter(migrations_status(), static fn(array $m): bool => $m['state'] !== 'applied');
+            add_check('Migrationen automatisch', !$pendingMig,
+                $pendingMig ? 'Offen: ' . implode(', ', array_column($pendingMig, 'filename')) . ' (Cron spielt sie ein, oder migrate.php?token=... aufrufen)' : 'alle eingespielt');
+        } catch (Throwable $e) {
+            add_check('Migrationen automatisch', false, $e->getMessage());
+        }
+        // Migrationen 004 bis 010: Tabellen und Spalten einzeln prüfen
         $migrationChecks = [
             '004' => [['table' => 'integrations', 'column' => 'stripe_account_id']],
             '005' => [['table' => 'mandate_files']],
@@ -178,6 +191,7 @@ if ($config && !empty($config['db']['host'])) {
             '007' => [['table' => 'payment_collections', 'column' => 'refunded_cents'], ['table' => 'invoices', 'column' => 'requires_review']],
             '008' => [['table' => 'support_sessions']],
             '009' => [['table' => 'stripe_imports'], ['table' => 'stripe_import_items'], ['table' => 'payment_collections', 'column' => 'source']],
+            '010' => [['table' => 'users', 'column' => 'avatar_path'], ['table' => 'users', 'column' => 'phone_business']],
         ];
         foreach ($migrationChecks as $mig => $items) {
             $lack = [];

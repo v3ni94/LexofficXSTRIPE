@@ -27,7 +27,11 @@ $stats = $stmt->fetch();
 $stmt = $pdo->prepare(
     "SELECT
         SUM(CASE WHEN stripe_status = 'succeeded' THEN amount_cents ELSE 0 END) AS collected_cents,
-        SUM(CASE WHEN stripe_status IN ('failed','disputed') THEN 1 ELSE 0 END) AS failed_count
+        SUM(CASE WHEN stripe_status = 'succeeded' THEN 1 ELSE 0 END) AS collected_count,
+        SUM(CASE WHEN stripe_status IN ('failed','disputed') THEN 1 ELSE 0 END) AS failed_count,
+        SUM(CASE WHEN stripe_status IN ('failed','disputed') THEN amount_cents ELSE 0 END) AS failed_cents,
+        SUM(CASE WHEN stripe_status IN ('processing','submitting') THEN amount_cents ELSE 0 END) AS processing_cents,
+        SUM(CASE WHEN stripe_status = 'scheduled' AND scheduled_submitted = 0 THEN amount_cents ELSE 0 END) AS scheduled_cents
      FROM payment_collections WHERE tenant_id = ?"
 );
 $stmt->execute([$tenantId]);
@@ -96,27 +100,30 @@ layout_header('Dashboard', $ctx);
     <a href="collections.php">Zu den Einzügen (Unklare Versuche prüfen)</a></div>
 <?php endif; ?>
 
-<div class="card-grid">
+<?php
+$openN = (int)($stats['open_invoices'] ?? 0); $inCollN = (int)($stats['in_collection'] ?? 0); $schedN = (int)($stats['scheduled'] ?? 0);
+$collN = (int)($collStats['collected_count'] ?? 0); $failN = (int)($collStats['failed_count'] ?? 0);
+?>
+<div class="card-grid stat-row">
     <div class="stat-card">
-        <div class="stat-value"><?= (int)($stats['open_invoices'] ?? 0) ?></div>
-        <div class="stat-label">Offene Rechnungen
-            (<?= format_eur((string)($stats['open_amount'] ?? 0)) ?>)</div>
+        <div class="stat-value <?= $openN > 0 ? '' : 'stat-muted' ?>"><?= $openN ?></div>
+        <div class="stat-label">Offene Rechnungen<span class="stat-sub">(<?= format_eur((string)($stats['open_amount'] ?? 0)) ?>)</span></div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><?= (int)($stats['in_collection'] ?? 0) ?></div>
-        <div class="stat-label">Im Einzug</div>
+        <div class="stat-value <?= $inCollN > 0 ? 'stat-warn' : 'stat-muted' ?>"><?= $inCollN ?></div>
+        <div class="stat-label">Im Einzug<span class="stat-sub">(<?= format_eur_cents((int)($collStats['processing_cents'] ?? 0)) ?>)</span></div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><?= (int)($stats['scheduled'] ?? 0) ?></div>
-        <div class="stat-label">Terminierte Einzüge</div>
+        <div class="stat-value <?= $schedN > 0 ? 'stat-warn' : 'stat-muted' ?>"><?= $schedN ?></div>
+        <div class="stat-label">Terminierte Einzüge<span class="stat-sub">(<?= format_eur_cents((int)($collStats['scheduled_cents'] ?? 0)) ?>)</span></div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><?= format_eur_cents((int)($collStats['collected_cents'] ?? 0)) ?></div>
-        <div class="stat-label">Erfolgreich eingezogen (gesamt)</div>
+        <div class="stat-value <?= $collN > 0 ? 'stat-ok' : 'stat-muted' ?>"><?= $collN ?></div>
+        <div class="stat-label">Erfolgreich eingezogen (gesamt)<span class="stat-sub">(<?= format_eur_cents((int)($collStats['collected_cents'] ?? 0)) ?>)</span></div>
     </div>
     <div class="stat-card">
-        <div class="stat-value"><?= (int)($collStats['failed_count'] ?? 0) ?></div>
-        <div class="stat-label">Fehlgeschlagene Einzüge / Rücklastschriften</div>
+        <div class="stat-value <?= $failN > 0 ? 'stat-danger' : 'stat-muted' ?>"><?= $failN ?></div>
+        <div class="stat-label">Fehlgeschlagen / Rücklastschriften<span class="stat-sub">(<?= format_eur_cents((int)($collStats['failed_cents'] ?? 0)) ?>)</span></div>
     </div>
 </div>
 

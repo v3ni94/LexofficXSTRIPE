@@ -19,11 +19,22 @@
         box.addEventListener('change', apply);
         apply();
     }
+    function initProfileMenu() {
+        var menu = document.getElementById('profile-menu');
+        if (!menu) { return; }
+        document.addEventListener('click', function (event) {
+            if (menu.hasAttribute('open') && !menu.contains(event.target)) { menu.removeAttribute('open'); }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && menu.hasAttribute('open')) { menu.removeAttribute('open'); }
+        });
+    }
     function init() {
         var boxes = document.querySelectorAll('input[type="checkbox"][data-toggle-password]');
         for (var i = 0; i < boxes.length; i++) {
             bindToggle(boxes[i]);
         }
+        initProfileMenu();
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

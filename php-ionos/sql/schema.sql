@@ -83,6 +83,9 @@ CREATE TABLE IF NOT EXISTS users (
     display_name               VARCHAR(255) NULL,
     first_name                 VARCHAR(100) NULL,
     last_name                  VARCHAR(100) NULL,
+    avatar_path                VARCHAR(255) NULL,   -- Profilbild (Migration 010)
+    phone_private              VARCHAR(40)  NULL,
+    phone_business             VARCHAR(40)  NULL,
     is_active                  TINYINT(1)   NOT NULL DEFAULT 1,
     totp_secret_encrypted      TEXT         NULL,
     totp_enabled               TINYINT(1)   NOT NULL DEFAULT 0,

@@ -172,6 +172,21 @@ Synchronisationszeit je Tag; reicht das bei vielen Firmen nicht mehr, Intervall
 verkürzen (cron-job.org erlaubt 1 Minute) oder auf IONOS-Cron ohne 30-Sekunden-
 Grenze wechseln und `cron_time_budget_seconds` auf 90 erhöhen.
 
+## 7b. Datenbankmigrationen automatisch
+
+Neue Versionen bringen ihre Migrationsdateien unter `sql/migrations/` mit
+(per Web nicht abrufbar). Der Cron spielt ausstehende Migrationen bei jedem
+Lauf automatisch ein, spätestens also fünf Minuten nach einem Upload. Sofort
+einspielen und den Stand prüfen:
+
+```
+https://app.smart-einzug.de/migrate.php?token=<cron_token aus config.php>
+```
+
+Jede Migration hat einen Marker (Tabelle oder Spalte); vorhandene Marker
+gelten als eingespielt, nichts wird doppelt ausgeführt. Der Stand steht in
+`schema_migrations` und im `setup-check.php`.
+
 ## 7a. Bestehende Einzüge aus Stripe übernehmen (Migration 009)
 
 Nach einem Neuaufbau oder einer neuen Verknüpfung der Firma kennt die

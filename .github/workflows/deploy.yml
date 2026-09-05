@@ -125,8 +125,9 @@ jobs:
           # Keine --delete-Option: entfernte Dateien werden NICHT gelöscht.
           # Achtung: gleichnamige, nicht ausgeschlossene Dateien werden ersetzt.
           # Nie hochgeladen: app/config.php (Zugangsdaten, liegt nur auf dem Server),
-          # app/storage (hochgeladene Mandatsdokumente), Logs, SQL-Dateien, .git.
-          # SQL-Migrationen werden weiterhin manuell über phpMyAdmin ausgeführt.
+          # app/storage (hochgeladene Mandatsdokumente), Logs, .git, schema.sql.
+          # Ausnahme: sql/migrations/*.sql werden mitgeliefert (per .htaccess gesperrt),
+          # der Cron bzw. migrate.php spielt sie automatisch ein.
           root="${SFTP_PATH%/}"
 
           # Zuordnung Repository-Ordner -> Webspace-Ordner (Ordnernamen wie bei IONOS angelegt).
@@ -160,6 +161,7 @@ jobs:
               fi
               echo "mkdir -pf \"$root/$dst\""
               echo "mirror --reverse --no-perms --parallel=2 \\"
+              echo "  --include '^sql/(\.htaccess|migrations/[0-9]{3}_[A-Za-z0-9_-]+\.sql)\$' \\"
               echo "  --exclude '(^|/)(\.git[^/]*|node_modules|storage|logs|cache|backups)(/|\$)' \\"
               echo "  --exclude '(^|/)(config\.php|mail\.log|\.env[^/]*)\$' \\"
               echo "  --exclude '(\.sql(\.gz)?|\.sqlite3?|\.db|\.log|\.pem|\.key|\.bak)\$' \\"
