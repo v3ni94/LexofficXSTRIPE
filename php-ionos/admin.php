@@ -9,6 +9,7 @@
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
+require_once __DIR__ . '/app/collections.php';
 
 // Host-Prüfung: ist admin_base_url gesetzt, antwortet diese Seite nur auf dem
 // Adminhost (bootstrap.php prüft dies bereits zentral, hier zusätzlich als
@@ -27,7 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
     try {
-        if ($action === 'plan_update') {
+        if ($action === 'platform_pause') {
+            $pause = ($_POST['pause'] ?? '') === '1';
+            platform_setting_set('collections_paused', $pause ? '1' : '0');
+            audit_log(null, $ctx, $pause ? 'collections_paused' : 'collections_resumed', 'platform', 'collections_paused', ['scope' => 'platform']);
+            flash_set('success', $pause ? 'Plattformweiter Not-Stopp aktiv: keine neuen Einzüge für alle Firmen.' : 'Plattformweiter Not-Stopp aufgehoben.');
+        } elseif ($action === 'plan_update') {
             $code = $_POST['code'] ?? '';
             $stmt = $pdo->prepare('SELECT * FROM plans WHERE code = ?');
             $stmt->execute([$code]);
@@ -203,6 +209,19 @@ layout_header('Administration', $ctx);
         </table>
     </div>
     <p class="hint">Seitenaufrufe und CTA-Klicks kommen cookielos von den Marketingseiten (track.php), alle weiteren Schritte aus der Anwendung.</p>
+</div>
+
+<div class="card">
+    <h2>Not-Stopp (Plattform)</h2>
+    <?php $paused = platform_setting('collections_paused', '0') === '1'; ?>
+    <p><?= $paused ? '<span class="badge badge-danger">Aktiv: alle neuen Einzüge sind angehalten.</span>' : '<span class="badge badge-success">Nicht aktiv, Einzüge laufen.</span>' ?>
+        Bereits bei Stripe eingereichte Zahlungen sind davon nicht betroffen.</p>
+    <form method="post" class="inline-form" onsubmit="return confirm(<?= e(json_encode($paused ? 'Not-Stopp wirklich aufheben? Firmen können danach wieder einziehen.' : 'Plattformweiten Not-Stopp aktivieren? Keine Firma kann danach neue Einzüge einreichen.', JSON_UNESCAPED_UNICODE)) ?>)">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="platform_pause">
+        <input type="hidden" name="pause" value="<?= $paused ? '0' : '1' ?>">
+        <button type="submit" class="btn <?= $paused ? 'btn-secondary' : 'btn-danger' ?>"><?= $paused ? 'Not-Stopp aufheben' : 'Not-Stopp aktivieren' ?></button>
+    </form>
 </div>
 
 <div class="card">

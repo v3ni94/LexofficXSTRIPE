@@ -88,6 +88,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <a href="customers.php">Kunden</a>
             <a href="sepa-pflegen.php">SEPA Pflegen</a>
             <a href="team.php">Firma</a>
+            <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php" title="Einzüge dieser Firma sofort anhalten">Not-Stopp</a><?php endif; ?>
             <?php if (can_manage_settings($ctx)): ?>
                 <a href="settings.php">Einstellungen</a>
             <?php endif; ?>
