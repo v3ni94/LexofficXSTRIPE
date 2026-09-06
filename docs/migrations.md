@@ -28,7 +28,7 @@ Geprüfte frühere Aufrufer und ihr Stand:
 ```
 
   Einfügestelle: direkt unter `'cron_token' => ...`. Eigener Zufallswert (z. B. `openssl rand -hex 32`), unabhängig von `cron_token`, `app_secret` und allen API-Schlüsseln. Derselbe Wert wird in GitHub als Repository-Secret `MIGRATION_TOKEN` hinterlegt (Settings > Secrets and variables > Actions).
-- Ort auf dem Server: Die Datei liegt im App-Ordner, den der Workflow als `php-ionos` nach `<SFTP_PATH>/app` spiegelt. SFTP-relativer Pfad daher `app/app/config.php` unterhalb des Webspace-Wurzelverzeichnisses (`SFTP_PATH`, bei IONOS in der Regel `/`). Der absolute Pfad auf dem IONOS-Server ist aus dem Repository nicht ableitbar und wird hier nicht behauptet.
+- Ort auf dem Server: Die Datei liegt im App-Ordner, den der Workflow als `php-ionos` nach `<SFTP_PATH>/app` spiegelt. SFTP-relativer Pfad daher `app/app/config.php` unterhalb des Webspace-Wurzelverzeichnisses (`SFTP_PATH`, bei IONOS in der Regel `/`). Absoluter Pfad laut Setup-Prüfung vom 06.09.2026: `/home/www/public/app/app/config.php` (aus der dort gemeldeten Ablage `/home/www/public/app/app/storage/mandates` abgeleitet).
 - Schutz: `deploy.yml` schließt `config.php` vom Upload aus (`--exclude '(^|/)(config\.php|...)'`) und spiegelt ohne `--delete`; die Datei wird weder überschrieben noch entfernt. `php-ionos/.htaccess` sperrt das Verzeichnis `app/` für Webzugriffe, `setup-check.php` zeigt nur, ob der Wert gesetzt ist.
 - Prüfung im Endpunkt: nur der Header `X-Migration-Token` wird gelesen (kein URL-Parameter, kein Formularfeld, kein Cookie); leere oder fehlende Werte auf beiden Seiten führen nie zur Freigabe; Vergleich mit `hash_equals(konfiguriert, übermittelt)`.
 

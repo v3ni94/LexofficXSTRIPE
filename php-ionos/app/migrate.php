@@ -46,6 +46,7 @@ function migrations_markers(): array
         '011' => ['payment_collections', 'submit_not_before'],
         '012' => ['support_tickets', null],
         '013' => ['invoices', 'lexoffice_updated_at'],
+        '014' => ['sync_state', 'lock_owner'],
     ];
 }
 

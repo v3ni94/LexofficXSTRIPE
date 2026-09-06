@@ -190,6 +190,7 @@ return [
     'sync' => [
         'step_seconds'          => 8,
         'step_max'              => 40,
+        'step_max_api_calls'    => 60,   // höchstens so viele Lexware-Aufrufe je Schritt
         'skip_unchanged'        => true,
         'contact_refresh_hours' => 24,
     ],

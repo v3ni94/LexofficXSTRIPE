@@ -120,6 +120,8 @@ function audit_action_label(string $action): string
         'sync_requested'           => 'Synchronisation gestartet',
         'sync_completed'           => 'Synchronisation abgeschlossen',
         'sync_cancelled'           => 'Synchronisation abgebrochen',
+        'sync_start_skipped'       => 'Doppelstart der Synchronisation übersprungen (lief bereits)',
+        'sync_lock_lost'           => 'Synchronisationsschritt verworfen (Sperre inzwischen anderweitig vergeben)',
         'collection_submitted'     => 'Lastschrift eingereicht',
         'collection_scheduled'     => 'Lastschrift terminiert',
         'collection_queued'        => 'Lastschrift vorgemerkt (Karenzzeit, Einreichung im Einreichfenster)',

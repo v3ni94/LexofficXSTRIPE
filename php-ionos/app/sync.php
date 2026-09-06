@@ -43,6 +43,7 @@ function sync_rules_config(): array
     return [
         'step_seconds'          => max(2, min(25, (int)($c['step_seconds'] ?? 8))),
         'step_max'              => max(1, min(200, (int)($c['step_max'] ?? 40))),
+        'step_max_api_calls'    => max(5, min(500, (int)($c['step_max_api_calls'] ?? 60))),
         'skip_unchanged'        => (bool)($c['skip_unchanged'] ?? true),
         'contact_refresh_hours' => max(0, min(720, (int)($c['contact_refresh_hours'] ?? 24))),
     ];
@@ -124,8 +125,17 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
         $result = $cursor['result'] + ['metrics' => $cursor['metrics']];
         return ['done' => $done, 'cursor' => $done ? null : $cursor, 'result' => $result];
     };
-    // Innerhalb des Zeitbudgets weiterarbeiten; mindestens eine Rechnung je Schritt
-    $mayContinue = static fn(int $processed) => $processed === 0 || $deadline === null || microtime(true) < $deadline;
+    // Innerhalb des Zeit- und Aufrufbudgets weiterarbeiten; mindestens eine Rechnung je Schritt
+    $maxCalls = $rules['step_max_api_calls'];
+    $mayContinue = static function (int $processed) use ($deadline, $client, $calls0, $maxCalls): bool {
+        if ($processed === 0) {
+            return true;
+        }
+        if ($deadline !== null && microtime(true) >= $deadline) {
+            return false;
+        }
+        return $client === null || ($client->requestCount - $calls0) < $maxCalls;
+    };
 
     $pdo = db();
     $processed = 0;

@@ -209,6 +209,9 @@ CREATE TABLE IF NOT EXISTS sync_state (
     cursor_json          MEDIUMTEXT  NULL,
     requested_by_user_id CHAR(36)    NULL,
     lock_until           DATETIME    NULL,
+    lock_owner           VARCHAR(64) NULL,          -- Inhaber des laufenden Schritts (Migration 014)
+    skipped_starts       INT         NOT NULL DEFAULT 0,
+    last_step_at         DATETIME    NULL,
     started_at           DATETIME    NULL,
     updated_at           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     finished_at          DATETIME    NULL,

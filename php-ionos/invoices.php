@@ -20,7 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'sync') {
             // Lauf serverseitig starten; Browser und Cron setzen ihn schrittweise fort.
             sync_lex_client($tenantId); // prüft Verbindung und Schlüssel
-            sync_state_start($tenantId, $ctx);
+            $started = sync_state_start($tenantId, $ctx);
+            if (!empty($started['already_running'])) {
+                flash_set('info', 'Die Synchronisierung läuft bereits. Ein weiterer Start ist nicht erforderlich.');
+            }
             redirect('invoices.php?syncing=1');
 
         } elseif ($action === 'sync_continue') {
@@ -115,7 +118,7 @@ if (!empty($_GET['syncing'])) {
         layout_header('Rechnungen', $ctx);
         ?>
         <h1>Rechnungen</h1>
-        <p class="page-sub">Synchronisation mit Lexware Office läuft ...</p>
+        <p class="page-sub">Synchronisation mit Lexware Office: <?= e(sync_state_label($syncState)) ?><?= (int)($syncState['skipped_starts'] ?? 0) > 0 ? ' · ' . (int)$syncState['skipped_starts'] . ' Doppelstart(s) übersprungen' : '' ?></p>
         <div class="card">
             <p>Die Rechnungen werden serverseitig in kleinen Schritten übernommen. Sie können diese Seite
                 schließen: Der Lauf wird im Hintergrund fortgesetzt (mit eingerichtetem Cron auch ohne geöffneten

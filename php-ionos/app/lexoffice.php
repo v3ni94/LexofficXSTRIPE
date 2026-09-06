@@ -9,7 +9,9 @@
  * Spaltennamen "lexoffice_*") behalten aus Kompatibilitätsgründen den
  * alten Namen; alle sichtbaren Texte sprechen von "Lexware Office".
  *
- * Drosselung auf < 2 Requests/Sekunde, Retries bei 429 und 5xx.
+ * Drosselung auf < 2 Requests/Sekunde (0,6 s Abstand; der Lexware-Wert von 2 Anfragen je
+ * Sekunde ist eine Annahme aus der früheren Dokumentation und konnte am 06.09.2026 nicht
+ * online verifiziert werden), Retries bei 429 und 5xx mit Retry-After, Backoff und Zufallsanteil.
  */
 
 declare(strict_types=1);
@@ -54,6 +56,18 @@ class LexofficeClient
         return $this->baseUrl;
     }
 
+    /**
+     * Wartezeit vor einer Wiederholung: Retry-After des Anbieters (1 bis 30 s), sonst
+     * 2^n Sekunden (2, 4, 8) plus Zufallsanteil bis 500 ms gegen gleichzeitige Wiederholungen.
+     */
+    private function backoff(?int $retryAfter, int $attempt): void
+    {
+        $seconds = $retryAfter !== null ? max(1, min(30, $retryAfter)) : min(30, 2 ** $attempt);
+        $jitterUs = random_int(0, 500000);
+        $this->throttleMs += $seconds * 1000 + $jitterUs / 1000;
+        usleep($seconds * 1000000 + $jitterUs);
+    }
+
     private function throttle(): void
     {
         $elapsedUs = (microtime(true) - $this->lastRequestTime) * 1_000_000;
@@ -76,6 +90,7 @@ class LexofficeClient
 
             $url = $this->baseUrl . $endpoint . $query;
             $ch = curl_init($url);
+            $retryAfter = null;
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 20,
@@ -83,6 +98,13 @@ class LexofficeClient
                     'Authorization: Bearer ' . $this->apiKey,
                     'Accept: application/json',
                 ],
+                CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$retryAfter): int {
+                    if (stripos($line, 'Retry-After:') === 0) {
+                        $v = trim(substr($line, 12));
+                        $retryAfter = ctype_digit($v) ? (int)$v : null;
+                    }
+                    return strlen($line);
+                },
             ]);
             $t0 = microtime(true);
             $body = curl_exec($ch);
@@ -124,7 +146,8 @@ class LexofficeClient
                 if ($retries429 > 3) {
                     throw new LexofficeException('Lexware Office Rate-Limit nach 3 Versuchen überschritten.');
                 }
-                sleep(2 ** $retries429); // 2, 4, 8 s
+                // Retry-After des Anbieters beachten (gedeckelt), sonst exponentiell mit Zufallsanteil
+                $this->backoff($retryAfter, $retries429);
                 continue;
             }
 
@@ -133,7 +156,7 @@ class LexofficeClient
                 if ($retries5xx > 2) {
                     throw new LexofficeException("Lexware Office Serverfehler $status nach Retries.");
                 }
-                sleep(2 ** $retries5xx);
+                $this->backoff($retryAfter, $retries5xx);
                 continue;
             }
 

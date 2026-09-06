@@ -22,12 +22,15 @@ require_once __DIR__ . '/invoice_source.php';
 require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/audit.php';
 
-const SYNC_LOCK_SECONDS = 90;     // maximale Dauer eines Schritts
+const SYNC_LOCK_SECONDS = 180;    // maximale Dauer eines Schritts (Zeitbudget plus Wiederholungen)
 const SYNC_STALE_MINUTES = 30;    // danach gilt ein "running" ohne Fortschritt als abgebrochen
 
 function sync_state_get(string $tenantId): ?array
 {
-    $stmt = db()->prepare('SELECT * FROM sync_state WHERE tenant_id = ?');
+    // Zeitvergleiche in der Datenbank rechnen (Datenbank- und PHP-Zeitzone können abweichen)
+    $stmt = db()->prepare('SELECT s.*, TIMESTAMPDIFF(SECOND, s.updated_at, NOW()) AS age_seconds,
+                                  (s.lock_until IS NOT NULL AND s.lock_until > NOW()) AS lock_active
+                           FROM sync_state s WHERE s.tenant_id = ?');
     $stmt->execute([$tenantId]);
     $row = $stmt->fetch();
     if ($row) {
@@ -43,23 +46,32 @@ function sync_state_is_running(?array $state): bool
     if (!$state || $state['status'] !== 'running') {
         return false;
     }
+    if (isset($state['age_seconds'])) {
+        return (int)$state['age_seconds'] < SYNC_STALE_MINUTES * 60;
+    }
     $updated = new DateTimeImmutable($state['updated_at']);
     return $updated > (new DateTimeImmutable('now'))->modify('-' . SYNC_STALE_MINUTES . ' minutes');
 }
 
-/** Neuen Lauf starten (oder laufenden weiterverwenden). */
+/**
+ * Neuen Lauf starten. Läuft bereits einer, wird kein zweiter angelegt: der bestehende
+ * Zustand kommt mit already_running = true zurück und der Doppelstart wird gezählt.
+ */
 function sync_state_start(string $tenantId, ?array $actor): array
 {
     $pdo = db();
     $state = sync_state_get($tenantId);
     if (sync_state_is_running($state)) {
+        $pdo->prepare('UPDATE sync_state SET skipped_starts = skipped_starts + 1 WHERE tenant_id = ?')->execute([$tenantId]);
+        audit_log($tenantId, $actor, 'sync_start_skipped', 'organization', $tenantId);
+        $state['already_running'] = true;
         return $state;
     }
     $pdo->prepare(
-        'INSERT INTO sync_state (tenant_id, status, cursor_json, requested_by_user_id, lock_until, started_at, finished_at, last_error, result_json)
-         VALUES (?, "running", NULL, ?, NULL, NOW(), NULL, NULL, NULL)
+        'INSERT INTO sync_state (tenant_id, status, cursor_json, requested_by_user_id, lock_until, lock_owner, skipped_starts, started_at, finished_at, last_error, result_json)
+         VALUES (?, "running", NULL, ?, NULL, NULL, 0, NOW(), NULL, NULL, NULL)
          ON DUPLICATE KEY UPDATE status = "running", cursor_json = NULL, requested_by_user_id = VALUES(requested_by_user_id),
-             lock_until = NULL, started_at = NOW(), finished_at = NULL, last_error = NULL, result_json = NULL'
+             lock_until = NULL, lock_owner = NULL, skipped_starts = 0, started_at = NOW(), finished_at = NULL, last_error = NULL, result_json = NULL'
     )->execute([$tenantId, $actor['user_id'] ?? null]);
 
     audit_log($tenantId, $actor, 'sync_requested', 'organization', $tenantId, [
@@ -116,12 +128,14 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
     $pdo = db();
     $empty = ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0];
 
-    // Sperre holen: nur ein Aufrufer je Firma gleichzeitig
+    // Sperre atomar holen: nur ein Aufrufer je Firma gleichzeitig. Der Inhaber wird mit
+    // einer zufälligen Kennung vermerkt; nur er darf den Schritt später speichern.
+    $owner = bin2hex(random_bytes(16));
     $stmt = $pdo->prepare(
-        "UPDATE sync_state SET lock_until = DATE_ADD(NOW(), INTERVAL ? SECOND)
+        "UPDATE sync_state SET lock_until = DATE_ADD(NOW(), INTERVAL ? SECOND), lock_owner = ?
          WHERE tenant_id = ? AND status = 'running' AND (lock_until IS NULL OR lock_until < NOW())"
     );
-    $stmt->execute([SYNC_LOCK_SECONDS, $tenantId]);
+    $stmt->execute([SYNC_LOCK_SECONDS, $owner, $tenantId]);
     if ($stmt->rowCount() !== 1) {
         $state = sync_state_get($tenantId);
         return ['done' => !sync_state_is_running($state), 'skipped' => true, 'result' => $state['result'] ?? ($state['cursor']['result'] ?? $empty)];
@@ -133,24 +147,70 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
         $step = sync_invoices_step($tenantId, $lex, $state['cursor'], $batchSize);
 
         if ($step['done']) {
-            $pdo->prepare(
-                "UPDATE sync_state SET status = 'done', cursor_json = NULL, lock_until = NULL, finished_at = NOW(), result_json = ?
-                 WHERE tenant_id = ?"
-            )->execute([json_encode($step['result']), $tenantId]);
+            $upd = $pdo->prepare(
+                "UPDATE sync_state SET status = 'done', cursor_json = NULL, lock_until = NULL, lock_owner = NULL, finished_at = NOW(), last_step_at = NOW(), result_json = ?
+                 WHERE tenant_id = ? AND lock_owner = ?"
+            );
+            $upd->execute([json_encode($step['result']), $tenantId, $owner]);
+            if ($upd->rowCount() !== 1) {
+                return _sync_lock_lost($tenantId, $owner, $step['result']);
+            }
             $actor = $state['requested_by_user_id'] ? ['user_id' => $state['requested_by_user_id']] : null;
             audit_log($tenantId, $actor, 'sync_completed', 'organization', $tenantId, $step['result']);
             funnel_event_once($tenantId, 'first_sync', $state['requested_by_user_id']);
         } else {
-            $pdo->prepare(
-                'UPDATE sync_state SET cursor_json = ?, lock_until = NULL, result_json = ? WHERE tenant_id = ?'
-            )->execute([json_encode($step['cursor']), json_encode($step['result']), $tenantId]);
+            // Fortschritt nur speichern, wenn die Sperre noch uns gehört. Wurde sie in der
+            // Zwischenzeit von einem anderen Prozess übernommen (Zeitüberschreitung), wird der
+            // Cursor dieses Schritts verworfen; die Datenänderungen selbst sind idempotente Upserts.
+            $upd = $pdo->prepare(
+                'UPDATE sync_state SET cursor_json = ?, lock_until = NULL, lock_owner = NULL, last_step_at = NOW(), result_json = ? WHERE tenant_id = ? AND lock_owner = ?'
+            );
+            $upd->execute([json_encode($step['cursor']), json_encode($step['result']), $tenantId, $owner]);
+            if ($upd->rowCount() !== 1) {
+                return _sync_lock_lost($tenantId, $owner, $step['result']);
+            }
         }
         return ['done' => $step['done'], 'skipped' => false, 'result' => $step['result']];
     } catch (Throwable $e) {
         $pdo->prepare(
-            "UPDATE sync_state SET status = 'error', lock_until = NULL, finished_at = NOW(), last_error = ? WHERE tenant_id = ?"
-        )->execute([mb_substr($e->getMessage(), 0, 2000), $tenantId]);
+            "UPDATE sync_state SET status = 'error', lock_until = NULL, lock_owner = NULL, finished_at = NOW(), last_error = ? WHERE tenant_id = ? AND lock_owner = ?"
+        )->execute([mb_substr($e->getMessage(), 0, 2000), $tenantId, $owner]);
         throw $e;
+    }
+}
+
+/** Sperre während des Schritts verloren: nichts speichern, protokollieren, als übersprungen melden. */
+function _sync_lock_lost(string $tenantId, string $owner, array $result): array
+{
+    error_log('Sync für Firma ' . $tenantId . ': Sperre während des Schritts verloren (Inhaber ' . substr($owner, 0, 8) . '), Cursor verworfen.');
+    audit_log($tenantId, null, 'sync_lock_lost', 'organization', $tenantId, ['owner' => substr($owner, 0, 8)]);
+    return ['done' => false, 'skipped' => true, 'lock_lost' => true, 'result' => $result];
+}
+
+/**
+ * Verständlicher Zustand eines Laufs für die Oberfläche.
+ * Wartet | Wird synchronisiert | Teilweise verarbeitet | Abgeschlossen | Fehler | Kein Lauf
+ */
+function sync_state_label(?array $state): string
+{
+    if (!$state) {
+        return 'Kein Lauf';
+    }
+    switch ($state['status']) {
+        case 'done':
+            return 'Abgeschlossen';
+        case 'error':
+            return 'Fehler';
+        case 'running':
+            if (!sync_state_is_running($state)) {
+                return 'Abgebrochen (kein Fortschritt seit ' . SYNC_STALE_MINUTES . ' Minuten)';
+            }
+            if ((int)($state['lock_active'] ?? 0) === 1) {
+                return 'Wird synchronisiert';
+            }
+            return !empty($state['cursor']) ? 'Teilweise verarbeitet, wartet auf den nächsten Schritt' : 'Wartet';
+        default:
+            return 'Kein Lauf';
     }
 }
 
