@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/integrations.php';
 require_once __DIR__ . '/profile.php';
+require_once __DIR__ . '/version.php'; // APP_VERSION für den Versionshinweis in der Fußzeile
 
 if (get_included_files()[0] === __FILE__) {
     http_response_code(403);
@@ -200,6 +201,13 @@ function layout_footer(?array $ctx = null): void
             <?php endif; ?>
         </span>
         <span class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</span>
+        <span class="footer-version">
+            <?php if ($ctx && !empty($ctx['is_superadmin']) && on_admin_host() && defined('APP_VERSION')): ?>
+                <a href="admin-system.php?tab=versionen">Version <?= e(APP_VERSION) ?></a>
+            <?php elseif (defined('APP_VERSION')): ?>
+                Version <?= e(APP_VERSION) ?>
+            <?php endif; ?>
+        </span>
     </div>
 </footer>
 </body>

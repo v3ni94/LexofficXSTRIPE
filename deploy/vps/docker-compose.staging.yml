@@ -1,0 +1,72 @@
+# SmartEinzug: Override fuer die Staging-Umgebung (staging.smart-einzug.de). Immer zusammen mit
+# docker-compose.yml verwenden:
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env up -d
+#
+# Staging laeuft auf einem eigenen, kleineren VPS (oder klein dimensionierten Server) mit eigener
+# Datenbank und eigenem .env; es ist NICHT dieselbe Datenbank wie Produktion. Nur EIN
+# Lexware-Worker (worker-lexware-2 ist ueber ein Profil abgeschaltet), engere Ressourcenlimits und
+# kleinere Speichergrenzen fuer MariaDB und Redis; Log-Rotation wie in Produktion.
+
+services:
+  caddy:
+    mem_limit: 96m
+    cpus: "0.25"
+    # Staging bedient nur einen Host (staging.smart-einzug.de) und nutzt dafuer eine eigene
+    # Caddyfile; DOMAIN_STAGING kommt aus der Staging-.env, die uebrigen DOMAIN_*-Variablen aus
+    # der Basis-Datei bleiben ungenutzt, wenn sie in der Staging-.env leer sind.
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - /opt/smarteinzug/releases:/opt/smarteinzug/releases:ro
+    environment:
+      DOMAIN_STAGING: ${DOMAIN_STAGING}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+
+  php:
+    mem_limit: 256m
+    cpus: "0.50"
+
+  scheduler:
+    mem_limit: 96m
+    cpus: "0.15"
+
+  worker-lexware-1:
+    mem_limit: 384m
+    cpus: "0.25"
+
+  # Zweiter Lexware-Worker in Staging nicht starten: ein Profil, das nie aktiviert wird, nimmt den
+  # Dienst aus "up -d", "ps" und "restart" heraus, ohne die Basis-Datei zu veraendern.
+  worker-lexware-2:
+    profiles: ["nicht-aktiv"]
+
+  worker-stripe:
+    mem_limit: 256m
+    cpus: "0.25"
+
+  worker-mail:
+    mem_limit: 192m
+    cpus: "0.15"
+
+  worker-maintenance:
+    mem_limit: 192m
+    cpus: "0.15"
+
+  metrics:
+    mem_limit: 96m
+    cpus: "0.15"
+
+  mariadb:
+    mem_limit: 512m
+    cpus: "0.75"
+    # Kleinerer InnoDB-Pufferpool als in mariadb/my.cnf, passend zum 512m-Limit.
+    command: ["--innodb-buffer-pool-size=192M"]
+
+  redis:
+    mem_limit: 192m
+    cpus: "0.15"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--maxmemory", "96mb"]
+
+  backup:
+    mem_limit: 192m
+    cpus: "0.25"

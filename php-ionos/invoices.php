@@ -3,6 +3,7 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/sync_state.php';
+require_once __DIR__ . '/app/queue.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/customer_settings.php';
 
@@ -19,7 +20,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($action === 'sync') {
             // Lauf serverseitig starten; Browser und Cron setzen ihn schrittweise fort.
+            // Wartungsmodus je Firma (vom Betreiber gesetzt) hat Vorrang vor allen weiteren Prüfungen
+            try {
+                $paused = $pdo->prepare('SELECT sync_paused FROM organizations WHERE id = ?');
+                $paused->execute([$tenantId]);
+                if ((int)$paused->fetchColumn() === 1) {
+                    throw new RuntimeException('Die Synchronisation ist für diese Firma vorübergehend vom Betreiber pausiert. Bitte später erneut versuchen.');
+                }
+            } catch (PDOException $e) {
+                // Spalte fehlt bis Migration 018
+            }
             sync_lex_client($tenantId); // prüft Verbindung und Schlüssel
+            if (queue_enabled($tenantId)) {
+                // Warteschlange aktiv: der Webrequest startet nur den Auftrag, Worker verarbeiten ihn (HIGH)
+                $started = sync_state_start($tenantId, $ctx + ['trigger' => 'manual']);
+                $job = queue_push('sync_run', ['triggered_by' => 'manual'], ['tenant_id' => $tenantId, 'user_id' => $ctx['user_id'], 'priority' => 'high', 'dedupe_key' => 'sync:' . $tenantId]);
+                if (!empty($started['already_running']) || !$job['created']) {
+                    flash_set('info', 'Die Synchronisierung läuft bereits. Ein weiterer Start ist nicht erforderlich.');
+                }
+                redirect('invoices.php?syncing=1');
+            }
             $started = sync_state_start($tenantId, $ctx);
             if (!empty($started['already_running'])) {
                 flash_set('info', 'Die Synchronisierung läuft bereits. Ein weiterer Start ist nicht erforderlich.');
@@ -27,6 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('invoices.php?syncing=1');
 
         } elseif ($action === 'sync_continue') {
+            if (queue_enabled($tenantId)) {
+                // Worker verarbeiten; der Browser fragt nur den Zustand ab
+                $st = sync_state_get($tenantId);
+                if (!$st || $st['status'] !== 'running') {
+                    redirect('invoices.php');
+                }
+                redirect('invoices.php?syncing=1');
+            }
             $step = sync_state_step($tenantId);
             if ($step['done'] && !$step['skipped']) {
                 $r = $step['result'];
@@ -96,7 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $syncState = sync_state_get($tenantId);
 if (!empty($_GET['syncing'])) {
     if ($syncState && $syncState['status'] === 'error') {
-        flash_set('error', 'Synchronisation abgebrochen: ' . ($syncState['last_error'] ?? 'unbekannter Fehler'));
+        $cat = function_exists('monitor_category') ? monitor_category((string)($syncState['last_error'] ?? '')) : 'other';
+        flash_set('error', 'Synchronisation abgebrochen (' . ($cat === 'auth' ? 'Lexware Office lehnt den API-Schlüssel ab' : ($cat === 'timeout' || $cat === 'connection' || $cat === 'dns' ? 'Verbindung zu Lexware Office nicht möglich' : 'technischer Fehler')) . '). Details unter Synchronisationen.');
         $pdo->prepare("UPDATE sync_state SET status = 'idle' WHERE tenant_id = ?")->execute([$tenantId]);
         redirect('invoices.php');
     }
@@ -139,11 +168,15 @@ if (!empty($_GET['syncing'])) {
             </form>
             <a class="btn btn-ghost btn-sm" href="dashboard.php" style="margin-top: 12px;">Im Hintergrund weiterlaufen lassen</a>
         </div>
+        <?php if (queue_enabled($tenantId)): ?>
+        <div id="sync-progress" data-sync-poll="sync-status.php" data-sync-interval="3000"><?= sync_progress_fragment($tenantId) ?></div>
+        <?php else: ?>
         <script>
             setTimeout(function () {
                 document.getElementById('sync-continue-form').submit();
             }, 400);
         </script>
+        <?php endif; ?>
         <?php
         layout_footer($ctx);
         exit;
@@ -211,6 +244,7 @@ layout_header('Rechnungen', $ctx);
             <input type="hidden" name="action" value="sync">
             <button type="submit" class="btn">Mit Lexware Office synchronisieren</button>
         </form>
+        <a class="btn btn-secondary" href="synchronisationen.php" title="Verlauf der Synchronisationen mit Lexware Office">Synchronisationen</a>
         <?php if ($filter === 'open'): ?>
             <a class="btn btn-secondary" href="<?= e(invoices_url('all', $sepaFilter)) ?>">Alle anzeigen</a>
         <?php else: ?>

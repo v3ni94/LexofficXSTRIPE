@@ -199,6 +199,32 @@ return [
         'public_min_coverage_pct' => 99,      // Mindest-Messabdeckung für öffentliche Prozentwerte (Produkteinstellung)
         'tariff_limits' => [],                // manuell hinterlegte Tariflimits mit Quelle und Datum, z.B. ['php_memory_mb' => ['value' => 512, 'source' => 'IONOS Tarifübersicht', 'date' => '06.09.2026']]
     ],
+    // --- Hintergrundverarbeitung (Auftrag III): Warteschlange, Worker, Scheduler ---
+    // Die Warteschlange ist ein Feature-Flag (siehe 'features' => ['queue' => ...]). Auf dem Webhosting bleibt
+    // sie aus; der Cron arbeitet wie bisher. Auf dem VPS laufen Scheduler- und Worker-Container.
+    'queue' => [
+        'sync_attempt_seconds'   => 600,  // Zeitbudget je Verarbeitungsversuch einer Synchronisation, danach Fortsetzung
+        'sync_max_steps_attempt' => 60,
+        'collections_seconds'    => 120,  // Zeitbudget je Durchlauf der Einzugsverarbeitung
+        'auto_sync_hours'        => 6,    // regelmäßiger Delta-Abgleich je Firma (NORMAL)
+        'full_sync_hour'         => 3,    // Stunde des nächtlichen Vollabgleichs (LOW), lokale Zeit
+        'prune_days'             => 30,   // abgeschlossene Jobs aufbewahren
+        'lexoffice_per_second'   => 2,    // zentrale Ratenbegrenzung über Redis (Annahme zur Lexware-API, zu verifizieren)
+        'stripe_per_second'      => 20,
+        'circuit' => ['threshold' => 5, 'open_seconds' => 300, 'probe_seconds' => 60],
+    ],
+    // Redis (optional): Sperren, Ratenbegrenzung, Cache. Ohne Angabe läuft alles über MariaDB.
+    'redis' => null, // z.B. ['host' => 'redis', 'port' => 6379, 'password' => null, 'prefix' => 'se:']
+    // Strukturiertes Logging: 'stderr' (Docker), 'file' (app/storage/logs) oder 'error_log'
+    'log' => ['target' => 'file'],
+    // Vertrauenswürdige Reverse Proxys: nur Anfragen von diesen Adressen dürfen X-Forwarded-Proto/-For setzen.
+    // VPS mit Caddy php_fastcgi: leer lassen (REMOTE_ADDR und HTTPS kommen direkt von Caddy). Nur füllen, wenn
+    // ein weiterer Proxy oder ein CDN VOR Caddy steht (dann dessen Adressen, z.B. ['172.16.0.0/12']).
+    'trusted_proxies' => [],
+    // Schreibbares Speicherverzeichnis außerhalb des Codes (VPS: /opt/smarteinzug/shared/storage); leer = app/storage
+    'storage_dir' => '',
+    // Wartungsmodus für den Cutover (alternativ Datei <storage_dir>/maintenance.flag anlegen)
+    'maintenance_mode' => false,
     // Öffentliche Statusseite (Abschnitt 8): Adresse für Links; leer = keine Links anzeigen
     'status_page_url' => '',
     // Veröffentlichung des Status-Snapshots (nur erlaubte Felder). Ziele optional:
@@ -219,6 +245,9 @@ return [
     // erfolgreichem Test im Stripe-Testmodus aktivieren, siehe docs/payment-safety.md.
     'features' => [
         'mandate_request' => false,
+        // queue: Hintergrundverarbeitung über Warteschlange und Worker. true = alle Firmen,
+        // Liste von Firmen-IDs = nur diese Firmen (zusätzlich je Firma über organizations.feature_flags), false = aus.
+        'queue' => false,
     ],
 
     // --- Zeitzone ---

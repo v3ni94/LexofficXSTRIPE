@@ -1,0 +1,273 @@
+# SmartEinzug: Basis-Compose-Datei fuer den IONOS VPS.
+# Kein "version:"-Schluessel mehr: das Compose-Spezifikationsformat (Docker Compose v2) benoetigt ihn
+# nicht, ein gesetzter Wert wird von aktuellen Compose-Versionen nur noch als veraltet gemeldet.
+#
+# Diese Datei allein wird nie gestartet, sondern immer zusammen mit genau einem Override:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml    --env-file .env up -d
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env up -d
+#
+# Grundsaetze (siehe README.md):
+#  - Kein Datenbank- oder Redis-Port wird nach aussen veroeffentlicht.
+#  - Der Code des aktiven Release liegt unter /opt/smarteinzug/releases/current (Symlink innerhalb
+#    des Release-Ordners, siehe scripts/deploy.sh) und wird nur LESEND in die Container eingebunden.
+#    config.php und storage/ liegen ausserhalb der Releases unter /opt/smarteinzug/shared/ und werden
+#    gesondert eingebunden. Der Container sieht NICHT das gesamte /opt/smarteinzug (dort liegen
+#    deploy/.env, Backups und Logs, die kein Anwendungscontainer lesen darf).
+#  - worker-lexware-2 (zweiter Lexware-Worker) ist hier definiert, wird aber in Staging ueber ein
+#    Profil deaktiviert (docker-compose.staging.yml); Produktion setzt nur Ressourcenlimits.
+#  - stop_grace_period 660 s fuer Scheduler und Worker: ein laufender Sync-Abschnitt darf bis zu 600 s
+#    dauern (jobs.sync_attempt_seconds), SIGTERM beendet ihn kontrolliert und gibt den Job frei.
+
+name: smarteinzug
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-php-build: &php-build
+  context: ./php
+  dockerfile: Dockerfile
+
+# Code-Mounts, die jeder PHP-Container (Web, Scheduler, Worker) in derselben Form braucht.
+# Das aktive Release und die produktive Konfiguration sind read_only: ein Container darf den
+# eigenen Code nicht veraendern. shared/storage ist beschreibbar (Mandate, Avatare, Logs,
+# maintenance.flag, backup-status.json), shared/sessions traegt die PHP-Sitzungen aller Container.
+x-code-mounts: &code-mounts
+  # Der Ordner /opt/smarteinzug/releases wird nur lesend eingebunden. Der Symlink
+  # /opt/smarteinzug/releases/current zeigt auf /opt/smarteinzug/releases/<git-sha> und wird IM
+  # Container bei jedem Dateizugriff aufgeloest (Ziel liegt innerhalb desselben Mounts); ein
+  # Release-Wechsel auf dem Host wirkt deshalb ohne Container-Neustart (nur php-fpm-Reload). Ein
+  # direkter Bind des Symlinks wuerde beim Containerstart fest auf das damalige Release aufgeloest.
+  - type: bind
+    source: /opt/smarteinzug/releases
+    target: /opt/smarteinzug/releases
+    read_only: true
+  - type: bind
+    source: /opt/smarteinzug/shared/config.php
+    target: /opt/smarteinzug/shared/config.php
+    read_only: true
+  - type: bind
+    source: /opt/smarteinzug/shared/storage
+    target: /opt/smarteinzug/shared/storage
+  - type: bind
+    source: /opt/smarteinzug/shared/sessions
+    target: /var/lib/php/sessions
+
+x-php-common: &php-common
+  build: *php-build
+  image: smarteinzug-php:local
+  restart: unless-stopped
+  user: "${APP_UID:-33}:${APP_GID:-33}"
+  networks: [smarteinzug_internal]
+  working_dir: /opt/smarteinzug/releases/current
+  environment: &php-common-env
+    TZ: ${TZ:-Europe/Berlin}
+    # Konfiguration und Speicher liegen ausserhalb der Releases (siehe app/bootstrap.php, storage_dir()).
+    SMARTEINZUG_CONFIG: /opt/smarteinzug/shared/config.php
+  volumes: *code-mounts
+  logging: *default-logging
+
+# Scheduler und Worker: identisch zu php-common, zusaetzlich langer Stop-Grace fuer laufende Jobs
+# und der Heartbeat-Healthcheck.
+x-php-background: &php-background
+  <<: *php-common
+  stop_grace_period: 660s
+  healthcheck: &heartbeat-healthcheck
+    test: ["CMD", "php", "bin/healthcheck.php", "--heartbeat"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+  depends_on: &depends-on-db
+    mariadb:
+      condition: service_healthy
+
+networks:
+  # edge: einziges Netz mit Weg nach aussen, nur Caddy haengt daran (Ports 80/443).
+  edge:
+    driver: bridge
+  # smarteinzug_internal: kein Zugriff von aussen (internal: true). Fester Adressbereich, damit die
+  # Adressen der Container vorhersagbar bleiben. Hinweis: Caddy uebergibt per php_fastcgi REMOTE_ADDR und
+  # HTTPS direkt, trusted_proxies in app/config.php bleibt deshalb LEER; nur wenn ein weiterer Proxy oder
+  # ein CDN vor Caddy steht, dessen Adressen dort eintragen.
+  smarteinzug_internal:
+    driver: bridge
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  caddy_data:
+  caddy_config:
+  mariadb_data:
+  backups:
+
+services:
+  # --- Reverse Proxy -----------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    networks: [edge, smarteinzug_internal]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN_APP: ${DOMAIN_APP}
+      DOMAIN_ADMIN: ${DOMAIN_ADMIN}
+      DOMAIN_API: ${DOMAIN_API}
+      DOMAIN_STATUS: ${DOMAIN_STATUS}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      # Nur die Releases (Dokumentenstamm /opt/smarteinzug/releases/current, Symlink wird im Container
+      # aufgeloest; die Statusseite liegt im Release unter status/); kein Zugriff auf shared/, deploy/,
+      # backups/, logs/.
+      - /opt/smarteinzug/releases:/opt/smarteinzug/releases:ro
+    depends_on:
+      php:
+        condition: service_healthy
+    logging: *default-logging
+
+  # --- Web (php-fpm) ------------------------------------------------------------------------
+  php:
+    <<: *php-common
+    environment:
+      <<: *php-common-env
+      PM_MAX_CHILDREN: ${PM_MAX_CHILDREN:-8}
+    healthcheck:
+      test: ["CMD", "php", "bin/healthcheck.php", "--db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on: *depends-on-db
+
+  # --- Scheduler (ein Lauf je Datenbank, GET_LOCK) ------------------------------------------
+  scheduler:
+    <<: *php-background
+    command: ["php", "bin/scheduler.php"]
+
+  # --- Worker --------------------------------------------------------------------------------
+  # memory_limit der Worker kommt bewusst per CLI-Flag (nicht ueber php.ini), damit ein Wert
+  # (WORKER_MEMORY_MB) fuer alle Pools gilt, ohne das Web-php.ini zu beeinflussen (dort 256M fest).
+  worker-lexware-1:
+    <<: *php-background
+    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=lexware"]
+
+  # Zweiter Lexware-Worker. In Staging ueber docker-compose.staging.yml (profiles) abgeschaltet.
+  worker-lexware-2:
+    <<: *php-background
+    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=lexware"]
+
+  worker-stripe:
+    <<: *php-background
+    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=stripe"]
+
+  worker-mail:
+    <<: *php-background
+    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=mail"]
+
+  worker-maintenance:
+    <<: *php-background
+    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=maintenance"]
+
+  # --- Host-Metriken (Auftrag II/III: admin-system.php, Reiter Server) -----------------------
+  # Laeuft wie alle Anwendungscontainer ohne Root und OHNE das Wurzeldateisystem des Hosts.
+  # /proc des Hosts wird nur lesend eingebunden (CPU, Speicher, Load); die Plattenbelegung wird ueber
+  # das Dateisystem gemessen, auf dem die Releases liegen (HOST_ROOT), das genuegt fuer die Anzeige.
+  metrics:
+    build: *php-build
+    image: smarteinzug-php:local
+    restart: unless-stopped
+    user: "${APP_UID:-33}:${APP_GID:-33}"
+    command: ["php", "bin/host-metrics.php", "--interval=60"]
+    networks: [smarteinzug_internal]
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+      SMARTEINZUG_CONFIG: /opt/smarteinzug/shared/config.php
+      HOST_PROC: /hostproc
+      HOST_ROOT: /opt/smarteinzug/releases
+    working_dir: /opt/smarteinzug/releases/current
+    volumes:
+      - type: bind
+        source: /opt/smarteinzug/releases
+        target: /opt/smarteinzug/releases
+        read_only: true
+      - type: bind
+        source: /opt/smarteinzug/shared/config.php
+        target: /opt/smarteinzug/shared/config.php
+        read_only: true
+      - type: bind
+        source: /opt/smarteinzug/shared/storage
+        target: /opt/smarteinzug/shared/storage
+      - /proc:/hostproc:ro
+    depends_on: *depends-on-db
+    logging: *default-logging
+
+  # --- Datenbank -------------------------------------------------------------------------------
+  mariadb:
+    image: mariadb:10.11
+    restart: unless-stopped
+    networks: [smarteinzug_internal]
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mariadb/my.cnf:/etc/mysql/conf.d/smarteinzug.cnf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh --connect --innodb_initialized"]
+      interval: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 40s
+    logging: *default-logging
+
+  # --- Redis (Sperren, Ratenbegrenzung, Cache; kein persistenter Datenbestand noetig) -----------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    networks: [smarteinzug_internal]
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  # --- Backup: taeglicher Dump im Container, Ergebnis als backup-status.json im gemeinsamen Speicher
+  #     (Monitoring-Komponente Sicherungen). Kein Docker-Socket, keine Rechte auf dem Host.
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks: [smarteinzug_internal]
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+      DB_HOST: mariadb
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RESULT_FILE: /opt/smarteinzug/shared/storage/backup-status.json
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - backups:/backups
+      # Ergebnisdatei fuer das Monitoring der Anwendung; kein Docker-Socket noetig.
+      - /opt/smarteinzug/shared/storage:/opt/smarteinzug/shared/storage
+    depends_on: *depends-on-db
+    logging: *default-logging

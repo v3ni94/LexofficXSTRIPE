@@ -49,6 +49,20 @@ $cronRunId = job_run_start('cron', 'cron', null, PHP_SAPI === 'cli' ? 'cli' : 'c
 // Datenbankmigrationen laufen NICHT im Cron (nur über migrate.php nach dem Upload,
 // siehe docs/migrations.md), damit sie nie während eines laufenden Uploads starten.
 
+require_once __DIR__ . '/app/queue.php';
+if (queue_any_enabled()) {
+    // Hybridbetrieb (Warteschlange aktiv, aber keine Worker-Container wie auf dem Webhosting): Scheduler-Tick
+    // und Jobs im Zeitbudget inline verarbeiten. Auf dem VPS übernehmen Scheduler- und Worker-Container.
+    require_once __DIR__ . '/app/jobs.php';
+    define('IN_WORKER', true);
+    $st = queue_run_inline(max(5.0, $totalBudget - 3), 'cron-inline-' . getmypid() . '-' . bin2hex(random_bytes(3)));
+    echo sprintf("[%s] Warteschlange (inline): %d eingereiht (%s), %d verarbeitet, %d fortgesetzt, %d fehlgeschlagen oder erneut geplant\n",
+        date('d.m.Y H:i:s'), count($st['queued']), implode(', ', $st['queued']) ?: 'nichts Neues', $st['processed'], $st['requeued'], $st['failed']);
+    job_run_finish($cronRunId, 'success', ['items' => (int)$st['processed']]);
+    echo sprintf("[%s] Laufzeit %.1f s, PHP-Spitzenspeicher dieses Jobs %.1f MB\n", date('d.m.Y H:i:s'), microtime(true) - $start, memory_get_peak_usage(true) / 1048576);
+    exit;
+}
+
 require_once __DIR__ . '/app/support.php';
 try { support_sessions_expire(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 008 */ }
 require_once __DIR__ . '/app/auth.php';

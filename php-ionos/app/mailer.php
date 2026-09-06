@@ -97,7 +97,47 @@ function mail_build_body(string $textBody, ?string $htmlBody): array
  * Liefert false ohne Versandversuch, wenn der Mailversand nicht aktiviert
  * ist oder die Empfängeradresse ungültig ist.
  */
+/**
+ * E-Mail versenden. Ist die Warteschlange aktiv (Feature queue) und läuft dieser Aufruf nicht selbst im
+ * Worker, wird die Nachricht als Job eingereiht und sofort true geliefert (Webanfragen warten nicht auf
+ * SMTP). Andernfalls direkte Übergabe an den Versandweg.
+ */
 function mail_send(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
+{
+    if (!mail_enabled()) {
+        return false;
+    }
+    if (!defined('IN_WORKER')) {
+        try {
+            require_once __DIR__ . '/queue.php';
+            if (queue_enabled()) {
+                $to = mail_sanitize_header($to);
+                if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                    return false;
+                }
+                queue_push('mail', ['to' => $to, 'subject' => mb_substr($subject, 0, 255), 'text' => $textBody, 'html' => $htmlBody], ['priority' => 'normal']);
+                return true;
+            }
+        } catch (Throwable $e) {
+            // Queue nicht verfügbar: direkt versenden
+        }
+    }
+    return mail_send_direct($to, $subject, $textBody, $htmlBody);
+}
+
+/**
+ * Kennung einer Adresse für Protokolle ohne personenbezogene Daten: gekürzter Hash plus Domain
+ * (reicht zur Zuordnung im Supportfall über die Datenbank, ohne die Adresse selbst zu protokollieren).
+ */
+function mail_addr_ref(string $to): string
+{
+    $lower = strtolower(trim($to));
+    $domain = strrchr($lower, '@');
+    return 'ref ' . substr(hash('sha256', $lower), 0, 12) . ($domain !== false ? ' ' . $domain : '');
+}
+
+/** Direkte Übergabe an den Versandweg (mail(), SMTP oder Testprotokoll). */
+function mail_send_direct(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
 {
     if (!mail_enabled()) {
         return false;
@@ -105,7 +145,7 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
 
     $to = mail_sanitize_header($to);
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-        error_log('mail_send: Empfängeradresse ungültig, Versand abgebrochen: ' . $to);
+        error_log('mail_send: Empfängeradresse ungültig, Versand abgebrochen (' . mail_addr_ref($to) . ').');
         return false;
     }
 
@@ -161,17 +201,25 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
             mail_smtp_send((array)($cfg['smtp'] ?? []), $fromAddress, $to,
                 'To: ' . $to . "\r\n" . 'Subject: ' . $encodedSubject . "\r\n" . $headers, $body);
             mail_monitor_mark(true, null);
+            $GLOBALS['mail_last_error'] = null;
             return true;
         } catch (Throwable $e) {
-            error_log('mail_send: SMTP-Versand fehlgeschlagen, Empfänger: ' . $to . ': ' . $e->getMessage());
-            mail_monitor_mark(false, $e);
+            error_log('mail_send: SMTP-Versand fehlgeschlagen, Empfänger ' . mail_addr_ref($to) . ': ' . (function_exists('log_sanitize') ? log_sanitize($e->getMessage()) : $e->getMessage()));
+            $msg = $e->getMessage();
+            // Endgültige Ablehnung des Empfängers oder der Nachricht (5xx auf RCPT TO oder DATA) ist kein Transportproblem
+            $rejected = (bool)preg_match('/(RCPT TO|abgelehnt)[^\d]*5\d\d|"RCPT TO[^"]*": 5\d\d/i', $msg);
+            $GLOBALS['mail_last_error'] = ['kind' => $rejected ? 'rejected' : 'transport', 'text' => $msg];
+            mail_monitor_mark(false, $rejected ? null : $e);
             return false;
         }
     }
 
     $result = @mail($to, $encodedSubject, $body, $headers);
     if (!$result) {
-        error_log('mail_send: Versand über mail() fehlgeschlagen, Empfänger: ' . $to);
+        error_log('mail_send: Versand über mail() fehlgeschlagen, Empfänger ' . mail_addr_ref($to) . '.');
+        $GLOBALS['mail_last_error'] = ['kind' => 'transport', 'text' => 'mail() hat die Nachricht nicht angenommen'];
+    } else {
+        $GLOBALS['mail_last_error'] = null;
     }
     mail_monitor_mark((bool)$result, $result ? null : 'mail_function_false');
     return $result;
@@ -522,4 +570,10 @@ function mail_tpl_integration_changed(string $orgName, string $what, string $byE
 
     $layout = mail_layout($subject, $paragraphs);
     return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];
+}
+
+/** Letzter Fehler von mail_send_direct: ['kind' => 'transport'|'rejected', 'text' => ...] oder null. */
+function mail_last_error(): ?array
+{
+    return $GLOBALS['mail_last_error'] ?? null;
 }

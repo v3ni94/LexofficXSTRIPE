@@ -112,6 +112,9 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
         $cursor['metrics'] = _sync_empty_metrics();
     }
     $rules = sync_rules_config();
+    if (!empty($cursor['force_full'])) {
+        $rules['skip_unchanged'] = false; // Vollabgleich: jede Rechnung mit Detailabruf prüfen
+    }
     $limit = $batchSize > 0 ? $batchSize : $rules['step_max'];
     $deadline = $batchSize > 0 ? null : microtime(true) + $rules['step_seconds'];
     $client = $lex instanceof LexwareOfficeSource ? $lex->client() : ($lex instanceof LexofficeClient ? $lex : null);

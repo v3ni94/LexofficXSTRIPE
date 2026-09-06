@@ -50,6 +50,9 @@ function sync_state_is_running(?array $state): bool
     if (isset($state['age_seconds'])) {
         return (int)$state['age_seconds'] < SYNC_STALE_MINUTES * 60;
     }
+    if (empty($state['updated_at'])) {
+        return true; // synthetischer Zustand ohne Zeitstempel (z.B. Fortschrittsberechnung)
+    }
     $updated = new DateTimeImmutable($state['updated_at']);
     return $updated > (new DateTimeImmutable('now'))->modify('-' . SYNC_STALE_MINUTES . ' minutes');
 }
@@ -79,6 +82,7 @@ function sync_state_start(string $tenantId, ?array $actor): array
     audit_log($tenantId, $actor, 'sync_requested', 'organization', $tenantId, [
         'requested_by_user_id' => $actor['user_id'] ?? null,
     ]);
+    sync_run_open($tenantId, $actor);
     return sync_state_get($tenantId);
 }
 
@@ -88,6 +92,7 @@ function sync_state_cancel(string $tenantId, ?array $actor): void
         "UPDATE sync_state SET status = 'idle', cursor_json = NULL, lock_until = NULL, finished_at = NOW() WHERE tenant_id = ?"
     )->execute([$tenantId]);
     audit_log($tenantId, $actor, 'sync_cancelled', 'organization', $tenantId);
+    sync_run_finish($tenantId, 'cancelled', [], 'Vom Benutzer abgebrochen', 'cancelled');
 }
 
 /**
@@ -171,6 +176,7 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
             $actor = $state['requested_by_user_id'] ? ['user_id' => $state['requested_by_user_id']] : null;
             audit_log($tenantId, $actor, 'sync_completed', 'organization', $tenantId, $step['result']);
             funnel_event_once($tenantId, 'first_sync', $state['requested_by_user_id']);
+            sync_run_finish($tenantId, 'success', $step['result']);
         } else {
             // Fortschritt nur speichern, wenn die Sperre noch uns gehört. Wurde sie in der
             // Zwischenzeit von einem anderen Prozess übernommen (Zeitüberschreitung), wird der
@@ -187,11 +193,17 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
         job_run_finish($runId, 'success', $jobMetrics);
         return ['done' => $step['done'], 'skipped' => false, 'result' => $step['result']];
     } catch (Throwable $e) {
+        // Im Worker bleibt der Lauf mit Cursor bestehen, damit der nächste Versuch am Checkpoint fortsetzt;
+        // im Browser-/Cron-Pfad endet der Lauf mit Fehler. Fehlertexte werden bereinigt gespeichert.
+        $newStatus = defined('IN_WORKER') ? 'running' : 'error';
         $pdo->prepare(
-            "UPDATE sync_state SET status = 'error', lock_until = NULL, lock_owner = NULL, finished_at = NOW(), last_error = ? WHERE tenant_id = ? AND lock_owner = ?"
-        )->execute([mb_substr($e->getMessage(), 0, 2000), $tenantId, $owner]);
+            "UPDATE sync_state SET status = ?, lock_until = NULL, lock_owner = NULL, finished_at = IF(? = 'error', NOW(), finished_at), last_error = ? WHERE tenant_id = ? AND lock_owner = ?"
+        )->execute([$newStatus, $newStatus, mb_substr(log_sanitize($e->getMessage()), 0, 500), $tenantId, $owner]);
         // Technischer Fehler des Schritts (api_errors = 1); Konfigurationsfehler einer Firma erhalten die Kategorie auth
         job_run_finish($runId, 'failed', ['api_errors' => 1], monitor_category($e));
+        if (!defined('IN_WORKER')) {
+            sync_run_finish($tenantId, 'failed', (array)($state['cursor']['result'] ?? []), $e->getMessage(), monitor_category($e));
+        }
         throw $e;
     }
 }
@@ -290,4 +302,187 @@ function sync_run_pending(int $maxSeconds = 50, int $stepsPerRound = 2): array
     }
     $stats['open'] = count($queue);
     return $stats;
+}
+
+// ---------------------------------------------------------------------------
+// Fortschritt und dauerhafte Historie je Firma (Auftrag III, Abschnitte 47 bis 50)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fortschritt eines laufenden Zustands aus dem Cursor: Prozent (null = unbekannt) und verständlicher Text.
+ * Listing zählt bis 10 %, Verarbeitung von 10 bis 95 %, Nachprüfung bis 100 %.
+ */
+function sync_progress(?array $state): array
+{
+    $out = ['percent' => null, 'text' => sync_state_label($state), 'processed' => 0, 'total' => null, 'phase' => null];
+    if (!$state || $state['status'] !== 'running') {
+        if ($state && $state['status'] === 'done') {
+            $out['percent'] = 100;
+        }
+        return $out;
+    }
+    $c = $state['cursor'] ?? null;
+    if (!$c) {
+        $out['text'] = 'Synchronisierung eingeplant, Verbindung wird geprüft';
+        $out['percent'] = 0;
+        return $out;
+    }
+    $out['phase'] = (string)($c['phase'] ?? '');
+    if ($out['phase'] === 'listing') {
+        $pages = max(1, (int)($c['lex_total_pages'] ?? 1));
+        $page = (int)($c['lex_page'] ?? 0);
+        $out['percent'] = (int)min(10, round(10 * $page / $pages));
+        $out['text'] = sprintf('Rechnungsliste wird geladen (Seite %d von %d, %s)', min($pages, $page + 1), $pages,
+            ($c['listing_status'] ?? 'open') === 'overdue' ? 'überfällige Rechnungen' : 'offene Rechnungen');
+    } elseif ($out['phase'] === 'processing') {
+        $total = count((array)($c['collected'] ?? []));
+        $idx = (int)($c['proc_index'] ?? 0);
+        $out['processed'] = $idx;
+        $out['total'] = $total;
+        $out['percent'] = $total > 0 ? (int)(10 + round(85 * min($idx, $total) / $total)) : 95;
+        $out['text'] = sprintf('%s von %s Rechnungen verarbeitet', number_format($idx, 0, ',', '.'), number_format($total, 0, ',', '.'));
+    } elseif ($out['phase'] === 'recheck') {
+        $out['percent'] = 97;
+        $out['text'] = 'Abschluss: Status nicht mehr offener Rechnungen wird geprüft';
+    }
+    if (!empty($state['queue_waiting'])) {
+        $out['text'] = 'Warte auf Lexware Office, automatischer neuer Versuch läuft';
+    }
+    return $out;
+}
+
+function sync_runs_available(): bool
+{
+    static $a = null;
+    if ($a === null) {
+        try {
+            db()->query('SELECT 1 FROM sync_runs LIMIT 1');
+            $a = true;
+        } catch (Throwable $e) {
+            $a = false;
+        }
+    }
+    return $a;
+}
+
+/** Historieneintrag eröffnen (ein laufender Eintrag je Firma; ein noch offener wird als abgebrochen geschlossen). */
+function sync_run_open(string $tenantId, ?array $actor, ?string $jobId = null): ?string
+{
+    if (!sync_runs_available()) {
+        return null;
+    }
+    try {
+        $pdo = db();
+        $pdo->prepare("UPDATE sync_runs SET status = 'cancelled', finished_at = NOW(), error_category = 'superseded', error_text = 'Durch neuen Lauf ersetzt' WHERE tenant_id = ? AND status = 'running'")
+            ->execute([$tenantId]);
+        $id = uuid4();
+        $trigger = (string)($actor['trigger'] ?? (isset($actor['user_id']) && $actor['user_id'] ? 'manual' : 'auto'));
+        $pdo->prepare('INSERT INTO sync_runs (id, tenant_id, job_id, correlation_id, triggered_by, user_id, status, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())')
+            ->execute([$id, $tenantId, $jobId, function_exists('correlation_current') ? correlation_current() : null, mb_substr($trigger, 0, 20), $actor['user_id'] ?? null, 'running']);
+        return $id;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/** Laufenden Historieneintrag mit Job und Worker verknüpfen. */
+function sync_run_attach(string $tenantId, ?string $jobId, ?string $workerId): void
+{
+    if (!sync_runs_available()) {
+        return;
+    }
+    try {
+        db()->prepare("UPDATE sync_runs SET job_id = COALESCE(?, job_id), worker_id = COALESCE(?, worker_id) WHERE tenant_id = ? AND status = 'running'")
+            ->execute([$jobId, $workerId, $tenantId]);
+    } catch (Throwable $e) {
+    }
+}
+
+/** Historieneintrag abschließen (success | partial | failed | cancelled) mit Mengen und Kennzahlen. */
+function sync_run_finish(string $tenantId, string $status, array $result, ?string $errorText = null, ?string $category = null): void
+{
+    if (!sync_runs_available()) {
+        return;
+    }
+    try {
+        $m = (array)($result['metrics'] ?? []);
+        db()->prepare(
+            "UPDATE sync_runs SET status = ?, finished_at = NOW(), duration_ms = TIMESTAMPDIFF(SECOND, started_at, NOW()) * 1000,
+                    steps = ?, checked = ?, created = ?, updated = ?, removed = ?, skipped = ?, errors = ?, retries = ?, api_calls = ?, api_ms = ?, throttle_ms = ?,
+                    error_category = ?, error_text = ?
+             WHERE tenant_id = ? AND status = 'running'"
+        )->execute([
+            in_array($status, ['success', 'partial', 'failed', 'cancelled'], true) ? $status : 'partial',
+            (int)($m['steps'] ?? 0), (int)($result['synced'] ?? 0), (int)($result['new'] ?? 0), (int)($result['updated'] ?? 0), (int)($result['removed'] ?? 0),
+            (int)($m['skipped_unchanged'] ?? 0), $status === 'failed' ? 1 : 0, (int)($m['retries'] ?? 0), (int)($m['api_calls'] ?? 0), (int)($m['api_ms'] ?? 0), (int)($m['throttle_ms'] ?? 0),
+            $category !== null ? mb_substr($category, 0, 60) : null,
+            $errorText !== null ? mb_substr(function_exists('log_sanitize') ? log_sanitize($errorText) : $errorText, 0, 500) : null,
+            $tenantId,
+        ]);
+    } catch (Throwable $e) {
+    }
+}
+
+/** Historie einer Firma (mandantengefiltert), neueste zuerst. */
+function sync_runs_list(string $tenantId, int $limit = 50): array
+{
+    if (!sync_runs_available()) {
+        return [];
+    }
+    $st = db()->prepare('SELECT r.*, u.display_name AS user_name, u.email AS user_email FROM sync_runs r LEFT JOIN users u ON u.id = r.user_id WHERE r.tenant_id = ? ORDER BY r.started_at DESC LIMIT ' . (int)$limit);
+    $st->execute([$tenantId]);
+    return $st->fetchAll();
+}
+
+function sync_run_load(string $tenantId, string $id): ?array
+{
+    if (!sync_runs_available()) {
+        return null;
+    }
+    $st = db()->prepare('SELECT r.*, u.display_name AS user_name, u.email AS user_email FROM sync_runs r LEFT JOIN users u ON u.id = r.user_id WHERE r.tenant_id = ? AND r.id = ?');
+    $st->execute([$tenantId, $id]);
+    return $st->fetch() ?: null;
+}
+
+function sync_run_status_label(string $status): string
+{
+    return ['running' => 'Läuft', 'success' => 'Erfolgreich', 'partial' => 'Teilweise erfolgreich', 'failed' => 'Fehlgeschlagen', 'cancelled' => 'Abgebrochen'][$status] ?? $status;
+}
+
+function sync_trigger_label(string $t): string
+{
+    return ['manual' => 'Manuell', 'auto' => 'Automatisch', 'full' => 'Vollabgleich (automatisch)', 'admin' => 'Betreiber', 'cron' => 'Automatisch (Cron)'][$t] ?? $t;
+}
+
+/** HTML-Fragment mit Fortschrittsbalken und Text für die Synchronisierungsansicht (mandantenbezogen). */
+function sync_progress_fragment(string $tenantId): string
+{
+    $state = sync_state_get($tenantId);
+    if (function_exists('queue_tenant_active')) {
+        $job = queue_tenant_active($tenantId, 'sync_run');
+        if ($job && $state) {
+            $state['queue_waiting'] = $job['status'] === 'retry';
+            $state['job_status'] = $job['status'];
+            $state['job_text'] = $job['progress_text'];
+        }
+    }
+    $p = sync_progress($state);
+    $done = !$state || $state['status'] !== 'running';
+    $pct = $p['percent'];
+    $text = $p['text'];
+    if (!empty($state['job_status']) && $state['job_status'] === 'queued' && empty($state['cursor'])) {
+        $text = 'Auftrag eingereiht, ein Worker übernimmt in Kürze';
+    } elseif (!empty($state['job_status']) && $state['job_status'] === 'retry') {
+        $text = 'Warte auf Lexware Office, automatischer neuer Versuch läuft';
+    } elseif (!empty($state['job_text']) && !empty($state['queue_waiting'])) {
+        $text = (string)$state['job_text'];
+    }
+    $h = '<div class="sync-progress" data-done="' . ($done ? '1' : '0') . '" role="status" aria-live="polite">';
+    $h .= '<div class="sync-bar" aria-hidden="true"><span style="width:' . ($pct === null ? 0 : (int)$pct) . '%"' . ($pct === null ? ' class="sync-bar-unknown"' : '') . '></span></div>';
+    $h .= '<div class="sync-text">' . ($pct === null ? '' : '<strong>' . (int)$pct . ' %</strong> ') . e($text) . '</div>';
+    if ($p['total'] !== null) {
+        $h .= '<div class="hint">' . e(number_format((int)$p['processed'], 0, ',', '.')) . ' von ' . e(number_format((int)$p['total'], 0, ',', '.')) . ' Rechnungen verarbeitet</div>';
+    }
+    $h .= '</div>';
+    return $h;
 }

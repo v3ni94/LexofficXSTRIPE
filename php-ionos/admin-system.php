@@ -12,6 +12,15 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/admin_charts.php';
 require_once __DIR__ . '/app/monitor_view.php';
+require_once __DIR__ . '/app/queue.php';
+require_once __DIR__ . '/app/version.php';
+
+/** Badge für einen Änderungsverlauf-Eintrag (Neu, Geändert, Behoben). */
+function admin_changelog_badge(string $type): string
+{
+    $cls = ['Neu' => 'badge-success', 'Geändert' => 'badge-info', 'Behoben' => 'badge-warn'][$type] ?? 'badge-neutral';
+    return '<span class="badge ' . $cls . '">' . e($type) . '</span>';
+}
 
 if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     $adminHost = base_url_host(admin_base_url());
@@ -25,11 +34,14 @@ $cfg = monitor_config();
 $canEdit = monitor_can_edit($ctx);
 $available = monitor_available();
 
-$tabs = ['uebersicht' => 'Übersicht', 'dienste' => 'Dienste', 'aktivitaet' => 'Aktivität', 'verfuegbarkeit' => 'Verfügbarkeit', 'stoerungen' => 'Störungen und Wartung'];
-$tab = isset($tabs[$_GET['tab'] ?? '']) ? (string)$_GET['tab'] : 'uebersicht';
+$tabs = ['uebersicht' => 'Übersicht', 'dienste' => 'Dienste', 'aktivitaet' => 'Aktivität', 'jobs' => 'Jobs', 'server' => 'Server',
+         'verfuegbarkeit' => 'Verfügbarkeit', 'stoerungen' => 'Störungen und Wartung', 'versionen' => 'Versionen', 'dokumentation' => 'Dokumentation'];
+$tabParam = is_string($_GET['tab'] ?? null) ? (string)$_GET['tab'] : '';
+$tab = isset($tabs[$tabParam]) ? $tabParam : 'uebersicht';
 $windows = monitor_windows();
-$w = isset($windows[$_GET['w'] ?? '']) ? (string)$_GET['w'] : '1h';
-$d = in_array((int)($_GET['d'] ?? 30), [7, 30, 90], true) ? (int)$_GET['d'] : 30;
+$wParam = is_string($_GET['w'] ?? null) ? (string)$_GET['w'] : '';
+$w = isset($windows[$wParam]) ? $wParam : '1h';
+$d = is_scalar($_GET['d'] ?? null) && in_array((int)$_GET['d'], [7, 30, 90], true) ? (int)$_GET['d'] : 30;
 $back = 'admin-system.php?tab=' . $tab . '&w=' . $w . '&d=' . $d;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -77,6 +89,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ok = mail_send($cfg['test_mail_to'], $tpl['subject'], $tpl['text'], $tpl['html']);
             audit_log(null, $ctx, 'monitor_test_mail', 'monitor', null, ['accepted' => $ok]);
             flash_set($ok ? 'success' : 'error', $ok ? 'Testnachricht an den Versandweg übergeben (Annahme, kein Zustellnachweis).' : 'Der Versandweg hat die Testnachricht nicht angenommen.');
+        } elseif ($action === 'job_retry_now' || $action === 'job_cancel' || $action === 'job_close') {
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            if (!queue_available()) {
+                throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
+            }
+            $jobId = (string)($_POST['job_id'] ?? '');
+            if ($action === 'job_retry_now') {
+                $r = queue_retry_now($jobId, $ctx);
+                flash_set($r['ok'] ? 'success' : 'error', $r['message']);
+            } elseif ($action === 'job_cancel') {
+                $ok = queue_cancel($jobId, $ctx);
+                flash_set($ok ? 'success' : 'error', $ok ? 'Job abgebrochen.' : 'Job konnte nicht abgebrochen werden (falscher Status).');
+            } else {
+                $ok = queue_close($jobId, $ctx);
+                flash_set($ok ? 'success' : 'error', $ok ? 'Job dauerhaft geschlossen.' : 'Job konnte nicht geschlossen werden (falscher Status).');
+            }
+            $back = 'admin-system.php?tab=jobs';
+        } elseif ($action === 'org_sync_pause' || $action === 'org_sync_resume') {
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            $orgId = (string)($_POST['org_id'] ?? '');
+            $pause = $action === 'org_sync_pause';
+            $reason = trim((string)($_POST['reason'] ?? ''));
+            if ($pause && $reason === '') {
+                throw new RuntimeException('Bitte einen Grund für die Wartung angeben.');
+            }
+            $chk = db()->prepare('SELECT id FROM organizations WHERE id = ? AND deleted_at IS NULL');
+            $chk->execute([$orgId]);
+            if (!$chk->fetchColumn()) {
+                throw new RuntimeException('Firma nicht gefunden.');
+            }
+            db()->prepare('UPDATE organizations SET sync_paused = ?, sync_paused_reason = ? WHERE id = ? AND deleted_at IS NULL')
+                ->execute([$pause ? 1 : 0, $pause ? mb_substr($reason, 0, 160) : null, $orgId]);
+            audit_log($orgId, $ctx, $pause ? 'sync_paused' : 'sync_resumed', 'organization', $orgId, $pause ? ['reason' => $reason] : []);
+            flash_set('success', $pause ? 'Synchronisation für diese Firma pausiert.' : 'Synchronisation für diese Firma wieder freigegeben.');
+            $back = 'admin-system.php?tab=jobs';
+        } elseif ($action === 'org_queue_flag_on' || $action === 'org_queue_flag_off') {
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            $orgId = (string)($_POST['org_id'] ?? '');
+            $chk = db()->prepare('SELECT id FROM organizations WHERE id = ? AND deleted_at IS NULL');
+            $chk->execute([$orgId]);
+            if (!$chk->fetchColumn()) {
+                throw new RuntimeException('Firma nicht gefunden.');
+            }
+            tenant_feature_set($orgId, 'queue', $action === 'org_queue_flag_on', $ctx);
+            flash_set('success', $action === 'org_queue_flag_on' ? 'Warteschlange für diese Firma aktiviert.' : 'Warteschlange für diese Firma deaktiviert.');
+            $back = 'admin-system.php?tab=jobs';
         }
     } catch (Throwable $e) {
         flash_set('error', 'Fehler: ' . $e->getMessage());
@@ -96,6 +154,25 @@ layout_header('System', $ctx);
 
 <?php if (!$available): ?>
 <div class="flash flash-error">Für das Monitoring fehlt noch die Datenbankmigration 017 (sql/migrations/017_monitoring.sql, Einspielen über den Migrationsendpunkt beim nächsten Deployment).</div>
+<?php endif; ?>
+
+<?php if (maintenance_active()):
+    $mFlag = storage_dir() . '/maintenance.flag';
+    $mSinceTs = false;
+    if (is_file($mFlag)) {
+        $mRaw = trim((string)@file_get_contents($mFlag));
+        $mSinceTs = $mRaw !== '' ? strtotime($mRaw) : false;
+        if ($mSinceTs === false) { $mSinceTs = @filemtime($mFlag); }
+    }
+    $mDur = $mSinceTs ? max(0, time() - (int)$mSinceTs) : null;
+    $mLong = $mDur !== null && $mDur > 43200;
+?>
+<div class="flash <?= $mLong ? 'flash-error' : 'flash-warn' ?>">
+    <strong>Wartungsmodus aktiv</strong><?php if ($mSinceTs): ?> seit <?= e(date('d.m.Y H:i', (int)$mSinceTs)) ?> (Dauer <?= e(sprintf('%d Std. %02d Min.', intdiv((int)$mDur, 3600), intdiv((int)$mDur % 3600, 60))) ?>)<?php endif; ?>.
+    Kundenseiten, Stripe-Webhooks und cron.php antworten mit 503, Scheduler und Worker pausieren.
+    <?php if ($mLong): ?>Das Fenster dauert länger als 12 Stunden: Stripe wiederholt Ereignisse nur begrenzt, nach dem Ende fehlgeschlagene Webhook-Ereignisse im Stripe-Dashboard erneut senden.<?php else: ?>Nach dem Ende fehlgeschlagene Webhook-Ereignisse im Stripe-Dashboard prüfen (Cutover-Checkliste).<?php endif; ?>
+    Ausschalten: <code>maintenance.sh off</code> auf dem Server bzw. Markerdatei entfernen<?= !empty($GLOBALS['config']['maintenance_mode']) ? ', zusätzlich ist maintenance_mode in der Konfiguration gesetzt' : '' ?>.
+</div>
 <?php endif; ?>
 
 <?= monitor_render_head() ?>
@@ -268,6 +345,349 @@ layout_header('System', $ctx);
 </div>
 <?php endif; ?>
 
+<?php if ($tab === 'jobs'): ?>
+<?php
+$queueOk = queue_available();
+$queueGlobalOn = feature_enabled('queue');
+?>
+<div class="card">
+    <h2>Warteschlange</h2>
+    <p class="hint">Globaler Status: <?= $queueGlobalOn ? monitor_state_badge('ok', 'Global aktiv') : monitor_state_badge('unknown', 'Global inaktiv (Feature-Flag "queue")') ?>
+        <?php if (!$queueOk): ?> · Migration 018 fehlt, alle Kennzahlen sind leer. Der bestehende Cron arbeitet unverändert weiter.<?php endif; ?></p>
+<?php if ($queueOk):
+    $qWindows = monitor_windows();
+    $qStats = [];
+    foreach ($qWindows as $wk => $win) {
+        $qStats[$wk] = queue_stats($now - (int)$win['seconds'], $now);
+    }
+    $qNow = $qStats['24h']['now'];
+    $qOldestAge = $qStats['24h']['oldest_waiting_age'];
+    $qOldestType = $qStats['24h']['oldest_waiting_type'];
+?>
+    <div class="card-grid stat-row">
+        <div class="stat-card"><div class="stat-value"><?= (int)$qNow['queued'] ?></div><div class="stat-label">Wartend</div></div>
+        <div class="stat-card"><div class="stat-value"><?= (int)$qNow['processing'] ?></div><div class="stat-label">Aktiv (in Bearbeitung)</div></div>
+        <div class="stat-card"><div class="stat-value"><?= (int)$qNow['retry'] ?></div><div class="stat-label">Erneuter Versuch geplant</div></div>
+        <div class="stat-card"><div class="stat-value"><?= (int)$qNow['failed'] ?></div><div class="stat-label">Fehlgeschlagen (Dead Letter)</div></div>
+        <div class="stat-card"><div class="stat-value"><?= $qOldestAge === null ? 'Keiner' : mon_age_label($qOldestAge) ?></div><div class="stat-label">Ältester wartender Job<?= $qOldestType ? '<span class="stat-sub">' . e(queue_type_label($qOldestType)) . '</span>' : '' ?></div></div>
+    </div>
+    <h3 class="mon-h3">Durchsatz und Dauer je Zeitfenster</h3>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Zeitfenster</th><th>Abgeschlossen</th><th>Fehlgeschlagen</th><th>Jobs/min</th><th>Jobs/Std</th><th>Dauer Durchschnitt</th><th>Dauer 95. Perzentil</th></tr></thead>
+        <tbody>
+        <?php foreach ($qWindows as $wk => $win): $s = $qStats[$wk]['window']; ?>
+            <tr>
+                <td><?= e($win['label']) ?></td>
+                <td><?= (int)$s['completed'] ?></td>
+                <td><?= (int)$s['failed'] ?></td>
+                <td><?= $s['per_minute'] === null ? '-' : e(number_format((float)$s['per_minute'], 2, ',', '.')) ?></td>
+                <td><?= $s['per_minute'] === null ? '-' : e(number_format((float)$s['per_minute'] * 60, 1, ',', '.')) ?></td>
+                <td><?= $s['n'] ? monitor_ms($s['avg_ms']) . ' (n=' . (int)$s['n'] . ')' : 'Keine Daten' ?></td>
+                <td><?= $s['n'] ? monitor_ms($s['p95_ms']) . ' (n=' . (int)$s['n'] . ')' : 'Keine Daten' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+
+<div class="card">
+    <h2>Aktive Jobs</h2>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Firma</th><th>Typ</th><th>Fortschritt</th><th>Worker</th><th>Start</th><th>Laufzeit</th><th>Status</th></tr></thead>
+        <tbody>
+        <?php $activeJobs = queue_active_jobs(50); if (!$activeJobs): ?><tr><td colspan="7" class="hint">Keine aktiven Jobs.</td></tr><?php endif; ?>
+        <?php foreach ($activeJobs as $j): $jStarted = queue_ts($j['started_at']); ?>
+            <tr>
+                <td><?= e($j['org_name'] ?? ($j['tenant_id'] ? (string)$j['tenant_id'] : 'Plattform')) ?></td>
+                <td><?= e(queue_type_label((string)$j['type'])) ?></td>
+                <td>
+                    <?php if ($j['progress'] !== null): ?>
+                        <div class="job-bar"><span style="width:<?= (int)$j['progress'] ?>%"></span></div>
+                        <div class="hint"><?= (int)$j['progress'] ?> %<?= $j['progress_text'] ? ' · ' . e((string)$j['progress_text']) : '' ?></div>
+                    <?php else: ?>
+                        <span class="hint"><?= e((string)($j['progress_text'] ?: '-')) ?></span>
+                    <?php endif; ?>
+                </td>
+                <td><?= e((string)($j['locked_by'] ?: '-')) ?></td>
+                <td><?= $jStarted !== null ? e(mon_local($j['started_at'])) : '-' ?></td>
+                <td><?= $jStarted !== null ? e(mon_age_label($now - $jStarted)) : '-' ?></td>
+                <td><?= e(QUEUE_STATE_LABELS[$j['status']] ?? (string)$j['status']) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+
+<div class="card">
+    <h2>Worker</h2>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Pool</th><th>Host</th><th>Status</th><th>Heartbeat</th><th>Aktueller Job</th><th>Erledigt</th><th>Fehlgeschlagen</th><th>Lebend</th></tr></thead>
+        <tbody>
+        <?php $workerRows = workers_list(); if (!$workerRows): ?><tr><td colspan="8" class="hint">Kein Worker und kein Scheduler gemeldet.</td></tr><?php endif; ?>
+        <?php foreach ($workerRows as $wr): ?>
+            <tr>
+                <td><?= e($wr['pool']) ?></td>
+                <td><?= e((string)($wr['hostname'] ?: '-')) ?><?= $wr['pid'] ? ' (PID ' . (int)$wr['pid'] . ')' : '' ?></td>
+                <td><?= e(['idle' => 'Bereit', 'busy' => 'Beschäftigt', 'stopping' => 'Wird beendet', 'stopped' => 'Gestoppt'][$wr['status']] ?? (string)$wr['status']) ?></td>
+                <td><?= e(mon_age_label($wr['age'])) ?></td>
+                <td><?= e((string)($wr['current_job_id'] ?: '-')) ?></td>
+                <td><?= (int)$wr['jobs_done'] ?></td>
+                <td><?= (int)$wr['jobs_failed'] ?></td>
+                <td><?= $wr['alive'] ? monitor_state_badge('ok', 'Ja') : monitor_state_badge('fail', 'Nein') ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+
+<div class="card">
+    <h2>Circuit Breaker</h2>
+    <p class="hint">Pausiert automatisch Aufrufe an eine Anbindung nach wiederholten technischen Fehlern und testet nach einer Wartezeit erneut.</p>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Anbindung</th><th>Zustand</th><th>Fehlerzähler</th><th>Letzter Fehler</th><th>Nächster Testaufruf</th></tr></thead>
+        <tbody>
+        <?php foreach (['lexoffice' => 'Lexware Office', 'stripe' => 'Stripe', 'mail' => 'E-Mail'] as $api => $apiLabel): $cs = circuit_state($api); $badgeState = ['closed' => 'ok', 'half_open' => 'degraded', 'open' => 'fail'][$cs['state']] ?? 'unknown'; ?>
+            <tr>
+                <td><?= e($apiLabel) ?></td>
+                <td><?= monitor_state_badge($badgeState, circuit_label((string)$cs['state'])) ?></td>
+                <td><?= (int)$cs['failures'] ?></td>
+                <td><?= $cs['last_failure_at'] ? e(mon_local($cs['last_failure_at'])) . ' (' . monitor_category_label($cs['last_failure_category']) . ')' : '-' ?></td>
+                <td><?= $cs['state'] === 'open' && $cs['next_probe_at'] ? e(mon_local($cs['next_probe_at'])) : '-' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+
+<div class="card">
+    <h2>Dead Letter (dauerhaft fehlgeschlagene Jobs)</h2>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Firma</th><th>Typ</th><th>Versuche</th><th>Letzter Fehler</th><th>Abschluss</th><th>Aktionen</th></tr></thead>
+        <tbody>
+        <?php $failedJobs = queue_failed_jobs(50); if (!$failedJobs): ?><tr><td colspan="6" class="hint">Keine offenen Dead-Letter-Einträge.</td></tr><?php endif; ?>
+        <?php foreach ($failedJobs as $j): ?>
+            <tr>
+                <td><?= e($j['org_name'] ?? ($j['tenant_id'] ? (string)$j['tenant_id'] : 'Plattform')) ?></td>
+                <td><?= e(queue_type_label((string)$j['type'])) ?></td>
+                <td><?= (int)$j['attempts'] ?> / <?= (int)$j['max_attempts'] ?></td>
+                <td class="hint"><?= e((string)($j['last_error'] ?: '-')) ?></td>
+                <td><?= e(mon_local($j['finished_at'])) ?></td>
+                <td>
+                    <?php if ($canEdit): ?>
+                    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_retry_now"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
+                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <button type="submit" class="btn btn-sm btn-secondary">Erneut versuchen</button></form>
+                    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_cancel"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
+                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <button type="submit" class="btn btn-sm btn-secondary">Abbrechen</button></form>
+                    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_close"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
+                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <button type="submit" class="btn btn-sm btn-danger">Dauerhaft schließen</button></form>
+                    <?php else: ?>
+                        <span class="hint">Nur mit Bearbeitungsrecht (monitoring.editors)</span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+
+<div class="card">
+    <h2>Wartungsmodus je Firma (Synchronisation pausieren)</h2>
+    <p class="hint">Pausiert ausschließlich die automatische und manuell ausgelöste Synchronisation dieser Firma, keine Einzüge.</p>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Firma</th><th>Zustand</th><th>Aktion</th></tr></thead>
+        <tbody>
+        <?php $orgsForJobs = db()->query('SELECT id, name, sync_paused, sync_paused_reason FROM organizations WHERE deleted_at IS NULL ORDER BY name')->fetchAll(); ?>
+        <?php if (!$orgsForJobs): ?><tr><td colspan="3" class="hint">Keine Firmen vorhanden.</td></tr><?php endif; ?>
+        <?php foreach ($orgsForJobs as $o): $oPaused = (int)$o['sync_paused'] === 1; ?>
+            <tr>
+                <td><?= e($o['name']) ?></td>
+                <td><?= $oPaused ? monitor_state_badge('maintenance', 'Pausiert') : monitor_state_badge('ok', 'Aktiv') ?><?php if ($oPaused && $o['sync_paused_reason']): ?><div class="hint"><?= e((string)$o['sync_paused_reason']) ?></div><?php endif; ?></td>
+                <td>
+                    <?php if (!$canEdit): ?>
+                        <span class="hint">Nur mit Bearbeitungsrecht</span>
+                    <?php elseif ($oPaused): ?>
+                        <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="org_sync_resume"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
+                            <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                            <button type="submit" class="btn btn-sm">Fortsetzen</button></form>
+                    <?php else: ?>
+                        <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="org_sync_pause"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
+                            <input type="text" name="reason" placeholder="Grund" maxlength="160" required>
+                            <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                            <button type="submit" class="btn btn-sm btn-secondary">Pausieren</button></form>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+
+<div class="card">
+    <h2>Feature-Flag "Warteschlange" je Firma</h2>
+    <p class="hint">Global <?= $queueGlobalOn ? 'aktiv für alle Firmen' : 'inaktiv' ?>. Ohne Freischaltung läuft eine Firma unverändert über den bestehenden Cron.</p>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Firma</th><th>Zustand</th><th>Aktion</th></tr></thead>
+        <tbody>
+        <?php foreach ($orgsForJobs as $o): $tenantOn = in_array('queue', tenant_feature_flags((string)$o['id']), true); $effective = feature_enabled('queue', (string)$o['id']); ?>
+            <tr>
+                <td><?= e($o['name']) ?></td>
+                <td><?= $effective ? monitor_state_badge('ok', $tenantOn ? 'Aktiv (Firma)' : 'Aktiv (global)') : monitor_state_badge('unknown', 'Inaktiv') ?></td>
+                <td>
+                    <?php if (!$canEdit): ?>
+                        <span class="hint">Nur mit Bearbeitungsrecht</span>
+                    <?php elseif ($queueGlobalOn): ?>
+                        <span class="hint">Durch globales Flag festgelegt</span>
+                    <?php else: ?>
+                        <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="<?= $tenantOn ? 'org_queue_flag_off' : 'org_queue_flag_on' ?>"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
+                            <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                            <button type="submit" class="btn btn-sm <?= $tenantOn ? 'btn-secondary' : '' ?>"><?= $tenantOn ? 'Deaktivieren' : 'Aktivieren' ?></button></form>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+<?php else: ?>
+<div class="card">
+    <p class="hint">Wartungsmodus und Feature-Flag je Firma benötigen die Datenbankmigration 018 (organizations.sync_paused, organizations.feature_flags).</p>
+</div>
+<?php endif; // queueOk ?>
+<?php endif; ?>
+
+<?php if ($tab === 'server'): ?>
+<?php
+$hostMetrics = [
+    'host_cpu'        => ['label' => 'CPU-Auslastung (Server)', 'unit' => '%', 'missing' => 'Vom Hosting nicht bereitgestellt'],
+    'host_mem'        => ['label' => 'RAM-Auslastung (Server)', 'unit' => '%', 'missing' => 'Vom Hosting nicht bereitgestellt'],
+    'host_disk'       => ['label' => 'Festplattenauslastung', 'unit' => '%', 'missing' => 'Vom Hosting nicht bereitgestellt'],
+    'host_load1'      => ['label' => 'Systemlast (1 Minute)', 'unit' => '', 'missing' => 'Vom Hosting nicht bereitgestellt'],
+    'db_connections'  => ['label' => 'Datenbankverbindungen', 'unit' => '', 'missing' => 'Noch keine Messdaten'],
+    'db_qps'          => ['label' => 'Datenbank-Abfragen je Sekunde', 'unit' => 'q/s', 'missing' => 'Noch keine Messdaten'],
+    'db_slow_queries' => ['label' => 'Langsame Datenbankabfragen (gesamt)', 'unit' => '', 'missing' => 'Noch keine Messdaten'],
+    'redis_mem'       => ['label' => 'Redis-Speichernutzung', 'unit' => 'MB', 'missing' => 'Noch keine Messdaten'],
+];
+?>
+<div class="card">
+    <h2>Server- und Infrastrukturkennzahlen</h2>
+    <p class="hint">Erfasst durch bin/host-metrics.php auf dem VPS (Host-/proc lesend, Plattenbelegung des Release-Dateisystems). Auf dem IONOS Webhosting oder ohne diesen Sammler bleiben die host_*-Werte "Vom Hosting nicht bereitgestellt".</p>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Messwert</th><th>Aktueller Wert</th><th>Zeitpunkt</th></tr></thead>
+        <tbody>
+        <?php foreach ($hostMetrics as $hmKey => $hmDef): $hmLatest = monitor_latest($hmKey); ?>
+            <tr>
+                <td><?= e($hmDef['label']) ?></td>
+                <td><?= $hmLatest && $hmLatest['value_num'] !== null ? e(number_format((float)$hmLatest['value_num'], 1, ',', '.')) . ($hmDef['unit'] !== '' ? ' ' . e($hmDef['unit']) : '') : $hmDef['missing'] ?></td>
+                <td><?= $hmLatest ? e(mon_local($hmLatest['checked_at'])) . ' (' . e(mon_age_label($now - (mon_ts($hmLatest['checked_at']) ?? $now))) . ')' : '-' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+    <?php foreach ($hostMetrics as $hmKey => $hmDef): $hmSeries = monitor_view_series($hmKey, $now - 3600, $now, 300); if (!$hmSeries) { continue; } ?>
+        <?= chart_bars($hmSeries, $hmDef['label'] . ' (letzte Stunde)', fn($v) => number_format($v, 1, ',', '.') . ($hmDef['unit'] !== '' ? ' ' . $hmDef['unit'] : '')) ?>
+    <?php endforeach; ?>
+</div>
+
+<?php
+$compOverviewSrv = monitor_components_overview();
+$queueGlobalOn = feature_enabled('queue');
+try {
+    $srvOrgFlagRow = queue_available() ? db()->query("SELECT 1 FROM organizations WHERE deleted_at IS NULL AND feature_flags LIKE '%queue%' LIMIT 1")->fetchColumn() : false;
+} catch (Throwable $e) {
+    $srvOrgFlagRow = false;
+}
+$queueActiveAnywhere = $queueGlobalOn || (bool)$srvOrgFlagRow;
+$overallState = 'ok';
+$srvReasons = [];
+foreach ($compOverviewSrv as $c) {
+    if (in_array($c['key'], ['php_app', 'db', 'cron'], true) && $c['state'] === 'fail') {
+        $overallState = 'fail';
+        $srvReasons[] = $c['name'] . ': Störung';
+    }
+}
+if ($queueActiveAnywhere) {
+    if (workers_alive('scheduler') <= 0) { $overallState = 'fail'; $srvReasons[] = 'Kein lebender Scheduler trotz aktiver Warteschlange'; }
+    if (workers_alive() <= 0) { $overallState = 'fail'; $srvReasons[] = 'Kein lebender Worker trotz aktiver Warteschlange'; }
+}
+if ($overallState !== 'fail') {
+    foreach ($compOverviewSrv as $c) {
+        if ($c['state'] === 'degraded') { $overallState = 'degraded'; $srvReasons[] = $c['name'] . ': Eingeschränkt'; }
+        elseif ($c['stale']) { $overallState = 'degraded'; $srvReasons[] = $c['name'] . ': Messung veraltet (' . mon_age_label($c['age']) . ')'; }
+    }
+    if (queue_available()) {
+        foreach (['lexoffice', 'stripe', 'mail'] as $api) {
+            $csState = circuit_state($api);
+            if ($csState['state'] !== 'closed') { $overallState = 'degraded'; $srvReasons[] = 'Circuit ' . $api . ': ' . circuit_label((string)$csState['state']); }
+        }
+        $srvFailedNow = (int)(queue_stats($now - 86400, $now)['now']['failed'] ?? 0);
+        if ($srvFailedNow > 0) { $overallState = 'degraded'; $srvReasons[] = $srvFailedNow . ' fehlgeschlagene(r) Job(s) offen'; }
+    }
+    $diskLatestSrv = monitor_latest('host_disk');
+    if ($diskLatestSrv && $diskLatestSrv['value_num'] !== null && (float)$diskLatestSrv['value_num'] > 85) {
+        $overallState = 'degraded'; $srvReasons[] = 'Festplattenauslastung über 85 %';
+    }
+}
+$srvStateLabels = ['ok' => 'System OK', 'degraded' => 'System Warning', 'fail' => 'System Critical'];
+?>
+<div class="card">
+    <h2>Betriebsstatus</h2>
+    <p><?= monitor_state_badge($overallState, $srvStateLabels[$overallState]) ?></p>
+    <?php if ($srvReasons): ?><ul class="mon-warnings"><?php foreach ($srvReasons as $sr): ?><li>▲ <?= e($sr) ?></li><?php endforeach; ?></ul>
+    <?php else: ?><p class="hint">Keine Auffälligkeiten festgestellt.</p><?php endif; ?>
+</div>
+
+<div class="card">
+    <h2>Versionen</h2>
+    <dl class="kv">
+        <dt>PHP</dt><dd><?= e(PHP_VERSION) ?></dd>
+        <dt>MariaDB</dt><dd><?php try { echo e((string)db()->query('SELECT VERSION()')->fetchColumn()); } catch (Throwable $e) { echo 'Nicht ermittelbar'; } ?></dd>
+        <dt>Redis</dt><dd><?php
+            $rc = redis_client();
+            if ($rc) {
+                try { $rInfo = $rc->info('server'); echo e((string)($rInfo['redis_version'] ?? 'erreichbar, Version unbekannt')); }
+                catch (Throwable $e) { echo 'Erreichbar, Version nicht ermittelbar'; }
+            } else { echo 'Nicht erreichbar oder nicht konfiguriert'; }
+        ?></dd>
+        <dt>Docker-Image</dt><dd><?php
+            $imgTag = trim((string)(getenv('DOCKER_IMAGE_TAG') ?: ''));
+            if ($imgTag === '') {
+                $bf = APP_ROOT . '/build.txt';
+                $imgTag = is_file($bf) ? trim((string)@file_get_contents($bf)) : '';
+            }
+            echo $imgTag !== '' ? e($imgTag) : 'Nicht erfasst';
+        ?></dd>
+        <dt>Anwendungsversion</dt><dd><?= e(APP_VERSION) ?><?= ($appBi = app_build_info()) ? ' · Build ' . e($appBi) : '' ?></dd>
+        <dt>Warteschlangenmodus</dt><dd><?= $queueGlobalOn ? 'Global aktiv' : 'Global inaktiv (ggf. je Firma freigeschaltet)' ?></dd>
+    </dl>
+</div>
+
+<div class="card">
+    <h2>Datenbank</h2>
+    <?php
+    try {
+        $dbTableRows = db()->query('SELECT table_name, (data_length + index_length) AS bytes, table_rows FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY bytes DESC')->fetchAll();
+    } catch (Throwable $e) {
+        $dbTableRows = [];
+    }
+    $dbTotalBytes = array_sum(array_column($dbTableRows, 'bytes'));
+    ?>
+    <p>Gesamtgröße: <?= $dbTableRows ? e(number_format($dbTotalBytes / 1048576, 1, ',', '.')) . ' MB' : 'Nicht ermittelbar' ?></p>
+    <h3 class="mon-h3">Größte Tabellen</h3>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Tabelle</th><th>Größe</th><th>Zeilen (geschätzt)</th></tr></thead>
+        <tbody>
+        <?php if (!$dbTableRows): ?><tr><td colspan="3" class="hint">Nicht ermittelbar.</td></tr><?php endif; ?>
+        <?php foreach (array_slice($dbTableRows, 0, 15) as $tr): ?>
+            <tr><td><?= e((string)$tr['table_name']) ?></td><td><?= e(number_format(((int)$tr['bytes']) / 1048576, 2, ',', '.')) ?> MB</td><td><?= number_format((int)$tr['table_rows'], 0, ',', '.') ?></td></tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+</div>
+
+<div class="card">
+    <h2>Sicherung</h2>
+    <?php $backupLatest = monitor_latest('backup'); $backupOkAt = monitor_mark_get('backup_last_ok_at'); ?>
+    <dl class="kv">
+        <dt>Letzte gemeldete Sicherung</dt><dd><?= $backupLatest ? e(mon_local($backupLatest['checked_at'])) . ' · ' . monitor_state_badge((string)$backupLatest['status']) : 'Nicht eingerichtet' ?></dd>
+        <dt>Letzte erfolgreiche Sicherung</dt><dd><?= $backupOkAt ? e(mon_local($backupOkAt)) : 'Nicht eingerichtet' ?></dd>
+    </dl>
+</div>
+<?php endif; ?>
+
 <?php if ($tab === 'verfuegbarkeit'): ?>
 <div class="mon-windows">Zeitraum:
     <?php foreach ([7, 30, 90] as $dd): ?><a href="admin-system.php?tab=verfuegbarkeit&amp;d=<?= $dd ?>"<?= $dd === $d ? ' class="active"' : '' ?>><?= $dd ?> Tage</a><?php endforeach; ?>
@@ -381,5 +801,73 @@ $winFrom = $now - $d * 86400;
         <button type="submit" class="btn btn-secondary">Snapshot jetzt übertragen</button></form>
 </div>
 <?php endif; ?>
+<?php endif; ?>
+
+<?php if ($tab === 'versionen'): ?>
+<div class="card">
+    <h2>Anwendungsversion</h2>
+    <p><strong><?= e(product_name()) ?> <?= e(APP_VERSION) ?></strong><?= ($verBi = app_build_info()) ? ' · Build ' . e($verBi) : ' · Build nicht hinterlegt (app/build.txt wird vom Deployment geschrieben)' ?></p>
+</div>
+<div class="card">
+    <h2>Änderungsverlauf</h2>
+    <?php foreach (app_changelog() as $rel): ?>
+    <div class="mon-incident">
+        <h3 class="mon-h3">Version <?= e($rel['version']) ?> · <?= e($rel['date']) ?> · <?= e($rel['title']) ?></h3>
+        <ul class="mon-updates">
+            <?php foreach ($rel['entries'] as $entry): ?>
+            <li><?= admin_changelog_badge($entry['type']) ?> <?= e($entry['text']) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
+<?php if ($tab === 'dokumentation'): ?>
+<div class="card">
+    <h2>Technische Dokumentation</h2>
+    <?php
+    $docsManifestPath = __DIR__ . '/app/docs-build/manifest.json';
+    $docsManifest = is_file($docsManifestPath) ? json_decode((string)@file_get_contents($docsManifestPath), true) : null;
+    ?>
+    <?php if (!is_array($docsManifest)): ?>
+        <p class="hint">Noch nicht erzeugt (tools/build-docs.py, wird beim Deployment ausgeführt).</p>
+    <?php else: ?>
+        <dl class="kv">
+            <dt>Version</dt><dd><?= e((string)($docsManifest['version'] ?? '-')) ?></dd>
+            <dt>Erzeugt</dt><dd><?= e((string)($docsManifest['generated_at'] ?? '-')) ?> (UTC)</dd>
+            <dt>Commit</dt><dd><?= e((string)($docsManifest['commit'] ?? 'unbekannt')) ?></dd>
+        </dl>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Datei</th><th>Art</th><th>Größe</th><th>Download</th></tr></thead>
+            <tbody>
+            <?php if (empty($docsManifest['files'])): ?><tr><td colspan="4" class="hint">Keine Dateien im Manifest.</td></tr><?php endif; ?>
+            <?php foreach ((array)($docsManifest['files'] ?? []) as $df): ?>
+                <tr>
+                    <td><?= e((string)($df['name'] ?? '-')) ?></td>
+                    <td><?= e(strtoupper((string)($df['kind'] ?? '-'))) ?></td>
+                    <td><?= isset($df['bytes']) ? monitor_bytes((int)$df['bytes']) : '-' ?></td>
+                    <td><a href="admin-doc.php?f=<?= e(rawurlencode((string)($df['name'] ?? ''))) ?>">Öffnen</a></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody></table></div>
+    <?php endif; ?>
+</div>
+<div class="card">
+    <h2>Markdown-Dokumente im Repository</h2>
+    <p class="hint">Nur als Pfadangabe (im Repository unter docs/, nicht mit ausgeliefert und über den Webserver nicht erreichbar).</p>
+    <?php
+    $docsDir = dirname(APP_ROOT) . '/docs';
+    $mdFiles = is_dir($docsDir) ? array_map('basename', glob($docsDir . '/*.md') ?: []) : [];
+    sort($mdFiles);
+    ?>
+    <?php if (!$mdFiles): ?>
+        <p class="hint">Verzeichnis docs/ liegt außerhalb des ausgelieferten Codes und ist von hier aus nicht einsehbar.</p>
+    <?php else: ?>
+        <ul>
+            <?php foreach ($mdFiles as $mdF): ?><li><code>docs/<?= e($mdF) ?></code></li><?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>
 <?php endif; ?>
 <?php layout_footer($ctx); ?>

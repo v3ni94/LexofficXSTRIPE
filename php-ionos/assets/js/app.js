@@ -72,8 +72,32 @@
         document.addEventListener('visibilitychange', function () { if (document.hidden) { stop(); } else { tick(); start(); } });
         start();
     }
+    function initSyncPoll() {
+        // Synchronisierungsansicht bei aktiver Warteschlange: Fortschritt alle paar Sekunden nachladen,
+        // nach Abschluss die Rechnungsseite laden. Löst keine Verarbeitung aus.
+        var box = document.getElementById('sync-progress');
+        if (!box || !window.fetch) { return; }
+        var url = box.getAttribute('data-sync-poll') || 'sync-status.php';
+        var every = parseInt(box.getAttribute('data-sync-interval') || '3000', 10);
+        var timer = window.setInterval(function () {
+            if (document.hidden) { return; }
+            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.text() : ''; })
+                .then(function (html) {
+                    if (!html) { return; }
+                    box.innerHTML = html;
+                    var inner = box.querySelector('.sync-progress');
+                    if (inner && inner.getAttribute('data-done') === '1') {
+                        window.clearInterval(timer);
+                        window.location.href = 'invoices.php';
+                    }
+                })
+                .catch(function () { /* nächster Versuch beim folgenden Intervall */ });
+        }, every);
+    }
     function init() {
         initSystemRefresh();
+        initSyncPoll();
         var boxes = document.querySelectorAll('input[type="checkbox"][data-toggle-password]');
         for (var i = 0; i < boxes.length; i++) {
             bindToggle(boxes[i]);

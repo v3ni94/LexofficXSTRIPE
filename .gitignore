@@ -33,3 +33,9 @@ php-ionos/app/storage/avatars/*
 
 # vom Deployment erzeugt
 php-ionos/app/build.txt
+
+# Generierte Dokumentation (Auslieferung nur ueber admin-doc.php, nicht oeffentlich)
+php-ionos/app/docs-build/
+
+# Lokale VPS-Zugangsdaten fuer das Deploy-Skript, nie ins Repository
+deploy/vps/.env

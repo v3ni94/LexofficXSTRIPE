@@ -43,6 +43,9 @@ function audit_log(
     if (!empty($_SESSION['support_session_id']) && PHP_SAPI !== 'cli') {
         $details['support_session'] = (string)$_SESSION['support_session_id'];
     }
+    if (function_exists('correlation_current') && !isset($details['correlation_id'])) {
+        $details['correlation_id'] = correlation_current();
+    }
     try {
         db()->prepare(
             'INSERT INTO audit_log (tenant_id, user_id, user_email, action, target_type, target_id, details_json, ip)

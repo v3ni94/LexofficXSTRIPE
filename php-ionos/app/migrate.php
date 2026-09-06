@@ -50,6 +50,7 @@ function migrations_markers(): array
         '015' => ['users', 'multiaccount_enabled'],
         '016' => ['trusted_devices', null],
         '017' => ['monitor_checks', null],
+        '018' => ['jobs', null],
     ];
 }
 

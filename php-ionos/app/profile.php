@@ -17,7 +17,7 @@ const AVATAR_SIZE = 256;
 
 function avatar_dir(): string
 {
-    $dir = (string)config('avatar_files_dir', __DIR__ . '/storage/avatars');
+    $dir = (string)config('avatar_files_dir', storage_dir() . '/avatars');
     if (!is_dir($dir)) {
         @mkdir($dir, 0750, true);
     }

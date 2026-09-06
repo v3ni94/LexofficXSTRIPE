@@ -1741,11 +1741,17 @@ function process_scheduled_collections(?string $tenantId = null, ?array $actor =
     $deadline = isset($options['deadline']) ? (float)$options['deadline'] : null;
 
     $pausedTenants = [];
+    $skipIds = array_flip(array_map('strval', (array)($options['skip_ids'] ?? [])));
+    $result['handled_ids'] = [];
     foreach ($due as $index => $collection) {
         if ($deadline !== null && microtime(true) >= $deadline) {
             $result['remaining'] = count($due) - $index;
             break;
         }
+        if (isset($skipIds[(string)$collection['id']])) {
+            continue; // in diesem Auftrag bereits behandelt (z.B. zurückgestellt), kein erneuter Versuch im selben Durchlauf
+        }
+        $result['handled_ids'][] = (string)$collection['id'];
         $t = $collection['tenant_id'];
         if (!array_key_exists($t, $pausedTenants)) {
             $pausedTenants[$t] = collections_pause_reason($t);
@@ -1790,7 +1796,10 @@ function process_scheduled_collections(?string $tenantId = null, ?array $actor =
         }
     }
     if ($due) {
-        audit_log($tenantId, $actor, 'collections_due_processed', 'organization', $tenantId, $result + [
+        // handled_ids dient nur dem aufrufenden Job (Fortsetzung ohne Doppelbehandlung), nicht dem Audit.
+        $auditResult = $result;
+        unset($auditResult['handled_ids']);
+        audit_log($tenantId, $actor, 'collections_due_processed', 'organization', $tenantId, $auditResult + [
             'source' => $actor ? 'button' : 'cron',
         ]);
     }

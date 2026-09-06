@@ -34,7 +34,9 @@ return [
                 . '<h3>Was nicht übertragen wird</h3>'
                 . '<p>SmartEinzug schreibt Zahlungen nicht nach Lexware Office zurück. Die Zuordnung eines erfolgreichen Einzugs zur Rechnung erfolgt in Lexware Office manuell. SmartEinzug zeigt Ihnen im Einzugsjournal, welche Rechnung erfolgreich eingezogen wurde, damit Sie diese Zuordnung dort vornehmen können.</p>'
                 . '<h3>Restbetrag</h3>'
-                . '<p>SmartEinzug hält zu jeder Rechnung den zuletzt bekannten Restbetrag laut Lexware Office fest, mit Angabe des Abrufzeitpunkts. Vor jeder Einreichung eines Einzugs bei Stripe wird dieser Restbetrag erneut live abgerufen, damit keine bereits bezahlte oder teilweise bezahlte Rechnung in falscher Höhe eingezogen wird.</p>',
+                . '<p>SmartEinzug hält zu jeder Rechnung den zuletzt bekannten Restbetrag laut Lexware Office fest, mit Angabe des Abrufzeitpunkts. Vor jeder Einreichung eines Einzugs bei Stripe wird dieser Restbetrag erneut live abgerufen, damit keine bereits bezahlte oder teilweise bezahlte Rechnung in falscher Höhe eingezogen wird.</p>'
+                . '<h3>Synchronisationshistorie</h3>'
+                . '<p>Unter <a href="synchronisationen.php">Synchronisationen</a> finden Sie den Verlauf aller bisherigen Abgleiche mit Lexware Office für Ihre Firma, mit Zeitpunkt, Status, Dauer und Auslöser. Zu jedem Lauf zeigt eine Detailansicht zusätzlich die geprüften, neuen, geänderten und abgeschlossenen Rechnungen, die Anzahl der Lexware-Aufrufe sowie im Fehlerfall die Fehlerkategorie und den Fehlertext. Läuft gerade eine Synchronisation, sehen Sie dort außerdem den aktuellen Fortschritt.</p>',
         ],
         [
             'slug' => 'stripe-verbindung',

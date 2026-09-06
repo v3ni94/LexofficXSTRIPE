@@ -1,0 +1,63 @@
+########################################################################################
+# SmartEinzug: Caddy-Konfiguration fuer die Staging-Umgebung (nur ein Host).
+#
+# Staging bekommt keine eigene Admin- oder API-Subdomain und keine oeffentliche Statusseite;
+# ein einzelner Host genuegt zum Testen von Deployment, Migrationen und Warteschlange vor dem
+# Rollout auf die Produktion. Sicherheitsregeln (verbotene Pfade/Endungen, Header) bleiben
+# identisch zur Produktion, damit Staging aussagekraeftig bleibt.
+########################################################################################
+
+{
+	email {$LETSENCRYPT_EMAIL}
+}
+
+(security_headers) {
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Robots-Tag "noindex, nofollow"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Auch auf Staging kein HSTS, solange es auf Produktion noch nicht freigegeben ist.
+		-Server
+	}
+}
+
+(deny_internal_paths) {
+	# Innerhalb eines Release liegen zusaetzlich deploy/ (Compose, Skripte), bin/ (CLI-Werkzeuge) und
+	# status/ (Statusseite, wird nur ueber den Status-Host ausgeliefert); alle nie ueber HTTP erreichbar.
+	@internal_dirs path /app/* /sql/* /deploy/* /bin/* /status/*
+	respond @internal_dirs 403
+
+	@denied_ext path *.sql *.md *.log *.jar *.example.php
+	respond @denied_ext 403
+
+	# Keine Punktdateien oder -ordner ausliefern (.htaccess, .git*, .env*), unabhaengig von der Tiefe.
+	@dotfiles path /.* */.*
+	respond @dotfiles 403
+}
+
+(static_cache) {
+	@versioned_assets path *.css *.js
+	header @versioned_assets Cache-Control "public, max-age=31536000, immutable"
+
+	@static_media path *.png *.jpg *.jpeg *.gif *.svg *.ico *.webp *.woff *.woff2
+	header @static_media Cache-Control "public, max-age=2592000"
+}
+
+# staging.smart-einzug.de bedient Kunden- UND Adminfunktionen auf demselben Host (Uebergangsmodus:
+# admin_base_url in der Staging-Konfiguration leer lassen). Kein separater API-Host: Webhooks laufen
+# auf Staging nur gegen Stripe-Testschluessel, siehe deploy/vps/README.md.
+{$DOMAIN_STAGING} {
+	import security_headers
+	import deny_internal_paths
+	import static_cache
+
+	encode gzip zstd
+
+	root * /opt/smarteinzug/releases/current
+	php_fastcgi php:9000
+	file_server {
+		hide .*
+	}
+}

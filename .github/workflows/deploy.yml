@@ -1,13 +1,63 @@
-name: Automatisch zu IONOS-Webhosting hochladen
+name: Deployment IONOS-Webhosting und VPS
 
-# Nur fuer IONOS-Webhosting mit den unten verifizierten Server-Fingerabdruecken.
-# Nicht ungeprueft fuer VPS, Cloud-Server oder andere Hoster nutzen.
-# Erforderliche Secrets:
-# SFTP_HOST, SFTP_USER, SFTP_PASSWORD, SFTP_PORT, SFTP_PATH, MIGRATION_TOKEN.
-# MIGRATION_TOKEN muss auch in der geschuetzten Serverkonfiguration stehen.
-# migrate.php muss POST mit X-Migration-Token unterstuetzen und nach
-# vollstaendigem Erfolg HTTP 200 mit JSON {"success":true} zurueckgeben.
-# Diese Datei richtet weder Backups noch Wartungsmodus oder Rollback ein.
+# Zweigleisiges Deployment: IONOS-Webhosting (bestehend) und VPS (neu, optional
+# per Repository-Variable zugeschaltet, solange DNS noch nicht umgestellt ist).
+#
+# Ablauf:
+#   1. Job "changes"           ermittelt per git diff (kein Fremd-Action) die geaenderten
+#                              Bereiche websites (websites/**), app (php-ionos/**),
+#                              vps (deploy/vps/**) und workflow (diese Datei). Bei
+#                              workflow_dispatch und beim allerersten Push auf einen Branch
+#                              (kein verwertbares "before") gilt alles als geaendert.
+#   2. Job "test"              php -l fuer alle PHP-Dateien unter php-ionos (immer),
+#                              python3 tools/site-qa.py nur wenn websites geaendert wurde
+#                              (muss 0 Fehler liefern), python3 tools/build-docs.py falls
+#                              vorhanden (Ergebnis als Artefakt "dokumentation" hochgeladen
+#                              und den Deploy-Jobs fuer den Upload bereitgestellt).
+#                              Kein Datenbanktest im Workflow: die Datenbank wird
+#                              ausschliesslich lokal in der E2E-Suite
+#                              (scratchpad/e2e_saas.php gegen eine frische Testdatenbank aus
+#                              sql/schema.sql) sowie in test_rules_sync.php und test_totp.php
+#                              geprueft, nicht im CI-Runner.
+#   3. Job "deploy-webhosting" (bisher "deploy", inhaltlich unveraendert): laedt per
+#                              SFTP/lftp zu IONOS hoch, danach Migrationsaufruf per
+#                              HTTPS-POST auf migrate.php. Laeuft nur, wenn websites oder
+#                              app geaendert wurden. Nur fuer IONOS-Webhosting mit den unten
+#                              verifizierten Server-Fingerabdruecken. Nicht ungeprueft fuer
+#                              VPS, Cloud-Server oder andere Hoster nutzen.
+#   4. Job "deploy-vps"        (optional): rsynct php-ionos/, deploy/vps/ und die
+#                              Statusseite auf den VPS und fuehrt dort deploy/vps/scripts/deploy.sh aus dem neuen Release aus.
+#                              Laeuft nur, wenn die Variable VPS_DEPLOY_ENABLED auf "true"
+#                              steht und app oder vps geaendert wurden. Migrationen laufen
+#                              ausschliesslich in deploy.sh ueber "php bin/migrate.php"
+#                              (kein HTTP-Migrationsaufruf auf dem VPS).
+#
+# Secrets/Variablen IONOS-Webhosting (Job deploy-webhosting):
+#   Secrets:  SFTP_HOST, SFTP_USER, SFTP_PASSWORD, SFTP_PORT, SFTP_PATH, MIGRATION_TOKEN.
+#             MIGRATION_TOKEN muss auch in der geschuetzten Serverkonfiguration stehen.
+#   Variable: WEBHOSTING_APP_DEPLOY (Standard true, jeder Wert ausser "false" gilt als
+#             true). Auf "false" setzen, sobald die App vollstaendig auf den VPS umgezogen
+#             ist und das Webhosting nur noch die Marketingseiten ausliefert: dann werden
+#             nur die websites-Ordner uebertragen, der App-Ordner (php-ionos -> app) und der
+#             Migrationsaufruf entfallen.
+#   migrate.php muss POST mit X-Migration-Token unterstuetzen und nach vollstaendigem
+#   Erfolg HTTP 200 mit JSON {"success":true} zurueckgeben.
+#
+# Secrets/Variablen VPS (Job deploy-vps):
+#   Secrets:   VPS_HOST, VPS_SSH_USER, VPS_SSH_PORT, VPS_SSH_PRIVATE_KEY,
+#              VPS_SSH_KNOWN_HOSTS (eine einzelne, bereits verifizierte Host-Key-Zeile fuer
+#              known_hosts; StrictHostKeyChecking bleibt auf "yes" und wird nicht
+#              deaktiviert).
+#   Variablen: VPS_DEPLOY_ENABLED (muss "true" sein, sonst laeuft der Job ueberhaupt
+#              nicht), VPS_DEPLOY_PATH (Standard /opt/smarteinzug),
+#              VPS_APP_DOMAIN (Standard app.smart-einzug.de, fuer den externen
+#              Health-Check), VPS_HEALTH_STRICT ("true" = ein fehlgeschlagener
+#              Health-Check bricht den Job ab; jeder andere Wert erzeugt nur eine Warnung,
+#              solange die Domain noch nicht per DNS auf den VPS zeigt).
+#
+# Diese Datei richtet weder Backups noch Wartungsmodus noch Rollback fuer das
+# Webhosting ein. Rollback auf dem VPS erfolgt ueber deploy/rollback.sh auf dem
+# Server selbst, nicht ueber diesen Workflow.
 
 on:
   push:
@@ -15,23 +65,143 @@ on:
     paths:
       - 'php-ionos/**'
       - 'websites/**'
+      - 'deploy/vps/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Upload UND anschliessende Migration laufen nicht parallel zu einem
-# weiteren Workflow derselben Gruppe. Serverseitige Sperre bleibt notwendig.
-concurrency:
-  group: production-sftp
-  cancel-in-progress: false
-
 jobs:
-  deploy:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/setup-lexsepa-monorepo-v5ZcZ'
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      websites: ${{ steps.diff.outputs.websites }}
+      app: ${{ steps.diff.outputs.app }}
+      vps: ${{ steps.diff.outputs.vps }}
+      workflow: ${{ steps.diff.outputs.workflow }}
+    steps:
+      - name: Projekt aus GitHub laden
+        uses: actions/checkout@v6.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Geaenderte Bereiche ermitteln
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          event_name="${{ github.event_name }}"
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+          all=false
+
+          if [[ "$event_name" == "workflow_dispatch" ]]; then
+            # Kein Vergleichspunkt vorhanden: alles als geaendert werten.
+            all=true
+          elif [[ -z "$before" ]] || [[ "$before" =~ ^0+$ ]]; then
+            # Allererster Push auf den Branch: kein "before" vorhanden.
+            all=true
+          elif ! git cat-file -e "${before}^{commit}" 2>/dev/null; then
+            # "before"-Commit lokal nicht auffindbar (z. B. History nicht vollstaendig).
+            all=true
+          fi
+
+          if [[ "$all" == "true" ]]; then
+            changed="$(git ls-files)"
+            echo "Kein auswertbarer Vergleichspunkt: alle Bereiche gelten als geaendert."
+          else
+            changed="$(git diff --name-only "$before" "$after")"
+            echo "Geaenderte Dateien zwischen $before und $after:"
+          fi
+          echo "$changed" | head -100
+
+          check() {
+            local pattern="$1"
+            if [[ "$all" == "true" ]] || echo "$changed" | grep -Eq "$pattern"; then
+              echo "true"
+            else
+              echo "false"
+            fi
+          }
+
+          echo "websites=$(check '^websites/')" >> "$GITHUB_OUTPUT"
+          echo "app=$(check '^php-ionos/')" >> "$GITHUB_OUTPUT"
+          echo "vps=$(check '^deploy/vps/')" >> "$GITHUB_OUTPUT"
+          echo "workflow=$(check '^\.github/workflows/deploy\.yml$')" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      docs-built: ${{ steps.docs.outputs.built }}
+    steps:
+      - name: Projekt aus GitHub laden
+        uses: actions/checkout@v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: PHP 8.4 einrichten
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: none
+
+      - name: PHP-Syntaxpruefung (php -l)
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          while IFS= read -r -d '' file; do
+            if ! php -l "$file" > /tmp/php-lint.log 2>&1; then
+              cat /tmp/php-lint.log
+              status=1
+            fi
+          done < <(find php-ionos -type f -name '*.php' -print0)
+          exit "$status"
+
+      # Kein Datenbanktest hier: schema.sql, die E2E-Suite (scratchpad/e2e_saas.php),
+      # test_rules_sync.php und test_totp.php laufen lokal gegen eine frische
+      # MariaDB-Instanz, nicht im CI-Runner ohne Datenbankdienst.
+
+      - name: Marketingseiten pruefen (site-qa)
+        if: needs.changes.outputs.websites == 'true'
+        shell: bash
+        run: python3 tools/site-qa.py
+
+      - name: Dokumentation erzeugen
+        id: docs
+        if: hashFiles('tools/build-docs.py') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --disable-pip-version-check reportlab
+          python3 tools/build-docs.py
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Dokumentation als Artefakt hochladen
+        if: steps.docs.outputs.built == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dokumentation
+          path: php-ionos/app/docs-build/
+          retention-days: 30
+          if-no-files-found: error
+
+  deploy-webhosting:
+    needs: [changes, test]
+    if: |
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/setup-lexsepa-monorepo-v5ZcZ') &&
+      (needs.changes.outputs.websites == 'true' || needs.changes.outputs.app == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: production-sftp
+      cancel-in-progress: false
 
     steps:
       - name: Projekt aus GitHub laden
@@ -40,6 +210,7 @@ jobs:
           persist-credentials: false
 
       - name: Voraussetzungen vor dem Upload pruefen
+        if: vars.WEBHOSTING_APP_DEPLOY != 'false'
         shell: bash
         env:
           MIGRATION_TOKEN: ${{ secrets.MIGRATION_TOKEN }}
@@ -63,10 +234,26 @@ jobs:
           fi
 
       - name: Aktive Version fuer den Adminbereich System hinterlegen
+        if: vars.WEBHOSTING_APP_DEPLOY != 'false'
         shell: bash
         run: |
           set -euo pipefail
-          printf 'Commit %s, hochgeladen %s\n' "${GITHUB_SHA:0:12}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > php-ionos/app/build.txt
+          app_version="$(grep -oP "const APP_VERSION = '\K[^']+" php-ionos/app/version.php || true)"
+          if [[ -z "$app_version" ]]; then
+            echo "::warning::APP_VERSION konnte nicht aus php-ionos/app/version.php gelesen werden."
+            app_version="unbekannt"
+          fi
+          {
+            printf 'Commit %s, hochgeladen %s\n' "${GITHUB_SHA:0:12}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            printf 'Version %s\n' "$app_version"
+          } > php-ionos/app/build.txt
+
+      - name: Dokumentation aus dem Test-Job uebernehmen
+        if: vars.WEBHOSTING_APP_DEPLOY != 'false' && needs.test.outputs.docs-built == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: dokumentation
+          path: php-ionos/app/docs-build/
 
       - name: Werkzeuge installieren
         run: |
@@ -83,6 +270,7 @@ jobs:
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_PATH: ${{ secrets.SFTP_PATH }}
           LFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          APP_DEPLOY: ${{ vars.WEBHOSTING_APP_DEPLOY != 'false' }}
         run: |
           set -euo pipefail
           : "${SFTP_HOST:?SFTP_HOST fehlt}"
@@ -105,6 +293,10 @@ jobs:
           }
           port=$((10#$SFTP_PORT))
           (( port >= 1 && port <= 65535 )) || exit 1
+
+          if [[ "$APP_DEPLOY" != "true" ]]; then
+            echo "WEBHOSTING_APP_DEPLOY=false: es werden nur die websites-Ordner uebertragen."
+          fi
 
           install -d -m 700 "$HOME/.ssh"
           workdir="$(mktemp -d)"
@@ -154,7 +346,6 @@ jobs:
           root="${SFTP_PATH%/}"
 
           mapping=(
-            "php-ionos|app"
             "websites/smart-einzug.de|smart-einzug.de"
             "websites/lexware-einzug.de|lexware-einzug.de"
             "websites/lexoffice-einzug.de|lexoffice-einzug.de"
@@ -164,6 +355,9 @@ jobs:
             "websites/aliases/einzug-direkt.de|alias-einzug-direkt"
             "websites/status.smart-einzug.de|status.smart-einzug.de"
           )
+          if [[ "$APP_DEPLOY" == "true" ]]; then
+            mapping=("php-ionos|app" "${mapping[@]}")
+          fi
 
           script="$workdir/upload.lftp"
           {
@@ -188,9 +382,10 @@ jobs:
               echo "  \"$src/\" \"$root/$dst\""
             done
 
-            # Zuerst die vorhandene .htaccess, dann die SQL-Migrationen.
+            # Zuerst die vorhandene .htaccess, dann die SQL-Migrationen. Nur wenn die App
+            # ueberhaupt auf dem Webhosting ausgeliefert wird (WEBHOSTING_APP_DEPLOY != false).
             # Die wirksame Web-Zugriffssperre muss serverseitig geprueft sein.
-            if [[ -d php-ionos/sql/migrations ]]; then
+            if [[ "$APP_DEPLOY" == "true" && -d php-ionos/sql/migrations ]]; then
               echo "mkdir -pf \"$root/app/sql/migrations\""
               echo "put -O \"$root/app/sql\" \"php-ionos/sql/.htaccess\""
               echo "mirror --reverse --no-perms --parallel=2 --exclude '(^|/)\.git[^/]*(/|\$)' \"php-ionos/sql/migrations/\" \"$root/app/sql/migrations\""
@@ -205,7 +400,7 @@ jobs:
 
       - name: Datenbankmigration ausfuehren
         id: migration
-        if: ${{ success() && steps.upload.outcome == 'success' }}
+        if: ${{ success() && steps.upload.outcome == 'success' && vars.WEBHOSTING_APP_DEPLOY != 'false' }}
         timeout-minutes: 6
         shell: bash
         env:
@@ -265,3 +460,162 @@ jobs:
         if: ${{ failure() && steps.upload.outcome == 'success' }}
         run: |
           echo "::warning::Dateien sind bereits hochgeladen. Es erfolgt kein automatischer Rollback. Vor erneutem Deployment Anwendung und Datenbankzustand pruefen."
+
+  deploy-vps:
+    needs: [changes, test]
+    if: |
+      vars.VPS_DEPLOY_ENABLED == 'true' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/setup-lexsepa-monorepo-v5ZcZ') &&
+      (needs.changes.outputs.app == 'true' || needs.changes.outputs.vps == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: production-vps
+      cancel-in-progress: false
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_SSH_USER: ${{ secrets.VPS_SSH_USER }}
+      VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+      VPS_DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH || '/opt/smarteinzug' }}
+      VPS_APP_DOMAIN: ${{ vars.VPS_APP_DOMAIN || 'app.smart-einzug.de' }}
+      SSH_KEY_FILE: /home/runner/.ssh/vps_deploy_key
+      SSH_KNOWN_HOSTS_FILE: /home/runner/.ssh/known_hosts_vps
+
+    steps:
+      - name: Projekt aus GitHub laden
+        uses: actions/checkout@v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Dokumentation aus dem Test-Job uebernehmen
+        if: needs.test.outputs.docs-built == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: dokumentation
+          path: php-ionos/app/docs-build/
+
+      - name: SSH-Schluessel und Known-Hosts einrichten
+        shell: bash
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          : "${VPS_HOST:?Secret VPS_HOST fehlt}"
+          : "${VPS_SSH_USER:?Secret VPS_SSH_USER fehlt}"
+          : "${VPS_SSH_PORT:?Secret VPS_SSH_PORT fehlt}"
+          : "${VPS_SSH_PRIVATE_KEY:?Secret VPS_SSH_PRIVATE_KEY fehlt}"
+          : "${VPS_SSH_KNOWN_HOSTS:?Secret VPS_SSH_KNOWN_HOSTS fehlt}"
+
+          install -d -m 700 "$HOME/.ssh"
+          umask 177
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > "$SSH_KEY_FILE"
+          chmod 600 "$SSH_KEY_FILE"
+          printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" > "$SSH_KNOWN_HOSTS_FILE"
+          chmod 600 "$SSH_KNOWN_HOSTS_FILE"
+
+          # Host-Key-Pruefung bleibt zwingend aktiv. Kein StrictHostKeyChecking=no,
+          # kein /dev/null als Known-Hosts-Datei.
+          echo "SSH_OPTS=-i $SSH_KEY_FILE -p $VPS_SSH_PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15" >> "$GITHUB_ENV"
+
+      - name: Zielverzeichnis auf dem VPS anlegen
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
+            "mkdir -p '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps' '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/status'"
+
+      - name: Anwendung per rsync uebertragen
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            -e "ssh $SSH_OPTS" \
+            --exclude='.git' --exclude='.git*' \
+            --exclude='app/config.php' \
+            --exclude='app/storage/' \
+            --exclude='mail.log' \
+            --exclude='.env*' \
+            --exclude='/deploy/' --exclude='/status/' \
+            --include='sql/' \
+            --include='sql/migrations/' \
+            --include='sql/migrations/**' \
+            --exclude='*.sql' \
+            php-ionos/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/"
+
+      - name: Deploy-Skripte per rsync uebertragen
+        if: hashFiles('deploy/vps/**') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            -e "ssh $SSH_OPTS" \
+            --exclude='.env' \
+            deploy/vps/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps/"
+
+      - name: Statusseite per rsync uebertragen
+        if: hashFiles('websites/status.smart-einzug.de/**') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            -e "ssh $SSH_OPTS" \
+            websites/status.smart-einzug.de/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/status/"
+
+      - name: Deployment auf dem VPS ausfuehren
+        id: vps_deploy
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
+            "bash '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps/scripts/deploy.sh' '$GITHUB_SHA'"
+
+      - name: Health-Check von aussen
+        id: health
+        if: success()
+        continue-on-error: ${{ vars.VPS_HEALTH_STRICT != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+
+          if ! status="$(curl --silent --show-error --proto '=https' \
+            --connect-timeout 10 --max-time 30 --retry 0 \
+            --output "$workdir/health.json" --write-out '%{http_code}' \
+            "https://${VPS_APP_DOMAIN}/health.php")"; then
+            echo "::error::Health-Check nicht erreichbar. DNS und Erreichbarkeit von ${VPS_APP_DOMAIN} pruefen."
+            exit 1
+          fi
+
+          if [[ "$status" != "200" ]]; then
+            echo "::error::Health-Check lieferte HTTP ${status} statt 200."
+            exit 1
+          fi
+
+          if ! jq -e '.php == true' "$workdir/health.json" >/dev/null 2>&1; then
+            echo "::error::Health-Check-Antwort enthaelt kein \"php\":true."
+            cat "$workdir/health.json"
+            exit 1
+          fi
+
+          echo "Health-Check erfolgreich: https://${VPS_APP_DOMAIN}/health.php meldet php:true."
+
+      - name: Deploymentstatus zusammenfassen
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### VPS-Deployment"
+            echo ""
+            echo "| Feld | Wert |"
+            echo "|---|---|"
+            echo "| Commit | \`${GITHUB_SHA:0:12}\` |"
+            echo "| Version | $(grep -oP "const APP_VERSION = '\K[^']+" php-ionos/app/version.php 2>/dev/null || echo unbekannt) |"
+            echo "| Zeit (UTC) | $(date -u +%Y-%m-%dT%H:%M:%SZ) |"
+            echo "| Ziel | ${VPS_APP_DOMAIN} (${VPS_DEPLOY_PATH}) |"
+            echo "| Health-Check | ${{ steps.health.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

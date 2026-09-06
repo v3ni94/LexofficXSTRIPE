@@ -22,7 +22,7 @@ function mandate_files_dir(string $tenantId): string
     if (!preg_match('/^[0-9a-f-]{36}$/', $tenantId)) {
         throw new RuntimeException('Ungültige Mandantenkennung.');
     }
-    $base = (string)config('mandate_files_dir', __DIR__ . '/storage/mandates');
+    $base = (string)config('mandate_files_dir', storage_dir() . '/mandates');
     $dir = rtrim($base, '/') . '/' . $tenantId;
     if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
         throw new RuntimeException('Ablageordner für Mandatsdateien kann nicht angelegt werden.');

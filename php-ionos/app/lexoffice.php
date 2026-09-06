@@ -85,6 +85,10 @@ class LexofficeClient
         $retries5xx = 0;
 
         while (true) {
+            // Zentrale Steuerung (Auftrag III): Circuit Breaker und optionale Redis-Ratenbegrenzung über alle Prozesse
+            if (function_exists('api_call_gate')) {
+                api_call_gate('lexoffice', (int)(config('queue', [])['lexoffice_per_second'] ?? 2));
+            }
             $this->throttle();
             $this->lastRequestTime = microtime(true);
 
@@ -118,6 +122,9 @@ class LexofficeClient
             }
 
             if ($body === false) {
+                if (function_exists('circuit_failure')) {
+                    circuit_failure('lexoffice', function_exists('monitor_category') ? monitor_category($err) : 'connection');
+                }
                 // Verbindungsfehler (DNS, TLS, Timeout): einmal auf die
                 // jeweils andere API-Domain ausweichen.
                 if (!$this->fallbackTried && $this->fallbackUrl) {
@@ -129,6 +136,9 @@ class LexofficeClient
                 throw new LexofficeException("Verbindungsfehler zu Lexware Office: $err");
             }
 
+            if ($status > 0 && $status < 500 && $status !== 429 && function_exists('circuit_success')) {
+                circuit_success('lexoffice'); // Server antwortet: Verbindung steht, auch bei fachlichen Statuscodes (401, 404)
+            }
             if ($status === 200) {
                 $data = json_decode($body, true);
                 if (!is_array($data)) {
@@ -144,6 +154,9 @@ class LexofficeClient
             if ($status === 429) {
                 $retries429++;
                 if ($retries429 > 3) {
+                    if (function_exists('circuit_failure')) {
+                        circuit_failure('lexoffice', 'throttled'); // erst nach erschöpften Wiederholungen als Störung werten
+                    }
                     throw new LexofficeException('Lexware Office Rate-Limit nach 3 Versuchen überschritten.');
                 }
                 // Retry-After des Anbieters beachten (gedeckelt), sonst exponentiell mit Zufallsanteil
@@ -152,6 +165,9 @@ class LexofficeClient
             }
 
             if (in_array($status, [500, 502, 503], true)) {
+                if (function_exists('circuit_failure')) {
+                    circuit_failure('lexoffice', 'http_5xx');
+                }
                 $retries5xx++;
                 if ($retries5xx > 2) {
                     throw new LexofficeException("Lexware Office Serverfehler $status nach Retries.");

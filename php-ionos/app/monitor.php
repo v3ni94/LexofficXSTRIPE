@@ -480,6 +480,32 @@ function _mon_check_integration(string $component, array $cfg): array
     return ['status' => 'ok', 'category' => null, 'value' => round($rate, 2)];
 }
 
+/**
+ * Sicherungen: liest die vom Backup-Container geschriebene Ergebnisdatei (storage_dir()/backup-status.json).
+ * Ohne Datei "Nicht eingerichtet"; älter als 26 Stunden gilt als veraltet; status fail aus der Datei als Störung.
+ */
+function _mon_check_backup(): array
+{
+    $file = (function_exists('storage_dir') ? storage_dir() : APP_ROOT . '/app/storage') . '/backup-status.json';
+    if (!is_file($file)) {
+        return ['status' => 'unknown', 'category' => 'not_configured', 'value' => null];
+    }
+    $d = json_decode((string)@file_get_contents($file), true);
+    if (!is_array($d) || empty($d['finished_at'])) {
+        return ['status' => 'unknown', 'category' => 'unreadable', 'value' => null];
+    }
+    $ts = mon_ts(str_replace(['T', 'Z'], [' ', ''], (string)$d['finished_at']));
+    $mb = isset($d['bytes']) ? round((float)$d['bytes'] / 1048576, 2) : null;
+    if (($d['status'] ?? '') !== 'ok') {
+        return ['status' => 'fail', 'category' => 'backup_failed', 'value' => $mb];
+    }
+    if ($ts === null || monitor_now() - $ts > 26 * 3600) {
+        return ['status' => 'degraded', 'category' => 'backup_stale', 'value' => $mb];
+    }
+    monitor_mark('backup_last_ok_at', mon_utc($ts));
+    return ['status' => 'ok', 'category' => empty($d['remote']) ? 'local_only' : null, 'value' => $mb];
+}
+
 function _mon_check_deploy(): array
 {
     require_once __DIR__ . '/migrate.php';
@@ -540,6 +566,7 @@ function monitor_collect(array $opts = []): array
             ['lexoffice',fn() => _mon_check_integration('lexoffice', $cfg), 7200],
             ['stripe',   fn() => _mon_check_integration('stripe', $cfg), 7200],
             ['deploy',   fn() => _mon_check_deploy(), 7200],
+            ['backup',   fn() => _mon_check_backup(), 86400],
         ];
         if (admin_base_url() !== '' && base_url_host(admin_base_url()) !== base_url_host(app_base_url())) {
             $plan[] = ['admin_ui', fn() => _mon_check_web_ui($cfg, rtrim(admin_base_url(), '/'), 'admin_ui'), 900];
@@ -559,7 +586,7 @@ function monitor_collect(array $opts = []): array
             }
             monitor_event($component, (string)$r['status'], isset($r['ms']) ? (int)$r['ms'] : null, $r['category'] ?? null, 'internal', $valid,
                 isset($r['value']) && $r['value'] !== null ? (float)$r['value'] : null,
-                str_starts_with($component, 'tls:') ? 'Tage' : ($component === 'cron' ? 's' : (in_array($component, ['lexoffice', 'stripe'], true) ? '%' : null)));
+                str_starts_with($component, 'tls:') ? 'Tage' : ($component === 'cron' ? 's' : ($component === 'backup' ? 'MB' : (in_array($component, ['lexoffice', 'stripe'], true) ? '%' : null))));
             $summary['checks'][$component] = $r['status'];
         }
         // SFTP kann aus der Anwendung nicht geprüft werden (keine Deployment-Zugangsdaten in der Web-App)
@@ -661,6 +688,7 @@ function monitor_component_defs(): array
         'lexoffice'=> ['name' => 'Lexware-Anbindung', 'source' => 'API-Zähler der Synchronisationsschritte der letzten 24 Stunden', 'note' => 'Ein ungültiger Schlüssel einer Firma zählt nicht als Plattformstörung.'],
         'stripe'   => ['name' => 'Stripe-Anbindung', 'source' => 'Instrumentierte API-Aufrufe und Webhook-Verarbeitung der letzten 24 Stunden', 'note' => 'Fachlich abgelehnte Zahlungen zählen nicht als Ausfall.'],
         'deploy'   => ['name' => 'Deployment / Migrationen', 'source' => 'schema_migrations und Marker des Migrationsendpunkts', 'note' => 'Nur lesend, keine Ausführung.'],
+        'backup'   => ['name' => 'Sicherungen', 'source' => 'Ergebnisdatei backup-status.json des Backup-Containers (Status, Größe, Prüfsumme, Zeitpunkt)', 'note' => 'Ohne Datei nicht eingerichtet; ein gemeldetes Backup ist kein Wiederherstellungstest.'],
         'sftp'     => ['name' => 'SFTP / Deployment-Zugang', 'source' => 'Keine Prüfmöglichkeit aus der Anwendung', 'note' => 'Deployment-Zugangsdaten liegen nur in GitHub; Zustand "Nicht geprüft".'],
         'db_size'  => ['name' => 'Datenbankgröße', 'source' => 'information_schema (stündlich)', 'note' => 'Kontingent des Tarifs wird vom Hosting nicht bereitgestellt.'],
         'storage'  => ['name' => 'Mandatsspeicher', 'source' => 'Summe der Dateigrößen in mandate_files (stündlich)', 'note' => 'Webspace-Kontingent nicht bereitgestellt; Sicherungen nicht überwacht.'],

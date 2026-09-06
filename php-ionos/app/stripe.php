@@ -44,6 +44,10 @@ class StripeClient
      */
     private function request(string $method, string $endpoint, array $params = [], ?string $apiVersion = null, ?string $idempotencyKey = null): array
     {
+        if (function_exists('api_call_gate')) {
+            // Circuit Breaker und optionale zentrale Ratenbegrenzung (Auftrag III)
+            api_call_gate('stripe', (int)(config('queue', [])['stripe_per_second'] ?? 20));
+        }
         $url = self::BASE_URL . $endpoint;
         $ch = curl_init();
 
@@ -116,7 +120,15 @@ class StripeClient
     {
         try {
             require_once __DIR__ . '/monitor.php';
-            monitor_event('stripe_api', $status, $ms, $category !== null ? (str_starts_with($category, 'http_') || $category === 'throttled' ? $category : monitor_category($category)) : null, 'instrumented', 3600);
+            $cat = $category !== null ? (str_starts_with($category, 'http_') || $category === 'throttled' ? $category : monitor_category($category)) : null;
+            monitor_event('stripe_api', $status, $ms, $cat, 'instrumented', 3600);
+            if (function_exists('circuit_failure')) {
+                if ($status === 'fail') {
+                    circuit_failure('stripe', $cat ?? 'connection');
+                } else {
+                    circuit_success('stripe');
+                }
+            }
         } catch (Throwable $e) {
             // ignorieren
         }

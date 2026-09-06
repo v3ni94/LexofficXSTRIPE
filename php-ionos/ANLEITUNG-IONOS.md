@@ -296,6 +296,27 @@ Die Migrationen werden beim nächsten Deployment automatisch über `migrate.php`
 
 Der Monitoring-Sammler läuft im bestehenden Cron (etwa 4 Sekunden Reserve je Aufruf). Es werden nur eigene Jobs und Dienste gemessen; CPU, Gesamtspeicher und Prozesse stellt das Hosting nicht bereit und werden nicht angezeigt. Details: docs/monitoring.md, docs/status-page.md.
 
+## 7g. Hintergrundverarbeitung über Warteschlange (Migration 018, Vorbereitung VPS)
+
+Mit Version 4.0 gibt es eine zentrale Warteschlange für Synchronisationen, Einzugsverarbeitung, E-Mails
+und Wartungsaufgaben. Sie ist über das Feature-Flag `features.queue` gesteuert:
+
+- `false` (Standard auf dem Webhosting): alles läuft wie bisher über `cron.php`.
+- `true` oder Liste von Firmen-IDs: `cron.php` arbeitet im Hybridbetrieb (Scheduler-Tick und Jobs im
+  Zeitbudget), die Synchronisation wird als Auftrag mit Fortschrittsanzeige verarbeitet. Auf dem VPS
+  übernehmen Scheduler- und Worker-Container (`deploy/vps/`, `docs/vps/`).
+- Je Firma zusätzlich über Admin > System > Jobs (Feature-Flag Queue, Wartungsmodus Synchronisation).
+
+Adminbereich System zeigt unter Jobs die Warteschlange, Worker, Circuit Breaker je Anbindung und fehlgeschlagene
+Jobs mit den Aktionen Erneut versuchen, Abbrechen, Dauerhaft schließen. Unter Server stehen Versionen und, auf dem
+VPS, Host-Metriken. Unter Versionen der Änderungsverlauf, unter Dokumentation die erzeugte technische Dokumentation.
+
+Globaler Wartungsmodus (für den Umzug): Liegt die Datei `maintenance.flag` im Speicherverzeichnis (`app/storage`
+bzw. `storage_dir`) oder ist `maintenance_mode` in der Konfiguration gesetzt, antworten Kundenseiten, Stripe-Webhooks
+und `cron.php` mit 503; erreichbar bleiben `health.php`, `migrate.php`, Anmeldung und Adminbereich. Scheduler und
+Worker pausieren automatisch. Der Adminbereich System zeigt Beginn und Dauer an. Das Fenster kurz halten und danach
+im Stripe-Dashboard fehlgeschlagene Webhook-Ereignisse erneut senden (`docs/vps/07-cutover-checkliste.md`).
+
 ## 8. SEPA-Mandate
 
 - Unter "Firma": Anschrift, Gläubiger-Identifikationsnummer (Deutsche Bundesbank,

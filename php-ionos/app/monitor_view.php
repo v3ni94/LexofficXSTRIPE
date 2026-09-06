@@ -31,9 +31,41 @@ function monitor_category_label(?string $c): string
         'migration_running' => 'Migration läuft', 'send_failed' => 'Übergabe an Versandweg fehlgeschlagen', 'mail_function_false' => 'mail() hat die Nachricht nicht angenommen',
         'log_write_failed' => 'Testprotokoll nicht beschreibbar', 'heartbeat_stale' => 'Ausführung unbestätigt (Heartbeat abgelaufen)', 'lock_lost' => 'Sperre während des Schritts verloren',
         'platform_paused' => 'Not-Stopp der Plattform aktiv', 'no_activity' => 'Keine Aktivität im Zeitraum', 'stale' => 'Messung veraltet', 'signature' => 'Signaturprüfung fehlgeschlagen (Firmenkonfiguration)',
-        'tenant_unknown' => 'Firma nicht zuordenbar', 'double_start' => 'Doppelstart übersprungen', 'information_schema' => 'information_schema', 'mandate_files' => 'mandate_files',
+        'tenant_unknown' => 'Firma nicht zuordenbar', 'double_start' => 'Doppelstart übersprungen', 'backup_failed' => 'Letzte Sicherung fehlgeschlagen', 'backup_stale' => 'Letzte Sicherung älter als 26 Stunden', 'local_only' => 'Nur lokale Sicherung, kein externes Ziel', 'unreadable' => 'Ergebnisdatei nicht lesbar', 'information_schema' => 'information_schema', 'mandate_files' => 'mandate_files',
     ];
     return $map[$c] ?? e($c);
+}
+
+/**
+ * Zeitreihe eines einzelnen Messwerts (monitor_checks.value_num) für ein Balkendiagramm im
+ * Adminbereich Server (z.B. host_cpu, db_qps). Je Zeitfenster (bucketSeconds) der zuletzt
+ * gemessene Wert; Zeitfenster ohne Messung erscheinen nicht (kein erfundener Nullwert).
+ */
+function monitor_view_series(string $component, int $from, int $to, int $bucketSeconds): array
+{
+    if (!monitor_available() || $bucketSeconds < 1) {
+        return [];
+    }
+    $st = db()->prepare('SELECT checked_at, value_num FROM monitor_checks WHERE component = ? AND checked_at >= ? AND checked_at < ? ORDER BY checked_at ASC');
+    $st->execute([$component, mon_utc($from), mon_utc($to)]);
+    $buckets = [];
+    foreach ($st->fetchAll() as $row) {
+        if ($row['value_num'] === null) {
+            continue;
+        }
+        $ts = mon_ts($row['checked_at']);
+        if ($ts === null) {
+            continue;
+        }
+        $slot = $ts - ($ts % $bucketSeconds);
+        $buckets[$slot] = (float)$row['value_num']; // letzter Messwert je Zeitfenster gewinnt
+    }
+    ksort($buckets);
+    $rows = [];
+    foreach ($buckets as $slot => $v) {
+        $rows[] = ['label' => date('H:i', $slot), 'value' => $v];
+    }
+    return $rows;
 }
 
 function monitor_ms(?int $ms): string

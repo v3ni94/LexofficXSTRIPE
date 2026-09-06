@@ -625,3 +625,30 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 .table-plain td { padding: 4px 10px 4px 0; vertical-align: top; font-size: 14px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (max-width: 720px) { .mon-day { width: 3px; } }
+
+/* Synchronisierungsfortschritt (Warteschlange) */
+.sync-progress { margin: 14px 0; }
+.sync-bar { height: 12px; background: #eee; border-radius: 6px; overflow: hidden; }
+.sync-bar span { display: block; height: 100%; background: #E3AC48; transition: width .6s ease; }
+.sync-bar span.sync-bar-unknown { width: 30% !important; background: repeating-linear-gradient(45deg, #E3AC48, #E3AC48 8px, #f3d9a3 8px, #f3d9a3 16px); }
+.sync-text { margin-top: 6px; font-size: 14px; }
+
+/* ==========================================================================
+   Adminbereich System: Jobs, Server, Versionen, Dokumentation (Auftrag III)
+   ========================================================================== */
+
+/* Fortschrittsbalken in Tabellenzellen (aktive Jobs) */
+.job-bar { height: 8px; min-width: 80px; background: #eee; border-radius: 4px; overflow: hidden; }
+.job-bar span { display: block; height: 100%; background: #E3AC48; }
+
+/* Änderungsverlauf (Reiter Versionen) */
+.mon-updates li { margin-bottom: 4px; }
+
+/* Fußzeile: dezenter Versionshinweis */
+.footer-version { font-size: 12px; color: var(--color-text-muted, #888); margin-top: 4px; }
+.footer-version a { color: inherit; }
+
+@media (max-width: 900px) {
+    .table-wrap table { font-size: 13px; }
+    .job-bar { min-width: 60px; }
+}

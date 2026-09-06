@@ -1,0 +1,151 @@
+########################################################################################
+# SmartEinzug: Caddy-Konfiguration fuer den Produktions-VPS.
+#
+# Ersetzt vollstaendig die Apache-Regeln aus php-ionos/.htaccess (dort ausfuehrlich kommentiert)
+# und teilt eine PHP-Anwendung auf drei Hosts auf:
+#   {$DOMAIN_APP}    Kundenanwendung (voller Funktionsumfang)
+#   {$DOMAIN_ADMIN}  Adminbereich (Host-Trennung erfolgt zusaetzlich in PHP, siehe app/bootstrap.php
+#                    enforce_host_rules(); Caddy behandelt beide Hosts hier bewusst identisch)
+#   {$DOMAIN_API}    NUR die vier Endpunkte stripe-webhook.php, billing-webhook.php, health.php,
+#                    track.php; jede andere Anfrage erhaelt 404 (Verteidigung zusaetzlich zur
+#                    Anwendung selbst, die diese Endpunkte ebenfalls selbst absichert)
+#   {$DOMAIN_STATUS} statische Statusseite (websites/status.smart-einzug.de, im Release unter status/), kein PHP
+#
+# HTTPS wird von Caddy automatisch erzwungen (HTTP-Anfragen werden auf HTTPS umgeleitet) und die
+# Zertifikate werden automatisch ueber Let's Encrypt bezogen und erneuert; kein certbot noetig
+# (Begruendung Caddy statt nginx: README.md, Abschnitt "Warum Caddy").
+########################################################################################
+
+{
+	email {$LETSENCRYPT_EMAIL}
+	# Auf dem Staging-Host separate Caddyfile.staging verwenden (dort ggf. eigener ACME-CA fuer Tests).
+}
+
+# --- Wiederverwendbare Bausteine --------------------------------------------------------------
+
+(security_headers) {
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Anwendung gehoert nicht in Suchmaschinen (Login, Dashboard, Kundendaten).
+		X-Robots-Tag "noindex, nofollow"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# HSTS erst nach Freischaltung aktivieren: erst wenn app-, admin- und api-Host dauerhaft
+		# ausschliesslich unter gueltigem HTTPS erreichbar sind (ein falsch gesetzter HSTS-Header
+		# laesst sich wegen des Browser-Caches nicht kurzfristig zuruecknehmen). Bis dahin
+		# auskommentiert lassen und erst nach ausdruecklicher Freigabe durch die Geschaeftsfuehrung
+		# einkommentieren:
+		# Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+}
+
+# Entspricht ".htaccess": RewriteRule ^app/ - [F,L] / RewriteRule ^sql/ - [F,L] sowie der
+# FilesMatch-Sperre fuer .sql .md .log .jar .example.php.
+(deny_internal_paths) {
+	# Innerhalb eines Release liegen zusaetzlich deploy/ (Compose, Skripte), bin/ (CLI-Werkzeuge) und
+	# status/ (Statusseite, wird nur ueber den Status-Host ausgeliefert); alle nie ueber HTTP erreichbar.
+	@internal_dirs path /app/* /sql/* /deploy/* /bin/* /status/*
+	respond @internal_dirs 403
+
+	@denied_ext path *.sql *.md *.log *.jar *.example.php
+	respond @denied_ext 403
+
+	# Keine Punktdateien oder -ordner ausliefern (.htaccess, .git*, .env*), unabhaengig von der Tiefe.
+	@dotfiles path /.* */.*
+	respond @dotfiles 403
+}
+
+# Cache-Header wie in .htaccess: CSS/JS mit Versionsparameter (asset_url) lange und "immutable",
+# Bilder und Schriften kuerzer, da ohne Versionsparameter eingebunden.
+(static_cache) {
+	@versioned_assets path *.css *.js
+	header @versioned_assets Cache-Control "public, max-age=31536000, immutable"
+
+	@static_media path *.png *.jpg *.jpeg *.gif *.svg *.ico *.webp *.woff *.woff2
+	header @static_media Cache-Control "public, max-age=2592000"
+}
+
+# --- Kundenanwendung ----------------------------------------------------------------------------
+{$DOMAIN_APP} {
+	import security_headers
+	import deny_internal_paths
+	import static_cache
+
+	# Entspricht AddOutputFilterByType DEFLATE ... (mod_deflate) der .htaccess.
+	encode gzip zstd
+
+	root * /opt/smarteinzug/releases/current
+	# DirectoryIndex index.php: php_fastcgi versucht automatisch {path} und {path}/index.php.
+	php_fastcgi php:9000
+	file_server {
+		hide .*
+	}
+}
+
+# --- Adminbereich --------------------------------------------------------------------------------
+# Dieselbe Anwendung, derselbe Dokumentenstamm; die eigentliche Trennung (nur Anmeldung, 2FA,
+# Passwort, Sicherheit, Abmelden und Assets auf diesem Host erreichbar) erzwingt PHP selbst
+# (enforce_host_rules in app/bootstrap.php), sobald admin_base_url in app/config.php gesetzt ist.
+{$DOMAIN_ADMIN} {
+	import security_headers
+	import deny_internal_paths
+	import static_cache
+
+	encode gzip zstd
+
+	root * /opt/smarteinzug/releases/current
+	php_fastcgi php:9000
+	file_server {
+		hide .*
+	}
+}
+
+# --- API-Host: nur Webhooks, Health-Check und Tracking-Pixel -------------------------------------
+{$DOMAIN_API} {
+	import security_headers
+	import deny_internal_paths
+
+	encode gzip zstd
+
+	root * /opt/smarteinzug/releases/current
+
+	@allowed_endpoints path /stripe-webhook.php /billing-webhook.php /health.php /track.php
+	handle @allowed_endpoints {
+		php_fastcgi php:9000
+	}
+	# Alles andere auf diesem Host: 404, kein file_server (keine Assets, keine anderen Skripte).
+	handle {
+		respond 404
+	}
+}
+
+# --- Statusseite (statisch, kein PHP) -------------------------------------------------------------
+# Entspricht websites/status.smart-einzug.de/.htaccess.
+{$DOMAIN_STATUS} {
+	# Der Workflow legt die Statusseite je Release unter releases/<sha>/status/ ab; ueber den current-Symlink
+	# wird damit immer der Stand des aktiven Release ausgeliefert.
+	root * /opt/smarteinzug/releases/current/status
+	encode gzip zstd
+
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Content-Security-Policy "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+		-Server
+	}
+
+	@status_json path *.json
+	header @status_json Cache-Control "public, max-age=60, must-revalidate"
+	header @status_json Access-Control-Allow-Origin "*"
+
+	@status_html path *.html
+	header @status_html Cache-Control "public, max-age=300"
+
+	@denied_here path *.php *.phtml *.md *.log
+	respond @denied_here 403
+
+	file_server
+}

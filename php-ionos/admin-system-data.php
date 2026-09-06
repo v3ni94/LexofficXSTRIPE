@@ -4,6 +4,7 @@
  * Aktualisierung alle 30 Sekunden. Gleiche serverseitige Autorisierung wie die Seite; keine neuen
  * Prüfungen, keine Geheimnisse.
  */
+define('SKIP_REQUEST_METRICS', true); // Polling-Abrufe verfälschen die Anfragekennzahlen nicht
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/collections.php';

@@ -13,7 +13,9 @@ if (get_included_files()[0] === __FILE__) {
 
 define('APP_ROOT', dirname(__DIR__));
 
-$configFile = __DIR__ . '/config.php';
+// Konfigurationsdatei: standardmäßig app/config.php neben dem Code; auf dem VPS über die Umgebungsvariable
+// SMARTEINZUG_CONFIG auf eine Datei außerhalb des Release-Verzeichnisses (z.B. /opt/smarteinzug/shared/config.php).
+$configFile = (string)(getenv('SMARTEINZUG_CONFIG') ?: (__DIR__ . '/config.php'));
 if (!is_file($configFile)) {
     http_response_code(500);
     die('Konfiguration fehlt: app/config.php anlegen (Vorlage: app/config.example.php).');
@@ -21,6 +23,71 @@ if (!is_file($configFile)) {
 $GLOBALS['config'] = require $configFile;
 
 date_default_timezone_set($GLOBALS['config']['timezone'] ?? 'Europe/Berlin');
+
+// Hinter einem Reverse Proxy (VPS: Caddy/nginx) kommt TLS am Proxy an. Nur wenn die Anfrage von einer
+// konfigurierten vertrauenswürdigen Proxy-Adresse stammt (config trusted_proxies), gilt X-Forwarded-Proto.
+if (PHP_SAPI !== 'cli' && empty($_SERVER['HTTPS'])) {
+    $trusted = array_map('trim', (array)($GLOBALS['config']['trusted_proxies'] ?? []));
+    $remote = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    $proxied = false;
+    foreach ($trusted as $t) {
+        if ($t === '' ) { continue; }
+        if ($t === $remote) { $proxied = true; break; }
+        if (str_contains($t, '/') && function_exists('inet_pton')) {
+            [$net, $bits] = explode('/', $t, 2);
+            $r = @inet_pton($remote); $n = @inet_pton($net);
+            if ($r !== false && $n !== false && strlen($r) === strlen($n)) {
+                $bits = (int)$bits; $bytes = intdiv($bits, 8); $rest = $bits % 8;
+                $ok = substr($r, 0, $bytes) === substr($n, 0, $bytes);
+                if ($ok && $rest > 0) { $mask = 0xFF & (0xFF << (8 - $rest)); $ok = ((ord($r[$bytes]) & $mask) === (ord($n[$bytes]) & $mask)); }
+                if ($ok) { $proxied = true; break; }
+            }
+        }
+    }
+    if ($proxied && strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https') {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['SERVER_PORT'] = '443';
+    }
+    if ($proxied) {
+        // Kennzeichen für nachgelagerte Prüfungen (z.B. Übernahme einer Correlation-ID aus dem Header).
+        $_SERVER['TRUSTED_PROXY_HOP'] = $remote;
+    }
+    if ($proxied && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        // X-Forwarded-For von RECHTS auswerten: Proxys hängen die Adresse des jeweils vorherigen Hops
+        // rechts an, der linkeste Eintrag stammt vom Client selbst und ist frei wählbar. Übernommen wird
+        // die erste Adresse von rechts, die nicht selbst ein vertrauenswürdiger Proxy ist, und nur,
+        // wenn sie eine gültige IP-Adresse ist; sonst bleibt REMOTE_ADDR unverändert.
+        $hops = array_values(array_filter(array_map('trim', explode(',', (string)$_SERVER['HTTP_X_FORWARDED_FOR'])), 'strlen'));
+        $isTrusted = static function (string $ip) use ($trusted): bool {
+            foreach ($trusted as $t) {
+                if ($t === '') { continue; }
+                if ($t === $ip) { return true; }
+                if (str_contains($t, '/') && function_exists('inet_pton')) {
+                    [$net, $bits] = explode('/', $t, 2);
+                    $r = @inet_pton($ip); $n = @inet_pton($net);
+                    if ($r === false || $n === false || strlen($r) !== strlen($n)) { continue; }
+                    $bits = (int)$bits; $bytes = intdiv($bits, 8); $rest = $bits % 8;
+                    $ok = substr($r, 0, $bytes) === substr($n, 0, $bytes);
+                    if ($ok && $rest > 0) { $mask = 0xFF & (0xFF << (8 - $rest)); $ok = ((ord($r[$bytes]) & $mask) === (ord($n[$bytes]) & $mask)); }
+                    if ($ok) { return true; }
+                }
+            }
+            return false;
+        };
+        for ($i = count($hops) - 1; $i >= 0; $i--) {
+            $candidate = $hops[$i];
+            if (filter_var($candidate, FILTER_VALIDATE_IP) === false) {
+                break; // ungültiger Eintrag: Header nicht vertrauenswürdig, REMOTE_ADDR bleibt der Proxy
+            }
+            if ($isTrusted($candidate)) {
+                continue; // weiterer eigener Proxy in der Kette
+            }
+            $_SERVER['REMOTE_ADDR_PROXY'] = $remote;
+            $_SERVER['REMOTE_ADDR'] = $candidate;
+            break;
+        }
+    }
+}
 
 // Fehler nie im Browser anzeigen (Produktion), aber loggen
 ini_set('display_errors', '0');
@@ -165,19 +232,19 @@ function enforce_host_rules(): void
     $onAdminHost = $host !== '' && $host === $adminHost && $adminHost !== $appHost;
 
     if ($onAdminHost) {
-        $adminAllowed = ['admin.php', 'admin-support.php', 'login.php', 'twofa-verify.php', 'twofa-setup.php', 'logout.php',
+        $adminAllowed = ['admin.php', 'admin-support.php', 'admin-system.php', 'admin-system-data.php', 'admin-doc.php', 'login.php', 'twofa-verify.php', 'twofa-setup.php', 'logout.php',
             'security.php', 'forgot-password.php', 'reset-password.php'];
-        $uri = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
-        $isAsset = str_starts_with($uri, '/assets/') || $uri === '/favicon.ico';
+        // Keine Ausnahme für /assets/ anhand der REQUEST_URI: statische Dateien erreichen PHP nie (liefert der
+        // Webserver direkt aus), und ein Präfixvergleich auf die rohe URI wäre mit /assets/../seite.php umgehbar.
         if ($script === 'index.php' || $script === 'dashboard.php') {
             // Startseite und Ziel nach der Anmeldung: auf dem Adminhost zum Adminbereich
             header('Location: /admin.php', true, 302);
             exit;
         }
-        if (!$isAsset && !in_array($script, $adminAllowed, true)) {
+        if (!in_array($script, $adminAllowed, true)) {
             host_not_found();
         }
-    } elseif ($script === 'admin.php' || $script === 'admin-support.php') {
+    } elseif (in_array($script, ['admin.php', 'admin-support.php', 'admin-system.php', 'admin-system-data.php', 'admin-doc.php'], true)) {
         host_not_found();
     }
 }
@@ -208,6 +275,47 @@ function uuid4(): string
     $data[6] = chr((ord($data[6]) & 0x0f) | 0x40);
     $data[8] = chr((ord($data[8]) & 0x3f) | 0x80);
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
+require_once __DIR__ . '/version.php';
+require_once __DIR__ . '/log.php';
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('X-Correlation-Id: ' . correlation_id());
+}
+
+/**
+ * Wartungsmodus (Cutover): existiert app/storage/maintenance.flag oder ist config maintenance_mode true,
+ * antworten alle Seiten mit 503, ausgenommen health.php, migrate.php und der Adminbereich zur Kontrolle.
+ */
+/** Schreibbares Speicherverzeichnis (Mandate, Avatare, Logs, Wartungsmarker); config storage_dir oder app/storage. */
+function storage_dir(): string
+{
+    $d = rtrim((string)($GLOBALS['config']['storage_dir'] ?? ''), '/');
+    return $d !== '' ? $d : APP_ROOT . '/app/storage';
+}
+
+function maintenance_active(): bool
+{
+    return !empty($GLOBALS['config']['maintenance_mode']) || is_file(storage_dir() . '/maintenance.flag');
+}
+if (PHP_SAPI !== 'cli' && maintenance_active()) {
+    $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    // Ausnahmen nur anhand des tatsächlich ausgeführten Skripts (SCRIPT_NAME), nicht anhand der rohen
+    // REQUEST_URI (wäre mit /assets/../seite.php umgehbar). Webhooks (stripe-webhook.php, billing-webhook.php),
+    // cron.php und track.php erhalten im Wartungsmodus bewusst 503: während des Cutovers darf nichts mehr in die
+    // alte Datenbank schreiben; Stripe wiederholt Ereignisse, nach dem Cutover fehlgeschlagene Ereignisse im
+    // Stripe-Dashboard erneut senden (siehe docs/vps/07-cutover-checkliste.md). Das Fenster kurz halten.
+    if (!in_array($script, ['health.php', 'migrate.php', 'admin.php', 'admin-system.php', 'admin-system-data.php', 'login.php', 'twofa-verify.php', 'logout.php'], true)) {
+        http_response_code(503);
+        header('Retry-After: 300');
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Wartung</title>'
+           . '<style>body{font-family:system-ui,Arial,sans-serif;background:#f6f6f6;color:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}'
+           . '.box{background:#fff;padding:32px 36px;border-radius:12px;max-width:520px;box-shadow:0 2px 12px rgba(0,0,0,.06)}h1{font-size:22px;margin:0 0 12px}p{line-height:1.5}</style></head>'
+           . '<body><div class="box"><h1>Kurze Wartung</h1><p>Die Anwendung wird gerade gewartet und ist in wenigen Minuten wieder erreichbar. Laufende Einzüge und Daten sind davon nicht betroffen.</p>'
+           . '<p>Aktuelle Hinweise finden Sie auf der Statusseite, falls eingerichtet.</p></div></body></html>';
+        exit;
+    }
 }
 
 /** HTML-Escaping */
