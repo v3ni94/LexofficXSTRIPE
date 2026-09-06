@@ -367,6 +367,11 @@ Je Domain ein eigenes Verzeichnis im Hosting anlegen und den Inhalt von
 
 ## 11. Umzug auf app.smart-einzug.de und admin.smart-einzug.de
 
+Dieser Abschnitt beschreibt den Adresswechsel auf dem IONOS Webhosting. Läuft der
+Wechsel zusammen mit dem Umzug auf den VPS, gelten zusätzlich `docs/vps/05-dns-ssl.md`
+und `docs/vps/07-cutover-checkliste.md` (dort zeigen die Subdomains auf den VPS statt auf
+den Webhosting-Ordner; Schritte 3 bis 8 hier bleiben inhaltlich gleich).
+
 Die Anwendung bleibt in einem einzigen Ordner. Neue und alte Adresse laufen
 während des Umzugs parallel, damit E-Mail-Links, Lesezeichen und
 Stripe-Webhooks weiter funktionieren. Reihenfolge einhalten, jeden Schritt
@@ -376,13 +381,13 @@ prüfen, bevor der nächste folgt.
    `app.smart-einzug.de` und `admin.smart-einzug.de` anlegen und für beide ein
    SSL-Zertifikat aktivieren. Warten, bis beide Hosts per HTTPS antworten.
 2. Zielverzeichnis: Beide Hosts auf denselben App-Ordner zeigen lassen, in dem
-   heute `app.smart-einzug.de` liegt. Keine zweite Kopie der Anwendung
+   heute `app.lexware-einzug.de` liegt. Keine zweite Kopie der Anwendung
    anlegen (eine Datenbank, ein `app_secret`, ein Cron).
 3. Allowlist ergänzen: In `app/config.php` den Schlüssel `allowed_hosts` mit
    allen drei Hosts füllen, alte Adresse eingeschlossen:
 
    ```php
-   'allowed_hosts' => ['app.smart-einzug.de', 'app.smart-einzug.de', 'admin.smart-einzug.de'],
+   'allowed_hosts' => ['app.lexware-einzug.de', 'app.smart-einzug.de', 'admin.smart-einzug.de'],
    ```
 
    Danach `setup-check.php?token=<cron_token>` über die alte und die neue
@@ -397,7 +402,7 @@ prüfen, bevor der nächste folgt.
 5. Stripe-Webhooks: In jedem angebundenen Stripe-Konto der Kunden den Endpunkt
    `https://app.smart-einzug.de/stripe-webhook.php` zusätzlich anlegen und im
    Plattformkonto `https://app.smart-einzug.de/billing-webhook.php`. Die alten
-   Endpunkte auf `app.smart-einzug.de` behalten; Ereignisse werden über
+   Endpunkte auf `app.lexware-einzug.de` behalten; Ereignisse werden über
    `webhook_events` nur einmal verarbeitet. Kunden mit eigenem Webhook-Secret
    unter "Einstellungen" darauf hinweisen, dass die dort angezeigte Adresse
    jetzt die neue ist. Keine 301-Weiterleitung für POST-Anfragen einrichten.
@@ -406,7 +411,7 @@ prüfen, bevor der nächste folgt.
    `https://app.smart-einzug.de/cron.php?token=...` umstellen (eine Instanz).
 7. Adminbereich trennen: Erst wenn alles über die neue Adresse läuft,
    `admin_base_url` auf `https://admin.smart-einzug.de` setzen. Wirkung:
-   `admin.php` liefert auf `app.smart-einzug.de` und `app.smart-einzug.de`
+   `admin.php` liefert auf `app.lexware-einzug.de` und `app.smart-einzug.de`
    404; auf `admin.smart-einzug.de` sind nur `admin.php`, Anmeldung, 2FA,
    Passwort-Zurücksetzen, Sicherheit, Abmelden und die Assets erreichbar,
    alle Kundenseiten liefern dort 404. Die Sitzung ist an den Host gebunden,
