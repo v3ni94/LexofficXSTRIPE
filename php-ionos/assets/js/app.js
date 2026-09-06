@@ -46,7 +46,34 @@
             })(els[i]);
         }
     }
+    function initSystemRefresh() {
+        // Adminbereich System: gespeicherte Ergebnisse alle 30 s nachladen, in inaktiven Tabs pausieren.
+        // Es werden keine neuen Prüfungen ausgelöst (Endpunkt liefert nur gespeicherte Daten).
+        var head = document.getElementById('system-head');
+        if (!head || !window.fetch) { return; }
+        var seconds = parseInt(head.getAttribute('data-system-refresh') || '30', 10);
+        var timer = null;
+        function tick() {
+            if (document.hidden) { return; }
+            fetch('admin-system-data.php', { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.text() : ''; })
+                .then(function (html) {
+                    if (!html) { return; }
+                    var wrap = document.createElement('div');
+                    wrap.innerHTML = html;
+                    var fresh = wrap.querySelector('#system-head');
+                    var current = document.getElementById('system-head');
+                    if (fresh && current) { current.replaceWith(fresh); }
+                })
+                .catch(function () { /* Anzeige bleibt auf dem letzten Stand */ });
+        }
+        function start() { if (timer === null) { timer = window.setInterval(tick, seconds * 1000); } }
+        function stop() { if (timer !== null) { window.clearInterval(timer); timer = null; } }
+        document.addEventListener('visibilitychange', function () { if (document.hidden) { stop(); } else { tick(); start(); } });
+        start();
+    }
     function init() {
+        initSystemRefresh();
         var boxes = document.querySelectorAll('input[type="checkbox"][data-toggle-password]');
         for (var i = 0; i < boxes.length; i++) {
             bindToggle(boxes[i]);

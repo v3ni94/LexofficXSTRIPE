@@ -197,6 +197,8 @@ if ($config && !empty($config['db']['host'])) {
             '013' => [['table' => 'invoices', 'column' => 'lexoffice_updated_at'], ['table' => 'customers', 'column' => 'lexoffice_synced_at']],
             '014' => [['table' => 'sync_state', 'column' => 'lock_owner']],
             '015' => [['table' => 'users', 'column' => 'multiaccount_enabled'], ['table' => 'registration_requests']],
+            '016' => [['table' => 'trusted_devices']],
+            '017' => [['table' => 'job_runs'], ['table' => 'monitor_checks'], ['table' => 'monitor_daily'], ['table' => 'monitor_requests'], ['table' => 'monitor_incidents']],
         ];
         foreach ($migrationChecks as $mig => $items) {
             $lack = [];

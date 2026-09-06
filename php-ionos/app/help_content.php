@@ -186,7 +186,11 @@ return [
                 . '<h3>Support-Zugriff des Betreibers</h3>'
                 . '<p>Ein Support-Zugriff des Betreibers ist zeitlich begrenzt und wird protokolliert. Der Inhaber wird darüber per E-Mail informiert.</p>'
                 . '<h3>Passwort und Recovery-Codes</h3>'
-                . '<p>Unter <a href="security.php">Sicherheit</a> ändern Sie Ihr Passwort und lassen sich bei Bedarf neue Recovery-Codes erzeugen. Neue Recovery-Codes machen alle bisherigen Codes ungültig. Für sicherheitsrelevante Aktionen wird zusätzlich zum Passwort ein aktueller 2FA-Code oder ein Recovery-Code verlangt.</p>',
+                . '<p>Unter <a href="security.php">Sicherheit</a> ändern Sie Ihr Passwort und lassen sich bei Bedarf neue Recovery-Codes erzeugen. Neue Recovery-Codes machen alle bisherigen Codes ungültig. Für sicherheitsrelevante Aktionen wird zusätzlich zum Passwort ein aktueller 2FA-Code oder ein Recovery-Code verlangt.</p>'
+                . '<h3>Gerät für 90 Tage merken</h3>'
+                . '<p>Bei der Eingabe des 2FA-Codes können Sie "Dieses Gerät für 90 Tage merken" wählen. In diesem Browser entfällt dann bei der Anmeldung die Codeabfrage, das Passwort bleibt erforderlich. Die Freigabe endet fest nach 90 Tagen und wird durch Anmeldungen nicht verlängert. Unter <a href="security.php#geraete">Sicherheit, Gemerkte Geräte</a> sehen Sie alle Freigaben und können sie einzeln oder gesamt widerrufen; "Überall abmelden" beendet zusätzlich alle Sitzungen. Passwortänderungen und Änderungen der Zwei-Faktor-Einrichtung widerrufen alle Freigaben. Wählen Sie die Option nur auf eigenen, nicht gemeinsam genutzten Geräten.</p>'
+                . '<h3>Mehrere Firmen mit einem Benutzerkonto (Multiaccount)</h3>'
+                . '<p>Unter <a href="team.php#multiaccount">Firmendaten, Mein Profil</a> aktivieren Sie Multiaccount. Danach finden Sie im Profilmenü die Firmenübersicht, legen weitere Firmen an und wechseln zwischen ihnen. Sobald Ihrem Konto mehrere Firmen zugeordnet sind, ist Multiaccount automatisch aktiv. Jede Firma hat getrennte Kunden, Rechnungen, Einzüge, Zugänge und ein eigenes Abonnement. Registrieren Sie sich mit einer bereits bekannten E-Mail-Adresse für eine weitere Firma, melden Sie sich zunächst mit Ihrem bestehenden Konto an und bestätigen dann die Anlage; ein zweites Benutzerkonto mit derselben E-Mail-Adresse entsteht nicht.</p>',
         ],
         [
             'slug' => 'abo-abrechnung',

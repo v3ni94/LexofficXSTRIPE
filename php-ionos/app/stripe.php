@@ -74,12 +74,15 @@ class StripeClient
         $opts[CURLOPT_URL] = $url;
         curl_setopt_array($ch, $opts);
 
+        $t0 = microtime(true);
         $body = curl_exec($ch);
         $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $err = curl_error($ch);
         curl_close($ch);
+        $ms = (int)round((microtime(true) - $t0) * 1000);
 
         if ($body === false) {
+            self::monitor('fail', $ms, $err);
             $ex = new StripeException("Verbindungsfehler zu Stripe: $err");
             $ex->outcomeUnknown = true;
             throw $ex;
@@ -87,11 +90,16 @@ class StripeClient
 
         $data = json_decode($body, true);
         if (!is_array($data)) {
+            self::monitor('fail', $ms, 'http_' . $status);
             $ex = new StripeException('Ungültige Antwort von Stripe.');
             // Kein JSON (z. B. Gateway-Fehlerseite): Ergebnis des Aufrufs ist unbekannt.
             $ex->outcomeUnknown = $status === 0 || $status >= 500;
             throw $ex;
         }
+
+        // Technische Sicht für das Monitoring: 5xx und 429 sind Störungen der Anbindung, fachliche
+        // Ablehnungen (4xx: Karte/Mandat/Parameter) sind kein Ausfall.
+        self::monitor($status >= 500 || $status === 429 ? 'fail' : 'ok', $ms, $status >= 500 ? 'http_5xx' : ($status === 429 ? 'throttled' : null));
 
         if ($status >= 400) {
             $message = $data['error']['message'] ?? "Stripe-Fehler (HTTP $status)";
@@ -101,6 +109,17 @@ class StripeClient
         }
 
         return $data;
+    }
+
+    /** Monitoring-Ereignis der Stripe-API (Fehler der Diagnose werden verworfen). */
+    private static function monitor(string $status, int $ms, ?string $category): void
+    {
+        try {
+            require_once __DIR__ . '/monitor.php';
+            monitor_event('stripe_api', $status, $ms, $category !== null ? (str_starts_with($category, 'http_') || $category === 'throttled' ? $category : monitor_category($category)) : null, 'instrumented', 3600);
+        } catch (Throwable $e) {
+            // ignorieren
+        }
     }
 
     /** Generischer Aufruf (für Plattform-Abrechnung in billing.php). */

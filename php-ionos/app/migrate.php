@@ -48,6 +48,8 @@ function migrations_markers(): array
         '013' => ['invoices', 'lexoffice_updated_at'],
         '014' => ['sync_state', 'lock_owner'],
         '015' => ['users', 'multiaccount_enabled'],
+        '016' => ['trusted_devices', null],
+        '017' => ['monitor_checks', null],
     ];
 }
 

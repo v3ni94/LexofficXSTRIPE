@@ -28,6 +28,7 @@ require_once __DIR__ . '/totp.php';
 require_once __DIR__ . '/audit.php';
 require_once __DIR__ . '/plans.php';
 require_once __DIR__ . '/support.php';
+require_once __DIR__ . '/devices.php';
 
 const LOGIN_MAX_FAILS_EMAIL = 5;    // Fehlversuche je E-Mail in 15 Minuten
 const LOGIN_MAX_FAILS_IP    = 30;   // Fehlversuche je IP in 15 Minuten
@@ -53,6 +54,18 @@ function current_user(): ?array
     $userId = $_SESSION['user_id'] ?? null;
     $orgId  = $_SESSION['org_id'] ?? null;
     if (!$userId || !$orgId) {
+        return null;
+    }
+
+    // Beruht die Anmeldung auf einer Gerätefreigabe, muss diese weiterhin gelten (nicht
+    // abgelaufen, nicht widerrufen). Sonst endet die Sitzung; die Anmeldung ist mit
+    // Authenticator-Code zu wiederholen (Abschnitt 5.4 und 5.8).
+    if (!empty($_SESSION['trusted_device_id']) && !device_session_valid((string)$_SESSION['trusted_device_id'])) {
+        auth_logout();
+        if (PHP_SAPI !== 'cli') {
+            session_start();
+            flash_set('info', 'Die Gerätefreigabe für diesen Browser ist abgelaufen oder wurde widerrufen. Bitte melden Sie sich erneut an und bestätigen Sie die Anmeldung mit Ihrem Authenticator-Code.');
+        }
         return null;
     }
 
@@ -421,14 +434,25 @@ function auth_login(string $email, string $password): array
     login_record($email, true, 'password');
 
     if ((int)$user['totp_enabled'] === 1) {
+        // Erst nach geprüftem Passwort entscheidet die Gerätefreigabe, ob die Codeabfrage entfällt.
+        // Ein Geräte-Token allein ermöglicht nie eine Anmeldung.
+        $trust = device_trust_check((string)$user['id'], device_scope());
+        if ($trust['status'] === 'valid') {
+            device_trust_rotate($trust['device']);
+            login_record($email, true, 'device');
+            if (!session_finish_login($user, null, ['method' => 'device', 'device_id' => (string)$trust['device']['id']])) {
+                return ['status' => 'error', 'message' => 'Ihr Zugang ist keiner Firma zugeordnet. Bitte wenden Sie sich an den Inhaber Ihres Firmenaccounts.'];
+            }
+            return ['status' => 'ok', 'message' => null];
+        }
         // Stufe 2 erforderlich: Benutzer noch NICHT anmelden
         session_regenerate_id(true);
-        $_SESSION['pending_2fa'] = ['user_id' => $user['id'], 'at' => time(), 'fails' => 0];
+        $_SESSION['pending_2fa'] = ['user_id' => $user['id'], 'at' => time(), 'fails' => 0, 'device_expired' => $trust['status'] === 'expired'];
         return ['status' => '2fa', 'message' => null];
     }
 
     // Keine 2FA vorhanden: anmelden, require_login() erzwingt die Einrichtung.
-    if (!session_finish_login($user)) {
+    if (!session_finish_login($user, null, ['method' => 'password'])) {
         return ['status' => 'error', 'message' => 'Ihr Zugang ist keiner Firma zugeordnet. Bitte wenden Sie sich an den Inhaber Ihres Firmenaccounts.'];
     }
     return ['status' => 'ok', 'message' => null];
@@ -456,7 +480,7 @@ function pending_2fa_user(): ?array
  * Stufe 2: TOTP-Code oder Recovery-Code prüfen und Anmeldung abschließen.
  * @return array{status:string,message:?string,used_recovery:bool}
  */
-function auth_login_2fa(string $code): array
+function auth_login_2fa(string $code, bool $rememberDevice = false): array
 {
     $user = pending_2fa_user();
     if (!$user) {
@@ -485,8 +509,19 @@ function auth_login_2fa(string $code): array
     login_record($user['email'], true, $usedRecovery ? 'recovery' : 'totp');
     unset($_SESSION['pending_2fa']);
 
-    if (!session_finish_login($user)) {
+    if (!session_finish_login($user, null, ['method' => $usedRecovery ? 'recovery' : 'totp'])) {
         return ['status' => 'error', 'message' => 'Ihr Zugang ist keiner Firma zugeordnet. Bitte wenden Sie sich an den Inhaber Ihres Firmenaccounts.', 'used_recovery' => $usedRecovery];
+    }
+    $deviceTrusted = null;
+    $deviceRefused = false;
+    if (!$usedRecovery) {
+        totp_mark_fresh();
+        if ($rememberDevice) {
+            // Nur nach echter Authenticator-Bestätigung und bewusster Auswahl (Abschnitt 5.2)
+            $deviceTrusted = device_trust_create($user, device_scope(), $_SESSION['org_id'] ?? null);
+        }
+    } elseif ($rememberDevice) {
+        $deviceRefused = true; // Recovery-Code stellt keine Gerätefreigabe aus (Abschnitt 5.9)
     }
 
     if ($usedRecovery) {
@@ -496,14 +531,14 @@ function auth_login_2fa(string $code): array
             'Falls Sie keinen Zugriff mehr auf Ihre Authenticator-App haben, richten Sie die Zwei-Faktor-Authentifizierung unter "Sicherheit" neu ein.',
         ]);
     }
-    return ['status' => 'ok', 'message' => null, 'used_recovery' => $usedRecovery];
+    return ['status' => 'ok', 'message' => null, 'used_recovery' => $usedRecovery, 'device_trusted' => $deviceTrusted, 'device_refused' => $deviceRefused];
 }
 
 /**
  * Session nach erfolgreicher Prüfung aller Faktoren aufbauen.
  * Wählt die erste aktive Firmenmitgliedschaft. false, wenn keine vorhanden.
  */
-function session_finish_login(array $user, ?string $preferredOrgId = null): bool
+function session_finish_login(array $user, ?string $preferredOrgId = null, array $auth = []): bool
 {
     $pdo = db();
     $orgId = null;
@@ -535,9 +570,13 @@ function session_finish_login(array $user, ?string $preferredOrgId = null): bool
     $_SESSION['org_id'] = $orgId;
     $_SESSION['session_epoch'] = (int)$user['session_epoch'];
     $_SESSION['login_at'] = time();
-    unset($_SESSION['csrf_token']);
+    $_SESSION['auth_method'] = (string)($auth['method'] ?? 'password');
+    unset($_SESSION['csrf_token'], $_SESSION['trusted_device_id'], $_SESSION['totp_verified_at']);
+    if (!empty($auth['device_id'])) {
+        $_SESSION['trusted_device_id'] = (string)$auth['device_id']; // Sitzung beruht auf einer Gerätefreigabe
+    }
 
-    audit_log($orgId, ['user_id' => $user['id'], 'email' => $user['email']], 'login_success', 'user', $user['id']);
+    audit_log($orgId, ['user_id' => $user['id'], 'email' => $user['email']], 'login_success', 'user', $user['id'], ['method' => $_SESSION['auth_method']]);
     return true;
 }
 
@@ -547,8 +586,15 @@ function user_revoke_sessions(string $userId): void
     db()->prepare('UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?')->execute([$userId]);
 }
 
-function auth_logout(): void
+function auth_logout(bool $forgetDevice = false): void
 {
+    if ($forgetDevice) {
+        $cookie = device_cookie_read();
+        if ($cookie && !empty($_SESSION['user_id'])) {
+            device_revoke((string)$_SESSION['user_id'], $cookie['id'], 'user_forget', $_SESSION['org_id'] ?? null);
+        }
+        device_cookie_clear();
+    }
     if (!empty($_SESSION['support_session_id'])) {
         try { support_session_end((string)$_SESSION['support_session_id'], 'logout'); } catch (Throwable $e) { /* Abmeldung nie blockieren */ }
     }
@@ -586,7 +632,7 @@ function twofa_setup_uri(string $secret, string $email): string
  * verschlüsselt speichern, Recovery-Codes erzeugen (Klartext nur einmal zurück).
  * @return array|null Recovery-Codes im Klartext oder null bei falschem Code
  */
-function twofa_confirm_setup(array $user, string $code): ?array
+function twofa_confirm_setup(array $user, string $code, bool $rememberDevice = false): ?array
 {
     $secret = $_SESSION['totp_setup_secret'] ?? null;
     if (!$secret) {
@@ -605,6 +651,13 @@ function twofa_confirm_setup(array $user, string $code): ?array
 
     $codes = recovery_codes_regenerate($user['id'], false);
     audit_log($_SESSION['org_id'] ?? null, ['user_id' => $user['id'], 'email' => $user['email']], '2fa_enabled', 'user', $user['id']);
+    // Änderung der 2FA-Konfiguration: bisherige Gerätefreigaben verfallen (Abschnitt 5.9)
+    devices_revoke_all((string)$user['id'], '2fa_changed', $_SESSION['org_id'] ?? null);
+    totp_mark_fresh();
+    $_SESSION['auth_method'] = 'totp';
+    if ($rememberDevice) {
+        device_trust_create($user, device_scope(), $_SESSION['org_id'] ?? null);
+    }
     return $codes;
 }
 
@@ -633,9 +686,14 @@ function twofa_verify_user(array $user, string $code): bool
  * users.totp_last_step; ein Code gilt nur einmal). Recovery-Codes werden hier
  * bewusst nicht akzeptiert. Wirft RuntimeException bei Fehler.
  */
-function require_recent_totp(array $ctx, string $code): void
+function require_recent_totp(array $ctx, string $code, bool $allowFreshWindow = false): void
 {
     $code = trim($code);
+    if ($code === '' && $allowFreshWindow && totp_is_fresh()) {
+        // Frisch eingegebener und geprüfter Authenticator-Code innerhalb der letzten 5 Minuten
+        // (Abschnitt 5.7). Eine Anmeldung über die Gerätefreigabe setzt dieses Fenster nicht.
+        return;
+    }
     if ($code === '') {
         throw new RuntimeException('Bitte geben Sie zur Bestätigung den aktuellen 2FA-Code aus Ihrer Authenticator-App ein.');
     }
@@ -649,6 +707,7 @@ function require_recent_totp(array $ctx, string $code): void
         ]);
         throw new RuntimeException('Der 2FA-Code ist ungültig oder wurde bereits verwendet. Bitte den aktuellen Code aus der Authenticator-App eingeben.');
     }
+    totp_mark_fresh();
 }
 
 /** Passwort UND aktuellen 2FA-/Recovery-Code eines Benutzers prüfen (für kritische Aktionen). */
@@ -725,6 +784,7 @@ function twofa_reset(array $user, bool $byAdmin, ?array $actor = null): void
     )->execute([$user['id']]);
     $pdo->prepare('DELETE FROM user_recovery_codes WHERE user_id = ?')->execute([$user['id']]);
     user_revoke_sessions($user['id']);
+    devices_revoke_all((string)$user['id'], $byAdmin ? '2fa_admin_reset' : '2fa_reset', $_SESSION['org_id'] ?? null);
 
     audit_log(
         $_SESSION['org_id'] ?? null,
@@ -742,13 +802,13 @@ function twofa_reset(array $user, bool $byAdmin, ?array $actor = null): void
 }
 
 /** Sicherheitsbenachrichtigung an einen Benutzer (nur wenn Mailversand aktiv). */
-function security_notify_user(array $user, string $headline, array $lines): void
+function security_notify_user(array $user, string $headline, array $lines, ?string $actionUrl = null, ?string $actionLabel = null): void
 {
     require_once __DIR__ . '/mailer.php';
     if (!mail_enabled() || empty($user['email'])) {
         return;
     }
-    $tpl = mail_tpl_security($headline, $lines);
+    $tpl = mail_tpl_security($headline, $lines, $actionUrl, $actionLabel);
     mail_send($user['email'], $tpl['subject'], $tpl['text'], $tpl['html']);
 }
 
@@ -880,6 +940,7 @@ function password_reset_complete(string $token, string $newPassword): ?string
         'UPDATE users SET password_hash = ?, password_reset_token_hash = NULL, password_reset_expires_at = NULL,
                 failed_login_count = 0, locked_until = NULL, session_epoch = session_epoch + 1 WHERE id = ?'
     )->execute([password_hash($newPassword, PASSWORD_DEFAULT), $user['id']]);
+    devices_revoke_all((string)$user['id'], 'password_reset');
     audit_log(null, ['user_id' => $user['id'], 'email' => $user['email']], 'password_reset_done', 'user', $user['id']);
     security_notify_user($user, 'Passwort geändert', [
         'Das Passwort Ihres Kontos wurde soeben über den Zurücksetzen-Link neu festgelegt. Alle bestehenden Sitzungen wurden beendet.',
@@ -898,8 +959,12 @@ function password_change(array $user, string $current, string $new): ?string
     }
     db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
         ->execute([password_hash($new, PASSWORD_DEFAULT), $user['id']]);
+    $revoked = devices_revoke_all((string)$user['id'], 'password_changed', $_SESSION['org_id'] ?? null);
     audit_log($_SESSION['org_id'] ?? null, ['user_id' => $user['id'], 'email' => $user['email']], 'password_changed', 'user', $user['id']);
-    security_notify_user($user, 'Passwort geändert', ['Das Passwort Ihres Kontos wurde soeben geändert.']);
+    security_notify_user($user, 'Passwort geändert', array_filter([
+        'Das Passwort Ihres Kontos wurde soeben geändert.',
+        $revoked > 0 ? 'Alle gemerkten Geräte wurden dabei vergessen; bei der nächsten Anmeldung ist wieder der Authenticator-Code erforderlich.' : null,
+    ]));
     return null;
 }
 

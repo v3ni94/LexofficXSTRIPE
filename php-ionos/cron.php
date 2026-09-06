@@ -21,6 +21,7 @@ require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/sync_state.php';
 require_once __DIR__ . '/app/mandate_requests.php';
 require_once __DIR__ . '/app/alerts.php';
+require_once __DIR__ . '/app/monitor.php';
 
 header('Content-Type: text/plain; charset=utf-8');
 
@@ -41,6 +42,9 @@ $start = microtime(true);
 // höchstens etwa 20 bis 25 Sekunden je Aufruf; die Synchronisation arbeitet in Schritten
 // und setzt beim nächsten Aufruf fort (config: cron_time_budget_seconds, Standard 20).
 $totalBudget = max(10, min(110, (int)config('cron_time_budget_seconds', 20)));
+// Monitoring: dieser Cron-Lauf als Ausführungsversuch (Heartbeat, Laufzeit, Speicher). Fehler der Diagnose stören den Lauf nie.
+define('CRON_CONTEXT', true);
+$cronRunId = job_run_start('cron', 'cron', null, PHP_SAPI === 'cli' ? 'cli' : 'cron');
 
 // Datenbankmigrationen laufen NICHT im Cron (nur über migrate.php nach dem Upload,
 // siehe docs/migrations.md), damit sie nie während eines laufenden Uploads starten.
@@ -49,10 +53,18 @@ require_once __DIR__ . '/app/support.php';
 try { support_sessions_expire(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 008 */ }
 require_once __DIR__ . '/app/auth.php';
 try { registration_requests_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 015 */ }
+try { devices_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 016 */ }
 
 // Fällige vorgemerkte und terminierte Einzüge: nur im Einreichfenster, höchstens die
 // Hälfte des Zeitbudgets je Lauf; der Rest folgt beim nächsten Lauf (alle 5 Minuten).
-$result = process_scheduled_collections(null, null, ['deadline' => $start + $totalBudget * 0.5]);
+$collRunId = job_run_start('collections', 'collections:due', null, 'cron');
+try {
+    $result = process_scheduled_collections(null, null, ['deadline' => $start + $totalBudget * 0.5]);
+    job_run_finish($collRunId, 'success', ['items' => (int)$result['submitted'], 'api_errors' => (int)$result['failed'] + (int)$result['unknown']]);
+} catch (Throwable $e) {
+    job_run_finish($collRunId, 'failed', [], monitor_category($e));
+    throw $e;
+}
 echo sprintf(
     "[%s] Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen, %d zurückgestellt, %d unklar, %d wegen Not-Stopp übersprungen%s%s%s\n",
     date('d.m.Y H:i:s'),
@@ -96,7 +108,8 @@ try {
     error_log('Cron Alarmierung fehlgeschlagen: ' . $e->getMessage());
 }
 
-$budget = (int)max(3, $totalBudget - (microtime(true) - $start));
+// Für den Monitoring-Sammler bleiben etwa 4 Sekunden reserviert
+$budget = (int)max(3, $totalBudget - (microtime(true) - $start) - 4);
 $sync = sync_run_pending($budget);
 echo sprintf(
     "[%s] Synchronisation: %d Firma/Firmen, %d Schritte in %d Runde(n), %d abgeschlossen, %d Fehler, %d noch offen (Fortsetzung beim nächsten Aufruf)\n",
@@ -108,3 +121,15 @@ echo sprintf(
     $sync['errors'],
     $sync['open'] ?? 0
 );
+
+// Monitoring-Sammler: eigene Sperre, kurze Timeouts, nur freigegebene Prüfungen; startet nichts.
+try {
+    $monBudget = max(2.0, min(8.0, $totalBudget + 5 - (microtime(true) - $start)));
+    $mon = monitor_collect(['budget' => $monBudget, 'source' => 'cron']);
+    echo sprintf("[%s] Monitoring: %s\n", date('d.m.Y H:i:s'),
+        isset($mon['skipped']) ? 'übersprungen (' . $mon['skipped'] . ')' : count($mon['checks'] ?? []) . ' Prüfungen, ' . count($mon['skipped_checks'] ?? []) . ' wegen Zeitbudget ausgelassen, ' . (int)($mon['stale_runs'] ?? 0) . ' unbestätigte Läufe markiert');
+} catch (Throwable $e) {
+    error_log('Cron Monitoring fehlgeschlagen: ' . monitor_category($e));
+}
+job_run_finish($cronRunId, 'success', ['items' => (int)($sync['steps'] ?? 0) + (int)($result['submitted'] ?? 0), 'extra_ms' => 0]);
+echo sprintf("[%s] Laufzeit %.1f s, PHP-Spitzenspeicher dieses Jobs %.1f MB\n", date('d.m.Y H:i:s'), microtime(true) - $start, memory_get_peak_usage(true) / 1048576);

@@ -276,7 +276,7 @@ enforce_host_rules();
 // Session (nicht für Webhook/Cron, die binden bootstrap ohne Session-Bedarf ein,
 // stören sich aber nicht daran)
 // ---------------------------------------------------------------------------
-if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli') {
+if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli' && !defined('SKIP_SESSION')) {
     session_set_cookie_params([
         'lifetime' => 0,
         'path'     => '/',
@@ -330,4 +330,29 @@ function csrf_check(): void
         http_response_code(403);
         die('Ungültiges Formular-Token. Bitte Seite neu laden und erneut versuchen.');
     }
+}
+
+// ---------------------------------------------------------------------------
+// Monitoring: Minutenzähler der instrumentierten PHP-Anfragen (Auftrag II, Abschnitt 7.4).
+// Ein einziger, kleiner Upsert am Ende jeder Web-Anfrage; Fehler werden verworfen. Erfasst
+// werden nur PHP-Anfragen dieser Anwendung, keine statischen Dateien. Ohne Migration 017 passiert nichts.
+// ---------------------------------------------------------------------------
+if (PHP_SAPI !== 'cli' && !defined('SKIP_REQUEST_METRICS')) {
+    $GLOBALS['__req_started'] = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
+    register_shutdown_function(static function (): void {
+        try {
+            if (!empty($_SERVER['HTTP_X_SMARTEINZUG_MONITOR'])) {
+                return; // Selbstprüfungen des Sammlers nicht mitzählen
+            }
+            $ms = (int)round((microtime(true) - (float)$GLOBALS['__req_started']) * 1000);
+            $code = http_response_code();
+            $is5xx = is_int($code) && $code >= 500 ? 1 : 0;
+            db()->prepare(
+                'INSERT INTO monitor_requests (minute, requests, errors_5xx, sum_ms, max_ms) VALUES (?, 1, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE requests = requests + 1, errors_5xx = errors_5xx + VALUES(errors_5xx), sum_ms = sum_ms + VALUES(sum_ms), max_ms = GREATEST(max_ms, VALUES(max_ms))'
+            )->execute([gmdate('Y-m-d H:i:00'), $is5xx, $ms, $ms]);
+        } catch (Throwable $e) {
+            // Diagnose darf die Anwendung nie stören
+        }
+    });
 }

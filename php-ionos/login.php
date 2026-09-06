@@ -56,7 +56,7 @@ layout_header('Anmelden');
                 · <a href="register.php">Firmenaccount registrieren</a>
             <?php endif; ?>
         </p>
-        <p class="hint" style="text-align:center;">Nach dem Passwort folgt die Eingabe des Codes aus Ihrer Authenticator-App.</p>
+        <p class="hint" style="text-align:center;">Nach dem Passwort folgt die Eingabe des Codes aus Ihrer Authenticator-App.<?php if (($su = rtrim(trim((string)config('status_page_url', '')), '/')) !== ''): ?> Probleme? <a href="<?= e($su) ?>/" rel="noopener">Systemstatus</a>.<?php endif; ?></p>
     </div>
 </div>
 <?php layout_footer(); ?>

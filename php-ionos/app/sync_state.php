@@ -18,6 +18,7 @@ if (get_included_files()[0] === __FILE__) {
 }
 
 require_once __DIR__ . '/sync.php';
+require_once __DIR__ . '/monitor.php';
 require_once __DIR__ . '/invoice_source.php';
 require_once __DIR__ . '/crypto.php';
 require_once __DIR__ . '/audit.php';
@@ -63,6 +64,7 @@ function sync_state_start(string $tenantId, ?array $actor): array
     $state = sync_state_get($tenantId);
     if (sync_state_is_running($state)) {
         $pdo->prepare('UPDATE sync_state SET skipped_starts = skipped_starts + 1 WHERE tenant_id = ?')->execute([$tenantId]);
+        monitor_event('sync_skipped_start', 'ok', null, 'double_start', 'instrumented', 60);
         audit_log($tenantId, $actor, 'sync_start_skipped', 'organization', $tenantId);
         $state['already_running'] = true;
         return $state;
@@ -142,9 +144,19 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
     }
 
     $state = sync_state_get($tenantId);
+    $runId = job_run_start('sync', 'sync:' . $tenantId . ':' . (string)($state['started_at'] ?? ''), $tenantId, PHP_SAPI === 'cli' ? 'cli' : (defined('CRON_CONTEXT') ? 'cron' : 'web'));
     try {
         $lex = sync_invoice_source($tenantId);
         $step = sync_invoices_step($tenantId, $lex, $state['cursor'], $batchSize);
+        $mx = (array)($step['result']['metrics'] ?? []);
+        $mPrev = (array)($state['result']['metrics'] ?? ($state['cursor']['result']['metrics'] ?? []));
+        // Nur den Zuwachs dieses Schritts zählen (Metriken im Cursor sind kumuliert)
+        $jobMetrics = [
+            'items' => max(0, (int)($step['result']['synced'] ?? 0) - (int)($state['result']['synced'] ?? ($state['cursor']['result']['synced'] ?? 0))),
+            'api_calls' => max(0, (int)($mx['api_calls'] ?? 0) - (int)($mPrev['api_calls'] ?? 0)),
+            'throttle_ms' => max(0, (int)($mx['throttle_ms'] ?? 0) - (int)($mPrev['throttle_ms'] ?? 0)),
+            'retries' => max(0, (int)($mx['retries'] ?? 0) - (int)($mPrev['retries'] ?? 0)),
+        ];
 
         if ($step['done']) {
             $upd = $pdo->prepare(
@@ -153,6 +165,7 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
             );
             $upd->execute([json_encode($step['result']), $tenantId, $owner]);
             if ($upd->rowCount() !== 1) {
+                job_run_finish($runId, 'unknown', $jobMetrics, 'lock_lost');
                 return _sync_lock_lost($tenantId, $owner, $step['result']);
             }
             $actor = $state['requested_by_user_id'] ? ['user_id' => $state['requested_by_user_id']] : null;
@@ -167,14 +180,18 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
             );
             $upd->execute([json_encode($step['cursor']), json_encode($step['result']), $tenantId, $owner]);
             if ($upd->rowCount() !== 1) {
+                job_run_finish($runId, 'unknown', $jobMetrics, 'lock_lost');
                 return _sync_lock_lost($tenantId, $owner, $step['result']);
             }
         }
+        job_run_finish($runId, 'success', $jobMetrics);
         return ['done' => $step['done'], 'skipped' => false, 'result' => $step['result']];
     } catch (Throwable $e) {
         $pdo->prepare(
             "UPDATE sync_state SET status = 'error', lock_until = NULL, lock_owner = NULL, finished_at = NOW(), last_error = ? WHERE tenant_id = ? AND lock_owner = ?"
         )->execute([mb_substr($e->getMessage(), 0, 2000), $tenantId, $owner]);
+        // Technischer Fehler des Schritts (api_errors = 1); Konfigurationsfehler einer Firma erhalten die Kategorie auth
+        job_run_finish($runId, 'failed', ['api_errors' => 1], monitor_category($e));
         throw $e;
     }
 }

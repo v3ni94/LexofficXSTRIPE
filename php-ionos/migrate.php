@@ -68,7 +68,14 @@ if (!is_string($received) || trim($received) === '' || !hash_equals($expected, $
 @set_time_limit(600);
 @ignore_user_abort(true);
 try {
-    migrations_run('deploy');
+    $applied = migrations_run('deploy');
+    try {
+        require_once __DIR__ . '/app/monitor.php';
+        monitor_mark('deploy_last_migration_ok_at', mon_utc(monitor_now()));
+        monitor_mark('deploy_last_migration_result', 'success:' . count($applied['applied'] ?? []));
+    } catch (Throwable $e) {
+        // Marker sind Diagnose, kein Teil der Migration
+    }
     migrate_respond(200, ['success' => true]);
 } catch (MigrationLockedException $e) {
     migrate_respond(409, ['success' => false, 'error' => 'migration_in_progress']);

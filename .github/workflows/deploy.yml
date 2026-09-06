@@ -62,6 +62,12 @@ jobs:
             exit 1
           fi
 
+      - name: Aktive Version fuer den Adminbereich System hinterlegen
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'Commit %s, hochgeladen %s\n' "${GITHUB_SHA:0:12}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > php-ionos/app/build.txt
+
       - name: Werkzeuge installieren
         run: |
           sudo apt-get update
@@ -156,6 +162,7 @@ jobs:
             "websites/aliases/smarteinzug.de|alias-smarteinzug"
             "websites/aliases/smart-lastschrift.de|alias-smart-lastschrift"
             "websites/aliases/einzug-direkt.de|alias-einzug-direkt"
+            "websites/status.smart-einzug.de|status.smart-einzug.de"
           )
 
           script="$workdir/upload.lftp"

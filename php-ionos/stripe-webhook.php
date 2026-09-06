@@ -26,6 +26,15 @@ header('Content-Type: text/plain');
 
 function webhook_exit(string $reason): void
 {
+    try {
+        require_once __DIR__ . '/app/monitor.php';
+        $lower = mb_strtolower($reason);
+        $status = str_starts_with($lower, 'datenbankfehler') ? 'fail' : 'ok';
+        $category = str_starts_with($lower, 'datenbankfehler') ? 'database' : (str_contains($lower, 'signatur') ? 'signature' : (str_contains($lower, 'nicht ermittelbar') ? 'tenant_unknown' : null));
+        monitor_event('stripe_webhook', $status, null, $category, 'instrumented', 3600);
+    } catch (Throwable $e) {
+        // Diagnose darf den Webhook nicht stören
+    }
     error_log('Stripe-Webhook: ' . $reason);
     echo 'ok';
     exit;

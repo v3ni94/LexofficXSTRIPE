@@ -555,6 +555,9 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 .profile-dropdown a { display: block; padding: 9px 12px; border-radius: 6px; color: var(--hvm-anthracite); text-decoration: none; font-size: 14px; }
 .profile-dropdown a:hover { background: var(--color-neutral-bg); color: var(--hvm-black); }
 .profile-dropdown a.menu-logout { border-top: 1px solid var(--color-border); margin-top: 6px; border-radius: 0 0 6px 6px; }
+.profile-dropdown .menu-form { margin: 0; padding: 0; }
+.profile-dropdown .menu-logout-forget { display: block; width: 100%; text-align: left; padding: 8px 14px; font-size: 13px; }
+.profile-dropdown .menu-logout-forget:hover { background: rgba(0, 0, 0, 0.04); }
 
 /* Kennzahlen (Dashboard): fünf Karten in einer Reihe, zweizeilige Beschriftung, Ampelfarben */
 .stat-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -598,3 +601,27 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 .sub-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 18px; border-radius: var(--radius); border: 1px solid var(--hvm-orange); border-left-width: 6px; background: #fff7e6; color: var(--hvm-anthracite); }
 .sub-banner-text { flex: 1 1 320px; font-size: 14px; line-height: 1.5; }
 .sub-banner-text strong { display: block; font-size: 15px; margin-bottom: 2px; }
+
+/* Adminbereich System (Monitoring) */
+.mon-head { margin: 10px 0 6px; }
+.mon-head-main { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; margin-bottom: 10px; }
+.mon-overall .mon-badge { font-size: 16px; padding: 6px 12px; }
+.mon-meta { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: #555; }
+.mon-warnings { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.mon-windows { margin: 8px 0 14px; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; font-size: 14px; }
+.mon-windows a { padding: 3px 9px; border: 1px solid var(--color-border, #ddd); border-radius: 14px; text-decoration: none; }
+.mon-windows a.active, .admin-subnav a.active { font-weight: 600; background: rgba(227, 172, 72, 0.18); }
+.mon-h3 { font-size: 15px; margin: 14px 0 6px; }
+.mon-history { display: flex; gap: 2px; flex-wrap: nowrap; }
+.mon-day { display: inline-block; width: 6px; height: 18px; border-radius: 2px; background: #cfcfcf; }
+.mon-day-ok { background: #2e9e5b; }
+.mon-day-degraded { background: #e3ac48; }
+.mon-day-fail { background: #c2372f; }
+.mon-day-unknown { background: #9f9f9f; }
+.mon-day-nodata { background: #e6e6e6; border: 1px dashed #bbb; box-sizing: border-box; }
+.mon-incident { border-top: 1px solid var(--color-border, #eee); padding-top: 10px; margin-top: 10px; }
+.mon-preview { white-space: pre-wrap; background: #fbf6ec; padding: 8px 10px; border-radius: 6px; }
+.mon-updates { font-size: 14px; }
+.table-plain td { padding: 4px 10px 4px 0; vertical-align: top; font-size: 14px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 720px) { .mon-day { width: 3px; } }

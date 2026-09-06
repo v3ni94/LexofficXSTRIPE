@@ -1,0 +1,19 @@
+# status.smart-einzug.de: statische Statusseite, keine Cookies, keine PHP-Ausführung, kurze Cache-Zeiten.
+DirectoryIndex index.html
+Options -Indexes
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set Content-Security-Policy "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+    <FilesMatch "\.json$">
+        Header set Cache-Control "public, max-age=60, must-revalidate"
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "public, max-age=300"
+    </FilesMatch>
+</IfModule>
+<FilesMatch "\.(php|phtml|md|log)$">
+    Require all denied
+</FilesMatch>

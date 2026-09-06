@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'confirm_code' && $step === 1) {
-        $codes = twofa_confirm_setup($user, $_POST['code'] ?? '');
+        $codes = twofa_confirm_setup($user, $_POST['code'] ?? '', !empty($_POST['remember_device']));
         if ($codes === null) {
             $error = 'Der Code ist ungültig. Bitte prüfen Sie die Uhrzeit Ihres Geräts und versuchen Sie es erneut.';
         } else {
@@ -81,6 +81,15 @@ layout_header('Zwei-Faktor-Authentifizierung einrichten', $ctx, ['head' => $head
             <label for="code">Code aus der App</label>
             <input type="text" id="code" name="code" class="code-input" required autofocus
                    inputmode="numeric" autocomplete="one-time-code" placeholder="123 456" maxlength="8">
+            <?php if (devices_available()): ?>
+            <label class="checkbox-label" style="margin-top: 10px;">
+                <input type="checkbox" name="remember_device" value="1">
+                <span>Dieses Gerät für 90 Tage merken</span>
+            </label>
+            <p class="hint">Auf diesem Gerät und in diesem Browser müssen Sie bei der Anmeldung 90 Tage lang keinen zusätzlichen 2FA-Code eingeben.
+                Ihr Passwort bleibt erforderlich. Bei sicherheitsrelevanten Änderungen kann eine erneute Bestätigung notwendig sein.
+                Aktivieren Sie diese Option nur auf einem eigenen, nicht gemeinsam genutzten Gerät.</p>
+            <?php endif; ?>
             <button type="submit" class="btn">Code überprüfen</button>
         </form>
         <script>

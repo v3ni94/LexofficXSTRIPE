@@ -149,8 +149,10 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
         $written = @file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
         if ($written === false) {
             error_log('mail_send: Schreiben der Mail-Logdatei fehlgeschlagen: ' . $logFile);
+            mail_monitor_mark(false, 'log_write_failed');
             return false;
         }
+        mail_monitor_mark(true, null);
         return true;
     }
 
@@ -158,9 +160,11 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
         try {
             mail_smtp_send((array)($cfg['smtp'] ?? []), $fromAddress, $to,
                 'To: ' . $to . "\r\n" . 'Subject: ' . $encodedSubject . "\r\n" . $headers, $body);
+            mail_monitor_mark(true, null);
             return true;
         } catch (Throwable $e) {
             error_log('mail_send: SMTP-Versand fehlgeschlagen, Empfänger: ' . $to . ': ' . $e->getMessage());
+            mail_monitor_mark(false, $e);
             return false;
         }
     }
@@ -169,7 +173,29 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
     if (!$result) {
         error_log('mail_send: Versand über mail() fehlgeschlagen, Empfänger: ' . $to);
     }
+    mail_monitor_mark((bool)$result, $result ? null : 'mail_function_false');
     return $result;
+}
+
+/**
+ * Monitoring-Marker des Versandwegs: Zeitpunkt der letzten Übergabe (Annahme durch mail() oder
+ * SMTP-Server, kein Zustellnachweis) und des letzten technischen Fehlers mit bereinigter Kategorie.
+ */
+function mail_monitor_mark(bool $ok, $error): void
+{
+    try {
+        require_once __DIR__ . '/monitor.php';
+        if ($ok) {
+            monitor_mark('mail_last_ok_at', mon_utc(monitor_now()));
+            monitor_event('mail_send', 'ok', null, null, 'instrumented', 3600);
+        } else {
+            monitor_mark('mail_last_fail_at', mon_utc(monitor_now()));
+            monitor_mark('mail_last_fail_category', $error === null ? 'send_failed' : monitor_category($error));
+            monitor_event('mail_send', 'fail', null, $error === null ? 'send_failed' : monitor_category($error), 'instrumented', 3600);
+        }
+    } catch (Throwable $e) {
+        // Diagnose darf den Versand nicht stören
+    }
 }
 
 /**

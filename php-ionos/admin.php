@@ -234,7 +234,7 @@ layout_header('Administration', $ctx);
 <h1>Administration</h1>
 <p class="page-sub">Plattform <?= e(product_name()) ?> · Betreiber <?= e((string)(config('operator')['name'] ?? 'Müller Holding AG')) ?></p>
 <nav class="admin-subnav" aria-label="Adminbereiche">
-    <a href="#kennzahlen">Kennzahlen</a> · <a href="#diagramme">Diagramme</a> · <a href="#notstopp">Not-Stopp</a> · <a href="#tarife">Tarife</a> · <a href="#firmen">Firmen</a> · <a href="admin-support.php">Support</a>
+    <a href="#kennzahlen">Kennzahlen</a> · <a href="#diagramme">Diagramme</a> · <a href="#notstopp">Not-Stopp</a> · <a href="#tarife">Tarife</a> · <a href="#firmen">Firmen</a> · <a href="admin-support.php">Support</a> · <a href="admin-system.php" title="Technische Betriebsübersicht">System</a>
 </nav>
 
 <?php if ($platformAlerts): ?>

@@ -187,6 +187,24 @@ return [
     // skip_unchanged: Rechnungen, deren updatedDate laut Voucherliste unverändert ist,
     //   werden ohne Detailabruf übersprungen (false = altes Verhalten, jede Rechnung einzeln).
     // contact_refresh_hours: Kontaktdaten bekannter Kunden höchstens so oft neu laden (0 = immer).
+    // Systemmonitoring (Adminbereich System, Auftrag II Abschnitt 7). Alle Werte optional.
+    'monitoring' => [
+        'cron_interval_seconds' => 300,       // Sollintervall des externen Cron-Aufrufs (cron-job.org)
+        'collect_interval_seconds' => 240,    // Mindestabstand der Dienstprüfungen (laufen im Cron)
+        'tls_warn_days' => 14,                // Warnung vor Zertifikatsablauf
+        'tls_hosts' => [],                    // leer = Hosts aus app_base_url, admin_base_url, public_base_url
+        'alert_emails' => [],                 // Plattformadministratoren für Störungs- und Entwarnungsmails; leer = nicht eingerichtet
+        'editors' => [],                      // E-Mail-Adressen der Superadmins mit Bearbeitungsrecht (Meldungen, Testversand); leer = alle Superadmins
+        'test_mail_to' => '',                 // feste eigene Testadresse für den manuellen Testversand; niemals Kundenadressen
+        'public_min_coverage_pct' => 99,      // Mindest-Messabdeckung für öffentliche Prozentwerte (Produkteinstellung)
+        'tariff_limits' => [],                // manuell hinterlegte Tariflimits mit Quelle und Datum, z.B. ['php_memory_mb' => ['value' => 512, 'source' => 'IONOS Tarifübersicht', 'date' => '06.09.2026']]
+    ],
+    // Öffentliche Statusseite (Abschnitt 8): Adresse für Links; leer = keine Links anzeigen
+    'status_page_url' => '',
+    // Veröffentlichung des Status-Snapshots (nur erlaubte Felder). Ziele optional:
+    //   'file'   => absoluter Pfad zu status.json auf demselben Webspace (nicht unabhängig von IONOS)
+    //   'github' => ['owner' => '', 'repo' => '', 'path' => 'status.json', 'branch' => 'main', 'token' => 'HIER-FINE-GRAINED-TOKEN-NUR-CONTENTS-WRITE']
+    'status_publish' => [],
     'sync' => [
         'step_seconds'          => 8,
         'step_max'              => 40,

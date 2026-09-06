@@ -30,3 +30,6 @@ php-ionos/app/storage/mandates/*
 # Profilbilder (Laufzeitdaten)
 php-ionos/app/storage/avatars/*
 !php-ionos/app/storage/avatars/.gitkeep
+
+# vom Deployment erzeugt
+php-ionos/app/build.txt

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartEinzug Systemstatus</title>
+<meta name="description" content="Aktueller Betriebszustand der SmartEinzug-Kundenfunktionen: Webanwendung, Anmeldung, Datenabgleich, Einzugsverarbeitung und E-Mail-Benachrichtigungen.">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="https://status.smart-einzug.de/">
+<style>
+:root { --gold: #E3AC48; --anthrazit: #2E2D2E; --grau: #9F9F9F; --beige: #FBF6EC; --ok: #2e9e5b; --warn: #c98a12; --fail: #c2372f; --unknown: #7a7a7a; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", Carlito, Calibri, Arial, sans-serif; color: var(--anthrazit); background: #fff; line-height: 1.5; }
+header { border-bottom: 1px solid #e6e2da; }
+.wrap { max-width: 880px; margin: 0 auto; padding: 18px 20px; }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand strong { font-size: 20px; letter-spacing: 0.2px; }
+.brand strong span { color: var(--gold); }
+.brand a { color: var(--anthrazit); text-decoration: none; font-size: 14px; }
+h1 { font-size: 26px; margin: 22px 0 4px; }
+h2 { font-size: 18px; margin: 26px 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--gold); display: inline-block; }
+.overall { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 16px 18px; border-radius: 10px; background: var(--beige); margin-top: 12px; }
+.state { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.state::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--unknown); flex: 0 0 auto; }
+.state-ok::before { background: var(--ok); } .state-degraded::before { background: var(--warn); } .state-fail::before { background: var(--fail); } .state-maintenance::before { background: var(--gold); }
+.meta { color: #555; font-size: 14px; }
+.stale { background: #fff4e0; border: 1px solid var(--gold); padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-size: 15px; }
+table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 15px; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--grau); font-weight: 600; }
+.bar { display: flex; gap: 2px; margin-top: 6px; }
+.day { flex: 1 1 0; height: 16px; border-radius: 2px; background: #e6e6e6; border: 1px dashed #ccc; }
+.day-ok { background: var(--ok); border: 0; } .day-degraded { background: var(--warn); border: 0; } .day-fail { background: var(--fail); border: 0; } .day-unknown { background: var(--grau); border: 0; }
+.legend { font-size: 13px; color: #555; margin-top: 6px; }
+.incident { border: 1px solid #e6e2da; border-radius: 10px; padding: 14px 16px; margin-top: 10px; }
+.incident h3 { margin: 0 0 6px; font-size: 16px; }
+.incident ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.notes { font-size: 13px; color: #555; margin-top: 22px; }
+footer { margin-top: 36px; background: var(--anthrazit); color: #d8d8d8; font-size: 13px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: space-between; }
+footer a { color: var(--gold); text-decoration: none; }
+noscript .stale { display: block; }
+@media (max-width: 600px) { h1 { font-size: 22px; } th, td { padding: 8px 4px; font-size: 14px; } }
+</style>
+</head>
+<body>
+<header><div class="wrap brand"><strong>Smart<span>Einzug</span> Systemstatus</strong><a href="https://smart-einzug.de/" rel="noopener">Zur Website</a></div></header>
+<main class="wrap">
+  <h1>Systemstatus</h1>
+  <p class="meta">Betriebszustand der kundenrelevanten Funktionen. Diese Seite wird unabhängig von der Anwendung ausgeliefert und lädt gespeicherte Statusdaten; Besucher lösen keine Prüfungen aus.</p>
+  <noscript><div class="stale">Ohne JavaScript werden keine Live-Statusdaten geladen. Der letzte veröffentlichte Stand ist als <a href="status.json">status.json</a> abrufbar; das Feld generated_at nennt den Zeitpunkt der Erstellung (UTC).</div></noscript>
+  <div class="overall" id="overall"><span class="state state-unknown" id="overall-state">Status wird geladen …</span><span class="meta" id="checked">Zuletzt geprüft: …</span></div>
+  <div class="stale" id="stale" hidden></div>
+
+  <h2>Komponenten</h2>
+  <table id="components"><thead><tr><th>Funktion</th><th>Zustand</th><th>Zuletzt geprüft</th></tr></thead><tbody><tr><td colspan="3" class="meta">Wird geladen …</td></tr></tbody></table>
+
+  <h2>Aktuelle Vorfälle und Wartungen</h2>
+  <div id="incidents-open"><p class="meta">Wird geladen …</p></div>
+
+  <h2>Verfügbarkeit</h2>
+  <p class="meta">Zeitgewichtet aus periodischen Prüfungen. Prozentwerte erscheinen nur bei ausreichender Messabdeckung; nicht beobachtete Tage bleiben grau ("Keine Daten"). Der erfasste Zeitraum wird jeweils genannt.</p>
+  <div id="availability"><p class="meta">Wird geladen …</p></div>
+  <p class="legend">Legende: <span class="state state-ok">Betriebsbereit</span> · <span class="state state-degraded">Eingeschränkt</span> · <span class="state state-fail">Störung</span> · <span class="state state-unknown">Keine Daten oder unbekannt</span></p>
+
+  <h2>Vergangene Vorfälle</h2>
+  <div id="incidents-past"><p class="meta">Wird geladen …</p></div>
+
+  <div class="notes" id="notes"></div>
+</main>
+<footer><div class="wrap"><span>SmartEinzug ist ein Dienst der Müller Holding AG.</span><span><a href="https://smart-einzug.de/impressum/" rel="noopener">Impressum</a> · <a href="https://smart-einzug.de/datenschutz/" rel="noopener">Datenschutz</a></span></div></footer>
+<script>
+(function () {
+  var LABELS = { ok: 'Betriebsbereit', degraded: 'Eingeschränkt', fail: 'Störung', maintenance: 'Wartung', unknown: 'Status unbekannt', nodata: 'Keine Daten' };
+  var SYMBOL = { ok: '✔', degraded: '▲', fail: '✖', maintenance: '⚒', unknown: '?' };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmt(iso) { if (!iso) { return 'unbekannt'; } var d = new Date(iso); if (isNaN(d.getTime())) { return 'unbekannt'; }
+    return d.toLocaleString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' Uhr (Europe/Berlin)'; }
+  function stateHtml(state, label) { var s = LABELS[state] ? state : 'unknown'; return '<span class="state state-' + s + '">' + esc(SYMBOL[s] || '?') + ' ' + esc(label || LABELS[s]) + '</span>'; }
+  function render(data) {
+    var now = Date.now();
+    var gen = data.generated_at ? new Date(data.generated_at).getTime() : NaN;
+    var valid = (data.valid_for_seconds || 900) * 1000;
+    var stale = isNaN(gen) || (now - gen) > valid;
+    var staleBox = document.getElementById('stale');
+    if (stale) {
+      staleBox.hidden = false;
+      staleBox.textContent = 'Der aktuelle Status kann derzeit nicht zuverlässig ermittelt werden. Letzte erfolgreiche Prüfung: ' + fmt(data.checked_at || data.generated_at) + '.';
+      document.getElementById('overall-state').outerHTML = stateHtml('unknown', 'Status unbekannt (Daten veraltet)');
+    } else {
+      staleBox.hidden = true;
+      var ov = data.overall || {};
+      document.getElementById('overall-state').outerHTML = stateHtml(ov.state, ov.label);
+    }
+    document.getElementById('overall').querySelector('.state').id = 'overall-state';
+    document.getElementById('checked').textContent = 'Zuletzt geprüft: ' + fmt(data.checked_at) + ' · Stand der Daten: ' + fmt(data.generated_at);
+    var rows = (data.components || []).map(function (c) {
+      return '<tr><td>' + esc(c.name) + '</td><td>' + stateHtml(stale ? 'unknown' : c.state, stale ? 'Status unbekannt' : c.label) + '</td><td>' + esc(fmt(c.checked_at)) + '</td></tr>';
+    });
+    document.querySelector('#components tbody').innerHTML = rows.join('') || '<tr><td colspan="3" class="meta">Keine Komponenten veröffentlicht.</td></tr>';
+    var open = [], past = [];
+    (data.incidents || []).forEach(function (i) { (i.status === 'resolved' || i.status === 'completed') ? past.push(i) : open.push(i); });
+    function incHtml(i) {
+      var ups = (i.updates || []).map(function (u) { return '<li><strong>' + esc(u.phase_label) + '</strong> ' + esc(fmt(u.at)) + (u.text ? ': ' + esc(u.text) : '') + '</li>'; }).join('');
+      return '<div class="incident"><h3>' + (i.kind === 'maintenance' ? 'Wartung: ' : 'Störung: ') + esc(i.title) + ' ' + stateHtml(i.kind === 'maintenance' ? 'maintenance' : ((i.status === 'resolved') ? 'ok' : 'fail'), i.status_label) + '</h3>'
+        + '<div class="meta">Beginn ' + esc(fmt(i.started_at)) + (i.ended_at ? ', Ende ' + esc(fmt(i.ended_at)) : '') + (i.scheduled_end_at ? ', geplant bis ' + esc(fmt(i.scheduled_end_at)) : '') + '</div>'
+        + (i.message ? '<p>' + esc(i.message) + '</p>' : '') + (ups ? '<ul>' + ups + '</ul>' : '') + '</div>';
+    }
+    document.getElementById('incidents-open').innerHTML = open.length ? open.map(incHtml).join('') : '<p class="meta">Keine aktuellen Vorfälle oder Wartungen gemeldet.</p>';
+    document.getElementById('incidents-past').innerHTML = past.length ? past.map(incHtml).join('') : '<p class="meta">Keine vergangenen Vorfälle in den letzten 90 Tagen veröffentlicht.</p>';
+    var av = data.availability || {}, hist = data.history || {};
+    var html = (data.components || []).map(function (c) {
+      var a = av[c.key] || {}, d30 = a.days30 || {}, d90 = a.days90 || {};
+      var bar = (hist[c.key] || []).map(function (d) { return '<span class="day day-' + esc(d.state) + '" title="' + esc(d.day) + ': ' + esc(LABELS[d.state] || d.state) + '"></span>'; }).join('');
+      function avTxt(x) { return x.pct == null ? 'Unvollständige Messdaten' : esc(x.label) + ' (Abdeckung ' + esc(x.coverage_pct) + ' %)'; }
+      return '<div class="incident"><h3>' + esc(c.name) + '</h3><div class="meta">30 Tage: ' + avTxt(d30) + ' · 90 Tage: ' + avTxt(d90) + (d90.observed_from ? ' · erfasst seit ' + esc(fmt(d90.observed_from)) : '') + '</div><div class="bar">' + bar + '</div></div>';
+    });
+    document.getElementById('availability').innerHTML = html.join('') || '<p class="meta">Noch keine Verfügbarkeitsdaten.</p>';
+    document.getElementById('notes').innerHTML = (data.notes || []).map(function (n) { return '<p>' + esc(n) + '</p>'; }).join('');
+  }
+  function fail() {
+    var staleBox = document.getElementById('stale');
+    staleBox.hidden = false;
+    staleBox.textContent = 'Der aktuelle Status kann derzeit nicht abgerufen werden. Bitte später erneut laden.';
+    var st = document.getElementById('overall-state'); if (st) { st.outerHTML = stateHtml('unknown', 'Status unbekannt'); document.getElementById('overall').querySelector('.state').id = 'overall-state'; }
+  }
+  function load() {
+    if (document.hidden) { return; }
+    fetch('status.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) { throw new Error('http'); } return r.json(); }).then(render).catch(fail);
+  }
+  load();
+  window.setInterval(load, 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { load(); } });
+})();
+</script>
+</body>
+</html>

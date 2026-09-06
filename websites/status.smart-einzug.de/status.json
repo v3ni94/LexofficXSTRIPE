@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "generated_at": null,
+  "valid_for_seconds": 900,
+  "checked_at": null,
+  "overall": {"state": "unknown", "label": "Status unbekannt", "uncertain": true},
+  "components": [],
+  "incidents": [],
+  "availability": {},
+  "history": {},
+  "notes": ["Platzhalter: Diese Datei wird durch die Statusveröffentlichung der Anwendung ersetzt. Bis dahin liegen keine Statusdaten vor."]
+}

@@ -260,6 +260,26 @@ der Abschlussmeldung und im Protokoll. Rückrollen ohne Codeänderung:
 `skip_unchanged` false, `contact_refresh_hours` 0. Details und Messwerte in
 docs/sync-performance.md.
 
+## 7f. Multiaccount, Gerätefreigabe, Systemmonitoring (Migrationen 015 bis 017)
+
+Die Migrationen werden beim nächsten Deployment automatisch über `migrate.php` eingespielt (siehe 7b und docs/migrations.md). Danach stehen bereit:
+
+- **Multiaccount** (015): Checkbox unter Firmendaten, Mein Profil. Registrierung mit bereits bekannter E-Mail-Adresse führt zur Anmeldung und danach zur Anlage der weiteren Firma. Keine Konfiguration nötig. Details: docs/multiaccount.md.
+- **Gerät für 90 Tage merken** (016): Checkbox auf der 2FA-Seite, Verwaltung unter Sicherheit, Gemerkte Geräte. Keine Konfiguration nötig. Details: docs/device-trust.md.
+- **Adminbereich System** (017): letzter Eintrag in der Adminnavigation, nur für Plattformadministratoren. Optionale Konfiguration in `app/config.php` (Vorlage in `app/config.example.php`):
+
+```php
+'monitoring' => [
+    'alert_emails' => ['HIER-ADMIN-ADRESSE'],  // Störungs- und Entwarnungsmails; leer = nicht eingerichtet
+    'test_mail_to' => 'HIER-EIGENE-TESTADRESSE', // manueller Testversand, niemals Kundenadressen
+    'editors' => [],                            // Superadmins mit Bearbeitungsrecht; leer = alle
+],
+'status_page_url' => '',                        // erst setzen, wenn status.smart-einzug.de erreichbar ist
+'status_publish' => [],                         // Ziel für status.json, siehe docs/status-page.md
+```
+
+Der Monitoring-Sammler läuft im bestehenden Cron (etwa 4 Sekunden Reserve je Aufruf). Es werden nur eigene Jobs und Dienste gemessen; CPU, Gesamtspeicher und Prozesse stellt das Hosting nicht bereit und werden nicht angezeigt. Details: docs/monitoring.md, docs/status-page.md.
+
 ## 8. SEPA-Mandate
 
 - Unter "Firma": Anschrift, Gläubiger-Identifikationsnummer (Deutsche Bundesbank,

@@ -198,6 +198,116 @@ CREATE TABLE IF NOT EXISTS registration_requests (
     CONSTRAINT fk_regreq_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Gerätefreigaben der Zwei-Faktor-Authentifizierung (Migration 016). Zeiten in UTC, nur Token-Hash.
+CREATE TABLE IF NOT EXISTS trusted_devices (
+    id             CHAR(36)     NOT NULL PRIMARY KEY,
+    user_id        CHAR(36)     NOT NULL,
+    scope          VARCHAR(20)  NOT NULL DEFAULT 'app',   -- app | admin
+    token_hash     CHAR(64)     NOT NULL,                 -- HMAC-SHA256 des geheimen Tokenteils
+    label          VARCHAR(120) NULL,
+    created_at     DATETIME     NOT NULL,
+    expires_at     DATETIME     NOT NULL,                 -- created_at + 90 Tage, wird nie verlängert
+    last_used_at   DATETIME     NULL,
+    rotated_at     DATETIME     NULL,
+    revoked_at     DATETIME     NULL,
+    revoked_reason VARCHAR(40)  NULL,
+    ip_created     VARCHAR(45)  NULL,
+    UNIQUE KEY uq_trusted_token (token_hash),
+    KEY ix_trusted_user (user_id, revoked_at, expires_at),
+    CONSTRAINT fk_trusted_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Systemmonitoring (Migration 017): eigene Jobs, Gesundheitsprüfungen, Tagesaggregate, Anfragen, Störungen. Zeiten in UTC.
+CREATE TABLE IF NOT EXISTS job_runs (
+    id                CHAR(36)     NOT NULL PRIMARY KEY,
+    job_type          VARCHAR(30)  NOT NULL,             -- cron | sync | collections | monitor
+    job_key           VARCHAR(120) NULL,                 -- fachlicher Auftrag (z.B. sync:<firma>:<start>)
+    tenant_id         CHAR(36)     NULL,
+    source            VARCHAR(20)  NOT NULL DEFAULT 'cron', -- cron | web | cli
+    status            VARCHAR(12)  NOT NULL DEFAULT 'running', -- running | success | failed | unknown
+    started_at        DATETIME     NOT NULL,
+    heartbeat_at      DATETIME     NOT NULL,
+    finished_at       DATETIME     NULL,
+    duration_ms       INT          NULL,
+    items_processed   INT          NOT NULL DEFAULT 0,
+    api_calls         INT          NOT NULL DEFAULT 0,
+    api_errors        INT          NOT NULL DEFAULT 0,
+    throttle_ms       INT          NOT NULL DEFAULT 0,
+    retries           INT          NOT NULL DEFAULT 0,
+    skipped_starts    INT          NOT NULL DEFAULT 0,
+    peak_memory_bytes INT UNSIGNED NULL,
+    error_category    VARCHAR(60)  NULL,
+    KEY ix_jobruns_type_started (job_type, started_at),
+    KEY ix_jobruns_finished (finished_at),
+    KEY ix_jobruns_status_heartbeat (status, heartbeat_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS monitor_checks (
+    id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    component     VARCHAR(40)  NOT NULL,
+    source        VARCHAR(20)  NOT NULL DEFAULT 'internal', -- internal | instrumented | external
+    checked_at    DATETIME     NOT NULL,
+    status        VARCHAR(10)  NOT NULL,                    -- ok | degraded | fail | unknown
+    latency_ms    INT          NULL,
+    value_num     DECIMAL(14,2) NULL,
+    unit          VARCHAR(12)  NULL,
+    category      VARCHAR(60)  NULL,                        -- bereinigte Fehlerkategorie, keine Rohtexte
+    valid_seconds INT          NOT NULL DEFAULT 300,        -- Gültigkeitsdauer der Messung für die Zeitgewichtung
+    KEY ix_mon_component_time (component, checked_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS monitor_daily (
+    component  VARCHAR(40) NOT NULL,
+    day        DATE        NOT NULL,
+    t_ok       INT         NOT NULL DEFAULT 0,   -- Sekunden nutzbar (inkl. eingeschränkt)
+    t_degraded INT         NOT NULL DEFAULT 0,   -- davon eingeschränkt
+    t_fail     INT         NOT NULL DEFAULT 0,   -- Sekunden nicht nutzbar
+    t_unknown  INT         NOT NULL DEFAULT 0,   -- Sekunden ohne gültigen Nachweis
+    checks     INT         NOT NULL DEFAULT 0,
+    fails      INT         NOT NULL DEFAULT 0,
+    updated_at DATETIME    NOT NULL,
+    PRIMARY KEY (component, day)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS monitor_requests (
+    minute     DATETIME     NOT NULL PRIMARY KEY,           -- UTC, auf die Minute gekürzt
+    requests   INT          NOT NULL DEFAULT 0,
+    errors_5xx INT          NOT NULL DEFAULT 0,
+    sum_ms     INT UNSIGNED NOT NULL DEFAULT 0,
+    max_ms     INT          NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS monitor_incidents (
+    id               CHAR(36)     NOT NULL PRIMARY KEY,
+    kind             VARCHAR(12)  NOT NULL DEFAULT 'incident', -- incident | maintenance
+    title            VARCHAR(160) NOT NULL,
+    status           VARCHAR(20)  NOT NULL,                    -- investigating | identified | monitoring | resolved | scheduled | active | completed
+    components       TEXT         NULL,                        -- JSON-Liste öffentlicher Komponentenschlüssel
+    started_at       DATETIME     NOT NULL,
+    ended_at         DATETIME     NULL,
+    scheduled_end_at DATETIME     NULL,
+    public_message   TEXT         NULL,                        -- veröffentlichter Text (bereinigt)
+    internal_notes   TEXT         NULL,                        -- nie veröffentlicht
+    published        TINYINT(1)   NOT NULL DEFAULT 0,
+    published_at     DATETIME     NULL,
+    created_by       CHAR(36)     NULL,
+    created_at       DATETIME     NOT NULL,
+    updated_at       DATETIME     NOT NULL,
+    KEY ix_incidents_started (started_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS monitor_incident_updates (
+    id            CHAR(36)    NOT NULL PRIMARY KEY,
+    incident_id   CHAR(36)    NOT NULL,
+    phase         VARCHAR(20) NOT NULL,
+    public_text   TEXT        NULL,
+    internal_note TEXT        NULL,
+    created_by    CHAR(36)    NULL,
+    created_at    DATETIME    NOT NULL,
+    KEY ix_incupd_incident (incident_id, created_at),
+    CONSTRAINT fk_incupd_incident FOREIGN KEY (incident_id) REFERENCES monitor_incidents (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS integrations (
     id                              CHAR(36)   NOT NULL PRIMARY KEY,
     tenant_id                       CHAR(36)   NOT NULL,

@@ -121,6 +121,13 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                     <a href="security.php">Sicherheit</a>
                     <?php if (!on_admin_host() && empty($ctx['support_mode']) && user_multiaccount_state((string)$ctx['user_id'])['active']): ?><a href="companies.php">Firmenübersicht</a><?php endif; ?>
                     <a href="logout.php" class="menu-logout">Abmelden</a>
+                    <?php if (device_cookie_read() !== null): ?>
+                    <form method="post" action="logout.php" class="menu-form">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="forget">
+                        <button type="submit" class="linklike menu-logout-forget" title="Sitzung beenden und die 90-Tage-Freigabe dieses Browsers widerrufen">Abmelden und Gerät vergessen</button>
+                    </form>
+                    <?php endif; ?>
                 </div>
             </details>
         </div>
@@ -186,6 +193,7 @@ function layout_footer(?array $ctx = null): void
         <span><?= e($product) ?> ist ein Dienst der <?= e($op['name'] ?? 'Müller Holding AG') ?>,
             <?= e($op['street'] ?? '') ?>, <?= e($op['zip_city'] ?? '') ?>.
             <a href="impressum.php">Impressum</a>
+            <?php if (($su = rtrim(trim((string)config('status_page_url', '')), '/')) !== ''): ?> · <a href="<?= e($su) ?>/" rel="noopener">Systemstatus</a><?php endif; ?>
             <?php if ($mk !== ''): ?>
                 · <a href="<?= e($mk) ?>/datenschutz" rel="noopener">Datenschutz</a>
                 · <a href="<?= e($mk) ?>/agb" rel="noopener">AGB</a>
