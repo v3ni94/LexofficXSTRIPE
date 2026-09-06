@@ -150,10 +150,25 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Live-Schlüssel hinterlegen</a><?php endif; ?>
         </div>
     <?php endif; ?>
-    <?php if ($ctx && billing_enabled() && !subscription_allows_operation($ctx) && current_script() !== 'subscription.php'): ?>
-        <div class="flash flash-info">Für diese Firma liegt noch kein aktives Abonnement vor.
-            <?php if ($ctx['role'] === 'owner'): ?><a href="subscription.php">Abonnement jetzt abschließen</a><?php else: ?>Bitte wenden Sie sich an den Inhaber des Firmenaccounts.<?php endif; ?>
-        </div>
+    <?php if ($ctx && billing_enabled() && (int)($ctx['billing_exempt'] ?? 0) !== 1 && current_script() !== 'subscription.php'): ?>
+        <?php if (!subscription_allows_operation($ctx)): ?>
+            <?php $subPlan = plan_for_org($ctx); $subEnded = ($ctx['subscription_status'] ?? '') === 'canceled' || ($ctx['subscription_status'] ?? '') === 'past_due'; ?>
+            <div class="sub-banner" role="status">
+                <div class="sub-banner-text">
+                    <strong><?= $subEnded ? 'Ihr Vertrag ist beendet.' : 'Ihr Firmenaccount ist noch nicht freigeschaltet.' ?></strong>
+                    Einzüge, Synchronisation und Kundenpflege stehen erst mit aktivem Abonnement zur Verfügung.
+                    Tarif <?= e($subPlan['name']) ?>, <?= format_eur_cents((int)$subPlan['price_cents']) ?> netto je <?= (int)$subPlan['period_days'] ?> Tage, jederzeit zum Periodenende kündbar.
+                </div>
+                <?php if ($ctx['role'] === 'owner'): ?>
+                    <a class="btn" href="subscription.php?bestellen=1"><?= $subEnded ? 'Vertrag aktivieren' : 'Jetzt freischalten' ?></a>
+                <?php else: ?>
+                    <span class="hint">Nur der Inhaber des Firmenaccounts kann das Abonnement abschließen.</span>
+                <?php endif; ?>
+            </div>
+        <?php elseif ((int)($ctx['cancel_at_period_end'] ?? 0) === 1 && !empty($ctx['subscription_period_end'])): ?>
+            <div class="flash flash-warn">Ihr Abonnement ist zum <?= format_date($ctx['subscription_period_end']) ?> gekündigt. Bis dahin bleibt der Zugriff bestehen.
+                <?php if ($ctx['role'] === 'owner'): ?><a href="subscription.php">Kündigung zurücknehmen</a><?php endif; ?></div>
+        <?php endif; ?>
     <?php endif; ?>
     <?php
 }

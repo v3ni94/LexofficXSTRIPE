@@ -148,6 +148,7 @@ function audit_action_label(string $action): string
         'mandate_granted_digital'  => 'Mandat digital erteilt (Stripe)',
         'mandate_stripe_data_saved'=> 'Stripe-Mandatsdaten gespeichert',
         'subscription_checkout'    => 'Abo-Abschluss gestartet',
+        'subscription_consent'     => 'Bestellbestätigung mit AGB-Zustimmung (zahlungspflichtig abonnieren)',
         'subscription_changed'     => 'Abo geändert',
         'subscription_cancelled'   => 'Abo gekündigt',
         'admin_plan_changed'       => 'Tarif durch Administrator geändert',

@@ -593,3 +593,8 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 .help-msg { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 10px 12px; margin-top: 8px; background: var(--color-surface); }
 .help-msg-support { background: var(--color-neutral-bg); border-left: 3px solid var(--hvm-orange); }
 @media (max-width: 900px) { .help-layout { grid-template-columns: 1fr; } .help-nav { position: static; } }
+
+/* Hinweisbalken ohne aktives Abonnement (sichtbar, sachlich) */
+.sub-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 18px; border-radius: var(--radius); border: 1px solid var(--hvm-orange); border-left-width: 6px; background: #fff7e6; color: var(--hvm-anthracite); }
+.sub-banner-text { flex: 1 1 320px; font-size: 14px; line-height: 1.5; }
+.sub-banner-text strong { display: block; font-size: 15px; margin-bottom: 2px; }

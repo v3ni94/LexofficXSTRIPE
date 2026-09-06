@@ -141,6 +141,18 @@ die E-Mail-Bestätigung entfällt.
 3. Kundenportal in Stripe aktivieren (Zahlungsmethode ändern, Rechnungen, Kündigung).
 4. `billing.enabled = true` setzen. Neue Firmen müssen dann das Abo abschließen,
    bevor Rechnungen, Einzüge und Kunden nutzbar sind. Bestandsfirmen bleiben befreit.
+5. Optional `agb_version` in config.php setzen (z. B. "AGB smart-einzug.de, Stand
+   01.10.2026"); die Fassung wird bei jeder Bestellbestätigung protokolliert.
+
+Ablauf für den Kunden (nur Inhaber): Ohne aktives Abo erscheint auf jeder Seite
+ein Hinweisbalken mit Button; unter Firma > Abonnement stehen Registrierungsdatum,
+Tarif, Status, Periodenende und die Buttons Abo kündigen bzw. Vertrag aktivieren.
+Vor der Weiterleitung zu Stripe zeigt `subscription.php?bestellen=1` eine
+Bestellübersicht (Preis netto, Laufzeit, Kündigung, Vertragspartner) mit
+Pflichthäkchen für AGB und Unternehmerbestätigung und dem Button
+"Zahlungspflichtig abonnieren"; die Bestätigung wird mit Zeitpunkt, IP und
+AGB-Fassung protokolliert (`subscription_consent`). Rechnungen des Abonnements
+werden aus Stripe gelesen und unter Abonnement als Archiv angezeigt (Ansehen, PDF).
 
 Spätere Tarife (BASIC, PLUS, PRO, UNLIMITED) sind angelegt, aber inaktiv und
 nicht öffentlich. Ein Wechsel auf einen Tarif mit weniger Benutzern wird

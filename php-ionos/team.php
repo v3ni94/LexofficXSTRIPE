@@ -632,4 +632,38 @@ layout_header('Firma', $ctx);
         Abonnement verwalten kann ausschließlich der Inhaber des Firmenaccounts.</p>
 </div>
 <?php endif; ?>
+
+<?php
+$subAllowed = subscription_allows_operation($org);
+$subStatus = (string)($org['subscription_status'] ?? 'pending');
+?>
+<div class="card" id="abonnement">
+    <h2>Abonnement</h2>
+    <dl class="kv">
+        <dt>Registriert am</dt><dd><?= format_datetime($org['created_at'] ?? null) ?></dd>
+        <dt>Tarif</dt><dd><?= e($plan['name']) ?> · <?= format_eur_cents((int)$plan['price_cents']) ?> netto je <?= (int)$plan['period_days'] ?> Tage<?= billing_vat_hint((int)$plan['price_cents']) ?></dd>
+        <dt>Status</dt><dd>
+            <?php if ((int)$org['billing_exempt'] === 1): ?><span class="badge badge-success">Befreit</span>
+            <?php elseif (!billing_enabled()): ?><span class="badge badge-neutral">Abrechnung noch nicht freigeschaltet</span> <span class="hint">Bis dahin entstehen keine Einschränkungen und keine Kosten.</span>
+            <?php else: ?><span class="badge <?= $subAllowed ? 'badge-success' : 'badge-danger' ?>"><?= e(subscription_status_label($subStatus)) ?></span><?php endif; ?>
+        </dd>
+        <?php if (!empty($org['subscription_period_end'])): ?>
+        <dt><?= (int)$org['cancel_at_period_end'] ? 'Vertrag endet am' : 'Laufende Periode bis' ?></dt><dd><?= format_date($org['subscription_period_end']) ?><?= (int)$org['cancel_at_period_end'] ? ' <span class="badge badge-warn">Kündigung vorgemerkt</span>' : '' ?></dd>
+        <?php endif; ?>
+    </dl>
+    <?php if ($isOwner && billing_enabled() && (int)$org['billing_exempt'] !== 1): ?>
+    <div class="form-actions" style="flex-wrap: wrap;">
+        <?php if (!$subAllowed): ?>
+            <a class="btn" href="subscription.php?bestellen=1"><?= $subStatus === 'canceled' ? 'Vertrag aktivieren' : 'Abonnement abschließen' ?></a>
+        <?php elseif ((int)$org['cancel_at_period_end'] === 1): ?>
+            <a class="btn btn-secondary" href="subscription.php#kuendigung">Kündigung zurücknehmen</a>
+        <?php else: ?>
+            <a class="btn btn-secondary" href="subscription.php#kuendigung">Abo kündigen</a>
+        <?php endif; ?>
+        <a class="btn btn-ghost" href="subscription.php">Rechnungen und Zahlungsmethode</a>
+    </div>
+    <?php elseif ($isOwner): ?>
+    <p class="hint"><a href="subscription.php">Details zum Abonnement</a></p>
+    <?php endif; ?>
+</div>
 <?php layout_footer($ctx); ?>

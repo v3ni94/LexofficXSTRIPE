@@ -224,3 +224,70 @@ function billing_handle_event(array $event): string
             return 'ignoriert';
     }
 }
+
+/**
+ * Rechnungen des Abonnements aus Stripe (nur Lesezugriff, Kundenfilter über die
+ * Stripe-Kundennummer der Firma). Für das Rechnungsarchiv unter Abonnement.
+ * @return array<int, array{id:string,number:?string,status:string,total_cents:int,currency:string,created:int,period_start:?int,period_end:?int,hosted_url:?string,pdf_url:?string}>
+ */
+function billing_list_invoices(array $org, int $limit = 24): array
+{
+    if (!billing_enabled() || empty($org['platform_stripe_customer_id'])) {
+        return [];
+    }
+    $res = billing_client()->call('GET', '/invoices', [
+        'customer' => (string)$org['platform_stripe_customer_id'],
+        'limit'    => max(1, min(100, $limit)),
+    ]);
+    $out = [];
+    foreach ((array)($res['data'] ?? []) as $inv) {
+        if (($inv['status'] ?? '') === 'draft') {
+            continue;
+        }
+        $out[] = [
+            'id'           => (string)($inv['id'] ?? ''),
+            'number'       => isset($inv['number']) ? (string)$inv['number'] : null,
+            'status'       => (string)($inv['status'] ?? ''),
+            'total_cents'  => (int)($inv['total'] ?? 0),
+            'currency'     => strtoupper((string)($inv['currency'] ?? 'eur')),
+            'created'      => (int)($inv['created'] ?? 0),
+            'period_start' => isset($inv['period_start']) ? (int)$inv['period_start'] : null,
+            'period_end'   => isset($inv['period_end']) ? (int)$inv['period_end'] : null,
+            'hosted_url'   => isset($inv['hosted_invoice_url']) ? (string)$inv['hosted_invoice_url'] : null,
+            'pdf_url'      => isset($inv['invoice_pdf']) ? (string)$inv['invoice_pdf'] : null,
+        ];
+    }
+    return $out;
+}
+
+/** Lesbarer Status einer Stripe-Rechnung. */
+function billing_invoice_status_label(string $status): string
+{
+    return match ($status) {
+        'paid' => 'Bezahlt',
+        'open' => 'Offen',
+        'void' => 'Storniert',
+        'uncollectible' => 'Uneinbringlich',
+        default => $status,
+    };
+}
+
+/**
+ * Bestellbestätigung vor dem Stripe-Checkout prüfen und protokollieren (AGB-Zustimmung,
+ * Unternehmerbestätigung). Wirft bei fehlender Zustimmung. Der Audit-Eintrag hält
+ * Zeitpunkt, IP (über audit_log), AGB-Fassung und Preis fest.
+ */
+function billing_record_consent(array $org, array $plan, array $actor, array $post): void
+{
+    if (($post['agb'] ?? '') !== '1') {
+        throw new RuntimeException('Bitte bestätigen Sie die Allgemeinen Geschäftsbedingungen, um das Abonnement abzuschließen.');
+    }
+    if (($post['unternehmer'] ?? '') !== '1') {
+        throw new RuntimeException('Bitte bestätigen Sie, dass Sie das Abonnement als Unternehmen abschließen.');
+    }
+    audit_log($org['id'], $actor, 'subscription_consent', 'organization', $org['id'], [
+        'plan' => $plan['code'], 'price_cents_net' => (int)$plan['price_cents'], 'period_days' => (int)$plan['period_days'],
+        'agb_version' => (string)config('agb_version', 'AGB smart-einzug.de, Stand ' . date('d.m.Y')),
+        'agb_url' => public_base_url() . '/agb', 'button' => 'Zahlungspflichtig abonnieren',
+    ]);
+}
