@@ -127,22 +127,26 @@ Sicherungen). Es wird kein Docker-Socket eingebunden.
   (HTTP-01- bzw. TLS-ALPN-Challenge); hinter einem zusaetzlichen externen Load Balancer oder CDN
   waere die Caddy-Konfiguration anzupassen.
 
-## Offene Punkte (fuer die adversariale Abnahme, Auftrag III)
+## Offene Punkte nach der adversarialen Abnahme (Auftrag III)
 
-- **Backup-Rueckmeldung ohne Docker-Socket**: `deploy/vps/backup/backup.sh` schreibt das Ergebnis jedes
-  Laufs als `backup-status.json` in den gemeinsamen Speicher (`RESULT_FILE`); die Monitoring-Komponente
-  "Sicherungen" (`app/monitor.php`) liest diese Datei. Der Backup-Container hat damit keine Rechte auf
-  dem Host und keinen Zugriff auf Docker. Zugangsdaten werden ueber eine Optionsdatei (0600) uebergeben,
-  nie auf der Kommandozeile.
+Erledigt im Rahmen der Abnahme: Backup-Container ohne Docker-Socket (Ergebnisdatei `backup-status.json`),
+Container-Mounts auf `releases/`, `shared/config.php`, `shared/storage`, `shared/sessions` begrenzt,
+Metrik-Sammler ohne Root und ohne Wurzeldateisystem, Rollback prueft den Migrationsstand,
+Statusseite wird aus dem Release ausgeliefert, Zugangsdaten im Wiederherstellungstest ueber
+`--defaults-extra-file`.
+
+Weiterhin offen und vor dem produktiven Betrieb zu entscheiden:
+
 - **DOCKER-USER/ufw-Zusammenspiel**: `scripts/setup-vps.sh` weist auf das Verhalten von Docker
   gegenueber ufw hin, richtet aber kein `ufw-docker` oder eigene `DOCKER-USER`-Regeln ein. Da nur
   Caddy Ports veroeffentlicht und Datenbank/Redis dies bewusst nicht tun, ist das Restrisiko
   gering, sollte aber vor dem ersten produktiven Einzug bestaetigt werden (`docker ps` gegen die
   Liste veroeffentlichter Ports pruefen).
 - **Rollback ohne Migrations-Rueckbau**: `scripts/rollback.sh` wechselt nur den Anwendungscode,
-  nicht das Datenbankschema (Migrationen sind additiv angelegt, siehe `docs/migrations.md`). Das Skript
-  prueft vor dem Rollback, ob alle eingespielten Migrationen im Zielrelease vorhanden sind, und bricht
-  sonst ab; nur mit `FORCE_ROLLBACK=1` wird nach bewusster Pruefung trotzdem zurueckgerollt.
+  nicht das Datenbankschema (Migrationen sind additiv angelegt, siehe `docs/migrations.md`). Das
+  Skript bricht ab, wenn die Datenbank Migrationen enthaelt, die das Zielrelease nicht kennt;
+  `FORCE_ROLLBACK=1` uebersteuert das nur nach bewusster Pruefung. Ein tatsaechlicher Rueckbau
+  des Schemas bleibt ein manueller Eingriff.
 - **rclone-Verfuegbarkeit im Alpine-Image**: `deploy/vps/backup/Dockerfile` versucht, `rclone` aus
   dem Alpine-Community-Repository zu installieren, faellt beim Scheitern aber nur auf den
   `curl`-Ausweichpfad zurueck (setzt ein HTTPS-Ziel voraus, das PUT/Upload beherrscht). Vor dem
@@ -153,10 +157,12 @@ Sicherungen). Es wird kein Docker-Socket eingebunden.
   Bestaetigung (siehe Kommentar in `Caddyfile`) und, laut Eskalationsregel, nach Abstimmung mit der
   Geschaeftsfuehrung, da eine falsche HSTS-Einstellung sich wegen des Browser-Caches nicht
   kurzfristig zuruecknehmen laesst.
-- **Statusseite**: der GitHub-Workflow legt `websites/status.smart-einzug.de` je Release unter
-  `releases/<git-sha>/status/` ab; Caddy liefert sie ueber `releases/current/status` aus. Ohne
-  Workflow (Handbetrieb) muss dieser Ordner beim Anlegen eines Release mitkopiert werden, sonst
-  antwortet der Status-Host mit 404.
+- **HEALTH_STRICT**: in `.env` bis zum Cutover auf `false` lassen (ohne DNS kein Zertifikat, der
+  lokale HTTPS-Check ueber Caddy kann noch nicht bestehen); nach erfolgreichem Cutover auf `true`
+  setzen, damit ein fehlgeschlagener Health-Check das automatische Rollback ausloest.
+- **Stack nie gestartet**: `docker compose config`, `bash -n` und `php -l` wurden ausgefuehrt, ein
+  Start der Container mit Health Checks, Let's Encrypt und SSH-Deployment war in der
+  Entwicklungsumgebung ohne Docker-Daemon nicht moeglich und ist Teil der Staging-Erprobung.
 
 ## Pruefungen, die dieser Ordner ohne laufenden Docker-Daemon besteht
 
