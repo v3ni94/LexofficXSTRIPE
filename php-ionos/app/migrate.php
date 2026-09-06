@@ -30,6 +30,7 @@ function migrations_markers(): array
         '010' => ['users', 'phone_business'],
         '011' => ['payment_collections', 'submit_not_before'],
         '012' => ['support_tickets', null],
+        '013' => ['invoices', 'lexoffice_updated_at'],
     ];
 }
 

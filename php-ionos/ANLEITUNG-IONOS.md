@@ -239,6 +239,17 @@ neuer oder ergänzter Anfrage, an den Fragesteller bei Antwort. Zugangsdaten
 (Stripe-Schlüssel, Webhook-Secret) und vollständige IBANs werden im Formular
 abgewiesen. Höchstens zehn offene Anfragen je Firma.
 
+## 7e. Synchronisation: Schrittgröße, Änderungserkennung (Migration 013)
+
+Die Synchronisation arbeitet zeitbasiert (`sync.step_seconds`, Standard 8 s je
+Aufruf, höchstens `sync.step_max` Detailabrufe). Rechnungen, deren
+`updatedDate` laut Voucherliste unverändert ist, werden ohne Detailabruf
+übernommen (`sync.skip_unchanged`); Kontakte werden höchstens alle
+`sync.contact_refresh_hours` Stunden neu geladen. Messwerte je Lauf stehen in
+der Abschlussmeldung und im Protokoll. Rückrollen ohne Codeänderung:
+`skip_unchanged` false, `contact_refresh_hours` 0. Details und Messwerte in
+docs/sync-performance.md.
+
 ## 8. SEPA-Mandate
 
 - Unter "Firma": Anschrift, Gläubiger-Identifikationsnummer (Deutsche Bundesbank,

@@ -251,6 +251,7 @@ CREATE TABLE IF NOT EXISTS customers (
     name                 VARCHAR(255) NOT NULL,
     email                VARCHAR(255) NULL,
     is_walk_in           TINYINT(1)   NOT NULL DEFAULT 0,
+    lexoffice_synced_at  DATETIME     NULL,           -- letzter Kontaktabruf (Migration 013)
     sepa_debit_enabled   TINYINT(1)   NOT NULL DEFAULT 1,
     created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -332,6 +333,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     currency             CHAR(3)       NOT NULL DEFAULT 'EUR',
     due_date             DATE          NULL,
     lexoffice_status     VARCHAR(50)   NOT NULL,
+    lexoffice_updated_at DATETIME      NULL,          -- updatedDate laut Voucherliste (Migration 013)
     collection_status    VARCHAR(20)   NOT NULL DEFAULT 'none', -- none|open|in_collection|collected|failed|scheduled
     line_items_json      MEDIUMTEXT    NULL,
     keyword              VARCHAR(100)  NULL,

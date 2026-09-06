@@ -27,9 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $step = sync_state_step($tenantId);
             if ($step['done'] && !$step['skipped']) {
                 $r = $step['result'];
+                $m = $r['metrics'] ?? [];
                 flash_set('success', sprintf(
-                    'Synchronisation abgeschlossen: %d Rechnungen geprüft, %d neu, %d aktualisiert, %d abgeschlossen.',
-                    $r['synced'], $r['new'], $r['updated'], $r['removed']
+                    'Synchronisation abgeschlossen: %d Rechnungen geprüft, %d neu, %d aktualisiert, %d abgeschlossen.%s',
+                    $r['synced'], $r['new'], $r['updated'], $r['removed'],
+                    $m ? sprintf(' Aufwand: %d Schritte, %d Lexware-Aufrufe, %d unverändert übernommen, %d Kontakte wiederverwendet.',
+                        (int)($m['steps'] ?? 0), (int)($m['api_calls'] ?? 0), (int)($m['skipped_unchanged'] ?? 0), (int)($m['contacts_reused'] ?? 0)) : ''
                 ));
                 $pdo->prepare("UPDATE sync_state SET status = 'idle' WHERE tenant_id = ? AND status = 'done'")->execute([$tenantId]);
                 redirect('invoices.php');
@@ -96,9 +99,12 @@ if (!empty($_GET['syncing'])) {
     }
     if ($syncState && $syncState['status'] === 'done') {
         $r = $syncState['result'] ?? ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0];
+        $m = $r['metrics'] ?? [];
         flash_set('success', sprintf(
-            'Synchronisation abgeschlossen: %d Rechnungen geprüft, %d neu, %d aktualisiert, %d abgeschlossen.',
-            $r['synced'], $r['new'], $r['updated'], $r['removed']
+            'Synchronisation abgeschlossen: %d Rechnungen geprüft, %d neu, %d aktualisiert, %d abgeschlossen.%s',
+            $r['synced'], $r['new'], $r['updated'], $r['removed'],
+            $m ? sprintf(' Aufwand: %d Schritte, %d Lexware-Aufrufe, %d unverändert übernommen, %d Kontakte wiederverwendet.',
+                (int)($m['steps'] ?? 0), (int)($m['api_calls'] ?? 0), (int)($m['skipped_unchanged'] ?? 0), (int)($m['contacts_reused'] ?? 0)) : ''
         ));
         $pdo->prepare("UPDATE sync_state SET status = 'idle' WHERE tenant_id = ?")->execute([$tenantId]);
         redirect('invoices.php');

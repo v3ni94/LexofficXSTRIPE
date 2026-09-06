@@ -111,7 +111,7 @@ function sync_lex_client(string $tenantId): LexofficeClient
  * Einen Schritt des laufenden Syncs ausführen (mit Sperre).
  * @return array{done:bool,skipped:bool,result:array}
  */
-function sync_state_step(string $tenantId, int $batchSize = 6): array
+function sync_state_step(string $tenantId, int $batchSize = 0): array
 {
     $pdo = db();
     $empty = ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0];

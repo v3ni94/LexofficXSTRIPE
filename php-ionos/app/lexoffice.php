@@ -33,6 +33,12 @@ class LexofficeClient
     private bool $fallbackTried = false;
     private float $lastRequestTime = 0.0;
 
+    /** Messwerte dieser Client-Instanz (Instrumentierung der Synchronisation, keine Inhalte). */
+    public int $requestCount = 0;
+    public float $requestMs = 0.0;
+    public float $throttleMs = 0.0;
+    public int $retryCount = 0;
+
     public function __construct(string $apiKey, ?string $baseUrl = null)
     {
         $this->apiKey = $apiKey;
@@ -52,6 +58,7 @@ class LexofficeClient
     {
         $elapsedUs = (microtime(true) - $this->lastRequestTime) * 1_000_000;
         if ($elapsedUs < self::MIN_REQUEST_INTERVAL_US) {
+            $this->throttleMs += (self::MIN_REQUEST_INTERVAL_US - $elapsedUs) / 1000;
             usleep((int)(self::MIN_REQUEST_INTERVAL_US - $elapsedUs));
         }
     }
@@ -77,10 +84,16 @@ class LexofficeClient
                     'Accept: application/json',
                 ],
             ]);
+            $t0 = microtime(true);
             $body = curl_exec($ch);
             $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             $err = curl_error($ch);
             curl_close($ch);
+            $this->requestCount++;
+            $this->requestMs += (microtime(true) - $t0) * 1000;
+            if ($status === 429 || in_array($status, [500, 502, 503], true)) {
+                $this->retryCount++;
+            }
 
             if ($body === false) {
                 // Verbindungsfehler (DNS, TLS, Timeout): einmal auf die

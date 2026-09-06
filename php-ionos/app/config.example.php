@@ -180,6 +180,19 @@ return [
         'overdue_days'   => 3,
     ],
 
+    // --- Synchronisation mit Lexware Office ---
+    // step_seconds: Zeitbudget je Synchronisationsschritt (ein Browser- oder Cron-Aufruf
+    //   verarbeitet so viele Rechnungen, wie in dieser Zeit möglich sind, höchstens step_max).
+    // skip_unchanged: Rechnungen, deren updatedDate laut Voucherliste unverändert ist,
+    //   werden ohne Detailabruf übersprungen (false = altes Verhalten, jede Rechnung einzeln).
+    // contact_refresh_hours: Kontaktdaten bekannter Kunden höchstens so oft neu laden (0 = immer).
+    'sync' => [
+        'step_seconds'          => 8,
+        'step_max'              => 40,
+        'skip_unchanged'        => true,
+        'contact_refresh_hours' => 24,
+    ],
+
     // --- Feature-Schalter (Standard: aus) ---
     // mandate_request: digitale Mandatsanforderung (Link per E-Mail, Stripe
     // Checkout im Modus setup, öffentliche Seite mandat.php). Erst nach
