@@ -175,9 +175,10 @@ function get_or_create_mandate(string $tenantId, string $customerId, ?string $cu
         'INSERT INTO sepa_mandates
             (id, tenant_id, customer_id, customer_iban_id, mandate_reference, mandate_date, is_active,
              status, mandate_type, creditor_identifier)
-         VALUES (?, ?, ?, ?, ?, CURDATE(), 1, ?, ?, ?)'
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)'
     )->execute([
-        $id, $tenantId, $customerId, $customerIbanId, $mandateRef,
+        // Datum der Anwendung (config timezone) statt CURDATE() des Datenbankservers, siehe mandate_requests.php.
+        $id, $tenantId, $customerId, $customerIbanId, $mandateRef, date('Y-m-d'),
         $customerIbanId === null ? 'draft' : 'active', 'recurrent', $org['creditor_identifier'] ?: null,
     ]);
 

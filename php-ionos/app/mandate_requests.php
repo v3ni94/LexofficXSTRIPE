@@ -330,14 +330,19 @@ function mandate_request_grant(array $req, StripeClient $stripe, array $setupInt
     }
 
     $mandate = get_or_create_mandate($tenantId, $customerId, $ibanId);
+    $signedToday = date('Y-m-d'); // Zeitzone aus der Konfiguration (app/bootstrap.php)
     $pdo->prepare(
         "UPDATE sepa_mandates
          SET stripe_payment_method_id = ?, stripe_customer_id = COALESCE(?, stripe_customer_id),
              stripe_mandate_id = ?, stripe_mandate_reference = ?, status = 'active', is_active = 1,
-             signed_date = CURDATE(), mandate_date = CURDATE(), signed_place = 'digital (Stripe)'
+             signed_date = ?, mandate_date = ?, signed_place = 'digital (Stripe)'
          WHERE id = ?"
     )->execute([(string)$pmId, $stripeCustomerId, $stripeMandateId ? (string)$stripeMandateId : null,
-        $reference !== null ? mb_substr((string)$reference, 0, 64) : null, $mandate['id']]);
+        $reference !== null ? mb_substr((string)$reference, 0, 64) : null,
+        // Datum der Anwendung (config timezone), nicht CURDATE() des Datenbankservers: läuft die Datenbank in
+        // UTC, lieferte CURDATE() zwischen Mitternacht und 02:00 Uhr deutscher Zeit den Vortag, das Mandat trüge
+        // dann ein zurückdatiertes Unterschriftsdatum.
+        $signedToday, $signedToday, $mandate['id']]);
     $pdo->prepare('UPDATE customers SET sepa_debit_enabled = 1 WHERE id = ? AND tenant_id = ?')->execute([$customerId, $tenantId]);
 
     $pdo->prepare(

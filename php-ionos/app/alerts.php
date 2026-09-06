@@ -77,12 +77,14 @@ function alerts_for_tenant(string $tenantId): array
         ];
     }
 
-    // 5. Terminierte Einzüge mit Fälligkeit in der Vergangenheit
+    // 5. Terminierte Einzüge mit Fälligkeit in der Vergangenheit. Vergleichsdatum aus der Anwendung
+    // (config timezone), nicht CURDATE() des Datenbankservers: läuft die Datenbank in UTC, wäre die
+    // Überfälligkeit nachts um bis zu zwei Stunden falsch bewertet worden.
     $stmt = $pdo->prepare(
         "SELECT COUNT(*) FROM payment_collections
-         WHERE tenant_id = ? AND is_scheduled = 1 AND scheduled_submitted = 0 AND stripe_status = 'scheduled' AND scheduled_date < CURDATE()"
+         WHERE tenant_id = ? AND is_scheduled = 1 AND scheduled_submitted = 0 AND stripe_status = 'scheduled' AND scheduled_date < ?"
     );
-    $stmt->execute([$tenantId]);
+    $stmt->execute([$tenantId, collections_now()->format('Y-m-d')]);
     $overdue = (int)$stmt->fetchColumn();
     if ($overdue > 0) {
         $alerts[] = [
