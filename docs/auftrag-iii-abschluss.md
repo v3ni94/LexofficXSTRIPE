@@ -85,6 +85,8 @@ Finaler Lauf am 06.09.2026 auf frischer Testdatenbank (sql/schema.sql) gegen den
 | test_sync_lock.php | 14 | bestanden |
 | test_migrate_endpoint.php | 29 | bestanden |
 
+Lauf für Version 4.3 (Coolify-MariaDB statt eigener Datenbank im Stack) am 06.09.2026 auf frischer Testdatenbank: e2e_saas.php 410, test_monitor.php 49, test_queue.php 77, test_payment_safety.php 140, test_rules_sync.php 60, test_sync_perf.php 17, test_sync_lock.php 14, test_migrate_endpoint.php 29, alle bestanden. Zusätzlich docker compose config für prod und staging ohne mariadb- und backup-Dienst, bash -n aller Skripte, Funktionsprobe des Backup-Scans in bin/host-metrics.php (schreibt backup-status.json aus einem Testverzeichnis).
+
 Lauf für Version 4.2 (Ratenbegrenzung je Firma) am 06.09.2026 auf frischer Testdatenbank: e2e_saas.php 410, test_monitor.php 49, test_queue.php 77 (neu: Kontingente je API-Schlüssel unabhängig, Obergrenze insgesamt), test_payment_safety.php 140, test_rules_sync.php 60, test_sync_perf.php 17, test_sync_lock.php 14, test_migrate_endpoint.php 29, alle bestanden.
 
 Lauf für Version 4.1 (Paket 4b und Hostinger-Anpassung) am 06.09.2026, wieder auf frischer Testdatenbank: e2e_saas.php 410 (neu Abschnitt 31), test_monitor.php 49, test_queue.php 73, test_payment_safety.php 140, test_rules_sync.php 60 (neu Abschnitt 5 Tarifwechsel und Upsell), test_sync_perf.php 17, test_sync_lock.php 14, test_migrate_endpoint.php 29, alle bestanden. Zusätzlich docker compose config für prod und staging mit den Traefik-Labels, bash -n, php -l.
@@ -141,8 +143,9 @@ den Kapiteln `docs/vps/01` bis `docs/vps/07`.
 - Der Docker-Stack (`deploy/vps/docker-compose*.yml`, `Caddyfile`, `Caddyfile.staging`,
   `.env.example`) wurde bereits vor diesem Nachtrag auf die neue Proxykette umgestellt: Der
   `caddy`-Container veröffentlicht keine Ports mehr (`auto_https off`, reines HTTP intern),
-  Traefik-Labels binden ihn an das Docker-Netz `PROXY_NETWORK` (Standardname `coolify`).
-  `LETSENCRYPT_EMAIL` entfällt in `.env`, `PROXY_NETWORK` ist neu. Diese Dateien waren zum
+  Traefik-Labels binden ihn an das Docker-Netz `COOLIFY_NETWORK` (Standardname `coolify`).
+  `LETSENCRYPT_EMAIL` entfällt in `.env`, `COOLIFY_NETWORK` ist neu (eine gleichnamige Variable
+  wurde im Nachtrag Coolify-MariaDB unten einheitlich benannt). Diese Dateien waren zum
   Zeitpunkt dieses Dokumentationsnachtrags bereits angepasst und dienten als Quelle für die
   Aktualisierung von `docs/vps/01` bis `docs/vps/08`.
 - Neu erstellt: `docs/vps/08-hostinger-coolify.md`, eine vollständige Schritt-für-Schritt-Anleitung
@@ -185,6 +188,96 @@ Coolify-Containers und der Zustand von `ufw` vor dem ersten Lauf), ist beim erst
 | Erstes Deployment über den GitHub-Workflow auf den Hostinger-VPS | offen |
 | Datenbankimport von Bestandsdaten | offen |
 | Produktive DNS-Umstellung, Cutover | offen, ausdrücklich noch nicht vorgenommen |
+
+## Nachtrag Coolify-MariaDB (Version 4.3)
+
+Stand: 06.09.2026. Nach dem Nachtrag Hostinger KVM 8 (Coolify) hat der Betreiber die Datenbank
+tatsächlich eingerichtet: nicht als Dienst im SmartEinzug-Docker-Stack, sondern als eigene, private
+Coolify-Datenbankressource. Dieser Nachtrag beschreibt die daraus folgenden Entscheidungen; er
+ersetzt in `docs/vps/01` bis `docs/vps/08` die vorherige Annahme eines `mariadb`-Dienstes und eines
+eigenen Backup-Containers im Stack.
+
+### Bestätigter Stand (vom Betreiber)
+
+MariaDB Version 11.8.9, Datenbankname `smarteinzug`, Port 3306 nicht öffentlich, persistenter
+Speicher, Healthcheck erfolgreich, Lesen und Schreiben mit dem normalen Datenbankbenutzer getestet,
+tägliche Sicherung in Coolify eingerichtet, zusätzlich externer Upload in einen
+Hetzner-Object-Storage-Bucket, Restore aus dem externen Backup erfolgreich getestet. Der Betreiber
+hat außerdem eine Coolify-GitHub-App für SmartEinzug angelegt.
+
+### Entscheidungen
+
+- **Keine doppelte Datenbank:** `deploy/vps/docker-compose.yml` enthält keinen Dienst `mariadb` und
+  kein zugehöriges Volume mehr. Die Anwendung verbindet sich ausschließlich mit der als
+  Coolify-Ressource eingerichteten MariaDB, erreichbar über das Docker-Netz `coolify` unter ihrem
+  Containernamen (`db.host` in `shared/config.php`, Platzhalter
+  `<containername-der-coolify-mariadb>` in der Dokumentation, abzulesen in Coolify bei der
+  Datenbankressource in der internen Verbindungsadresse oder mit `docker ps`).
+- **Kein zweiter Backupweg:** `deploy/vps/docker-compose.yml` enthält keinen Dienst `backup` mehr.
+  Die Sicherung übernimmt ausschließlich Coolify (täglich, externer Upload nach Hetzner Object
+  Storage, Restore getestet). Der Metrik-Sammler (`metrics`) bindet den lokalen Sicherungspfad
+  (`COOLIFY_BACKUP_DIR`) nur lesend ein und meldet Zeitpunkt und Größe der neuesten Sicherung als
+  `backup-status.json`, damit der Adminbereich System die Komponente „Sicherungen“ weiterhin zeigt.
+  `deploy/vps/backup/backup.sh` und das zugehörige `Dockerfile` bleiben nur als Ausweichlösung ohne
+  Coolify bestehen, sind aber nicht Teil des Stacks; `restore-test.sh` bleibt als Werkzeug für
+  zusätzliche Wiederherstellungstests eines heruntergeladenen Coolify-Dumps in einem kurzlebigen
+  Client-Container im Netz `coolify`.
+- **Kein öffentlicher Port:** „Public Port“ bleibt in Coolify bei der Datenbankressource aus; von
+  außen muss `nc -zv 72.61.80.67 3306` fehlschlagen (auf dem Server zu prüfen).
+- **Netzzuordnung:** Die zuvor anders benannte Umgebungsvariable für das Docker-Netz des
+  Coolify-Proxys heißt in `.env` jetzt einheitlich `COOLIFY_NETWORK` (Standardwert `coolify`);
+  Caddy, PHP, Scheduler, alle Worker und `metrics`
+  hängen an diesem Netz, weil sie darüber sowohl die Coolify-MariaDB als auch das Internet
+  erreichen. Liegt die Datenbank in einem anderen Docker-Netz als der Coolify-Proxy (mit
+  `docker inspect <containername>` zu prüfen), ist entweder `COOLIFY_NETWORK` auf dieses Netz zu
+  setzen, oder die Datenbankressource ist in Coolify im Standardziel (Server localhost, Netz
+  `coolify`) neu anzulegen; ein manuelles `docker network connect` wird nicht empfohlen, da Coolify
+  den Container jederzeit neu erzeugen kann.
+- **GitHub-App entfernbar:** Die bereits angelegte Coolify-GitHub-App für SmartEinzug wird in diesem
+  Architekturmodell nicht benötigt (kein Coolify-Autodeploy, keine Coolify-Application). Solange
+  keine Application in Coolify daran gebunden ist, löst sie keinen Autodeploy aus; nach
+  erfolgreicher Einrichtung des bestehenden SSH-Deploymentwegs kann sie sowohl in Coolify (Bereich
+  „Sources“) als auch in GitHub (Settings > Applications) wieder entfernt werden.
+- **Datenimport:** `scripts/db-import.sh` spielt einen Dump per `docker exec -i` in den Container
+  der Coolify-MariaDB ein (nutzt die von Coolify gesetzten Umgebungsvariablen `MARIADB_USER`,
+  `MARIADB_PASSWORD`, `MARIADB_DATABASE` im Container), prüft vorher die Prüfsumme und fragt nach
+  Bestätigung. Frühere Aufrufe der Form „docker compose exec mariadb ...“ in der Dokumentation
+  wurden entsprechend auf „docker exec <containername-der-coolify-mariadb> ...“ umgestellt.
+  Migrationen laufen unverändert ausschließlich über `deploy.sh` (`bin/migrate.php` im
+  `php`-Container).
+- **Healthchecks:** Der `php`-Container prüft die Datenbank mit `bin/healthcheck.php --db`
+  (verbindet über `config.php` zur Coolify-MariaDB); es gibt keinen wartenden `mariadb`-Healthcheck
+  mehr im Stack. Coolify zeigt die Datenbank als `healthy`, der `php`-Container wird `healthy`,
+  sobald die Verbindung steht.
+- **Ressourcen:** `docker-compose.prod.yml` begrenzt nur noch die Dienste des SmartEinzug-Stacks
+  (rund 6 GB RAM). Das Speicherlimit der Coolify-MariaDB wird in Coolify gesetzt (Empfehlung 4 GB,
+  `innodb-buffer-pool-size` rund 2,5 GB, sofern Coolify das Setzen erlaubt, auf dem Server zu
+  prüfen).
+
+### Statusstufen
+
+| Baustein | Stand |
+|---|---|
+| Coolify-MariaDB als eigene, private Datenbankressource (Version 11.8.9, Datenbank `smarteinzug`) mit persistentem Speicher | produktiv eingerichtet (vom Betreiber bestätigt) |
+| Kein öffentlicher Port der Datenbank, Healthcheck erfolgreich, Lesen/Schreiben mit dem normalen Benutzer getestet | produktiv eingerichtet (vom Betreiber bestätigt) |
+| Tägliche Coolify-Sicherung, externer Upload nach Hetzner Object Storage, Restore aus dem externen Backup | produktiv eingerichtet und getestet (vom Betreiber bestätigt) |
+| `deploy/vps/` (Compose, `.env.example`, Skripte) ohne `mariadb`- und `backup`-Dienst umgestellt | vorbereitet (im Repository) |
+| Dokumentation `docs/vps/01` bis `docs/vps/08` und dieser Nachtrag auf die Coolify-MariaDB aktualisiert | vorbereitet (im Repository) |
+| Netzzuordnung von Coolify-Proxy und Coolify-MariaDB (`docker inspect`, dasselbe Docker-Netz) | auf dem Server zu prüfen |
+| Coolify-GitHub-App für SmartEinzug entfernt | offen; erst nach erfolgreicher Einrichtung des SSH-Deployments vorgesehen |
+| Datenbankimport von Bestandsdaten, produktive DNS-Umstellung, Cutover | offen, wie im vorherigen Nachtrag |
+
+### Offene Prüfpunkte auf dem Server
+
+- Containername der Coolify-MariaDB tatsächlich per `docker ps` bzw. Coolify ablesen und in
+  `shared/config.php` (`db.host`) sowie in `.env` (`DB_CONTAINER`) eintragen.
+- Netzzuordnung von Coolify-Proxy und Coolify-MariaDB mit `docker inspect <containername>` prüfen;
+  bei Abweichung `COOLIFY_NETWORK` anpassen oder die Datenbankressource neu anlegen.
+- Von außen bestätigen, dass Port 3306 tatsächlich unerreichbar ist (`nc -zv 72.61.80.67 3306`).
+- Hostpfad der lokalen Coolify-Sicherungskopien (`COOLIFY_BACKUP_DIR`) bestätigen, damit die
+  Komponente „Sicherungen“ im Adminbereich System nicht veraltet oder „nicht eingerichtet“ zeigt.
+- Testverbindung aus einem kurzlebigen Client-Container im Netz `coolify` gegen die Coolify-MariaDB
+  ausführen (siehe `docs/vps/08-hostinger-coolify.md`, Schritt 5a).
 
 ## Verbleibende Risiken
 

@@ -10,20 +10,19 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 
 | Datei/Ordner | Zweck |
 |---|---|
-| `docker-compose.yml` | Basisdienste (Caddy, php, scheduler, vier Worker-Pools, metrics, mariadb, redis, backup) |
+| `docker-compose.yml` | Basisdienste (Caddy, php, scheduler, Worker-Pools, metrics, redis); KEINE eigene MariaDB und KEIN Backup-Container: beides uebernimmt Coolify |
 | `docker-compose.prod.yml` | Override Produktion: Ressourcenlimits, zweiter Lexware-Worker (`worker-lexware-2`) |
 | `docker-compose.staging.yml` | Override Staging: kleinere Ressourcenlimits, eigene Caddyfile, nur ein Lexware-Worker |
 | `Caddyfile` / `Caddyfile.staging` | Reverse Proxy, ersetzt `php-ionos/.htaccess` vollstaendig |
 | `php/Dockerfile`, `php/php.ini`, `php/www.conf` | gemeinsames PHP-Image fuer Web, Scheduler, alle Worker |
-| `mariadb/my.cnf` | Zusatzeinstellungen fuer den MariaDB-Container |
 | `redis/redis.conf` | Redis-Konfiguration (kein persistenter Datenbestand) |
-| `.env.example` | Vorlage fuer `.env` (Domains, Passwoerter-Platzhalter, UID/GID, Worker-Speicher, Backup-Ziel) |
+| `.env.example` | Vorlage fuer `.env` (Domains, Coolify-Netz, Containername der Coolify-MariaDB, Backup-Pfad, UID/GID, Worker-Speicher) |
 | `scripts/setup-vps.sh` | Einmalige Grundeinrichtung eines frischen VPS |
 | `scripts/deploy.sh` / `scripts/rollback.sh` | Aktivieren bzw. Zuruecknehmen eines Release |
-| `scripts/db-import.sh` | Dump mit Pruefsumme in den mariadb-Container einspielen |
+| `scripts/db-import.sh` | Dump mit Pruefsumme per docker exec in die Coolify-MariaDB einspielen (kein Port noetig) |
 | `scripts/db-verify.php` | Tabellen, Zeilenzahlen, CHECKSUM TABLE als JSON (Alt/Neu-Abgleich) |
 | `scripts/maintenance.sh` | Wartungsmodus (`app/storage/maintenance.flag`) ein-/ausschalten |
-| `backup/Dockerfile`, `backup/backup.sh`, `backup/restore-test.sh` | taeglicher Datenbank-Dump und Wiederherstellungstest |
+| `backup/restore-test.sh` | Wiederherstellungstest eines Coolify-Dumps in einer temporaeren Datenbank (Client-Container im Coolify-Netz); `backup.sh`/`Dockerfile` nur Ausweichloesung ohne Coolify, nicht im Stack |
 
 ## Start
 
@@ -88,6 +87,17 @@ Zertifikat). Caddy bleibt der interne HTTP-Server vor php-fpm mit den Sicherheit
 der einzige Deploymentweg bleibt der GitHub-Workflow ueber SSH (`scripts/deploy.sh`). Einrichtung
 Schritt fuer Schritt: `docs/vps/08-hostinger-coolify.md`.
 
+Datenbank: MariaDB 11.8 laeuft bereits als private Coolify-Datenbankressource (Datenbank `smarteinzug`,
+kein oeffentlicher Port, taegliche Coolify-Backups mit externem Ziel Hetzner Object Storage, Restore
+getestet). Der Stack startet deshalb KEINE eigene MariaDB und KEINEN Backup-Container. PHP, Scheduler,
+Worker und Metrics haengen zusaetzlich am Coolify-Netz (`COOLIFY_NETWORK`) und erreichen den
+Datenbank-Container unter seinem Containernamen (`db.host` in `shared/config.php`; Name in Coolify in der
+internen Verbindungsadresse oder mit `docker ps`). Dasselbe Netz gibt den Anwendungscontainern den Weg ins
+Internet (Lexware Office, Stripe, Mail). Liegt die Coolify-Datenbank in einem anderen Netz als der Proxy
+(`docker inspect <db-container>`), `COOLIFY_NETWORK` auf dieses Netz setzen; Proxy und Datenbank muessen
+im selben Netz liegen, sonst die Datenbankressource in Coolify im Standardziel (localhost, Netz `coolify`)
+neu anlegen. Einrichtung: `docs/vps/08-hostinger-coolify.md`.
+
 Folge fuer die Anwendung: TLS endet am Coolify-Proxy, PHP sieht die Anfrage als HTTP von der
 Proxy-Adresse. `trusted_proxies` in `shared/config.php` muss deshalb die Docker-Netzbereiche enthalten
 (z.B. `['172.16.0.0/12', '10.0.0.0/8']`, mit `docker network inspect` pruefen); `app/bootstrap.php`
@@ -125,7 +135,8 @@ wertet X-Forwarded-Proto und X-Forwarded-For dann von rechts aus.
   unter `releases/<git-sha>/status/` abgelegt; Caddy liefert `releases/current/status` aus. Sie
   gehoert damit zum Release und wechselt mit ihm (auch beim Rollback).
 
-Der Backup-Container schreibt sein Ergebnis als `backup-status.json` in den gemeinsamen Speicher
+Der Metrik-Sammler liest die lokale Kopie der Coolify-Backups (`COOLIFY_BACKUP_DIR`, read-only) und schreibt
+Zeitpunkt und Groesse der neuesten Sicherung als `backup-status.json` in den gemeinsamen Speicher
 `/opt/smarteinzug/shared/storage`; der Monitoring-Sammler der Anwendung liest die Datei (Komponente
 Sicherungen). Es wird kein Docker-Socket eingebunden.
 
@@ -134,8 +145,8 @@ Sicherungen). Es wird kein Docker-Socket eingebunden.
 - Keine Hochverfuegbarkeit: ein Ausfall des VPS (Hardware, Netz, versehentliches
   `docker compose down`) legt die gesamte Anwendung inklusive Datenbank lahm. Ein Failover auf
   einen zweiten Server ist nicht eingerichtet.
-- MariaDB und Redis laufen als einzelne Instanz ohne Replikation. Backups (`backup/backup.sh`)
-  und der Wiederherstellungstest (`backup/restore-test.sh`) sind die einzige Absicherung gegen
+- MariaDB (Coolify-Ressource) und Redis laufen als einzelne Instanz ohne Replikation. Die Coolify-Backups
+  (taeglich, Hetzner Object Storage, Restore getestet) und `backup/restore-test.sh` sind die einzige Absicherung gegen
   Datenverlust, kein Ersatz fuer echte Hochverfuegbarkeit.
 - Skalierung ist auf die Kapazitaet des einen VPS begrenzt (`docker compose up -d --scale`
   erhoeht die Anzahl Worker-Container, nicht die Anzahl Server).
@@ -163,11 +174,13 @@ Weiterhin offen und vor dem produktiven Betrieb zu entscheiden:
   Skript bricht ab, wenn die Datenbank Migrationen enthaelt, die das Zielrelease nicht kennt;
   `FORCE_ROLLBACK=1` uebersteuert das nur nach bewusster Pruefung. Ein tatsaechlicher Rueckbau
   des Schemas bleibt ein manueller Eingriff.
-- **rclone-Verfuegbarkeit im Alpine-Image**: `deploy/vps/backup/Dockerfile` versucht, `rclone` aus
-  dem Alpine-Community-Repository zu installieren, faellt beim Scheitern aber nur auf den
-  `curl`-Ausweichpfad zurueck (setzt ein HTTPS-Ziel voraus, das PUT/Upload beherrscht). Vor dem
-  produktiven Einsatz mit dem tatsaechlich vorgesehenen Backup-Ziel (`BACKUP_REMOTE`) pruefen,
-  welcher der beiden Wege tatsaechlich genutzt wird.
+- **Backup-Skripte ohne Coolify**: `backup/backup.sh` und `backup/Dockerfile` sind nicht Teil des Stacks
+  (Sicherung durch Coolify). Sie bleiben als Ausweichloesung fuer einen Server ohne Coolify-Backups
+  erhalten; vor einem solchen Einsatz `rclone`-Verfuegbarkeit im Alpine-Image und das Ziel `BACKUP_REMOTE`
+  pruefen.
+- **Lokale Kopien der Coolify-Backups**: Die Komponente Sicherungen im Admin liest `COOLIFY_BACKUP_DIR`
+  (Standard `/data/coolify/backups`). Pfad und Aufbewahrung lokaler Kopien sind in Coolify zu pruefen;
+  ohne lokale Kopien zeigt die Komponente "nicht eingerichtet".
 - **HSTS**: bewusst auskommentiert in beiden Caddyfiles, bis app-, admin- und api-Host dauerhaft
   ausschliesslich unter gueltigem HTTPS erreichbar sind. Freischaltung erst nach ausdruecklicher
   Bestaetigung (siehe Kommentar in `Caddyfile`) und, laut Eskalationsregel, nach Abstimmung mit der

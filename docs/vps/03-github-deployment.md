@@ -8,10 +8,20 @@ Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, sieh
 `/opt/smarteinzug/releases/<git-sha>/`, danach `deploy/vps/scripts/deploy.sh <git-sha>` aus dem
 neuen Release) bleibt der einzige Weg, mit dem Code auf den Hostinger-VPS gelangt. Auf dem VPS ist
 zusätzlich Coolify installiert; dort wird für SmartEinzug ausdrücklich KEINE Anwendung/Ressource
-angelegt, KEIN Coolify-Autodeploy eingerichtet und keine GitHub-App in Coolify verbunden. Ein Ziel,
-ein Deploymentweg: Coolify dient ausschließlich als Proxy (siehe
-`docs/vps/01-architektur.md`) und als Serverübersicht, nicht als zweiter Auslöser für
-Deployments.
+angelegt und KEIN Coolify-Autodeploy eingerichtet. Ein Ziel, ein Deploymentweg: Coolify dient
+ausschließlich als Proxy (siehe `docs/vps/01-architektur.md`) und als Serverübersicht (zusätzlich
+als eigenständige Datenbankressource, siehe `docs/vps/08-hostinger-coolify.md`), nicht als zweiter
+Auslöser für Deployments.
+
+### Coolify-GitHub-App: in diesem Modell nicht benötigt
+
+Der Betreiber hat für SmartEinzug bereits eine Coolify-GitHub-App angelegt. In der hier
+beschriebenen Architektur (kein Coolify-Autodeploy, keine Coolify-Application für SmartEinzug) wird
+diese App NICHT benötigt. Bis zur erfolgreichen Einrichtung des vorliegenden SSH-Deploymentwegs darf
+sie keinen Autodeploy auslösen: keine Application in Coolify an sie binden. Sobald das
+SSH-Deployment nachweislich funktioniert (siehe Abschnitt „Deployment testen“ unten), kann die
+GitHub-App wieder entfernt werden, sowohl in Coolify (Bereich „Sources“) als auch in GitHub
+(Settings > Applications bzw. Installed GitHub Apps), da sie in diesem Modell keine Funktion trägt.
 
 ## Secrets und Variablen im Überblick
 

@@ -31,9 +31,12 @@ Proxy und als Serverübersicht. Eine Anfrage durchläuft damit zwei Stufen:
 
 1. **Traefik (Coolify-Proxy):** terminiert TLS auf 80/443, ermittelt anhand des Hostnamens
    (`Host(...)`-Regel) den Ziel-Container und reicht die Anfrage über das Docker-Netz
-   `PROXY_NETWORK` (Standardname `coolify`, auf dem Server mit `docker network ls` zu prüfen) an
+   `COOLIFY_NETWORK` (Standardname `coolify`, auf dem Server mit `docker network ls` zu prüfen) an
    den `caddy`-Container weiter. Traefik findet diesen Container über Labels am `caddy`-Dienst
-   (`deploy/vps/docker-compose.yml`), nicht über eine eigene Konfigurationsdatei.
+   (`deploy/vps/docker-compose.yml`), nicht über eine eigene Konfigurationsdatei. Dasselbe Netz
+   `coolify` trägt auch die als eigene Coolify-Ressource eingerichtete MariaDB (siehe Abschnitt
+   „MariaDB: nur intern“ unten); Caddy, PHP, Scheduler, Worker und Metrics hängen deshalb alle an
+   diesem Netz.
 2. **Caddy (intern, nur HTTP):** veröffentlicht selbst keine Ports mehr, `auto_https off`, spricht
    ausschließlich HTTP auf Port 80 innerhalb des Docker-Netzes. Caddy bleibt weiterhin die
    Instanz, die `php-ionos/.htaccess` ablöst (verbotene Pfade/Endungen, Cache-Header,
@@ -49,10 +52,14 @@ prüfen, auf dem Server zu prüfen); `app/bootstrap.php` wertet `X-Forwarded-For
 php_fastcgi: leer lassen“); auf dem Hostinger-VPS mit vorgeschaltetem Coolify-Proxy ist dieser
 Kommentar überholt, `trusted_proxies` muss gefüllt werden.
 
-Netze (siehe `deploy/vps/docker-compose.yml`): `PROXY_NETWORK` (extern, von Coolify
-bereitgestellt, Standardname `coolify`, nur der Dienst `caddy` hängt daran) und
-`smarteinzug_internal` (intern, `internal: true`, fester Adressbereich `172.28.0.0/24` für Caddy,
-php, Scheduler, Worker, MariaDB, Redis, Backup, Metrics).
+Netze (siehe `deploy/vps/docker-compose.yml`): `COOLIFY_NETWORK` (extern, von Coolify
+bereitgestellt, Standardname `coolify`; darin laufen der Coolify-Proxy und die als eigene
+Coolify-Ressource eingerichtete MariaDB; die Dienste `caddy`, `php`, `scheduler`, alle Worker und
+`metrics` hängen daran, weil sie die Datenbank erreichen und ins Internet müssen) und
+`smarteinzug_internal` (intern, `internal: true`, fester Adressbereich `172.28.0.0/24`, ohne
+Außenverbindung, ausschließlich für Caddy und die PHP-Container gegenüber Redis). Anwendungscontainer
+im Netz `coolify` haben damit einen Weg ins Internet (Lexware Office, Stripe, Mail); über
+`smarteinzug_internal` allein ist kein Internetzugang möglich.
 
 ## Dienste im Überblick
 
@@ -63,9 +70,9 @@ php, Scheduler, Worker, MariaDB, Redis, Backup, Metrics).
 | PHP-FPM | Anwendung (Web-Anfragen: Login, Dashboard, Rechnungen, Admin, Webhooks) | VPS, Container `php` |
 | Scheduler | Prüft alle 30 Sekunden fällige wiederkehrende Aufgaben und reiht sie als Jobs ein; verarbeitet selbst keine Jobs | VPS, Container `scheduler` (`bin/scheduler.php`) |
 | Worker | Reservieren und verarbeiten Jobs aus der Warteschlange, je Pool ein oder mehrere Container | VPS, Container `worker-lexware`(-2 in Produktion)`, worker-stripe, worker-mail, worker-maintenance` (`bin/worker.php --pool=...`) |
-| MariaDB | Anwendungsdatenbank, ausschließlich intern erreichbar | VPS, Container `mariadb` |
+| MariaDB | Anwendungsdatenbank, ausschließlich intern erreichbar | VPS, produktiv eingerichtet als eigene, private Coolify-Datenbankressource (kein Dienst im SmartEinzug-Stack, siehe Abschnitt „MariaDB: nur intern“) |
 | Redis | Ergänzt die Warteschlange (Sperren, Ratenbegrenzung); ohne Redis läuft alles über MariaDB weiter | VPS, Container `redis`, optional |
-| Backup | Täglicher Datenbank-Dump mit Prüfsumme, optionalem externem Upload, Wiederherstellungstest | VPS, Container `backup` |
+| Sicherungen | Tägliche Datenbanksicherung mit externem Ziel (Hetzner Object Storage), Restore getestet; kein eigener Backup-Dienst im Stack | VPS, durch Coolify eingerichtet und produktiv (vom Betreiber bestätigt); der Metrik-Sammler liest nur die lokale Kopie der Coolify-Sicherungen (`COOLIFY_BACKUP_DIR`, lesend) für die Anzeige im Adminbereich |
 | Host-Metriken | Liest CPU, Speicher, Platte, Load des VPS-Hosts, schreibt sie als Monitoring-Ereignisse | VPS, Container `metrics` (`bin/host-metrics.php`) |
 | Marketingseiten | Statische HTML-Seiten beider Domains | IONOS-Webhosting, unverändert |
 | Statusseite | Statische Seite `status.smart-einzug.de`, liest `status.json` | VPS, von Caddy read-only unter `/opt/smarteinzug/releases/current/status` ausgeliefert, oder Webhosting (siehe `docs/status-page.md`) |
@@ -86,9 +93,10 @@ Caddy-Konfiguration (erlaubte Pfade je Host), nicht durch getrennte Installation
 
 ## Datenflüsse
 
-1. Ein Browser ruft `app.smart-einzug.de` auf. Caddy terminiert TLS, reicht die Anfrage per
-   FastCGI an PHP-FPM weiter. PHP liest und schreibt in MariaDB, verschlüsselte Zugangsdaten über
-   `app_secret`, optional Redis für Sperren.
+1. Ein Browser ruft `app.smart-einzug.de` auf. Traefik (Coolify-Proxy) terminiert TLS und reicht die
+   Anfrage über das Netz `coolify` an Caddy weiter, Caddy reicht sie per FastCGI an PHP-FPM weiter.
+   PHP liest und schreibt in die Coolify-MariaDB (erreichbar über das Netz `coolify` unter ihrem
+   Containernamen), verschlüsselte Zugangsdaten über `app_secret`, optional Redis für Sperren.
 2. Eine Kundenaktion (Synchronisation anstoßen, Einzug auslösen) legt bei aktivem Feature-Flag
    `queue` einen Job in der Tabelle `jobs` an (`dedupe_key` verhindert Doppelaufträge). Ohne das
    Flag läuft die Aktion wie bisher synchron beziehungsweise über `cron.php`.
@@ -101,9 +109,12 @@ Caddy-Konfiguration (erlaubte Pfade je Host), nicht durch getrennte Installation
    sowie in `job_runs` beziehungsweise `sync_runs`.
 5. Stripe- und Plattform-Webhooks laufen ausschließlich über `api.smart-einzug.de` und werden über
    `webhook_events` genau einmal verarbeitet, unabhängig vom Warteschlangenstatus.
-6. Der Backup-Container zieht täglich einen MariaDB-Dump, verschlüsselt ihn optional und meldet
-   das Ergebnis als `backup-status.json` in den gemeinsamen Speicher (Monitoring-Komponente Sicherungen) (Anzeige im Adminbereich
-   System, Reiter Server).
+6. Coolify sichert die Datenbank täglich und lädt die Sicherung zusätzlich in einen externen
+   Hetzner-Object-Storage-Bucket hoch (produktiv eingerichtet, Restore getestet, vom Betreiber
+   bestätigt). Der Metrik-Sammler liest nur die lokale Kopie der Coolify-Sicherungen
+   (`COOLIFY_BACKUP_DIR`, lesend) und meldet Zeitpunkt und Größe der neuesten Sicherung als
+   `backup-status.json` in den gemeinsamen Speicher (Monitoring-Komponente Sicherungen, Anzeige im
+   Adminbereich System, Reiter Server). Es gibt keinen eigenen Backup-Container im Stack.
 7. Der Metrics-Container liest Host-Kennzahlen (CPU, RAM, Platte, Load, Datenbankverbindungen,
    Redis-Speicher) und schreibt sie als `monitor_checks`-Ereignisse; nur auf dem VPS verfügbar, auf
    dem Webhosting liefert das Hosting diese Werte nicht.
@@ -115,17 +126,32 @@ Caddy-Konfiguration (erlaubte Pfade je Host), nicht durch getrennte Installation
 | Anwendungscode | `/opt/smarteinzug/releases/<git-sha>/`, `current` zeigt per Symlink auf das aktive Release | read-only in den Containern eingebunden |
 | Konfiguration (`app/config.php`) | `/opt/smarteinzug/shared/config.php`, read-only in die Container eingebunden | liegt außerhalb jedes Release, wird nie überschrieben |
 | Anwendungsdaten (Mandate, Avatare, Logs, `maintenance.flag`) | `/opt/smarteinzug/shared/storage`, beschreibbar eingebunden | gemeinsam für alle Container, daher wirkt der Wartungsmodus sofort überall |
-| Datenbank | MariaDB-Volume des Containers `mariadb` | nur intern erreichbar, kein veröffentlichter Port |
+| Datenbank | Persistenter Speicher der Coolify-MariaDB-Ressource (von Coolify verwaltetes Volume, nicht Teil des SmartEinzug-Stacks) | nur intern erreichbar, kein veröffentlichter Port, produktiv eingerichtet |
 | Sitzungen | eigenes Volume für `/var/lib/php/sessions` | überlebt einen Container-Neustart |
-| Backups | `/opt/smarteinzug/backups` (lokal, 14 Tage), optional externes Ziel über `BACKUP_REMOTE` | Prüfsumme je Dump, optionale Verschlüsselung mit `age` |
+| Sicherungen | Coolify-eigene Ablage plus externer Hetzner-Object-Storage-Bucket; lokale Kopie zusätzlich unter dem in `COOLIFY_BACKUP_DIR` genannten Hostpfad (Standard `/data/coolify/backups`, auf dem Server zu prüfen), von `metrics` nur lesend eingebunden | tägliche Sicherung und Restore laut Betreiber getestet; kein eigener Dump-Container im Stack |
 | Statusseite | `/opt/smarteinzug/releases/current/status`, read-only in Caddy eingebunden (Dokumentenstamm `/opt/smarteinzug/releases/current/status`) | nicht Teil des Anwendungs-Release |
 
 ## MariaDB: nur intern
 
-MariaDB veröffentlicht keinen Port nach außen; erreichbar ist sie ausschließlich aus dem
-Docker-Netz der Anwendung (PHP, Scheduler, Worker, Backup, Metrics). Zugriff von außen (z. B.
-phpMyAdmin, ein Datenbank-Client vom Arbeitsplatz) erfordert einen SSH-Tunnel auf den VPS; ein
-öffentlicher Datenbankport wird nicht eingerichtet.
+MariaDB (Version 11.8.9) läuft nicht als Dienst im SmartEinzug-Docker-Stack, sondern als
+eigenständige, private Coolify-Datenbankressource (Datenbankname `smarteinzug`), produktiv
+eingerichtet und vom Betreiber bestätigt: persistenter Speicher, Healthcheck erfolgreich,
+Lesen/Schreiben mit dem normalen Datenbankbenutzer getestet. Sie veröffentlicht keinen Port nach
+außen („Public Port“ in Coolify bleibt aus); von außen muss `nc -zv 72.61.80.67 3306` fehlschlagen
+(auf dem Server zu prüfen). Erreichbar ist sie ausschließlich aus dem Docker-Netz `coolify`, in dem
+auch der Coolify-Proxy läuft; PHP, Scheduler, Worker und Metrics hängen deshalb zusätzlich an diesem
+Netz und sprechen die Datenbank über ihren Containernamen an (`db.host` in `shared/config.php`).
+Der Containername steht in Coolify bei der Datenbankressource in der internen Verbindungsadresse
+(Form `mysql://benutzer:passwort@<containername>:3306/smarteinzug`) und ist auf dem Server mit
+`docker ps` sichtbar; die Dokumentation verwendet dafür den Platzhalter
+`<containername-der-coolify-mariadb>`. Zugriff von außen (z. B. ein Datenbank-Client vom
+Arbeitsplatz) erfordert einen SSH-Tunnel auf den VPS oder einen kurzlebigen Client-Container im
+Netz `coolify`; ein öffentlicher Datenbankport wird nicht eingerichtet. Liegt die Datenbank in
+einem anderen Docker-Netz als der Coolify-Proxy (mit `docker inspect <containername>` zu prüfen),
+ist `COOLIFY_NETWORK` auf dieses Netz zu setzen oder die Datenbankressource in Coolify im
+Standardziel (Server localhost, Netz `coolify`) neu anzulegen; ein manuelles
+`docker network connect` wird nicht empfohlen, weil Coolify den Container jederzeit neu erzeugen
+kann und die manuelle Zuordnung dabei verloren geht.
 
 ## Redis: nur ergänzend
 
@@ -219,13 +245,15 @@ uneingeschränkt nutzbar.
 
 ## Ressourcen des Hostinger-VPS
 
-Server: Hostinger KVM 8, 8 vCPU, 32 GB RAM, 400 GB NVMe. `docker-compose.prod.yml` setzt
-Ressourcenlimits bewusst deutlich unter dieser Kapazität an (Summe rund 12 GB RAM): Reserve für
-das Betriebssystem, für Coolify selbst (eigene Postgres- und Redis-Instanz sowie den
-Traefik-Proxy, zusammen rund 2 GB) und für Backups und Lastspitzen. MariaDB erhält 4 GB
-(`innodb-buffer-pool-size=2560M`), `PM_MAX_CHILDREN=16` für php-fpm, zwei Lexware-Worker (mehr
-bringt wegen der Ratenbegrenzung gegenüber Lexware Office und Stripe nichts) sowie je ein Worker
-für Stripe, Mail und Wartung. Einzelwerte je Dienst: `deploy/vps/docker-compose.prod.yml`.
+Server: Hostinger KVM 8, 8 vCPU, 32 GB RAM, 400 GB NVMe. `docker-compose.prod.yml` begrenzt nur
+noch die Dienste des SmartEinzug-Stacks (Summe rund 6 GB RAM): Reserve bleibt für das
+Betriebssystem, für Coolify selbst (eigene Postgres- und Redis-Instanz sowie den Traefik-Proxy,
+zusammen rund 2 GB), für die Coolify-MariaDB und für Lastspitzen. Das Speicherlimit der
+Coolify-MariaDB wird in Coolify gesetzt, nicht in `docker-compose.prod.yml` (Empfehlung 4 GB,
+`innodb-buffer-pool-size` rund 2,5 GB, sofern Coolify das Setzen erlaubt, auf dem Server zu
+prüfen). `PM_MAX_CHILDREN=16` für php-fpm, zwei Lexware-Worker (mehr bringt wegen der
+Ratenbegrenzung gegenüber Lexware Office und Stripe nichts) sowie je ein Worker für Stripe, Mail
+und Wartung. Einzelwerte je Dienst: `deploy/vps/docker-compose.prod.yml`.
 
 ## Grenzen: ein VPS, keine Hochverfügbarkeit
 
@@ -233,9 +261,10 @@ für Stripe, Mail und Wartung. Einzelwerte je Dienst: `deploy/vps/docker-compose
   Serververwaltung). Ein Ausfall des VPS (Hardware, Netz, ein versehentliches
   `docker compose down`) legt die gesamte Anwendung lahm; es gibt keinen automatischen Failover
   auf einen zweiten Server.
-- MariaDB und Redis laufen ohne Replikation. Tägliche Backups mit Prüfsumme und ein
-  Wiederherstellungstest (`deploy/vps/backup/`) sind die Absicherung gegen Datenverlust, kein
-  Ersatz für echte Hochverfügbarkeit.
+- Die Coolify-MariaDB und Redis laufen ohne Replikation. Die täglichen Coolify-Sicherungen (mit
+  externem Ziel Hetzner Object Storage, Restore laut Betreiber getestet) sind die Absicherung gegen
+  Datenverlust, kein Ersatz für echte Hochverfügbarkeit; `deploy/vps/backup/restore-test.sh` bleibt
+  als Werkzeug für zusätzliche Wiederherstellungstests eines heruntergeladenen Coolify-Dumps.
 - Skalierung bedeutet zusätzliche Worker-Container auf demselben Server
   (`docker compose up -d --scale`), nicht zusätzliche Server.
 - Automatisches TLS setzt erreichbare Ports 80/443 aus dem Internet voraus; diese hält der

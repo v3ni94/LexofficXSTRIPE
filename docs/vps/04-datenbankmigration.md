@@ -1,11 +1,15 @@
-# Runbook: Datenbankmigration Webhosting-MariaDB nach VPS-MariaDB
+# Runbook: Datenbankmigration Webhosting-MariaDB nach Coolify-MariaDB
 
-Stand: 06.09.2026 (Auftrag III). Gilt für den einmaligen Umzug von Bestandsdaten einer oder
-mehrerer Firmen vom IONOS-Webhosting auf die VPS-Datenbank. Werkzeuge:
-`deploy/vps/scripts/db-import.sh`, `deploy/vps/scripts/db-verify.php`,
+Stand: 06.09.2026 (Auftrag III), ergänzt für die Coolify-MariaDB (siehe
+`docs/auftrag-iii-abschluss.md`, Nachtrag Coolify-MariaDB). Gilt für den einmaligen Umzug von
+Bestandsdaten einer oder mehrerer Firmen vom IONOS-Webhosting (MariaDB, ältere Version, siehe
+dortige Hosting-Dokumentation) auf die Zieldatenbank auf dem Hostinger-VPS: eine bereits
+eingerichtete, private Coolify-Datenbankressource (MariaDB 11.8.9, Datenbank `smarteinzug`).
+Werkzeuge: `deploy/vps/scripts/db-import.sh`, `deploy/vps/scripts/db-verify.php`,
 `deploy/vps/scripts/maintenance.sh`. Kein Fallback im Code: Nach dem Cutover liest und schreibt die
 Anwendung ausschließlich die VPS-Datenbank, es gibt keinen automatischen Rückgriff auf das
-Webhosting.
+Webhosting. Kein produktiver Import und keine produktive Migration waren zum Stand dieses
+Dokumentationsnachtrags erfolgt (auf dem Server zu prüfen).
 
 Voraussetzung: Der VPS-Stack läuft bereits (`docs/vps/02-einrichtung-vps.md`, Schritte 1 bis 14),
 DNS ist noch NICHT umgestellt (folgt in Schritt 9 dieses Runbooks, siehe `docs/vps/05-dns-ssl.md`).
@@ -39,10 +43,10 @@ Transfer beim Import auffällt, statt unbemerkt eine Teilkopie einzuspielen.
 
 ### 3. Zieldatenbank anlegen bzw. bereitstellen
 
-Die Zieldatenbank existiert bereits als MariaDB-Container auf dem VPS
-(`docs/vps/02-einrichtung-vps.md`, Schritt 13). Vor dem Import: sicherstellen, dass die
-Zieldatenbank leer ist oder ausschließlich mit dem aktuellen Schema (`sql/schema.sql` und alle
-Migrationen) befüllt wurde, nicht mit abweichenden Testdaten.
+Die Zieldatenbank existiert bereits als eigene, private Coolify-Datenbankressource
+(`docs/vps/08-hostinger-coolify.md`), kein eigener Dienst im SmartEinzug-Stack. Vor dem Import:
+sicherstellen, dass die Zieldatenbank leer ist oder ausschließlich mit dem aktuellen Schema
+(`sql/schema.sql` und alle Migrationen) befüllt wurde, nicht mit abweichenden Testdaten.
 
 ```bash
 cd /opt/smarteinzug/deploy
@@ -59,14 +63,20 @@ cd /opt/smarteinzug/deploy
 bash scripts/db-import.sh /pfad/smarteinzug-webhosting.sql.gz /pfad/smarteinzug-webhosting.sql.gz.sha256
 ```
 
-Das Skript prüft zuerst die Prüfsumme, wartet auf einen gesunden MariaDB-Container, fragt vor dem
-eigentlichen Import ausdrücklich nach Bestätigung (`Import überschreibt vorhandene Tabellen ...`)
-und spielt den Dump danach ein.
+Das Skript prüft zuerst die Prüfsumme und den Containernamen (`DB_CONTAINER` aus `.env`, siehe
+`docs/vps/02-einrichtung-vps.md`, Schritt 10), prüft die Erreichbarkeit der Coolify-MariaDB per
+`docker exec`, fragt vor dem eigentlichen Import ausdrücklich nach Bestätigung (`Import
+überschreibt vorhandene Tabellen ...`) und spielt den Dump danach per `docker exec -i` in den
+Coolify-MariaDB-Container ein. Es nutzt dafür die Umgebungsvariablen `MARIADB_USER`,
+`MARIADB_PASSWORD`, `MARIADB_DATABASE`, die Coolify dem Datenbank-Container mitgibt (auf dem Server
+zu prüfen: `docker exec <containername-der-coolify-mariadb> env | grep MARIADB_`); die
+Zugangsdaten werden dabei weder abgefragt noch protokolliert. Ein veröffentlichter Port ist dafür
+nicht nötig.
 
 **Erwartetes Ergebnis:** Ausgabe „Import abgeschlossen“, keine SQL-Fehlermeldungen.
 **Mögliche Fehler:** „Prüfsumme stimmt nicht überein“ (Übertragung wiederholen, Datei nicht
-verwenden); MariaDB wird nicht rechtzeitig gesund (Container-Logs prüfen,
-`docker compose logs mariadb`).
+verwenden); Containername in `DB_CONTAINER` falsch oder Container nicht gefunden (`docker ps`
+prüfen); Datenbank antwortet nicht (Status der Coolify-Datenbankressource in Coolify prüfen).
 
 ### 5. Tabellen prüfen
 
@@ -100,7 +110,7 @@ und kein Fehler; bei Stammdatentabellen (`organizations`, `users`, `customers`, 
 ### 7. Fremdschlüssel prüfen
 
 ```bash
-docker compose exec mariadb sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "SELECT CONSTRAINT_NAME, TABLE_NAME, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_NAME IS NOT NULL AND TABLE_SCHEMA = DATABASE();"'
+docker exec <containername-der-coolify-mariadb> sh -c 'exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "SELECT CONSTRAINT_NAME, TABLE_NAME, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE REFERENCED_TABLE_NAME IS NOT NULL AND TABLE_SCHEMA = DATABASE();"'
 ```
 
 **Erwartetes Ergebnis:** Liste entspricht den `CONSTRAINT`-Namen aus `php-ionos/sql/schema.sql`
@@ -110,7 +120,7 @@ Fremdschlüssel (deutet auf einen unvollständigen Import hin).
 ### 8. Indizes prüfen
 
 ```bash
-docker compose exec mariadb sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "SHOW INDEX FROM invoices;"'
+docker exec <containername-der-coolify-mariadb> sh -c 'exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "SHOW INDEX FROM invoices;"'
 ```
 
 Stichprobenartig für die wichtigsten Tabellen (`invoices`, `customers`, `payment_collections`,

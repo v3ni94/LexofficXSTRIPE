@@ -60,7 +60,7 @@ Kein manuelles `certbot`, kein manueller Cron-Job für die Erneuerung nötig; Tr
 Zertifikate von sich aus rechtzeitig vor Ablauf und ohne Ausfallzeit.
 
 `Caddyfile.staging` verwendet denselben Mechanismus (Traefik-Labels statt eigenem TLS) für
-`staging.smart-einzug.de` mit einer eigenen `.env` (nur `DOMAIN_STAGING` und `PROXY_NETWORK`
+`staging.smart-einzug.de` mit einer eigenen `.env` (nur `DOMAIN_STAGING` und `COOLIFY_NETWORK`
 gesetzt).
 
 ### HSTS

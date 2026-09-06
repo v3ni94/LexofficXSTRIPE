@@ -9,10 +9,19 @@
 # Grundsaetze (siehe README.md):
 #  - Kein Datenbank- oder Redis-Port wird nach aussen veroeffentlicht. Auch Caddy veroeffentlicht keine
 #    Ports: Auf dem Hostinger-VPS (Ubuntu 24.04 mit Coolify) haelt der Coolify-Proxy (Traefik) die Ports
-#    80/443, beendet TLS (Let's Encrypt) und reicht Anfragen ueber das Docker-Netz PROXY_NETWORK an
+#    80/443, beendet TLS (Let's Encrypt) und reicht Anfragen ueber das Docker-Netz COOLIFY_NETWORK an
 #    unseren Caddy weiter (Traefik-Labels am caddy-Dienst). Caddy ist damit nur noch der interne
 #    HTTP-Server vor php-fpm (Sicherheitsregeln, php_fastcgi, statische Dateien). Kein zweiter Reverse
 #    Proxy auf 80/443, kein Konflikt mit Coolify.
+#  - KEINE eigene Datenbank in diesem Stack: MariaDB (11.8) laeuft bereits als private Coolify-
+#    Datenbankressource (Datenbank smarteinzug, kein oeffentlicher Port, taegliche Coolify-Backups mit
+#    externem Ziel Hetzner Object Storage, Restore getestet). PHP, Scheduler, Worker und Metrics haengen
+#    deshalb zusaetzlich am Coolify-Netz und erreichen den Datenbank-Container ueber seinen Containernamen
+#    (db.host in shared/config.php = Containername der Coolify-MariaDB, Port 3306). Dasselbe Netz liefert
+#    den Anwendungscontainern den Weg ins Internet (Lexware Office, Stripe, Mail); smarteinzug_internal
+#    bleibt ein Netz ohne Aussenverbindung fuer Caddy<->php und Redis.
+#  - KEIN eigener Backup-Container: die Datenbanksicherung uebernimmt Coolify. Der Metrik-Sammler liest
+#    nur die lokale Kopie der Coolify-Backups (COOLIFY_BACKUP_DIR, read-only) fuer die Anzeige im Admin.
 #  - Der Code des aktiven Release liegt unter /opt/smarteinzug/releases/current (Symlink innerhalb
 #    des Release-Ordners, siehe scripts/deploy.sh) und wird nur LESEND in die Container eingebunden.
 #    config.php und storage/ liegen ausserhalb der Releases unter /opt/smarteinzug/shared/ und werden
@@ -65,7 +74,8 @@ x-php-common: &php-common
   image: smarteinzug-php:local
   restart: unless-stopped
   user: "${APP_UID:-33}:${APP_GID:-33}"
-  networks: [smarteinzug_internal]
+  # coolify: Datenbank (Coolify-MariaDB) und Internet; smarteinzug_internal: Caddy und Redis.
+  networks: [coolify, smarteinzug_internal]
   working_dir: /opt/smarteinzug/releases/current
   environment: &php-common-env
     TZ: ${TZ:-Europe/Berlin}
@@ -85,16 +95,14 @@ x-php-background: &php-background
     timeout: 10s
     retries: 3
     start_period: 20s
-  depends_on: &depends-on-db
-    mariadb:
-      condition: service_healthy
 
 networks:
-  # proxy: das bereits vorhandene Netz des Coolify-Proxys (Standardname "coolify", auf dem Server mit
-  # "docker network ls" pruefen). Nur Caddy haengt daran; ueber dieses Netz erreicht Traefik unseren Caddy.
-  proxy:
+  # coolify: das bereits vorhandene Netz von Coolify (Standardname "coolify", auf dem Server mit
+  # "docker network ls" pruefen). Darin laufen der Coolify-Proxy (Traefik) und die Coolify-MariaDB.
+  # Caddy haengt daran fuer den Proxy, die PHP-Container fuer Datenbank und Internetzugang.
+  coolify:
     external: true
-    name: ${PROXY_NETWORK:-coolify}
+    name: ${COOLIFY_NETWORK:-coolify}
   # smarteinzug_internal: kein Zugriff von aussen (internal: true). Fester Adressbereich, damit die
   # Adressen der Container vorhersagbar bleiben. Hinweis: TLS endet am Coolify-Proxy, deshalb muss
   # trusted_proxies in app/config.php die Docker-Netzbereiche enthalten (z.B. ['172.16.0.0/12',
@@ -110,15 +118,13 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
-  mariadb_data:
-  backups:
 
 services:
   # --- Reverse Proxy -----------------------------------------------------------------------
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    networks: [proxy, smarteinzug_internal]
+    networks: [coolify, smarteinzug_internal]
     # Keine "ports:": 80/443 gehoeren dem Coolify-Proxy. Traefik findet diesen Container ueber die Labels.
     environment:
       DOMAIN_APP: ${DOMAIN_APP}
@@ -129,7 +135,7 @@ services:
       # Traefik (Coolify-Proxy): Entrypoints "http"/"https" und Certresolver "letsencrypt" entsprechen der
       # Standardkonfiguration von Coolify (/data/coolify/proxy/docker-compose.yml auf dem Server pruefen).
       traefik.enable: "true"
-      traefik.docker.network: ${PROXY_NETWORK:-coolify}
+      traefik.docker.network: ${COOLIFY_NETWORK:-coolify}
       traefik.http.routers.smarteinzug-http.rule: Host(`${DOMAIN_APP}`) || Host(`${DOMAIN_ADMIN}`) || Host(`${DOMAIN_API}`) || Host(`${DOMAIN_STATUS}`)
       traefik.http.routers.smarteinzug-http.entrypoints: http
       traefik.http.routers.smarteinzug-http.middlewares: smarteinzug-redirect
@@ -166,7 +172,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-    depends_on: *depends-on-db
 
   # --- Scheduler (ein Lauf je Datenbank, GET_LOCK) ------------------------------------------
   scheduler:
@@ -207,12 +212,15 @@ services:
     restart: unless-stopped
     user: "${APP_UID:-33}:${APP_GID:-33}"
     command: ["php", "bin/host-metrics.php", "--interval=60"]
-    networks: [smarteinzug_internal]
+    networks: [coolify, smarteinzug_internal]
     environment:
       TZ: ${TZ:-Europe/Berlin}
       SMARTEINZUG_CONFIG: /opt/smarteinzug/shared/config.php
       HOST_PROC: /hostproc
       HOST_ROOT: /opt/smarteinzug/releases
+      # Lokale Kopie der Coolify-Datenbankbackups (nur lesend): der Sammler meldet Zeitpunkt und Groesse der
+      # neuesten Sicherung als backup-status.json an das Monitoring (Admin > System, Komponente Sicherungen).
+      COOLIFY_BACKUP_DIR: /coolify-backups
     working_dir: /opt/smarteinzug/releases/current
     volumes:
       - type: bind
@@ -227,30 +235,14 @@ services:
         source: /opt/smarteinzug/shared/storage
         target: /opt/smarteinzug/shared/storage
       - /proc:/hostproc:ro
-    depends_on: *depends-on-db
+      # Pfad der lokalen Coolify-Backups auf dem Host (Standard /data/coolify/backups, auf dem Server pruefen).
+      - ${COOLIFY_BACKUP_DIR:-/data/coolify/backups}:/coolify-backups:ro
     logging: *default-logging
 
-  # --- Datenbank -------------------------------------------------------------------------------
-  mariadb:
-    image: mariadb:10.11
-    restart: unless-stopped
-    networks: [smarteinzug_internal]
-    environment:
-      MARIADB_DATABASE: ${DB_NAME}
-      MARIADB_USER: ${DB_USER}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      TZ: ${TZ:-Europe/Berlin}
-    volumes:
-      - mariadb_data:/var/lib/mysql
-      - ./mariadb/my.cnf:/etc/mysql/conf.d/smarteinzug.cnf:ro
-    healthcheck:
-      test: ["CMD-SHELL", "healthcheck.sh --connect --innodb_initialized"]
-      interval: 20s
-      timeout: 10s
-      retries: 6
-      start_period: 40s
-    logging: *default-logging
+  # --- Datenbank: KEIN Dienst hier. MariaDB 11.8 ist eine private Coolify-Datenbankressource (Datenbank
+  #     smarteinzug), erreichbar fuer die PHP-Container ueber das Coolify-Netz unter ihrem Containernamen
+  #     (db.host in shared/config.php). Kein veroeffentlichter Port, Backups durch Coolify (Hetzner Object
+  #     Storage). Import von Bestandsdaten: scripts/db-import.sh (docker exec in den Coolify-Container).
 
   # --- Redis (Sperren, Ratenbegrenzung, Cache; kein persistenter Datenbestand noetig) -----------
   redis:
@@ -267,27 +259,7 @@ services:
       retries: 5
     logging: *default-logging
 
-  # --- Backup: taeglicher Dump im Container, Ergebnis als backup-status.json im gemeinsamen Speicher
-  #     (Monitoring-Komponente Sicherungen). Kein Docker-Socket, keine Rechte auf dem Host.
-  backup:
-    build:
-      context: ./backup
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    networks: [smarteinzug_internal]
-    environment:
-      TZ: ${TZ:-Europe/Berlin}
-      DB_HOST: mariadb
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      RESULT_FILE: /opt/smarteinzug/shared/storage/backup-status.json
-      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
-      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
-    volumes:
-      - backups:/backups
-      # Ergebnisdatei fuer das Monitoring der Anwendung; kein Docker-Socket noetig.
-      - /opt/smarteinzug/shared/storage:/opt/smarteinzug/shared/storage
-    depends_on: *depends-on-db
-    logging: *default-logging
+  # --- Backup: KEIN Dienst hier. Die taegliche Datenbanksicherung mit externem Ziel (Hetzner Object Storage)
+  #     und der getestete Restore laufen ueber Coolify. Ein zweiter Dump-Container wuerde dieselbe Aufgabe
+  #     unkontrolliert parallel uebernehmen. backup/restore-test.sh bleibt als Werkzeug fuer
+  #     Wiederherstellungstests gegen eine temporaere Datenbank nutzbar (siehe README.md).

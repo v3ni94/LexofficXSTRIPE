@@ -122,22 +122,33 @@ alle Container):
 
 ## Backups und Restore-Test
 
-Täglicher automatischer Lauf über den `backup`-Container (Cron innerhalb des Containers, siehe
-`deploy/vps/backup/backup.sh`): `mariadb-dump --single-transaction`, Komprimierung, Prüfsumme,
-optionale Verschlüsselung (`BACKUP_AGE_RECIPIENT`), lokale Aufbewahrung
-(`BACKUP_RETENTION_DAYS`, Standard 14 Tage), optionaler externer Upload (`BACKUP_REMOTE`),
-Rückmeldung an die Anwendung über die Ergebnisdatei `backup-status.json` (sichtbar im Adminbereich System, Dienste und Server).
+Die tägliche Sicherung übernimmt ausschließlich Coolify, produktiv eingerichtet und vom Betreiber
+bestätigt: tägliche Sicherung der Coolify-MariaDB-Ressource mit zusätzlichem externem Upload in
+einen Hetzner-Object-Storage-Bucket, Restore laut Betreiber getestet. Es gibt keinen zweiten
+Dump-Container im SmartEinzug-Stack. Der Metrik-Sammler (`metrics`) liest nur die lokale Kopie der
+Coolify-Sicherungen (`COOLIFY_BACKUP_DIR`, lesend eingebunden) und schreibt Zeitpunkt und Größe der
+neuesten Sicherung als `backup-status.json` in den gemeinsamen Speicher; darüber zeigt der
+Adminbereich System (Reiter Server) die Komponente „Sicherungen“ (älter als 26 Stunden gilt als
+eingeschränkt). Löscht Coolify lokale Kopien nach dem externen Upload, zeigt die Komponente „nicht
+eingerichtet“ beziehungsweise veraltet an; dann in Coolify die lokale Aufbewahrung aktivieren (auf
+dem Server zu prüfen). Externer Upload und Restore werden ausschließlich in Coolify geprüft, nicht
+in der Anwendung selbst.
 
-Manueller Lauf und Wiederherstellungstest:
+Zusätzlicher Wiederherstellungstest gegen einen aus Coolify heruntergeladenen Dump:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backup bash backup.sh
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backup bash restore-test.sh
+docker run --rm -it --network coolify \
+  -v /pfad/zum/dump:/dump:ro -v "$PWD/deploy/vps/backup:/tools:ro" \
+  -e DB_HOST=<containername-der-coolify-mariadb> -e DB_ROOT_PASSWORD=<root-passwort-aus-coolify> \
+  mariadb:11 bash /tools/restore-test.sh /dump/<datei>.sql.gz
 ```
 
-`restore-test.sh` spielt den letzten Dump in eine isolierte Testdatenbank ein und prüft, dass der
-Import ohne Fehler durchläuft, ohne die produktive Datenbank zu berühren. Diesen Test regelmäßig
-wiederholen (empfohlen: monatlich), nicht nur einmalig bei der Einrichtung.
+`restore-test.sh` läuft dafür in einem kurzlebigen Client-Container im Netz `coolify` (kein
+veröffentlichter Port nötig), spielt den Dump in eine isolierte, temporäre Testdatenbank ein und
+prüft, dass der Import ohne Fehler durchläuft, ohne die produktive Datenbank zu berühren. Diesen
+Test regelmäßig wiederholen (empfohlen: monatlich), nicht nur einmalig bei der Einrichtung.
+`deploy/vps/backup/backup.sh` und das zugehörige `Dockerfile` sind ausschließlich eine
+Ausweichlösung ohne Coolify und nicht Teil dieses Stacks.
 
 ## Updates
 
@@ -152,12 +163,15 @@ sudo apt-get update && sudo apt-get upgrade -y
 Nach einem Kernel-Update einen Neustart des Servers einplanen (außerhalb der Geschäftszeiten,
 vorher Wartungsmodus aktivieren).
 
-**Docker-Images:** Basis-Images (PHP, MariaDB, Redis, Caddy) regelmäßig aktualisieren:
+**Docker-Images:** Basis-Images des SmartEinzug-Stacks (PHP, Redis, Caddy) regelmäßig aktualisieren:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
+
+Die Coolify-MariaDB ist kein Dienst dieses Stacks; ihre Versionsaktualisierung erfolgt in Coolify
+selbst (Bereich der Datenbankressource), nicht über diesen `pull`/`up`-Zyklus.
 
 Ein Deployment baut das PHP-Image nur neu, wenn `deploy/vps/php/Dockerfile` geändert wurde (siehe
 `deploy/vps/scripts/deploy.sh`); ein reines `pull` der Basis-Images ist unabhängig davon jederzeit

@@ -18,7 +18,8 @@ Hostinger-Kundenbereich).
 | Bereich | Zuständigkeit | Bis wann/wobei |
 |---|---|---|
 | IONOS-Webhosting | Marketingseiten, Domainverwaltung (DNS-Zonen), E-Mail-Postfächer | dauerhaft; zusätzlich die Anwendung (app/admin/api), solange der Cutover (`docs/vps/07-cutover-checkliste.md`) noch nicht erfolgt ist |
-| Hostinger-VPS | Anwendung (app/admin/api/status), MariaDB, Redis, Scheduler, Worker, Backup, zusätzlich Coolify selbst (Proxy und Serverübersicht) | ab erfolgreichem Test dieses Kapitels; produktiv erst nach Cutover |
+| Hostinger-VPS | Anwendung (app/admin/api/status), Scheduler, Worker, Redis, zusätzlich Coolify selbst (Proxy, Serverübersicht und die als eigene Ressource eingerichtete MariaDB mit Sicherung) | ab erfolgreichem Test dieses Kapitels; produktiv erst nach Cutover |
+| Coolify | Reverse Proxy (Traefik), Serverübersicht, private Datenbankressource MariaDB (Sicherung inklusive externem Upload) | produktiv eingerichtet, siehe Status unten; kein Autodeploy für SmartEinzug |
 | GitHub | Quelle des Codes, einziger Deploymentweg für den VPS (`.github/workflows/deploy.yml`, Job `deploy-vps`) sowie unverändert der Upload zum IONOS-Webhosting (Job `deploy-webhosting`) | dauerhaft |
 
 ## Status
@@ -26,9 +27,12 @@ Hostinger-Kundenbereich).
 | Baustein | Stand |
 |---|---|
 | Hostinger-VPS gekauft, Coolify läuft | produktiv eingerichtet (durch den Nutzer bestätigt) |
-| `deploy/vps/` (Compose, Caddyfile, `.env.example`) auf Coolify/Traefik umgestellt | vorbereitet (im Repository) |
+| Coolify-MariaDB als eigene, private Datenbankressource (Version 11.8.9, Datenbank `smarteinzug`, Port 3306 nicht öffentlich, persistenter Speicher, Healthcheck erfolgreich, Lesen/Schreiben getestet) | produktiv eingerichtet (vom Betreiber bestätigt) |
+| Tägliche Coolify-Sicherung der Datenbank, zusätzlicher externer Upload nach Hetzner Object Storage, Restore aus dem externen Backup erfolgreich getestet | produktiv eingerichtet (vom Betreiber bestätigt) |
+| Coolify-GitHub-App für SmartEinzug angelegt | vom Betreiber angelegt; in diesem Architekturmodell nicht benötigt, siehe Schritt 8a und `docs/vps/03-github-deployment.md` |
+| `deploy/vps/` (Compose, Caddyfile, `.env.example`) auf Coolify/Traefik-Proxy und Coolify-MariaDB umgestellt (kein `mariadb`-, kein `backup`-Dienst mehr im Stack) | vorbereitet (im Repository) |
 | `setup-vps.sh` erkennt Coolify (Firewall wird ergänzt statt zurückgesetzt, Port 8000 gesperrt bzw. optional per `COOLIFY_UI_ALLOW_FROM` freigegeben) | vorbereitet (im Repository); Wirkung beim ersten Lauf auf dem Server zu prüfen |
-| Diese Anleitung (Schritte 1 bis 13) | vorbereitet, noch nicht durchgeführt |
+| Diese Anleitung (Schritte 1 bis 13) | vorbereitet, noch nicht vollständig durchgeführt |
 | Erstes Deployment über den GitHub-Workflow | offen |
 | Datenbankimport von Bestandsdaten | offen |
 | Produktive DNS-Umstellung, Cutover | offen, ausdrücklich noch nicht vorgenommen |
@@ -50,10 +54,12 @@ Einrichtungsassistenten. SmartEinzug benötigt Coolify ausschließlich als Proxy
    Administrator-Zugang anlegen.
 2. Im Schritt „Choose Server Type“ **„This machine“ (localhost)** wählen, da Coolify auf
    demselben Server läuft, den SmartEinzug später nutzt. NICHT „Remote Server“ wählen.
-3. Den Assistenten danach beenden, OHNE eine Anwendung oder Ressource für SmartEinzug anzulegen.
-   Kein Projekt, keine Applikation, keine verbundene GitHub-App für dieses Repository in Coolify
-   einrichten: Der einzige Deploymentweg bleibt der GitHub-Workflow
-   (`docs/vps/03-github-deployment.md`).
+3. Den Assistenten danach beenden, OHNE eine Anwendung oder Applikation für SmartEinzug in Coolify
+   anzulegen: Der einzige Deploymentweg bleibt der GitHub-Workflow
+   (`docs/vps/03-github-deployment.md`). Die private Datenbankressource MariaDB (Schritt 5a) ist
+   davon unabhängig und wird bewusst in Coolify eingerichtet. Eine Coolify-GitHub-App für dieses
+   Repository wurde bereits angelegt; solange keine Application in Coolify daran gebunden ist,
+   löst sie keinen Autodeploy aus (siehe Schritt 8a und `docs/vps/03-github-deployment.md`).
 4. Proxy-Status in Coolify prüfen (Bereich „Servers“ > „localhost“ > „Proxy“): Der Proxy soll als
    laufend angezeigt werden.
 
@@ -191,20 +197,64 @@ cat /data/coolify/proxy/docker-compose.yml
 ```
 
 **Erwartetes Ergebnis (auf dem Server zu prüfen, hier nicht unterstellt):** Ein Docker-Netz mit dem
-Namen `coolify` (Standardname, in `.env` als `PROXY_NETWORK` zu hinterlegen, falls abweichend); ein
+Namen `coolify` (Standardname, in `.env` als `COOLIFY_NETWORK` zu hinterlegen, falls abweichend); ein
 laufender Proxy-Container (üblicherweise `coolify-proxy`); in
 `/data/coolify/proxy/docker-compose.yml` die Entrypoint-Namen `http`/`https` und der
 Certresolver-Name `letsencrypt`, die in `deploy/vps/docker-compose.yml` als Traefik-Labels bereits
 hinterlegt sind (`traefik.http.routers.smarteinzug-https.entrypoints: https`,
 `tls.certresolver: letsencrypt`).
 
-**Prüfkommando:** siehe Befehle oben; bei abweichenden Namen `PROXY_NETWORK` in `.env` anpassen
+**Prüfkommando:** siehe Befehle oben; bei abweichenden Namen `COOLIFY_NETWORK` in `.env` anpassen
 bzw. die Labels in `deploy/vps/docker-compose.yml` mit der Entwicklung abstimmen (Abweichung an
 dieser Stelle ist eine Code-Änderung, keine reine Konfiguration).
 
 **Mögliche Fehler:** Datei `/data/coolify/proxy/docker-compose.yml` fehlt oder liegt an anderer
 Stelle (Coolify-Version geprüft werden, Pfad kann sich zwischen Versionen unterscheiden, auf dem
-Server zu prüfen); Netzname weicht von `coolify` ab (in `.env` unter `PROXY_NETWORK` hinterlegen).
+Server zu prüfen); Netzname weicht von `coolify` ab (in `.env` unter `COOLIFY_NETWORK` hinterlegen).
+
+## 5a. Coolify-MariaDB und Netz prüfen
+
+**Zweck:** Bestätigen, dass die bereits als eigene, private Coolify-Datenbankressource eingerichtete
+MariaDB (Version 11.8.9, Datenbank `smarteinzug`) im selben Docker-Netz liegt wie der Coolify-Proxy,
+keinen öffentlichen Port hat und für die Anwendungscontainer unter ihrem Containernamen erreichbar
+ist.
+
+**Befehle (auf dem Server, als `deploy`):**
+```bash
+docker ps
+docker inspect <containername-der-coolify-mariadb> \
+  --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+```
+Den Containernamen liefert entweder die Ausgabe von `docker ps` (Spalte NAMES, üblicherweise mit
+einem an die Datenbankressource erinnernden Namen) oder Coolify selbst: bei der Datenbankressource
+steht die interne Verbindungsadresse in der Form
+`mysql://benutzer:passwort@<containername>:3306/smarteinzug`, deren mittlerer Teil der
+Containername ist.
+
+**Erwartetes Ergebnis:** `docker inspect` zeigt unter den Netzen des Containers das Netz `coolify`
+(oder den in `COOLIFY_NETWORK` hinterlegten Namen, siehe Schritt 5); in Coolify ist bei der
+Datenbankressource kein „Public Port“ gesetzt.
+
+**Prüfkommando:** Von außen muss die Datenbank unerreichbar sein: `nc -zv 72.61.80.67 3306` muss
+fehlschlagen. Testverbindung aus einem kurzlebigen Client-Container im Netz `coolify` (kein
+veröffentlichter Port nötig):
+```bash
+docker run --rm -it --network coolify mariadb:11 \
+  mariadb -h <containername-der-coolify-mariadb> -u <benutzer> -p smarteinzug -e "SELECT 1"
+```
+
+**Mögliche Fehler:** Die Datenbank liegt in einem anderen Docker-Netz als der Coolify-Proxy (Ausgabe
+von `docker inspect` zeigt ein abweichendes Netz); dann entweder `COOLIFY_NETWORK` in `.env` auf
+dieses Netz setzen oder die Datenbankressource in Coolify im Standardziel (Server localhost, Netz
+`coolify`) neu anlegen, da Proxy und Datenbank im selben Netz liegen müssen. Coolify bietet je
+Ressource eine Zieleinstellung („Destination“), die das verwendete Docker-Netz bestimmt (auf dem
+Server zu prüfen). Ein manuelles `docker network connect` wird NICHT empfohlen: Es wirkt nicht
+dauerhaft, weil Coolify den Container jederzeit neu erzeugen kann und die manuelle Zuordnung dabei
+verloren geht.
+
+**Hinweis:** Die Anwendungscontainer (`caddy`, `php`, `scheduler`, alle Worker, `metrics`) hängen
+deshalb am Netz `coolify` und haben darüber zugleich den Weg ins Internet (Lexware Office, Stripe,
+Mail); das interne Netz `smarteinzug_internal` hat keine Außenverbindung.
 
 ## 6. shared/config.php anlegen
 
@@ -226,7 +276,12 @@ Auszufüllen, mit Besonderheiten gegenüber der Vorlage:
   `docker network inspect <netzname>` gegenprüfen (auf dem Server zu prüfen). Siehe
   `docs/vps/01-architektur.md`, Abschnitt „Proxykette“.
 - `storage_dir`: `/opt/smarteinzug/shared/storage`.
-- `db.host`: `mariadb` (Dienstname im Docker-Netz, nicht die IP des VPS).
+- `db.host`: Containername der bereits als eigene, private Coolify-Datenbankressource
+  eingerichteten MariaDB (nicht die IP des VPS, kein fester Dienstname). Der Containername steht in
+  Coolify bei der Datenbankressource in der internen Verbindungsadresse
+  (`mysql://benutzer:passwort@<containername>:3306/smarteinzug`) und ist auf dem Server mit
+  `docker ps` sichtbar (siehe Schritt 5a). `db.port`: `3306`, `db.name`: `smarteinzug`, `db.user`
+  und `db.pass`: wie in Coolify bei der Datenbankressource hinterlegt.
 - `redis`: `['host' => 'redis', 'port' => 6379, 'password' => null, 'prefix' => 'se:']` (Dienstname
   im Docker-Netz).
 - `migration_token`, `cron_token`: neu erzeugen (`openssl rand -hex 32`), auf dem VPS eigene,
@@ -251,8 +306,9 @@ die Anwendung hält jede Anfrage für HTTP statt HTTPS).
 
 ## 7. deploy/.env anlegen
 
-**Zweck:** Umgebungsvariablen für `docker-compose.yml` (Datenbank, Domains, Docker-Netz des
-Coolify-Proxys, UID/GID, Umgebung).
+**Zweck:** Umgebungsvariablen für `docker-compose.yml` (Domains, Docker-Netz des Coolify-Proxys,
+UID/GID, Umgebung). Die Datenbankzugangsdaten stehen NICHT in dieser Datei, sondern ausschließlich
+in `/opt/smarteinzug/shared/config.php` (Schritt 6).
 
 **Befehle:**
 ```bash
@@ -264,22 +320,26 @@ id deploy
 nano .env
 ```
 
-Mindestens auszufüllen (vollständige Liste: `deploy/vps/.env.example`): `DB_NAME`, `DB_USER`,
-`DB_PASSWORD`, `DB_ROOT_PASSWORD`, `TZ`, `DOMAIN_APP`, `DOMAIN_ADMIN`, `DOMAIN_API`,
-`DOMAIN_STATUS`, `PROXY_NETWORK` (Wert aus Schritt 5, Standard `coolify`), `DEPLOY_ENV=prod`,
-`HEALTH_STRICT=false` (bis zum Cutover, siehe `docs/vps/07-cutover-checkliste.md`), `APP_UID` und
-`APP_GID` (Ausgabe von `id deploy`), `PM_MAX_CHILDREN`, `WORKER_MEMORY_MB`, `BACKUP_REMOTE`,
-`BACKUP_AGE_RECIPIENT`, `BACKUP_RETENTION_DAYS`.
+Mindestens auszufüllen (vollständige Liste: `deploy/vps/.env.example`): `TZ`, `DOMAIN_APP`,
+`DOMAIN_ADMIN`, `DOMAIN_API`, `DOMAIN_STATUS`, `COOLIFY_NETWORK` (Wert aus Schritt 5, Standard
+`coolify`), `DB_CONTAINER` (Containername der Coolify-MariaDB aus Schritt 5a; wird nur von
+`scripts/db-import.sh` und für Wiederherstellungstests verwendet), `COOLIFY_BACKUP_DIR` (Hostpfad
+der lokalen Kopien der Coolify-Datenbanksicherungen, Standard `/data/coolify/backups`, auf dem
+Server zu prüfen), `DEPLOY_ENV=prod`, `HEALTH_STRICT=false` (bis zum Cutover, siehe
+`docs/vps/07-cutover-checkliste.md`), `APP_UID` und `APP_GID` (Ausgabe von `id deploy`),
+`PM_MAX_CHILDREN`, `WORKER_MEMORY_MB`.
 
-**Erwartetes Ergebnis:** `.env` ohne verbliebene Platzhalter, `PROXY_NETWORK` entspricht dem in
-Schritt 5 geprüften tatsächlichen Netznamen.
+**Erwartetes Ergebnis:** `.env` ohne verbliebene Platzhalter, `COOLIFY_NETWORK` entspricht dem in
+Schritt 5 geprüften tatsächlichen Netznamen, `DB_CONTAINER` entspricht dem in Schritt 5a
+ermittelten Containernamen.
 
 **Prüfkommando:** `grep -c HIER .env` liefert `0`.
 
-**Mögliche Fehler:** `PROXY_NETWORK` weicht vom tatsächlichen Namen ab (Caddy startet, Traefik
-findet den Container aber nicht, keine Zertifikatsausstellung möglich); `APP_UID`/`APP_GID`
-weichen vom Benutzer `deploy` ab (`app/storage` dann nicht beschreibbar, „Permission denied“ in
-den PHP-Logs).
+**Mögliche Fehler:** `COOLIFY_NETWORK` weicht vom tatsächlichen Namen ab (Caddy startet, Traefik
+findet den Container aber nicht, keine Zertifikatsausstellung möglich, und die PHP-Container
+erreichen die Coolify-MariaDB nicht); `APP_UID`/`APP_GID` weichen vom Benutzer `deploy` ab
+(`app/storage` dann nicht beschreibbar, „Permission denied“ in den PHP-Logs); `DB_CONTAINER` falsch
+oder nicht gesetzt (`scripts/db-import.sh` bricht mit einer entsprechenden Fehlermeldung ab).
 
 ## 8. GitHub-Secrets und -Variablen für Hostinger setzen
 
@@ -303,6 +363,28 @@ den PHP-Logs).
 angelegten Einträge.
 
 **Mögliche Fehler:** siehe `docs/vps/03-github-deployment.md`, Abschnitt Fehlerbilder.
+
+## 8a. Coolify-GitHub-App: nach erfolgreicher Einrichtung entfernen
+
+**Zweck:** Der Betreiber hat bereits eine Coolify-GitHub-App für dieses Repository angelegt. In der
+hier beschriebenen Architektur wird sie nicht benötigt (kein Coolify-Autodeploy, keine
+Coolify-Application für SmartEinzug), siehe `docs/vps/03-github-deployment.md`.
+
+**Vorgehen:** Solange keine Application in Coolify an die GitHub-App gebunden ist, löst sie keinen
+Autodeploy aus und kann bis zum Nachweis des funktionierenden SSH-Deploymentwegs (Schritt 9)
+unverändert bestehen bleiben. Nach erfolgreichem Test des SSH-Deployments kann die App entfernt
+werden: in Coolify (Bereich „Sources“) und in GitHub (Settings > Applications bzw. Installed GitHub
+Apps).
+
+**Erwartetes Ergebnis:** Genau ein Deploymentweg für den VPS bleibt bestehen (GitHub-Workflow per
+SSH).
+
+**Prüfkommando (auf dem Server bzw. in Coolify/GitHub zu prüfen):** Coolify, Bereich „Sources“,
+zeigt keine SmartEinzug-Application, die an die GitHub-App gebunden ist.
+
+**Mögliche Fehler:** Eine Application wird versehentlich in Coolify an die GitHub-App gebunden
+(Coolify-Autodeploy würde dann parallel zum GitHub-Workflow eingreifen); in diesem Fall die Bindung
+sofort wieder entfernen.
 
 ## 9. Erstes Deployment per workflow_dispatch
 
@@ -347,21 +429,23 @@ Alternative, die direkt gegen den Coolify-Proxy testet, ohne TLS vorauszusetzen:
 curl -H "Host: app.smart-einzug.de" http://127.0.0.1/health.php
 ```
 
-**Erwartetes Ergebnis:** Alle Dienste `running` (MariaDB und PHP zusätzlich `healthy`),
-`healthcheck.php --all` liefert Exit-Code 0, `readlink -f .../current` zeigt auf den soeben
-deployten Git-SHA. Der erste `curl`-Befehl (HTTPS, `--resolve`) scheitert an einem fehlenden oder
-ungültigen Zertifikat, solange DNS noch nicht auf den VPS zeigt; DAS IST ERWARTBAR und kein Fehler
-dieses Schritts. Der zweite `curl`-Befehl (reines HTTP gegen `127.0.0.1`, Host-Header gesetzt)
-liefert `"php": true`, sofern der Coolify-Proxy Anfragen auf Port 80 lokal entgegennimmt; schlägt
-dieser Weg ebenfalls fehl, ist eher die Traefik-Konfiguration selbst zu prüfen (Schritt 5), nicht
-die Anwendung.
+**Erwartetes Ergebnis:** Alle Dienste des SmartEinzug-Stacks `running`, `php` zusätzlich `healthy`
+(kein Dienst `mariadb` in diesem Stack: Die Datenbank ist die bereits eingerichtete
+Coolify-Ressource, in Coolify selbst als `healthy` angezeigt), `healthcheck.php --all` liefert
+Exit-Code 0, `readlink -f .../current` zeigt auf den soeben deployten Git-SHA. Der erste
+`curl`-Befehl (HTTPS, `--resolve`) scheitert an einem fehlenden oder ungültigen Zertifikat, solange
+DNS noch nicht auf den VPS zeigt; DAS IST ERWARTBAR und kein Fehler dieses Schritts. Der zweite
+`curl`-Befehl (reines HTTP gegen `127.0.0.1`, Host-Header gesetzt) liefert `"php": true`, sofern der
+Coolify-Proxy Anfragen auf Port 80 lokal entgegennimmt; schlägt dieser Weg ebenfalls fehl, ist eher
+die Traefik-Konfiguration selbst zu prüfen (Schritt 5), nicht die Anwendung.
 
 **Prüfkommando:** siehe Befehle oben.
 
-**Mögliche Fehler:** `mariadb` bleibt `starting` (Datenverzeichnis wird beim ersten Start
-initialisiert, einige Minuten abwarten); `php` startet nicht, weil `config.php` fehlt oder
-fehlerhaft ist (`docker compose logs php`); `readlink` zeigt auf ein älteres Release (Deployment
-im Job „deploy-vps“ genauer prüfen, siehe `docs/vps/03-github-deployment.md`).
+**Mögliche Fehler:** `php` bleibt `unhealthy` oder startet nicht, weil `config.php` fehlt, fehlerhaft
+ist, oder die Verbindung zur Coolify-MariaDB nicht steht (falscher Containername, falsches Netz,
+falsche Zugangsdaten; siehe Schritt 5a und 6, `docker compose logs php`); `readlink` zeigt auf ein
+älteres Release (Deployment im Job „deploy-vps“ genauer prüfen, siehe
+`docs/vps/03-github-deployment.md`).
 
 ## 11. Datenbank: Schema und Bestandsdaten
 
@@ -375,7 +459,16 @@ Bestandsdaten (bestehende Firmen vom IONOS-Webhosting) ist zusätzlich ein Daten
 - Bestandsdaten übernehmen: vollständiges Runbook `docs/vps/04-datenbankmigration.md`
   (`scripts/db-import.sh`, Prüfsumme, anschließend `scripts/db-verify.php` für den Abgleich
   Alt/Neu). Dieser Schritt ist unabhängig von Schritt 9/10 und erst zum eigentlichen Cutover
-  nötig, nicht bereits beim ersten Test-Deployment.
+  nötig, nicht bereits beim ersten Test-Deployment. Kein produktiver Import im Rahmen dieser
+  Ersteinrichtung.
+- `scripts/db-import.sh` spielt den Dump per `docker exec -i` direkt in den Container der
+  Coolify-MariaDB ein (Containername aus `DB_CONTAINER` in `.env`, siehe Schritt 7), nicht über
+  `docker compose exec`, weil die Datenbank kein Dienst dieses Compose-Projekts ist; ein
+  veröffentlichter Port ist dafür nicht nötig.
+- Sicherung der Datenbank: übernimmt ausschließlich Coolify (tägliche Sicherung, externer Upload
+  nach Hetzner Object Storage, Restore laut Betreiber getestet). Der Metrik-Sammler liest nur die
+  lokale Kopie (`COOLIFY_BACKUP_DIR`) und meldet sie als Komponente „Sicherungen“ im Adminbereich
+  System, Reiter Server (siehe `docs/vps/06-betrieb.md`).
 
 **Erwartetes Ergebnis:** `bin/migrate.php --status` ausschließlich `success`; nach einem
 Bestandsimport identische Zeilenzahlen und Prüfsummen zwischen Webhosting und VPS

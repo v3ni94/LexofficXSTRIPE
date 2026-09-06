@@ -71,10 +71,54 @@ while (true) {
                 monitor_event('redis_mem', 'ok', null, 'info_memory', 'internal', $interval * 3, round((int)$info['used_memory'] / 1048576, 1), 'MB');
             }
         }
+        host_metrics_backup_scan();
     } catch (Throwable $e) {
         app_log('warning', 'Host-Metriken teilweise nicht erfasst', ['error_code' => monitor_category($e)]);
     }
     if (isset($opts['once'])) {
         break;
+    }
+}
+
+/**
+ * Lokale Kopien der Coolify-Datenbankbackups (COOLIFY_BACKUP_DIR, nur lesend eingebunden) auswerten und die
+ * neueste Sicherung als backup-status.json in den gemeinsamen Speicher schreiben. Damit zeigt die
+ * Monitoring-Komponente "Sicherungen" den Stand der von Coolify erzeugten Backups (Zeitpunkt, Groesse),
+ * ohne dass die Anwendung selbst Dumps zieht. Der externe Upload zu Hetzner Object Storage wird hier nicht
+ * geprueft (Anzeige remote = coolify, Pruefung in Coolify).
+ */
+function host_metrics_backup_scan(): void
+{
+    $dir = rtrim((string)getenv('COOLIFY_BACKUP_DIR'), '/');
+    if ($dir === '' || !is_dir($dir)) {
+        return;
+    }
+    $newest = null;
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::LEAVES_ONLY, RecursiveIteratorIterator::CATCH_GET_CHILD);
+    $count = 0;
+    foreach ($it as $f) {
+        if (!$f->isFile() || ++$count > 20000) {
+            continue;
+        }
+        if ($newest === null || $f->getMTime() > $newest->getMTime()) {
+            $newest = $f;
+        }
+    }
+    if ($newest === null) {
+        return; // noch keine Sicherung vorhanden: Komponente bleibt "nicht eingerichtet"
+    }
+    $file = storage_dir() . '/backup-status.json';
+    $data = [
+        'status'      => 'ok',
+        'finished_at' => gmdate('Y-m-d\TH:i:s\Z', $newest->getMTime()),
+        'bytes'       => $newest->getSize(),
+        'remote'      => 'coolify',
+        'source'      => 'coolify_local_copy',
+        'file'        => $newest->getFilename(),
+        'recorded_at' => gmdate('Y-m-d\TH:i:s\Z'),
+    ];
+    $tmp = $file . '.tmp';
+    if (@file_put_contents($tmp, json_encode($data, JSON_UNESCAPED_SLASHES)) !== false) {
+        @rename($tmp, $file);
     }
 }

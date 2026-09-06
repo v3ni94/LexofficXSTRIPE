@@ -184,19 +184,25 @@ scp php-ionos/app/config.example.php deploy@HIER-VPS-IP:/opt/smarteinzug/shared/
 ssh -i ~/.ssh/smarteinzug_vps_admin deploy@HIER-VPS-IP
 nano /opt/smarteinzug/shared/config.php
 ```
-Mindestens auszufüllen: Datenbankzugangsdaten (identisch mit der `.env` aus Schritt 10),
-`app_secret` (`openssl rand -hex 32`), `cron_token`, `migration_token`, `app_base_url`,
-`admin_base_url`, `public_base_url`, `allowed_hosts`, `operator`, `mail`.
+Mindestens auszufüllen: Datenbankzugangsdaten (`db.host` = Containername der bereits als eigene
+Coolify-Ressource eingerichteten MariaDB, abzulesen in Coolify bei der Datenbankressource in der
+internen Verbindungsadresse oder mit `docker ps`; `db.name`, `db.user`, `db.pass` wie in Coolify
+hinterlegt), `app_secret` (`openssl rand -hex 32`), `cron_token`, `migration_token`,
+`app_base_url`, `admin_base_url`, `public_base_url`, `allowed_hosts`, `operator`, `mail`.
 **Erwartetes Ergebnis:** Vollständig ausgefüllte Konfigurationsdatei ohne Platzhalter aus der
 Vorlage.
 **Prüfkommando:** `php -l /opt/smarteinzug/shared/config.php` (lokal mit installiertem PHP oder im
 Container aus Schritt 13/14).
-**Mögliche Fehler:** Vergessene Platzhalter (`HIER-...`) in Produktion; unterschiedliche
-Datenbankzugangsdaten zwischen `config.php` und `.env` (Anmeldung an MariaDB schlägt fehl).
+**Mögliche Fehler:** Vergessene Platzhalter (`HIER-...`) in Produktion; falscher Containername oder
+falsche Zugangsdaten bei `db.host`/`db.user`/`db.pass` gegenüber der Coolify-Datenbankressource
+(Anmeldung an die Datenbank schlägt fehl).
 
 ## 10. .env für den Docker-Stack anlegen
 
-**Zweck:** Umgebungsvariablen für `docker-compose.yml` (Datenbank, Domains, UID/GID, Backup-Ziel).
+**Zweck:** Umgebungsvariablen für `docker-compose.yml` (Coolify-Netz, Domains, UID/GID,
+Ressourcen). Die Datenbankzugangsdaten stehen NICHT in dieser Datei, sondern ausschließlich in
+`/opt/smarteinzug/shared/config.php` (siehe Schritt 9); die MariaDB läuft bereits als eigene,
+private Coolify-Datenbankressource.
 **Befehle:**
 ```bash
 ssh -i ~/.ssh/smarteinzug_vps_admin deploy@HIER-VPS-IP
@@ -207,19 +213,22 @@ id deploy   # UID/GID für APP_UID/APP_GID ablesen
 nano .env
 ```
 **Erwartetes Ergebnis:** `.env` mit echten Werten (siehe `deploy/vps/.env.example` für die
-vollständige Liste: `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `TZ`, `DOMAIN_APP`,
-`DOMAIN_ADMIN`, `DOMAIN_API`, `DOMAIN_STATUS`, `PROXY_NETWORK`, `DEPLOY_ENV`, `HEALTH_STRICT`,
-`APP_UID`, `APP_GID`, `PM_MAX_CHILDREN`, `WORKER_MEMORY_MB`, `BACKUP_REMOTE`,
-`BACKUP_AGE_RECIPIENT`, `BACKUP_RETENTION_DAYS`). `LETSENCRYPT_EMAIL` entfällt: TLS und die
-Let's-Encrypt-Zertifikate bezieht der Coolify-Proxy (Traefik), nicht Caddy selbst, siehe
-`docs/vps/01-architektur.md`, Abschnitt „Proxykette“. Stattdessen ist `PROXY_NETWORK` zu setzen
-(Standardwert `coolify`; tatsächlichen Namen mit `docker network ls` auf dem Server prüfen). Datei
-niemals einchecken.
+vollständige Liste: `TZ`, `DOMAIN_APP`, `DOMAIN_ADMIN`, `DOMAIN_API`, `DOMAIN_STATUS`,
+`DOMAIN_STAGING`, `COOLIFY_NETWORK`, `DB_CONTAINER` (Containername der Coolify-MariaDB, nur für
+`scripts/db-import.sh` und Wiederherstellungstests), `COOLIFY_BACKUP_DIR` (Hostpfad der lokalen
+Kopien der Coolify-Datenbanksicherungen, Standard `/data/coolify/backups`, auf dem Server zu
+prüfen), `DEPLOY_ENV`, `HEALTH_STRICT`, `APP_UID`, `APP_GID`, `PM_MAX_CHILDREN`,
+`WORKER_MEMORY_MB`). `LETSENCRYPT_EMAIL` entfällt: TLS und die Let's-Encrypt-Zertifikate bezieht
+der Coolify-Proxy (Traefik), nicht Caddy selbst, siehe `docs/vps/01-architektur.md`, Abschnitt
+„Proxykette“. Stattdessen ist `COOLIFY_NETWORK` zu setzen (Standardwert `coolify`; tatsächlichen
+Namen mit `docker network ls` auf dem Server prüfen). Datei niemals einchecken.
 **Prüfkommando:** `grep -c HIER .env` muss `0` liefern (keine Platzhalter mehr).
 **Mögliche Fehler:** `APP_UID`/`APP_GID` weichen vom tatsächlichen Benutzer `deploy` ab (Container
 kann `app/storage` dann nicht beschreiben, sichtbar an „Permission denied“ in den PHP-Logs);
-`PROXY_NETWORK` weicht vom tatsächlichen Namen des Coolify-Netzes ab (Caddy-Container startet,
-aber Traefik erreicht ihn nicht, `docker network ls` zeigt das tatsächlich vorhandene Netz).
+`COOLIFY_NETWORK` weicht vom tatsächlichen Namen des Coolify-Netzes ab (Caddy-Container startet,
+aber Traefik erreicht ihn nicht, und die PHP-Container erreichen die Coolify-MariaDB nicht;
+`docker network ls` zeigt das tatsächlich vorhandene Netz); `DB_CONTAINER` falsch oder nicht
+gesetzt (Import über `scripts/db-import.sh` schlägt fehl, siehe `docs/vps/04-datenbankmigration.md`).
 
 ## 11. Deploy-Skripte und erstes Release bereitstellen
 
@@ -264,13 +273,17 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env 
 ```
 **Erwartetes Ergebnis:** Alle Dienste aus `docker-compose.yml`/`docker-compose.prod.yml` starten
 (`caddy`, `php`, `scheduler`, `worker-lexware-1`, `worker-lexware-2`, `worker-stripe`,
-`worker-mail`, `worker-maintenance`, `metrics`, `mariadb`, `redis`, `backup`).
+`worker-mail`, `worker-maintenance`, `metrics`, `redis`). Es gibt keinen Dienst `mariadb` und
+keinen Dienst `backup` mehr in diesem Stack: Die Datenbank läuft bereits als eigene, private
+Coolify-Datenbankressource, die Sicherung übernimmt Coolify.
 **Prüfkommando:** `docker compose -f docker-compose.yml -f docker-compose.prod.yml ps` (alle
-Dienste `running`, MariaDB und PHP zusätzlich `healthy`, sobald deren Healthcheck einmal
-durchgelaufen ist).
-**Mögliche Fehler:** `mariadb` bleibt `starting` (Datenverzeichnis wird beim ersten Start
-initialisiert, einige Minuten abwarten); `php` startet nicht, weil `config.php` fehlt oder
-fehlerhaft ist (`docker compose logs php`).
+Dienste `running`, PHP zusätzlich `healthy`, sobald der Healthcheck einmal durchgelaufen ist und
+die Verbindung zur Coolify-MariaDB steht); zusätzlich in Coolify prüfen, dass die Datenbankressource
+als `healthy` angezeigt wird.
+**Mögliche Fehler:** `php` bleibt `unhealthy` oder startet nicht, weil `config.php` fehlt, fehlerhaft
+ist, oder `db.host`/Netzzuordnung nicht zur Coolify-MariaDB passen (falscher Containername, falsches
+Netz, falsche Zugangsdaten; `docker compose logs php`, siehe auch `docs/vps/08-hostinger-coolify.md`,
+Schritt „Coolify-MariaDB und Netz prüfen“).
 
 ## 14. Auf gesunden Zustand warten
 
@@ -292,11 +305,15 @@ Handelt es sich um einen Umzug von Bestandsdaten aus dem Webhosting, stattdessen
 `docs/vps/04-datenbankmigration.md` befolgen (Dump statt leerem Schema).
 **Befehle:**
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T mariadb \
-  sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' \
-  < php-ionos/sql/schema.sql
+cat php-ionos/sql/schema.sql | docker exec -i <containername-der-coolify-mariadb> \
+  sh -c 'exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec php php bin/migrate.php
 ```
+Der Import läuft per `docker exec` direkt in den Container der Coolify-MariaDB (Containername
+`<containername-der-coolify-mariadb>`, abzulesen wie in Schritt 9 beschrieben), nicht über
+`docker compose exec`, weil die Datenbank kein Dienst dieses Compose-Projekts ist. Für einen Umzug
+von Bestandsdaten steht stattdessen `scripts/db-import.sh` bereit (siehe
+`docs/vps/04-datenbankmigration.md`).
 **Erwartetes Ergebnis:** `bin/migrate.php` meldet „Migrationen: 0 eingespielt, 0 offen“ (Schema
 enthält bereits alle Tabellen der aktuellen Version) oder spielt verbleibende Migrationsdateien
 ein.
@@ -372,21 +389,23 @@ Testphase).
 widersprüchlichen Daten, unbedingt vermeiden; siehe `docs/vps/04-datenbankmigration.md`,
 „kein paralleles Schreiben in zwei Datenbanken“).
 
-## 21. Backup einrichten und ersten Testlauf ausführen
+## 21. Sicherungen in Coolify prüfen
 
-**Zweck:** Sicherstellen, dass ab dem ersten Produktivtag ein wiederherstellbares Backup existiert.
-**Befehle:**
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backup bash backup.sh
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backup bash restore-test.sh
-```
-**Erwartetes Ergebnis:** Dump unter `/opt/smarteinzug/backups`, Prüfsumme in Ordnung,
-Wiederherstellungstest erfolgreich, Ergebnis im Adminbereich System (Reiter Server) sichtbar
-(Ergebnisdatei `backup-status.json` im gemeinsamen Speicher, sichtbar unter Admin, System, Dienste als Sicherungen).
-**Prüfkommando:** `ls -la /opt/smarteinzug/backups`.
-**Mögliche Fehler:** `BACKUP_REMOTE` nicht gesetzt (nur lokale Aufbewahrung, kein externer Upload,
-bewusst zulässig, aber als Risiko dokumentieren); Docker-Socket nicht erreichbar (siehe
-`deploy/vps/README.md`, Abschnitt Offene Punkte).
+**Zweck:** Sicherstellen, dass ab dem ersten Produktivtag eine wiederherstellbare Sicherung
+existiert. Die tägliche Sicherung übernimmt ausschließlich Coolify; es gibt keinen eigenen
+Backup-Container im Stack.
+**Vorgehen:** In Coolify bei der Datenbankressource die eingerichtete tägliche Sicherung und den
+externen Upload nach Hetzner Object Storage prüfen; einen Restore-Test in Coolify oder mit
+`deploy/vps/backup/restore-test.sh` gegen einen heruntergeladenen Dump ausführen (Beispielaufruf
+im Kopf der Datei, Ausführung in einem kurzlebigen Client-Container im Netz `coolify`).
+**Erwartetes Ergebnis:** Sicherung in Coolify vorhanden, externer Upload erfolgt, Restore-Test
+erfolgreich; Ergebnis zusätzlich im Adminbereich System (Reiter Server, Komponente Sicherungen)
+sichtbar, sofern `COOLIFY_BACKUP_DIR` auf eine tatsächlich vorhandene lokale Kopie zeigt.
+**Prüfkommando:** Coolify-Oberfläche, Bereich der Datenbankressource, Sicherungen; zusätzlich
+`ls -la ${COOLIFY_BACKUP_DIR:-/data/coolify/backups}` auf dem Server (auf dem Server zu prüfen).
+**Mögliche Fehler:** Coolify löscht lokale Kopien nach dem Upload (Komponente Sicherungen zeigt dann
+„nicht eingerichtet“ bzw. veraltet; in Coolify die lokale Aufbewahrung aktivieren, auf dem Server zu
+prüfen); externer Upload nicht eingerichtet (nur lokale Sicherung, als Risiko zu dokumentieren).
 
 ## 22. Host-Metriken und Monitoring prüfen
 

@@ -125,8 +125,13 @@ eingerichtet und kein DNS-Eintrag geändert (siehe `docs/vps/08-hostinger-coolif
 
 ### Backup
 
-- [ ] Mindestens ein erfolgreicher Backup-Lauf nach dem Cutover, sichtbar im Adminbereich System.
-- [ ] Wiederherstellungstest (`restore-test.sh`) nach dem Cutover erfolgreich.
+- [ ] Mindestens eine erfolgreiche Coolify-Sicherung der Datenbank nach dem Cutover, sichtbar in
+      Coolify und, sofern `COOLIFY_BACKUP_DIR` eine lokale Kopie liefert, als Komponente
+      „Sicherungen“ im Adminbereich System.
+- [ ] Externer Upload der Sicherung nach Hetzner Object Storage weiterhin erfolgreich.
+- [ ] Wiederherstellungstest gegen einen aus Coolify heruntergeladenen Dump nach dem Cutover
+      erfolgreich (`deploy/vps/backup/restore-test.sh` in einem kurzlebigen Client-Container im
+      Netz `coolify`, siehe `docs/vps/06-betrieb.md`).
 
 ## Bei Abbruch
 

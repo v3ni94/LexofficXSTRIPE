@@ -4,10 +4,17 @@
 # zaehlt die Zeilen je Tabelle, ohne die produktive Datenbank zu beruehren. Dient dazu, regelmaessig
 # zu belegen, dass Backups tatsaechlich wiederherstellbar sind (nicht nur "Datei vorhanden").
 #
-#   docker exec -it <backup-container> restore-test.sh /backups/smarteinzug-<zeitstempel>.sql.gz
+# Auf dem Hostinger-VPS laeuft die Datenbank als Coolify-Ressource und Coolify sichert sie (Hetzner Object
+# Storage). Dieses Skript ist dann ein zusaetzliches Werkzeug, um einen aus Coolify heruntergeladenen Dump
+# in einer temporaeren Datenbank auf Wiederherstellbarkeit zu pruefen. Ausfuehrung in einem kurzlebigen
+# Client-Container im Coolify-Netz (kein veroeffentlichter Port noetig), Beispiel:
+#
+#   docker run --rm -it --network coolify -v /pfad/zum/dump:/dump:ro -v "$PWD/backup:/tools:ro" \
+#       -e DB_HOST=<containername-der-coolify-mariadb> -e DB_ROOT_PASSWORD=<root-passwort-aus-coolify> \
+#       mariadb:11 bash /tools/restore-test.sh /dump/<datei>.sql.gz
 #
 # Benoetigt DB_HOST, DB_ROOT_PASSWORD (Rechte zum Anlegen/Loeschen einer Datenbank) in der Umgebung
-# des Containers, in dem dieses Skript laeuft.
+# des Containers, in dem dieses Skript laeuft; fuer .age-Dateien zusaetzlich age und BACKUP_AGE_IDENTITY.
 set -euo pipefail
 
 DUMP_FILE="${1:?Nutzung: restore-test.sh <dump.sql[.gz][.age]>}"

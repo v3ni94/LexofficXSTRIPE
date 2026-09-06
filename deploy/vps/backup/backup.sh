@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 #
+# HINWEIS (Hostinger-VPS mit Coolify): Dieses Skript ist NICHT Teil des produktiven Stacks. Die
+# Datenbanksicherung uebernimmt Coolify (taeglich, externes Ziel Hetzner Object Storage, Restore getestet).
+# Der Backup-Container ist aus docker-compose.yml entfernt, damit kein zweiter Dump-Weg parallel laeuft.
+# Das Skript bleibt als Ausweichloesung fuer einen Server ohne Coolify-Backups erhalten.
+#
 # SmartEinzug: taeglicher Datenbank-Dump (laeuft per Cron INNERHALB des backup-Containers).
 #
 # Ablauf: mysqldump --single-transaction -> gzip -> sha256 -> optional age-Verschluesselung ->

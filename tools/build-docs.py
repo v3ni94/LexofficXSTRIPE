@@ -81,14 +81,15 @@ def _architektur():
         box('internet', 30, 30, 150, 50, 'Internet', fill=BEIGE, stroke=GRAU),
         box('dns', 220, 30, 150, 50, 'DNS', fill=BEIGE, stroke=GRAU),
         box('webhosting', 410, 20, 230, 90, 'Webhosting', 'Marketingdomains\nsmart-einzug.de u.a.'),
-        box('caddy', 330, 190, 180, 60, 'Caddy', 'Reverse Proxy, TLS'),
+        box('traefik', 90, 190, 200, 60, 'Coolify-Proxy (Traefik)', 'TLS, Ports 80/443'),
+        box('caddy', 330, 190, 180, 60, 'Caddy (intern)', 'HTTP, php_fastcgi'),
         box('php', 330, 270, 180, 60, 'PHP-FPM', 'Anwendung'),
-        box('mariadb', 330, 350, 180, 60, 'MariaDB', 'nur intern erreichbar'),
+        box('mariadb', 330, 350, 180, 60, 'MariaDB 11.8 (Coolify)', 'private Ressource, kein Port'),
         box('redis', 330, 430, 180, 60, 'Redis', 'optional'),
         box('scheduler', 550, 270, 170, 60, 'Scheduler', 'Tick alle 30 s'),
         box('queue', 550, 350, 170, 60, 'Queue', 'Tabelle jobs'),
         box('workers', 550, 430, 170, 80, 'Worker W1-W3', 'Pools: Lexware, Stripe,\nMail, Wartung'),
-        box('backup', 330, 530, 180, 60, 'Backup', 'täglicher Dump'),
+        box('backup', 330, 530, 180, 60, 'Coolify-Backup', 'täglich, Hetzner Object Storage'),
         box('metrics', 550, 530, 170, 60, 'Host-Metriken', 'CPU/RAM/Platte/Load'),
         box('lexware', 810, 270, 200, 60, 'Lexware Office', 'externe API', fill=BEIGE, stroke=GRAU),
         box('stripe', 810, 350, 200, 60, 'Stripe', 'externe API', fill=BEIGE, stroke=GRAU),
@@ -96,7 +97,8 @@ def _architektur():
     edges = [
         edge('internet', 'dns'),
         edge('dns', 'webhosting'),
-        edge('dns', 'caddy'),
+        edge('dns', 'traefik'),
+        edge('traefik', 'caddy'),
         edge('caddy', 'php'),
         edge('php', 'mariadb'),
         edge('php', 'redis'),
@@ -106,10 +108,10 @@ def _architektur():
         edge('workers', 'lexware'),
         edge('workers', 'stripe'),
         edge('workers', 'mariadb', 'Ergebnis schreiben', dashed=True),
-        edge('backup', 'mariadb', 'Dump', dashed=True),
+        edge('mariadb', 'backup', 'Dump durch Coolify', dashed=True),
         edge('metrics', 'php', 'Kennzahlen', dashed=True, color=GRAU),
     ]
-    groups = [group(300, 150, 700, 460, 'VPS (ein Server)')]
+    groups = [group(70, 150, 950, 460, 'Hostinger-VPS KVM 8 (Coolify)')]
     return {'key': 'architektur', 'title': 'Architektur: Webhosting und VPS',
             'w': 1060, 'h': 640, 'nodes': nodes, 'edges': edges, 'groups': groups}
 

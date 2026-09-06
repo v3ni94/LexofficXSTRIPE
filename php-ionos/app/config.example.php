@@ -15,9 +15,13 @@ if (get_included_files()[0] === __FILE__) {
 }
 
 return [
-    // --- MariaDB (Zugangsdaten aus dem IONOS Kundenbereich: Hosting > Datenbanken) ---
+    // --- MariaDB ---
+    // IONOS Webhosting: Zugangsdaten aus dem IONOS Kundenbereich (Hosting > Datenbanken).
+    // Hostinger-VPS: Die Datenbank ist eine private Coolify-Ressource. host = Containername der Coolify-MariaDB
+    // (in Coolify in der internen Verbindungsadresse sichtbar, auf dem Server: docker ps), Port 3306, name
+    // = smarteinzug, user/pass aus Coolify. Niemals die VPS-IP oder einen veröffentlichten Port eintragen.
     'db' => [
-        'host'    => 'db5001234567.hosting-data.io', // IONOS DB-Hostname
+        'host'    => 'db5001234567.hosting-data.io', // IONOS DB-Hostname bzw. Containername der Coolify-MariaDB
         'port'    => 3306,                           // Standard-Port, nur ändern wenn der Anbieter einen anderen nennt
         'name'    => 'dbs1234567',                   // Datenbankname
         'user'    => 'dbu1234567',                   // Datenbank-Benutzer

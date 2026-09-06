@@ -3,7 +3,8 @@
 #   docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env up -d
 #
 # Staging laeuft auf einem eigenen, kleineren VPS (oder klein dimensionierten Server) mit eigener
-# Datenbank und eigenem .env; es ist NICHT dieselbe Datenbank wie Produktion. Nur EIN
+# Coolify-Datenbankressource (eigener Containername in shared/config.php) und eigenem .env; es ist NICHT
+# dieselbe Datenbank wie Produktion. Nur EIN
 # Lexware-Worker (worker-lexware-2 ist ueber ein Profil abgeschaltet), engere Ressourcenlimits und
 # kleinere Speichergrenzen fuer MariaDB und Redis; Log-Rotation wie in Produktion.
 
@@ -23,7 +24,7 @@ services:
       DOMAIN_STAGING: ${DOMAIN_STAGING}
     labels:
       traefik.enable: "true"
-      traefik.docker.network: ${PROXY_NETWORK:-coolify}
+      traefik.docker.network: ${COOLIFY_NETWORK:-coolify}
       traefik.http.routers.smarteinzug-http.rule: Host(`${DOMAIN_STAGING}`)
       traefik.http.routers.smarteinzug-http.entrypoints: http
       traefik.http.routers.smarteinzug-http.middlewares: smarteinzug-redirect
@@ -69,17 +70,7 @@ services:
     mem_limit: 96m
     cpus: "0.15"
 
-  mariadb:
-    mem_limit: 512m
-    cpus: "0.75"
-    # Kleinerer InnoDB-Pufferpool als in mariadb/my.cnf, passend zum 512m-Limit.
-    command: ["--innodb-buffer-pool-size=192M"]
-
   redis:
     mem_limit: 192m
     cpus: "0.15"
     command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--maxmemory", "96mb"]
-
-  backup:
-    mem_limit: 192m
-    cpus: "0.25"

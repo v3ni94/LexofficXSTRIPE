@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.2';
+const APP_VERSION = '4.3';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.3', 'date' => '06.09.2026', 'title' => 'VPS-Stack nutzt die Coolify-Datenbank',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Der Docker-Stack auf dem Hostinger-VPS startet keine eigene MariaDB und keinen eigenen Backup-Container mehr; genutzt wird die bereits eingerichtete private Coolify-MariaDB 11.8 (kein öffentlicher Port), gesichert durch Coolify mit externem Ziel Hetzner Object Storage.'],
+            ['type' => 'Geändert', 'text' => 'PHP, Scheduler, Worker und Metrik-Sammler erreichen die Datenbank über das Coolify-Netz unter dem Containernamen; der Metrik-Sammler meldet die neueste lokale Coolify-Sicherung an das Monitoring (Komponente Sicherungen).'],
+         ]],
         ['version' => '4.2', 'date' => '06.09.2026', 'title' => 'Ratenbegrenzung je Firma',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Die zentrale Ratenbegrenzung für Lexware Office und Stripe zählt je API-Schlüssel (also je Firma) statt über alle Firmen zusammen; zusätzlich eine konfigurierbare Obergrenze insgesamt. Der Durchsatz wächst damit mit der Zahl der Worker.'],
