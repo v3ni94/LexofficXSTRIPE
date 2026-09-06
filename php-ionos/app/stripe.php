@@ -46,7 +46,9 @@ class StripeClient
     {
         if (function_exists('api_call_gate')) {
             // Circuit Breaker und optionale zentrale Ratenbegrenzung (Auftrag III)
-            api_call_gate('stripe', (int)(config('queue', [])['stripe_per_second'] ?? 20));
+            // Kontingent je Stripe-Konto (API-Schlüssel der Firma bzw. Plattformkonto), dazu Obergrenze insgesamt.
+            $q = (array)config('queue', []);
+            api_call_gate('stripe', (int)($q['stripe_per_second'] ?? 20), api_scope_for_key($this->secretKey), (int)($q['stripe_global_per_second'] ?? 200));
         }
         $url = self::BASE_URL . $endpoint;
         $ch = curl_init();
@@ -123,11 +125,12 @@ class StripeClient
             $cat = $category !== null ? (str_starts_with($category, 'http_') || $category === 'throttled' ? $category : monitor_category($category)) : null;
             monitor_event('stripe_api', $status, $ms, $cat, 'instrumented', 3600);
             if (function_exists('circuit_failure')) {
-                if ($status === 'fail') {
+                if ($status === 'fail' && $cat !== 'throttled') {
                     circuit_failure('stripe', $cat ?? 'connection');
-                } else {
+                } elseif ($status !== 'fail') {
                     circuit_success('stripe');
                 }
+                // 429 (throttled): Rate-Limit des einzelnen Stripe-Kontos, keine Störung des Anbieters, kein Breaker-Fehler.
             }
         } catch (Throwable $e) {
             // ignorieren

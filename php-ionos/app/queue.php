@@ -674,8 +674,16 @@ function circuit_label(string $state): string
     return ['closed' => 'Geschlossen (normal)', 'open' => 'Offen (Aufrufe pausiert)', 'half_open' => 'Testaufruf läuft'][$state] ?? $state;
 }
 
-/** Zentrale Wartezeit vor einem Aufruf: Circuit prüfen und Ratenbegrenzung (Redis, falls vorhanden). */
-function api_call_gate(string $api, int $perSecond): void
+/**
+ * Zentrale Wartezeit vor einem Aufruf: Circuit prüfen und Ratenbegrenzung (Redis, falls vorhanden).
+ *
+ * $scope kennzeichnet das Kontingent des Anbieters, gegen das gezählt wird: bei Lexware Office und Stripe
+ * ist das der API-Schlüssel der jeweiligen Firma (jede Firma nutzt ihr eigenes Konto, die Grenzen des
+ * Anbieters gelten je Schlüssel). Ohne $scope wird je Anbieter insgesamt gezählt. $globalPerSecond ist eine
+ * zusätzliche Obergrenze über alle Firmen (Schutz der eigenen Worker und Absenderadresse), 0 = keine.
+ * Der Circuit Breaker bleibt je Anbieter ($api): er beschreibt Störungen des Anbieters, nicht einer Firma.
+ */
+function api_call_gate(string $api, int $perSecond, ?string $scope = null, int $globalPerSecond = 0): void
 {
     if (!circuit_allow($api)) {
         throw new CircuitOpenException('Die Verbindung zu ' . ($api === 'lexoffice' ? 'Lexware Office' : ucfirst($api)) . ' ist derzeit pausiert (Circuit Breaker offen). Automatischer neuer Versuch folgt.');
@@ -686,14 +694,34 @@ function api_call_gate(string $api, int $perSecond): void
     // 2 s (danach Durchlass; der Client behandelt ein etwaiges 429 mit eigenen Wiederholungen).
     $cap = defined('IN_WORKER') ? 30000 : 2000;
     $spent = 0;
-    while (($wait = redis_rate_wait_ms($api, $perSecond)) > 0) {
+    $keys = [];
+    if ($perSecond > 0) {
+        $keys[] = [$scope !== null && $scope !== '' ? $api . ':' . $scope : $api, $perSecond];
+    }
+    if ($globalPerSecond > 0 && $scope !== null && $scope !== '') {
+        $keys[] = [$api, $globalPerSecond];
+    }
+    while (true) {
+        $wait = 0;
+        foreach ($keys as [$key, $limit]) {
+            $wait = max($wait, redis_rate_wait_ms($key, $limit));
+        }
+        if ($wait <= 0) {
+            return;
+        }
         if ($spent + $wait > $cap) {
             if (defined('IN_WORKER')) {
                 throw new JobRetryException('Ratenbegrenzung für ' . $api . ' dauerhaft ausgeschöpft, Job wird später wiederholt.');
             }
-            break;
+            return;
         }
         usleep($wait * 1000);
         $spent += $wait;
     }
+}
+
+/** Kurze, nicht rückrechenbare Kennung eines API-Schlüssels als Kontingentschlüssel (nie der Schlüssel selbst). */
+function api_scope_for_key(string $secret): string
+{
+    return substr(hash('sha256', $secret), 0, 16);
 }

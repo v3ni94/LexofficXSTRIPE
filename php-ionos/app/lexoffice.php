@@ -87,7 +87,10 @@ class LexofficeClient
         while (true) {
             // Zentrale Steuerung (Auftrag III): Circuit Breaker und optionale Redis-Ratenbegrenzung über alle Prozesse
             if (function_exists('api_call_gate')) {
-                api_call_gate('lexoffice', (int)(config('queue', [])['lexoffice_per_second'] ?? 2));
+                // Kontingent je API-Schlüssel (jede Firma hat ihr eigenes Lexware-Konto), dazu eine Obergrenze über
+                // alle Firmen als Schutz der eigenen Worker; beide Werte in config queue konfigurierbar.
+                $q = (array)config('queue', []);
+                api_call_gate('lexoffice', (int)($q['lexoffice_per_second'] ?? 2), api_scope_for_key($this->apiKey), (int)($q['lexoffice_global_per_second'] ?? 50));
             }
             $this->throttle();
             $this->lastRequestTime = microtime(true);
@@ -154,9 +157,8 @@ class LexofficeClient
             if ($status === 429) {
                 $retries429++;
                 if ($retries429 > 3) {
-                    if (function_exists('circuit_failure')) {
-                        circuit_failure('lexoffice', 'throttled'); // erst nach erschöpften Wiederholungen als Störung werten
-                    }
+                    // Kein Circuit-Breaker-Fehler: das Rate-Limit gilt je Firma (eigener Schlüssel) und ist keine
+                    // Störung des Anbieters; der Job wird über die Ausnahme später wiederholt.
                     throw new LexofficeException('Lexware Office Rate-Limit nach 3 Versuchen überschritten.');
                 }
                 // Retry-After des Anbieters beachten (gedeckelt), sonst exponentiell mit Zufallsanteil

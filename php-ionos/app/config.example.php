@@ -209,7 +209,10 @@ return [
         'auto_sync_hours'        => 6,    // regelmäßiger Delta-Abgleich je Firma (NORMAL)
         'full_sync_hour'         => 3,    // Stunde des nächtlichen Vollabgleichs (LOW), lokale Zeit
         'prune_days'             => 30,   // abgeschlossene Jobs aufbewahren
-        'lexoffice_per_second'   => 2,    // zentrale Ratenbegrenzung über Redis (Annahme zur Lexware-API, zu verifizieren)
+        'lexoffice_per_second'   => 2,    // Aufrufe je Sekunde JE API-Schlüssel, also je Firma (Annahme zur Lexware-API, zu verifizieren)
+        'lexoffice_global_per_second' => 50, // Obergrenze über alle Firmen zusammen (Schutz der eigenen Worker), 0 = keine
+        'stripe_per_second'      => 20,   // Aufrufe je Sekunde je Stripe-Konto (Firma bzw. Plattformkonto)
+        'stripe_global_per_second' => 200, // Obergrenze über alle Konten zusammen, 0 = keine
         'stripe_per_second'      => 20,
         'circuit' => ['threshold' => 5, 'open_seconds' => 300, 'probe_seconds' => 60],
     ],

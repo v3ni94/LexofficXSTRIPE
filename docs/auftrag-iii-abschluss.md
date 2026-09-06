@@ -85,6 +85,8 @@ Finaler Lauf am 06.09.2026 auf frischer Testdatenbank (sql/schema.sql) gegen den
 | test_sync_lock.php | 14 | bestanden |
 | test_migrate_endpoint.php | 29 | bestanden |
 
+Lauf für Version 4.2 (Ratenbegrenzung je Firma) am 06.09.2026 auf frischer Testdatenbank: e2e_saas.php 410, test_monitor.php 49, test_queue.php 77 (neu: Kontingente je API-Schlüssel unabhängig, Obergrenze insgesamt), test_payment_safety.php 140, test_rules_sync.php 60, test_sync_perf.php 17, test_sync_lock.php 14, test_migrate_endpoint.php 29, alle bestanden.
+
 Lauf für Version 4.1 (Paket 4b und Hostinger-Anpassung) am 06.09.2026, wieder auf frischer Testdatenbank: e2e_saas.php 410 (neu Abschnitt 31), test_monitor.php 49, test_queue.php 73, test_payment_safety.php 140, test_rules_sync.php 60 (neu Abschnitt 5 Tarifwechsel und Upsell), test_sync_perf.php 17, test_sync_lock.php 14, test_migrate_endpoint.php 29, alle bestanden. Zusätzlich docker compose config für prod und staging mit den Traefik-Labels, bash -n, php -l.
 
 Im ersten Lauf nach den Korrekturen (Version 4.0) schlugen zwei der neuen Prüfungen fehl: die Anmeldeseite wurde mit angemeldeter Sitzung geprüft (Weiterleitung zum gesperrten Dashboard, Testfehler) und mail_addr_ref gab die Domain nicht kleingeschrieben zurück (Funktion angepasst). Zweiter Lauf vollständig grün.
@@ -94,6 +96,12 @@ Zusätzlich: docker compose config für prod und staging, bash -n für alle Skri
 ## Nicht geprüft
 
 Start der Container und echte Health Checks (kein Docker-Daemon in der Entwicklungsumgebung), Let's Encrypt, SSH-Deployment auf einen echten VPS, Datenbankimport mit Produktionsdaten, Verhalten mehrerer Worker unter Last, echte Lexware- und Stripe-Störungen, Backup auf ein externes Ziel, rclone-Installation im Backup-Image.
+
+## Version 4.2: Ratenbegrenzung je Firma
+
+Befund aus der Rückfrage zur Skalierung: Die zentrale Ratenbegrenzung aus Auftrag III zählte alle Lexware- und Stripe-Aufrufe über alle Firmen zusammen (2 bzw. 20 je Sekunde). Da jede Firma ihr eigenes Lexware-Office-Konto und ihr eigenes Stripe-Konto mit eigenem API-Schlüssel nutzt und die Grenzen der Anbieter je Schlüssel gelten, war das eine selbst gesetzte Bremse, die bei vielen Firmen den Durchsatz begrenzt hätte.
+
+Korrektur: `api_call_gate()` zählt je Anbieter und API-Schlüssel (kurze, nicht rückrechenbare Kennung des Schlüssels, nie der Schlüssel selbst) und zusätzlich gegen eine konfigurierbare Obergrenze insgesamt (`lexoffice_global_per_second` 50, `stripe_global_per_second` 200, Schutz der eigenen Worker und Absenderadresse). Ein Rate-Limit (429) einer einzelnen Firma zählt nicht mehr für den Circuit Breaker des Anbieters; der Breaker reagiert nur noch auf Verbindungsfehler und Serverfehler. Der Durchsatz der Synchronisation wächst damit mit der Zahl der Worker. Die Annahme 2 Aufrufe je Sekunde je Schlüssel für Lexware bleibt zu verifizieren.
 
 ## Paket 4b: Tarifwechsel und Upsell (Version 4.1)
 

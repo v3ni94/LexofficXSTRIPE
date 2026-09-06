@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.1';
+const APP_VERSION = '4.2';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.2', 'date' => '06.09.2026', 'title' => 'Ratenbegrenzung je Firma',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die zentrale Ratenbegrenzung für Lexware Office und Stripe zählt je API-Schlüssel (also je Firma) statt über alle Firmen zusammen; zusätzlich eine konfigurierbare Obergrenze insgesamt. Der Durchsatz wächst damit mit der Zahl der Worker.'],
+            ['type' => 'Behoben', 'text' => 'Ein Rate-Limit einer einzelnen Firma öffnet nicht mehr den Circuit Breaker des Anbieters; der Breaker reagiert nur noch auf echte Störungen (Verbindungsfehler, Serverfehler).'],
+         ]],
         ['version' => '4.1', 'date' => '06.09.2026', 'title' => 'Tarifwechsel, Upsell und Hostinger-VPS',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Tarifwechsel durch den Inhaber unter Firma > Abonnement (Upgrade sofort mit anteiliger Berechnung, Downgrade mit Gutschrift, Downgrade-Schutz für Benutzer), Bestellbestätigung und Protokoll wie beim Abschluss (Migration 019).'],
