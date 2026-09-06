@@ -1,7 +1,17 @@
 # GitHub-Deployment: Secrets, Variablen, Einrichtung, Test, Rollback
 
-Stand: 06.09.2026 (Auftrag III). Bezieht sich auf `.github/workflows/deploy.yml`, Job
+Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`). Bezieht sich auf `.github/workflows/deploy.yml`, Job
 `deploy-vps` (der bestehende Job `deploy-webhosting` ist unverändert, siehe `docs/migrations.md`).
+
+**Einziger Deploymentweg für den VPS:** Dieser GitHub-Workflow (SSH und rsync nach
+`/opt/smarteinzug/releases/<git-sha>/`, danach `deploy/vps/scripts/deploy.sh <git-sha>` aus dem
+neuen Release) bleibt der einzige Weg, mit dem Code auf den Hostinger-VPS gelangt. Auf dem VPS ist
+zusätzlich Coolify installiert; dort wird für SmartEinzug ausdrücklich KEINE Anwendung/Ressource
+angelegt, KEIN Coolify-Autodeploy eingerichtet und keine GitHub-App in Coolify verbunden. Ein Ziel,
+ein Deploymentweg: Coolify dient ausschließlich als Proxy (siehe
+`docs/vps/01-architektur.md`) und als Serverübersicht, nicht als zweiter Auslöser für
+Deployments.
 
 ## Secrets und Variablen im Überblick
 
@@ -24,8 +34,8 @@ GitHub-Repository > Settings > Secrets and variables > Actions. Zwei getrennte B
 
 | Name | Art | Zweck | Woher der Wert kommt |
 |---|---|---|---|
-| `VPS_HOST` | Secret | IPv4-Adresse oder Hostname des VPS | IONOS Kundenbereich (Server-Übersicht) |
-| `VPS_SSH_USER` | Secret | SSH-Benutzer für Deployments | `deploy` (angelegt in `docs/vps/02-einrichtung-vps.md`, Schritt 5) |
+| `VPS_HOST` | Secret | IPv4-Adresse oder Hostname des VPS | Hostinger-Kundenbereich (Server-Übersicht); für den beschafften Server `72.61.80.67` (Hostname `srv1960492.hstgr.cloud`) |
+| `VPS_SSH_USER` | Secret | SSH-Benutzer für Deployments | `deploy` (angelegt in `docs/vps/08-hostinger-coolify.md` bzw. `docs/vps/02-einrichtung-vps.md`, Schritt 5) |
 | `VPS_SSH_PORT` | Secret | SSH-Port | Standard `22`, sofern nicht bewusst geändert |
 | `VPS_SSH_PRIVATE_KEY` | Secret | Privater Schlüssel für den GitHub-Workflow (eigenes Schlüsselpaar, NICHT der persönliche Administratorschlüssel aus Schritt 3/4 der Einrichtung) | selbst erzeugt, siehe unten |
 | `VPS_SSH_KNOWN_HOSTS` | Secret | Eine bereits verifizierte Host-Key-Zeile für `known_hosts` | `ssh-keyscan`, siehe unten |
@@ -66,19 +76,25 @@ privaten. Test von einem beliebigen Rechner mit dem privaten Schlüssel:
 ssh -i ~/.ssh/smarteinzug_vps_deploy -p 22 deploy@HIER-VPS-IP "echo Zugang erfolgreich"
 ```
 
-## Host-Key holen und gegen die IONOS-Konsole prüfen
+## Host-Key holen und prüfen
 
 ```bash
-ssh-keyscan -p 22 -t ed25519 HIER-VPS-IP > /tmp/vps_hostkey
+ssh-keyscan -t ed25519 72.61.80.67 > /tmp/vps_hostkey
 cat /tmp/vps_hostkey
 ssh-keygen -E sha256 -lf /tmp/vps_hostkey
 ```
 
-Den ausgegebenen Fingerabdruck (`SHA256:...`) gegen den im IONOS Kundenbereich angezeigten
-SSH-Fingerabdruck des Servers prüfen (Server-Übersicht, Details des VPS). Stimmen die
-Fingerabdrücke nicht überein, den Schlüssel NICHT verwenden (möglicher Man-in-the-Middle oder
-falscher Server) und den Fehler zuerst klären. Der Inhalt von `/tmp/vps_hostkey` (die vollständige
-Zeile, nicht nur der Fingerabdruck) wird unverändert als `VPS_SSH_KNOWN_HOSTS` hinterlegt.
+Den Befehl aus der Hostinger-Webkonsole (im Hostinger-Kundenbereich, VNC-/Browser-Terminal des
+Servers) oder aus einer anderen bereits als vertrauenswürdig bestätigten Sitzung heraus ausführen,
+NICHT blind über eine neue, noch nicht verifizierte Verbindung. Anschließend den ausgegebenen
+Fingerabdruck (`SHA256:...`) mit dem im Hostinger-Kundenbereich angezeigten SSH-Fingerabdruck des
+Servers abgleichen, sofern dort angezeigt (auf dem Server bzw. im Kundenbereich zu prüfen).
+Stimmen die Fingerabdrücke nicht überein oder lässt sich kein Referenzwert finden, den Schlüssel
+NICHT verwenden (möglicher Man-in-the-Middle oder falscher Server) und den Fehler zuerst klären.
+Auf keinen Fall Fingerabdrücke des früher vorgesehenen IONOS-VPS übernehmen: Diese gehören zu
+einem anderen, nicht beschafften Server und sind für den tatsächlichen Hostinger-VPS bedeutungslos.
+Der Inhalt von `/tmp/vps_hostkey` (die vollständige Zeile, nicht nur der Fingerabdruck) wird
+unverändert als `VPS_SSH_KNOWN_HOSTS` hinterlegt.
 
 `StrictHostKeyChecking=yes` bleibt im Workflow immer aktiv (siehe Kopfkommentar in `deploy.yml`);
 ein fehlender oder nicht passender Eintrag lässt den Job mit einem SSH-Fehler abbrechen, statt die
@@ -122,7 +138,7 @@ wird (Bedingung in `deploy.yml`: `vars.VPS_DEPLOY_ENABLED == 'true'`). Danach:
 | Meldung im Workflow-Log | Wahrscheinliche Ursache | Behebung |
 |---|---|---|
 | „Permission denied (publickey)“ | Öffentlicher Schlüssel nicht in `authorized_keys` des Servers, oder `VPS_SSH_PRIVATE_KEY` unvollständig eingefügt | Schlüsselzuordnung erneut prüfen (siehe oben) |
-| „Host key verification failed“ | `VPS_SSH_KNOWN_HOSTS` fehlt, falsch oder Server-Schlüssel hat sich geändert | Host-Key neu holen, Fingerabdruck erneut gegen die IONOS-Konsole prüfen, Secret aktualisieren |
+| „Host key verification failed“ | `VPS_SSH_KNOWN_HOSTS` fehlt, falsch oder Server-Schlüssel hat sich geändert | Host-Key neu holen (siehe oben, aus vertrauenswürdiger Sitzung), Fingerabdruck erneut prüfen, Secret aktualisieren |
 | Job „deploy-vps“ läuft gar nicht | `VPS_DEPLOY_ENABLED` nicht `true`, oder weder `app` noch `vps` als geändert erkannt | Variable prüfen; bei gezieltem Test `workflow_dispatch` verwenden (gilt als „alles geändert“) |
 | „deploy.sh: Release-Ordner fehlt“ | rsync-Schritt vor `deploy.sh` fehlgeschlagen oder `GITHUB_SHA` weicht ab | Log des Schritts „Anwendung per rsync übertragen“ prüfen |
 | Health-Check „HTTP 000“ oder Timeout | DNS zeigt noch nicht auf den VPS, oder Firewall/Caddy blockiert | bei aktivem Cutover: DNS prüfen (`docs/vps/05-dns-ssl.md`); vor dem Cutover: `VPS_HEALTH_STRICT=false` lassen |

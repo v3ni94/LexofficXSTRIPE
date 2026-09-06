@@ -236,6 +236,12 @@ layout_header('Rechnungen', $ctx);
 <h1>Rechnungen</h1>
 <p class="page-sub">Offene und überfällige Rechnungen aus Lexware Office · letzte Synchronisation: <?= format_datetime($lastSync ?: null) ?>
     <?php if ($quota['limit'] !== null): ?> · Einzüge in dieser Periode: <?= (int)$quota['used'] ?> von <?= (int)$quota['limit'] ?><?php endif; ?></p>
+<?php if ($quota['limit'] !== null && !empty($quota['warn'])): $quotaPlan = plan_for_org($tenantId); $quotaCand = plan_upgrade_candidate($quotaPlan, 'collections', (int)$quota['limit'] + 1); ?>
+<div class="flash <?= $quota['allowed'] ? 'flash-warn' : 'flash-error' ?>">
+    <?= $quota['allowed'] ? sprintf('Ihr Einzugskontingent ist zu %d Prozent belegt (%d von %d in dieser Abrechnungsperiode).', (int)$quota['percent'], (int)$quota['used'], (int)$quota['limit']) : sprintf('Ihr Einzugskontingent (%d je Abrechnungsperiode) ist ausgeschöpft; bis zum Beginn der nächsten Periode lassen sich keine weiteren Einzüge vormerken.', (int)$quota['limit']) ?>
+    <?php if ($quotaCand): ?> <?= e(plan_upsell_text($quotaCand)) ?><?php if (($ctx['role'] ?? '') === 'owner'): ?> <a class="btn btn-sm" href="subscription.php#tarif">Tarif <?= e($quotaCand['name']) ?> ansehen</a><?php endif; ?><?php endif; ?>
+</div>
+<?php endif; ?>
 
 <div class="card">
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">

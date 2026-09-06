@@ -200,6 +200,7 @@ if ($config && !empty($config['db']['host'])) {
             '016' => [['table' => 'trusted_devices']],
             '017' => [['table' => 'job_runs'], ['table' => 'monitor_checks'], ['table' => 'monitor_daily'], ['table' => 'monitor_requests'], ['table' => 'monitor_incidents']],
             '018' => [['table' => 'jobs'], ['table' => 'worker_heartbeats'], ['table' => 'sync_runs'], ['table' => 'api_circuits'], ['table' => 'organizations', 'column' => 'sync_paused']],
+            '019' => [['table' => 'organizations', 'column' => 'quota_warning_period_start'], ['table' => 'organizations', 'column' => 'plan_changed_at']],
         ];
         foreach ($migrationChecks as $mig => $items) {
             $lack = [];

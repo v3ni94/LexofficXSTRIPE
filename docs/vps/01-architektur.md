@@ -1,22 +1,65 @@
 # VPS-Architektur
 
-Stand: 06.09.2026 (Auftrag III). Betreiber: Müller Holding AG. Diese Datei beschreibt das Zielbild
-der Infrastruktur, nachdem die Anwendung SmartEinzug (php-ionos) zusätzlich zum bestehenden
-IONOS-Webhosting auf einem eigenen VPS betrieben wird. Der Umzug ist optional und schrittweise: das
-Webhosting bleibt nutzbar, solange nicht ausdrücklich umgestellt wird (siehe `docs/vps/07-cutover-checkliste.md`).
+Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`). Betreiber: Müller Holding AG. Diese Datei beschreibt das
+Zielbild der Infrastruktur, nachdem die Anwendung SmartEinzug (php-ionos) zusätzlich zum
+bestehenden IONOS-Webhosting auf einem eigenen VPS betrieben wird. Der Umzug ist optional und
+schrittweise: das Webhosting bleibt nutzbar, solange nicht ausdrücklich umgestellt wird (siehe
+`docs/vps/07-cutover-checkliste.md`).
+
+**Server:** Tatsächlich beschafft wurde ein Hostinger-VPS, Tarif KVM 8 (8 vCPU, 32 GB RAM, 400 GB
+NVMe), mit der Vorlage „Ubuntu 24.04 with Coolify“. Coolify war damit bereits installiert und lief
+bei der Einrichtung bereits; die Ersteinrichtung erfolgt nach `docs/vps/08-hostinger-coolify.md`,
+nicht über einen IONOS-Bestellvorgang. Frühere Fassungen dieser Datei gingen von einem IONOS VPS
+ohne vorinstallierte Software aus; diese Annahme ist überholt und unten durch die tatsächliche
+Proxykette ersetzt.
 
 ## Zielbild in einem Satz
 
 Die beiden Marketingdomains und ihre Geschwisterdomains bleiben auf dem bestehenden IONOS-Webhosting;
-die eigentliche Anwendung (Kundenportal, Adminbereich, API-Endpunkte, Statusseite) läuft auf einem
-IONOS VPS in Docker-Containern hinter Caddy, mit einer zentralen Job-Queue statt des bisherigen
+die eigentliche Anwendung (Kundenportal, Adminbereich, API-Endpunkte, Statusseite) läuft auf dem
+Hostinger-VPS in Docker-Containern hinter Caddy, mit einer zentralen Job-Queue statt des bisherigen
 30-Sekunden-Cron-Takts.
+
+## Proxykette: Coolify (Traefik) vor Caddy
+
+Auf dem Hostinger-VPS ist Coolify bereits als Verwaltungsoberfläche für den Server installiert.
+Coolify betreibt einen eigenen Reverse Proxy (Traefik), der die Ports 80/443 hält und die
+TLS-Zertifikate über Let's Encrypt bezieht. Für SmartEinzug wird darin KEINE eigene
+Coolify-Anwendung angelegt und kein Coolify-Autodeploy verwendet; Coolify dient ausschließlich als
+Proxy und als Serverübersicht. Eine Anfrage durchläuft damit zwei Stufen:
+
+1. **Traefik (Coolify-Proxy):** terminiert TLS auf 80/443, ermittelt anhand des Hostnamens
+   (`Host(...)`-Regel) den Ziel-Container und reicht die Anfrage über das Docker-Netz
+   `PROXY_NETWORK` (Standardname `coolify`, auf dem Server mit `docker network ls` zu prüfen) an
+   den `caddy`-Container weiter. Traefik findet diesen Container über Labels am `caddy`-Dienst
+   (`deploy/vps/docker-compose.yml`), nicht über eine eigene Konfigurationsdatei.
+2. **Caddy (intern, nur HTTP):** veröffentlicht selbst keine Ports mehr, `auto_https off`, spricht
+   ausschließlich HTTP auf Port 80 innerhalb des Docker-Netzes. Caddy bleibt weiterhin die
+   Instanz, die `php-ionos/.htaccess` ablöst (verbotene Pfade/Endungen, Cache-Header,
+   Sicherheits-Header) und per `php_fastcgi` an php-fpm weiterreicht.
+
+Weil TLS bereits bei Traefik endet, sieht Caddy die Anfrage nur noch unverschlüsselt und muss
+`X-Forwarded-Proto`/`X-Forwarded-For` von Traefik übernehmen. Dafür muss `trusted_proxies` in
+`app/config.php` die Docker-Netzbereiche des Servers enthalten (Beispielwerte
+`['172.16.0.0/12', '10.0.0.0/8']`, mit `docker network inspect` gegen die tatsächlichen Netze zu
+prüfen, auf dem Server zu prüfen); `app/bootstrap.php` wertet `X-Forwarded-For` von rechts aus und
+überspringt dabei nur als vertrauenswürdig erkannte Hops. Der Beispielkommentar in
+`app/config.example.php` geht noch von einer einstufigen Anordnung aus („VPS mit Caddy
+php_fastcgi: leer lassen“); auf dem Hostinger-VPS mit vorgeschaltetem Coolify-Proxy ist dieser
+Kommentar überholt, `trusted_proxies` muss gefüllt werden.
+
+Netze (siehe `deploy/vps/docker-compose.yml`): `PROXY_NETWORK` (extern, von Coolify
+bereitgestellt, Standardname `coolify`, nur der Dienst `caddy` hängt daran) und
+`smarteinzug_internal` (intern, `internal: true`, fester Adressbereich `172.28.0.0/24` für Caddy,
+php, Scheduler, Worker, MariaDB, Redis, Backup, Metrics).
 
 ## Dienste im Überblick
 
 | Dienst | Aufgabe | Läuft wo |
 |---|---|---|
-| Caddy | Reverse Proxy, automatisches TLS (Let's Encrypt), löst `php-ionos/.htaccess` ab | VPS, Container `caddy` |
+| Coolify (Traefik) | Reverse Proxy auf 80/443, automatisches TLS (Let's Encrypt); von SmartEinzug nur genutzt, nicht selbst als Anwendung betrieben | Hostinger-VPS, bereits vorinstalliert (Vorlage „Ubuntu 24.04 with Coolify“) |
+| Caddy | Interner HTTP-Server hinter Traefik, löst `php-ionos/.htaccess` ab, veröffentlicht selbst keinen Port | VPS, Container `caddy` |
 | PHP-FPM | Anwendung (Web-Anfragen: Login, Dashboard, Rechnungen, Admin, Webhooks) | VPS, Container `php` |
 | Scheduler | Prüft alle 30 Sekunden fällige wiederkehrende Aufgaben und reiht sie als Jobs ein; verarbeitet selbst keine Jobs | VPS, Container `scheduler` (`bin/scheduler.php`) |
 | Worker | Reservieren und verarbeiten Jobs aus der Warteschlange, je Pool ein oder mehrere Container | VPS, Container `worker-lexware`(-2 in Produktion)`, worker-stripe, worker-mail, worker-maintenance` (`bin/worker.php --pool=...`) |
@@ -174,18 +217,33 @@ Synchronisation je Firma pausieren (`organizations.sync_paused`,
 keine neuen Synchronisationsjobs ein, bestehende Einzüge und die Anwendung selbst bleiben
 uneingeschränkt nutzbar.
 
+## Ressourcen des Hostinger-VPS
+
+Server: Hostinger KVM 8, 8 vCPU, 32 GB RAM, 400 GB NVMe. `docker-compose.prod.yml` setzt
+Ressourcenlimits bewusst deutlich unter dieser Kapazität an (Summe rund 12 GB RAM): Reserve für
+das Betriebssystem, für Coolify selbst (eigene Postgres- und Redis-Instanz sowie den
+Traefik-Proxy, zusammen rund 2 GB) und für Backups und Lastspitzen. MariaDB erhält 4 GB
+(`innodb-buffer-pool-size=2560M`), `PM_MAX_CHILDREN=16` für php-fpm, zwei Lexware-Worker (mehr
+bringt wegen der Ratenbegrenzung gegenüber Lexware Office und Stripe nichts) sowie je ein Worker
+für Stripe, Mail und Wartung. Einzelwerte je Dienst: `deploy/vps/docker-compose.prod.yml`.
+
 ## Grenzen: ein VPS, keine Hochverfügbarkeit
 
-- Ein einzelner Server trägt Anwendung, Datenbank und Redis. Ein Ausfall des VPS (Hardware, Netz,
-  ein versehentliches `docker compose down`) legt die gesamte Anwendung lahm; es gibt keinen
-  automatischen Failover auf einen zweiten Server.
+- Ein einzelner Server trägt Anwendung, Datenbank, Redis UND Coolify (Proxy und
+  Serververwaltung). Ein Ausfall des VPS (Hardware, Netz, ein versehentliches
+  `docker compose down`) legt die gesamte Anwendung lahm; es gibt keinen automatischen Failover
+  auf einen zweiten Server.
 - MariaDB und Redis laufen ohne Replikation. Tägliche Backups mit Prüfsumme und ein
   Wiederherstellungstest (`deploy/vps/backup/`) sind die Absicherung gegen Datenverlust, kein
   Ersatz für echte Hochverfügbarkeit.
 - Skalierung bedeutet zusätzliche Worker-Container auf demselben Server
   (`docker compose up -d --scale`), nicht zusätzliche Server.
-- Automatisches TLS setzt erreichbare Ports 80/443 aus dem Internet voraus; ein vorgeschalteter
-  Load Balancer oder CDN würde die Caddy-Konfiguration ändern.
+- Automatisches TLS setzt erreichbare Ports 80/443 aus dem Internet voraus; diese hält der
+  Coolify-Proxy (Traefik), nicht Caddy selbst. Ein vorgeschalteter Load Balancer oder CDN würde
+  zusätzlich zur Caddy-Konfiguration auch die Traefik-Labels in `deploy/vps/docker-compose.yml`
+  betreffen.
+- Coolifys Weboberfläche (Port 8000) wird nicht öffentlich freigegeben, sondern ausschließlich per
+  SSH-Tunnel erreicht (siehe `docs/vps/08-hostinger-coolify.md`).
 
 Weitere technische Grenzen und offene Punkte der Infrastruktur: `deploy/vps/README.md`, Abschnitt
 "Offene Punkte".

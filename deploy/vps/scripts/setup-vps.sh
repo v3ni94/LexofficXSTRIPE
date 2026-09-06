@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# SmartEinzug: Einmalige Grundeinrichtung eines frischen IONOS-VPS (Ubuntu 24.04, kein Plesk).
+# SmartEinzug: Einmalige Grundeinrichtung des VPS (Hostinger KVM 8, Ubuntu 24.04 mit Coolify; ebenso
+# nutzbar fuer einen frischen Ubuntu-24.04-Server ohne Coolify).
 # Idempotent: mehrfaches Ausfuehren wiederholt nur fehlende Schritte, aendert nichts bereits
 # Eingerichtetes ungewollt.
 #
@@ -61,6 +62,10 @@ chown deploy:deploy "$AUTH_KEYS"
 chmod 600 "$AUTH_KEYS"
 
 echo "== 4/9: Docker aus dem offiziellen Repository (inkl. compose-plugin) =="
+# Hostinger-Vorlage "Ubuntu 24.04 with Coolify" bringt Docker bereits mit; dann wird hier nichts installiert.
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^coolify'; then
+    echo "Coolify erkannt (Container coolify*). Docker und Coolify-Proxy bleiben unveraendert."
+fi
 if ! command -v docker >/dev/null 2>&1; then
     install -m 0755 -d /etc/apt/keyrings
     if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
@@ -97,14 +102,29 @@ if [[ ! -f /opt/smarteinzug/shared/config.php ]]; then
 fi
 
 echo "== 6/9: ufw (Firewall) =="
-ufw --force reset >/dev/null
-ufw default deny incoming
-ufw default allow outgoing
+# Auf einem Hostinger-VPS mit Coolify-Vorlage laeuft der Coolify-Proxy bereits auf 80/443 und die
+# Coolify-Oberflaeche auf 8000 (Websockets 6001/6002). Die Oberflaeche wird NICHT oeffentlich freigegeben,
+# sondern per SSH-Tunnel erreicht (ssh -L 8000:127.0.0.1:8000 deploy@SERVER, dann http://127.0.0.1:8000).
+# Bestehende Regeln werden nicht zurueckgesetzt, sondern nur ergaenzt (kein Aussperren aus einer bereits
+# laufenden Verwaltung). Optional: COOLIFY_UI_ALLOW_FROM=<eigene IP> gibt 8000 nur fuer diese Adresse frei.
+if ufw status | grep -q "Status: active"; then
+    echo "ufw bereits aktiv, Regeln werden nur ergaenzt (kein Reset)."
+else
+    ufw default deny incoming
+    ufw default allow outgoing
+fi
 ufw allow 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
+if [[ -n "${COOLIFY_UI_ALLOW_FROM:-}" ]]; then
+    ufw allow from "$COOLIFY_UI_ALLOW_FROM" to any port 8000 proto tcp
+    echo "Coolify-Oberflaeche (8000) nur fuer $COOLIFY_UI_ALLOW_FROM freigegeben."
+else
+    ufw deny 8000/tcp
+    echo "Coolify-Oberflaeche (8000) nach aussen gesperrt; Zugriff per SSH-Tunnel."
+fi
 ufw --force enable
-echo "ufw aktiv: nur 22, 80, 443 eingehend erlaubt."
+ufw status numbered | head -20
 cat <<'EOF'
 HINWEIS Docker und ufw:
 Docker traegt eigene iptables-Regeln in die Kette DOCKER-USER ein und umgeht damit ufw fuer

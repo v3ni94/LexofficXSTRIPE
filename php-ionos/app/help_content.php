@@ -103,7 +103,7 @@ return [
                 . '<h3>Welche Rechnungen zählen</h3>'
                 . '<p>Berücksichtigt werden Rechnungen, die in Lexware Office offen sind, bei denen der Kunde SEPA-Einzug wünscht, eine aktive IBAN hinterlegt ist und kein Klärungsbedarf besteht.</p>'
                 . '<h3>Kontingent</h3>'
-                . '<p>Je Tarif gilt ein Einzugskontingent je Abrechnungsperiode. Ist es ausgeschöpft, lassen sich keine weiteren Einzüge vormerken.</p>'
+                . '<p>Je Tarif gilt ein Einzugskontingent je Abrechnungsperiode. Ab 80 Prozent Auslastung erhalten Sie einen Hinweis auf der Rechnungsseite, der Inhaber zusätzlich einmal je Periode per E-Mail. Ist das Kontingent ausgeschöpft, lassen sich bis zum Beginn der nächsten Periode keine weiteren Einzüge vormerken. Stehen mehrere Tarife zur Auswahl, wird Ihnen der nächsthöhere passende Tarif angeboten; der Wechsel erfolgt unter Firma > Abonnement.</p>'
                 . '<h3>Regeln</h3>'
                 . '<p>Regeln für automatische Einzüge sind in SmartEinzug derzeit nur als Vorschau vorbereitet und lösen noch keine Einzüge selbstständig aus. Sie dienen dazu, sich mit der geplanten Automatisierung vertraut zu machen, ohne dass dadurch bereits Lastschriften eingereicht werden.</p>'
                 . '<h3>Nach dem Vormerken</h3>'
@@ -200,6 +200,8 @@ return [
             'summary' => 'Tarif, Preis und Kündigung des Abonnements.',
             'html' => '<h3>Tarif</h3>'
                 . '<p>SmartEinzug wird im Tarif UNLIMITED START angeboten. Für bis zum 31.12.2026 angelegte Firmenaccounts gilt ein Einführungspreis von 25,00 EUR netto je 4 Wochen (bisher 50,00 EUR). Alle Preise verstehen sich netto zuzüglich der gesetzlichen Umsatzsteuer.</p>'
+                . '<h3>Tarifwechsel</h3>'
+                . '<p>Sobald mehrere Tarife angeboten werden, kann der Inhaber unter <a href="subscription.php#tarif">Abonnement</a> den Tarif wechseln. Ein Upgrade gilt sofort; die anteilige Differenz bis zum Periodenende wird sofort berechnet und über die hinterlegte Zahlungsmethode eingezogen. Ein Downgrade gilt ebenfalls sofort, die anteilige Gutschrift erscheint auf der nächsten Rechnung; es ist nur möglich, wenn die aktuelle Benutzerzahl in den kleineren Tarif passt. Beim Erreichen des Benutzerlimits oder ab 80 Prozent des Einzugskontingents zeigt die Anwendung den nächsthöheren passenden Tarif an.</p>'
                 . '<h3>Abrechnung</h3>'
                 . '<p>Die Abrechnung läuft über Stripe. Rechnungen zum Abonnement finden Sie im Stripe-Kundenportal, erreichbar unter <a href="subscription.php">Abonnement</a>.</p>'
                 . '<h3>Kündigung</h3>'

@@ -30,7 +30,7 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 ```bash
 cd /opt/smarteinzug/deploy      # oder dieser Ordner beim ersten manuellen Einrichten
 cp .env.example .env
-# .env mit echten Werten fuellen (Passwoerter, Domains, LETSENCRYPT_EMAIL, APP_UID/APP_GID, ...)
+# .env mit echten Werten fuellen (Passwoerter, Domains, PROXY_NETWORK, APP_UID/APP_GID, ...)
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d
 ```
@@ -76,11 +76,27 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec php php bin
 Wartungsmodus fuer den Cutover: `scripts/maintenance.sh on` / `off` (wirkt sofort auf alle
 Container, da `app/storage` gemeinsam eingebunden ist).
 
-## Warum Caddy statt nginx
+## Hostinger KVM 8 mit Coolify: Rolle des Proxys
 
-- Automatisches Bezug und Erneuern der Let's-Encrypt-Zertifikate ohne certbot, ohne eigenen
-  Cron-Job und ohne Ausfallzeiten bei der Erneuerung; bei vier Hosts (app/admin/api/status, plus
-  Staging) entfaellt damit ein ganzer, sonst manuell zu pflegender Baustein.
+Der produktive VPS ist ein Hostinger KVM 8 (8 vCPU, 32 GB RAM, 400 GB NVMe) mit der Vorlage
+"Ubuntu 24.04 with Coolify". Coolify bringt einen eigenen Reverse Proxy (Traefik) mit, der die Ports
+80/443 haelt und Let's-Encrypt-Zertifikate bezieht. Deshalb veroeffentlicht unser Caddy KEINE Ports
+mehr: Er haengt zusaetzlich am Docker-Netz des Coolify-Proxys (`PROXY_NETWORK`, Standard `coolify`)
+und wird von Traefik ueber die Labels am `caddy`-Dienst angesprochen (Hostnamen, HTTPS-Umleitung,
+Zertifikat). Caddy bleibt der interne HTTP-Server vor php-fpm mit den Sicherheitsregeln aus der
+`.htaccess`. Coolify selbst verwaltet unsere Anwendung NICHT (kein Autodeploy, keine Coolify-Ressource);
+der einzige Deploymentweg bleibt der GitHub-Workflow ueber SSH (`scripts/deploy.sh`). Einrichtung
+Schritt fuer Schritt: `docs/vps/08-hostinger-coolify.md`.
+
+Folge fuer die Anwendung: TLS endet am Coolify-Proxy, PHP sieht die Anfrage als HTTP von der
+Proxy-Adresse. `trusted_proxies` in `shared/config.php` muss deshalb die Docker-Netzbereiche enthalten
+(z.B. `['172.16.0.0/12', '10.0.0.0/8']`, mit `docker network inspect` pruefen); `app/bootstrap.php`
+wertet X-Forwarded-Proto und X-Forwarded-For dann von rechts aus.
+
+## Warum Caddy statt nginx (als interner HTTP-Server)
+
+- Ohne Coolify wuerde Caddy zusaetzlich Let's-Encrypt-Zertifikate ohne certbot beziehen und erneuern;
+  mit Coolify-Proxy uebernimmt das Traefik (`auto_https off` in den Caddyfiles).
 - Die Caddyfile-Syntax bildet die vorhandenen `.htaccess`-Regeln (verbotene Pfade/Endungen,
   Cache-Header, Sicherheits-Header) knapp und lesbar ab, ohne die in nginx uebliche
   Doppelpflege von `location`-Bloecken fuer denselben Sachverhalt.

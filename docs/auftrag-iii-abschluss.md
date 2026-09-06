@@ -40,7 +40,7 @@ app, admin, api, status und optional staging als A-Einträge auf die VPS-Adresse
 
 ## Manuelle Schritte, die noch ausstehen
 
-1. IONOS VPS bestellen (Ubuntu 24.04) und mit docs/vps/02-einrichtung-vps.md einrichten (setup-vps.sh, .env aus .env.example, shared/config.php).
+1. VPS einrichten: überholt, da bereits ein Hostinger-VPS (Tarif KVM 8, Vorlage „Ubuntu 24.04 with Coolify“) beschafft wurde, siehe Abschnitt „Nachtrag Hostinger KVM 8 (Coolify)“ unten; Einrichtung nach docs/vps/08-hostinger-coolify.md (setup-vps.sh, .env aus .env.example, shared/config.php).
 2. GitHub-Secrets und Variablen setzen, ersten Lauf mit VPS_DEPLOY_ENABLED=true über workflow_dispatch prüfen (docs/vps/03).
 3. Datenbank nach Runbook docs/vps/04 übertragen und mit db-verify.php beidseitig vergleichen; Cutover mit Wartungsmodus.
 4. Feature-Flag queue zuerst für eine Testfirma aktivieren (Admin, System, Jobs), dann für alle.
@@ -85,13 +85,98 @@ Finaler Lauf am 06.09.2026 auf frischer Testdatenbank (sql/schema.sql) gegen den
 | test_sync_lock.php | 14 | bestanden |
 | test_migrate_endpoint.php | 29 | bestanden |
 
-Im ersten Lauf nach den Korrekturen schlugen zwei der neuen Prüfungen fehl: die Anmeldeseite wurde mit angemeldeter Sitzung geprüft (Weiterleitung zum gesperrten Dashboard, Testfehler) und mail_addr_ref gab die Domain nicht kleingeschrieben zurück (Funktion angepasst). Zweiter Lauf vollständig grün.
+Lauf für Version 4.1 (Paket 4b und Hostinger-Anpassung) am 06.09.2026, wieder auf frischer Testdatenbank: e2e_saas.php 410 (neu Abschnitt 31), test_monitor.php 49, test_queue.php 73, test_payment_safety.php 140, test_rules_sync.php 60 (neu Abschnitt 5 Tarifwechsel und Upsell), test_sync_perf.php 17, test_sync_lock.php 14, test_migrate_endpoint.php 29, alle bestanden. Zusätzlich docker compose config für prod und staging mit den Traefik-Labels, bash -n, php -l.
+
+Im ersten Lauf nach den Korrekturen (Version 4.0) schlugen zwei der neuen Prüfungen fehl: die Anmeldeseite wurde mit angemeldeter Sitzung geprüft (Weiterleitung zum gesperrten Dashboard, Testfehler) und mail_addr_ref gab die Domain nicht kleingeschrieben zurück (Funktion angepasst). Zweiter Lauf vollständig grün.
 
 Zusätzlich: docker compose config für prod und staging, bash -n für alle Skripte, php -l für alle geänderten PHP-Dateien, YAML-Prüfung des Workflows, Bau der Dokumentation (tools/build-docs.py, PDF mit Version und Commit).
 
 ## Nicht geprüft
 
 Start der Container und echte Health Checks (kein Docker-Daemon in der Entwicklungsumgebung), Let's Encrypt, SSH-Deployment auf einen echten VPS, Datenbankimport mit Produktionsdaten, Verhalten mehrerer Worker unter Last, echte Lexware- und Stripe-Störungen, Backup auf ein externes Ziel, rclone-Installation im Backup-Image.
+
+## Paket 4b: Tarifwechsel und Upsell (Version 4.1)
+
+Umgesetzt am 06.09.2026, wirksam nur, wenn `billing.enabled` gesetzt ist und mindestens zwei Tarife aktiv und öffentlich sind (Tabelle `plans`). Mit nur einem Tarif ändert sich für Kunden nichts.
+
+| Baustein | Umsetzung |
+|---|---|
+| Kandidatenermittlung | `plan_upgrade_candidate()` in app/plans.php: günstigster aktiver, öffentlicher Tarif mit höherem Preis, der den Bedarf deckt (Benutzer oder Einzüge); Starttarif ohne Grenze braucht kein Upgrade |
+| Upsell-Hinweise | Firmendaten > Mitarbeiter einladen (Benutzerlimit oder Tarif ohne Einladungen), Rechnungsseite ab 80 Prozent und bei ausgeschöpftem Kontingent, Fehlermeldung beim Vormerken eines Einzugs; jeweils mit Link auf Firma > Abonnement |
+| E-Mail an den Inhaber | `plan_quota_warning_maybe_send()` einmal je Abrechnungsperiode (Spalte `quota_warning_period_start`, Migration 019), Audit `quota_warning_sent` |
+| Tarifwechsel | `billing_change_plan()` in app/billing.php: bestehendes Stripe-Abo wird auf den neuen Preis umgestellt. Upgrade: `proration_behavior=always_invoice`, `payment_behavior=error_if_incomplete` (scheitert die Zahlung, bleibt der alte Tarif). Downgrade: `create_prorations` (Gutschrift auf die nächste Rechnung), Downgrade-Schutz über `plan_change_allowed`. Bestellbestätigung (AGB, Unternehmer) wird wie beim Abschluss protokolliert, Wechsel im Audit `subscription_plan_changed`, Sicherheits-E-Mail an den Inhaber |
+| Tarifwahl vor Abschluss | `billing_choose_plan()`: setzt nur `plan_code`, danach Checkout mit diesem Tarif |
+| Oberfläche | Firma > Abonnement, Kasten „Tarif wechseln“ mit allen anderen öffentlichen Tarifen, Richtung (Upgrade/Downgrade), Grenzen, Preis netto plus USt-Hinweis; Leistungen dynamisch aus dem Tarif |
+| Tests | test_rules_sync.php Abschnitt 5 (Kandidaten, Sitz- und Kontingentmeldungen, E-Mail einmal je Periode, Upgrade und Downgrade mit Ersatz-Stripe-Client, Downgrade-Schutz, Tarifwahl), E2E Abschnitt 31 (ohne Abrechnung keine Hinweise, Wechsel abgelehnt) |
+
+Voraussetzungen vor dem Scharfschalten: Stripe-Preis-IDs für alle aktiven Tarife in Admin > Tarife, Testkauf und Testwechsel im Stripe-Testmodus, Webhook `customer.subscription.updated` aktiv (ANLEITUNG-IONOS.md, Abschnitt 6, Punkt 6).
+
+## Nachtrag Hostinger KVM 8 (Coolify)
+
+Stand: 06.09.2026. Nach Abschluss von Auftrag III wurde tatsächlich kein IONOS VPS bestellt,
+sondern ein Hostinger-VPS beschafft: Tarif KVM 8 (8 vCPU, 32 GB RAM, 400 GB NVMe), Vorlage
+„Ubuntu 24.04 with Coolify“, Coolify bereits installiert und laufend. Hostname
+`srv1960492.hstgr.cloud`, IPv4 `72.61.80.67`, SSH-Zugang zunächst als `root` (Passwort aus dem
+Hostinger-Kundenbereich). Dieser Nachtrag beschreibt die daraus folgenden Entscheidungen und
+Dokumentationsänderungen; er ersetzt die Annahme eines IONOS VPS ohne vorinstallierte Software in
+den Kapiteln `docs/vps/01` bis `docs/vps/07`.
+
+### Entscheidungen
+
+- Coolify läuft auf demselben Server und wird ausschließlich als Reverse Proxy (Traefik auf
+  80/443, automatisches TLS über Let's Encrypt) und als Serverübersicht genutzt. Für SmartEinzug
+  wird in Coolify AUSDRÜCKLICH keine Anwendung/Ressource angelegt, kein Coolify-Autodeploy
+  eingerichtet und keine GitHub-App in Coolify verbunden. Der einzige Deploymentweg für den VPS
+  bleibt der bestehende GitHub-Workflow (`.github/workflows/deploy.yml`, Job `deploy-vps`).
+- Die Coolify-Oberfläche (Port 8000) wird nicht öffentlich freigegeben, sondern ausschließlich per
+  SSH-Tunnel erreicht.
+- Der Docker-Stack (`deploy/vps/docker-compose*.yml`, `Caddyfile`, `Caddyfile.staging`,
+  `.env.example`) wurde bereits vor diesem Nachtrag auf die neue Proxykette umgestellt: Der
+  `caddy`-Container veröffentlicht keine Ports mehr (`auto_https off`, reines HTTP intern),
+  Traefik-Labels binden ihn an das Docker-Netz `PROXY_NETWORK` (Standardname `coolify`).
+  `LETSENCRYPT_EMAIL` entfällt in `.env`, `PROXY_NETWORK` ist neu. Diese Dateien waren zum
+  Zeitpunkt dieses Dokumentationsnachtrags bereits angepasst und dienten als Quelle für die
+  Aktualisierung von `docs/vps/01` bis `docs/vps/08`.
+- Neu erstellt: `docs/vps/08-hostinger-coolify.md`, eine vollständige Schritt-für-Schritt-Anleitung
+  für den tatsächlichen Weg (Coolify-Assistent, Root-Zugang, `setup-vps.sh`,
+  Coolify-Proxy-Prüfung, `shared/config.php` mit `trusted_proxies`, `.env`, erstes Deployment,
+  Datenbankimport, Test ohne DNS-Änderung).
+- `docs/vps/01` bis `docs/vps/07` wurden dort angepasst, wo sie IONOS-VPS-Annahmen oder eine
+  TLS-Terminierung durch Caddy selbst voraussetzten (Proxykette, Firewall, `.env`-Variablen,
+  Zertifikatsprüfung, DNS-Zielwert, GitHub-Secrets, Fingerabdruckprüfung); der übrige Inhalt bleibt
+  unverändert gültig.
+- Produktive DNS-Einträge wurden während dieser Umstellung NICHT geändert; die Umschaltung folgt
+  erst nach vollständigem Test gemäß `docs/vps/05-dns-ssl.md` und
+  `docs/vps/07-cutover-checkliste.md`.
+
+### setup-vps.sh: Coolify-Erkennung
+
+`deploy/vps/scripts/setup-vps.sh` erkennt eine bereits laufende Coolify-Installation (Container
+mit Namen `coolify*`) und verhält sich dann abweichend von der Einrichtung eines Servers ohne
+Coolify: Docker wird nur installiert, wenn es fehlt; ein bereits aktives `ufw` wird nicht
+zurückgesetzt, sondern nur um `allow 22/tcp`, `allow 80/tcp`, `allow 443/tcp` ergänzt; Port 8000
+(Coolify-Oberfläche) sperrt das Skript dabei standardmäßig ausdrücklich nach außen
+(`ufw deny 8000/tcp`), optional lässt sich mit der Umgebungsvariable
+`COOLIFY_UI_ALLOW_FROM=<eigene IP>` eine einzelne Adresse freigeben. Die in
+`docs/vps/08-hostinger-coolify.md` beschriebene Anleitung verwendet unabhängig davon durchgängig
+den SSH-Tunnel als Zugriffsweg auf die Coolify-Oberfläche, damit sie auch ohne eine feste eigene
+IP-Adresse funktioniert. Dieses Verhalten ist im Repository vorbereitet; ob es auf dem
+tatsächlichen Server wie beschrieben greift (insbesondere die Erkennung des laufenden
+Coolify-Containers und der Zustand von `ufw` vor dem ersten Lauf), ist beim ersten Durchlauf von
+`docs/vps/08-hostinger-coolify.md`, Schritt 3, auf dem Server zu prüfen.
+
+### Statusstufen
+
+| Baustein | Stand |
+|---|---|
+| Hostinger-VPS beschafft, Coolify installiert und laufend | produktiv eingerichtet (vom Nutzer bestätigt) |
+| Docker-Stack auf Coolify/Traefik-Proxykette umgestellt (Compose, Caddyfile, `.env.example`) | vorbereitet (im Repository) |
+| `setup-vps.sh` erkennt Coolify (Firewall wird ergänzt statt zurückgesetzt, Port 8000 gesperrt bzw. optional per `COOLIFY_UI_ALLOW_FROM` freigegeben) | vorbereitet (im Repository); Wirkung auf dem tatsächlichen Server noch nicht bestätigt |
+| Dokumentation `docs/vps/01` bis `docs/vps/08` auf den Hostinger-VPS aktualisiert | vorbereitet (im Repository) |
+| Ersteinrichtung nach `docs/vps/08-hostinger-coolify.md` (Schritte 1 bis 13) | offen |
+| Erstes Deployment über den GitHub-Workflow auf den Hostinger-VPS | offen |
+| Datenbankimport von Bestandsdaten | offen |
+| Produktive DNS-Umstellung, Cutover | offen, ausdrücklich noch nicht vorgenommen |
 
 ## Verbleibende Risiken
 

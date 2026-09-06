@@ -8,7 +8,9 @@
 ########################################################################################
 
 {
-	email {$LETSENCRYPT_EMAIL}
+	# TLS und Let's Encrypt uebernimmt der Coolify-Proxy (Traefik) vor diesem Container. Caddy spricht
+	# hier nur HTTP auf Port 80 im Docker-Netz; kein eigener Zertifikatsbezug, keine eigene Umleitung.
+	auto_https off
 }
 
 (security_headers) {
@@ -48,7 +50,7 @@
 # staging.smart-einzug.de bedient Kunden- UND Adminfunktionen auf demselben Host (Uebergangsmodus:
 # admin_base_url in der Staging-Konfiguration leer lassen). Kein separater API-Host: Webhooks laufen
 # auf Staging nur gegen Stripe-Testschluessel, siehe deploy/vps/README.md.
-{$DOMAIN_STAGING} {
+http://{$DOMAIN_STAGING}:80 {
 	import security_headers
 	import deny_internal_paths
 	import static_cache

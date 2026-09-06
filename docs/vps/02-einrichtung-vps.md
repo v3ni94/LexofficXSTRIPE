@@ -1,17 +1,42 @@
-# Einrichtung des IONOS VPS: Schritt für Schritt
+# Einrichtung des VPS: Schritt für Schritt
 
-Stand: 06.09.2026 (Auftrag III). Richtet sich an Administratoren ohne tiefe Linux-Erfahrung. Jeder
+Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`). Richtet sich an Administratoren ohne tiefe Linux-Erfahrung. Jeder
 Schritt nennt Zweck, Befehle, das erwartete Ergebnis, ein Prüfkommando und mögliche Fehler. Schritte
 der Reihe nach abarbeiten, jeden Schritt erst abschließen, wenn die Prüfung bestanden ist.
 
-Platzhalter in diesem Dokument: `HIER-VPS-IP` (IPv4-Adresse des VPS aus dem IONOS Kundenbereich),
-`HIER-ADMIN-ADRESSE` (E-Mail-Adresse für Zertifikatswarnungen und Systembenachrichtigungen). Echte
-Werte nie in dieses Repository schreiben, nur in `.env` und `app/config.php` auf dem Server.
+> **Hinweis Hostinger und Coolify:** Der tatsächlich beschaffte Server ist ein Hostinger-VPS,
+> Tarif KVM 8 (8 vCPU, 32 GB RAM, 400 GB NVMe), mit der Vorlage „Ubuntu 24.04 with Coolify“.
+> Coolify war damit bei der Einrichtung bereits installiert und lief bereits. Schritt 1 dieser
+> Datei (Server bei IONOS bestellen) entfällt deshalb; er bleibt unten nur als historischer
+> Hinweis stehen, falls künftig ein zusätzlicher, unabhängiger VPS ohne Coolify eingerichtet
+> werden soll. Für den tatsächlichen Weg (Coolify-Assistent, Root-Zugang, `setup-vps.sh`,
+> Coolify-Proxy-Prüfung, `shared/config.php`, `.env`, erstes Deployment, Datenbankimport) gilt
+> ausschließlich `docs/vps/08-hostinger-coolify.md`. Die vorliegende Datei beschreibt weiterhin den
+> allgemeinen, produktunabhängigen Ablauf; die mit Coolify zusammenhängenden Schritte (7, 10, 17)
+> sind unten entsprechend angepasst und verweisen auf Kapitel 08.
+
+Platzhalter in diesem Dokument: `HIER-VPS-IP` (IPv4-Adresse des VPS; für den Hostinger-VPS
+`72.61.80.67`, siehe `docs/vps/08-hostinger-coolify.md`), `HIER-ADMIN-ADRESSE` (E-Mail-Adresse für
+Systembenachrichtigungen; Zertifikatswarnungen von Let's Encrypt laufen über den Coolify-Proxy,
+siehe `docs/vps/05-dns-ssl.md`). Echte Werte nie in dieses Repository schreiben, nur in `.env` und
+`app/config.php` auf dem Server.
 
 Grundlage: `deploy/vps/` (Docker-Stack und Skripte, siehe `deploy/vps/README.md`),
-`docs/vps/01-architektur.md` (Zielbild).
+`docs/vps/01-architektur.md` (Zielbild), `docs/vps/08-hostinger-coolify.md` (tatsächlicher Weg für
+den Hostinger-VPS).
 
-## 1. IONOS VPS bestellen
+## 1. VPS bestellen (entfällt für den Hostinger-Weg)
+
+**Historisch, überholt:** Dieser Schritt ging von einem VPS ohne vorinstallierte Software aus.
+Der tatsächlich beschaffte Hostinger-VPS (Tarif KVM 8) lief bereits mit der Vorlage „Ubuntu 24.04
+with Coolify“; eine Bestellung im hier beschriebenen Sinn war nicht nötig und ist auch für
+etwaige künftige zusätzliche Server nicht zwingend über IONOS vorzunehmen. Weiter mit
+`docs/vps/08-hostinger-coolify.md`, Schritt 1 (Coolify-Assistent abschließen).
+
+<details>
+<summary>Ursprünglicher Text (nur als Referenz, falls ein VPS ohne vorinstallierte Software
+beschafft wird)</summary>
 
 **Zweck:** Server-Ressource beschaffen.
 **Vorgehen:** IONOS Kundenbereich > Server > VPS bestellen. Betriebssystem Ubuntu 24.04 LTS,
@@ -23,6 +48,8 @@ vor (E-Mail von IONOS oder Kundenbereich).
 **Mögliche Fehler:** Bestellung noch nicht abgeschlossen (Provisionierung dauert laut IONOS bis zu
 einigen Minuten); falsches Betriebssystem gewählt (Neuinstallation über den Kundenbereich möglich,
 löscht alle Daten).
+
+</details>
 
 ## 2. Erste Anmeldung als root
 
@@ -108,8 +135,9 @@ sudo systemctl reload sshd
 Passwort-Anmeldung und direkte root-Anmeldung sind danach nicht mehr möglich.
 **Prüfkommando:** `ssh root@HIER-VPS-IP` (muss abgelehnt werden), `ssh -i ~/.ssh/smarteinzug_vps_admin deploy@HIER-VPS-IP` (muss gelingen).
 **Mögliche Fehler:** Wird die Härtung ausgeführt, bevor der Zugang als `deploy` bestätigt ist,
-droht vollständige Aussperrung (nur über die IONOS-Notfallkonsole des Kundenbereichs behebbar,
-dort sind Neuinstallation oder Rettungssystem möglich, aber aufwendig). Deshalb unbedingt zuerst
+droht vollständige Aussperrung (auf dem Hostinger-VPS nur über den Hostinger-Kundenbereich
+behebbar, dort sind Neuinstallation oder ein Rettungssystem/VNC-Zugriff möglich, aber aufwendig,
+auf dem Server zu prüfen). Deshalb unbedingt zuerst
 im zweiten Terminal testen.
 
 ## 7. Firewall prüfen
@@ -117,10 +145,25 @@ im zweiten Terminal testen.
 **Zweck:** Sicherstellen, dass nur die notwendigen Ports offen sind.
 **Befehle:** `sudo ufw status verbose` (als `deploy` mit `sudo`).
 **Erwartetes Ergebnis:** Nur SSH (Port aus Schritt 6, Standard 22), HTTP (80) und HTTPS (443)
-erlaubt; alles andere abgelehnt.
-**Prüfkommando:** von einem fremden Rechner `nc -zv HIER-VPS-IP 3306` (MariaDB) muss fehlschlagen.
+erlaubt; alles andere abgelehnt. `setup-vps.sh` erkennt ein bereits aktives `ufw` (z. B. durch die
+Coolify-Vorlage) und setzt es in diesem Fall NICHT zurück, sondern ergänzt nur `allow 22/tcp`,
+`allow 80/tcp`, `allow 443/tcp`; Port 8000 (Coolify-Oberfläche) sperrt das Skript dabei
+standardmäßig ausdrücklich nach außen (`ufw deny 8000/tcp`), es sei denn, es wurde mit gesetzter
+Umgebungsvariable `COOLIFY_UI_ALLOW_FROM=<eigene IP>` aufgerufen (dann nur für diese eine Adresse
+freigegeben).
+**Prüfkommando:** von einem fremden Rechner `nc -zv HIER-VPS-IP 3306` (MariaDB) muss fehlschlagen;
+`nc -zv HIER-VPS-IP 8000` (Coolify-Oberfläche) muss ebenfalls fehlschlagen, sofern
+`COOLIFY_UI_ALLOW_FROM` nicht auf die eigene, testende Adresse gesetzt wurde.
 **Mögliche Fehler:** `ufw` inaktiv (`sudo ufw enable`, danach Regeln erneut prüfen, SSH-Port zuerst
 erlauben, sonst Aussperrung).
+**Besonderheit Coolify (Port 8000):** `ufw` allein blockiert Port 8000 nur zuverlässig, solange
+Docker ihn nicht zusätzlich über eine eigene, von Docker verwaltete `iptables`-Regel nach außen
+veröffentlicht; Docker trägt eigene Regeln in die Kette `DOCKER-USER` ein, die `ufw` umgehen
+können (derselbe Hinweis, den `setup-vps.sh` selbst beim Firewall-Schritt ausgibt). Der in dieser
+Anleitung genutzte Zugriffsweg auf die Coolify-Oberfläche ist deshalb zusätzlich der SSH-Tunnel,
+nicht allein die Firewall-Regel (siehe `docs/vps/08-hostinger-coolify.md`, Schritt 4); dort steht
+auch, was auf dem Server zusätzlich zu prüfen ist, damit Port 8000 tatsächlich nicht von außen
+erreichbar ist.
 
 ## 8. Verzeichnisstruktur prüfen
 
@@ -165,12 +208,18 @@ nano .env
 ```
 **Erwartetes Ergebnis:** `.env` mit echten Werten (siehe `deploy/vps/.env.example` für die
 vollständige Liste: `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `TZ`, `DOMAIN_APP`,
-`DOMAIN_ADMIN`, `DOMAIN_API`, `DOMAIN_STATUS`, `LETSENCRYPT_EMAIL`, `APP_UID`, `APP_GID`,
-`PM_MAX_CHILDREN`, `WORKER_MEMORY_MB`, `BACKUP_REMOTE`, `BACKUP_AGE_RECIPIENT`,
-`BACKUP_RETENTION_DAYS`). Datei niemals einchecken.
+`DOMAIN_ADMIN`, `DOMAIN_API`, `DOMAIN_STATUS`, `PROXY_NETWORK`, `DEPLOY_ENV`, `HEALTH_STRICT`,
+`APP_UID`, `APP_GID`, `PM_MAX_CHILDREN`, `WORKER_MEMORY_MB`, `BACKUP_REMOTE`,
+`BACKUP_AGE_RECIPIENT`, `BACKUP_RETENTION_DAYS`). `LETSENCRYPT_EMAIL` entfällt: TLS und die
+Let's-Encrypt-Zertifikate bezieht der Coolify-Proxy (Traefik), nicht Caddy selbst, siehe
+`docs/vps/01-architektur.md`, Abschnitt „Proxykette“. Stattdessen ist `PROXY_NETWORK` zu setzen
+(Standardwert `coolify`; tatsächlichen Namen mit `docker network ls` auf dem Server prüfen). Datei
+niemals einchecken.
 **Prüfkommando:** `grep -c HIER .env` muss `0` liefern (keine Platzhalter mehr).
 **Mögliche Fehler:** `APP_UID`/`APP_GID` weichen vom tatsächlichen Benutzer `deploy` ab (Container
-kann `app/storage` dann nicht beschreiben, sichtbar an „Permission denied“ in den PHP-Logs).
+kann `app/storage` dann nicht beschreiben, sichtbar an „Permission denied“ in den PHP-Logs);
+`PROXY_NETWORK` weicht vom tatsächlichen Namen des Coolify-Netzes ab (Caddy-Container startet,
+aber Traefik erreicht ihn nicht, `docker network ls` zeigt das tatsächlich vorhandene Netz).
 
 ## 11. Deploy-Skripte und erstes Release bereitstellen
 
@@ -271,13 +320,21 @@ prüfen, z. B. mit `dig @1.1.1.1`).
 
 ## 17. TLS-Zertifikate prüfen
 
-**Zweck:** Caddy hat automatisch gültige Let's-Encrypt-Zertifikate bezogen.
+**Zweck:** Der Coolify-Proxy (Traefik) hat automatisch gültige Let's-Encrypt-Zertifikate bezogen.
+Caddy selbst bezieht KEIN Zertifikat mehr (`auto_https off`, siehe
+`docs/vps/01-architektur.md`, Abschnitt „Proxykette“); die Prüfung richtet sich deshalb auf
+Traefik, nicht auf den `caddy`-Container.
 **Befehle:** `curl -vI https://app.smart-einzug.de/health.php 2>&1 | grep -i "SSL certificate"`.
 **Erwartetes Ergebnis:** Gültiges Zertifikat, Aussteller „Let's Encrypt“ oder „(STAGING)“ nur
 während eines bewussten Tests mit dem Let's-Encrypt-Staging-Endpunkt.
-**Prüfkommando:** siehe oben; zusätzlich `docker compose logs caddy | grep -i certificate`.
-**Mögliche Fehler:** Caddy erhält kein Zertifikat, weil DNS noch nicht auf den Server zeigt oder
-Port 80/443 nicht erreichbar ist (`docker compose logs caddy`, Firewall aus Schritt 7 prüfen).
+**Prüfkommando:** siehe oben; zusätzlich die Logs des Coolify-Proxy-Containers ansehen
+(Containername auf dem Server mit `docker ps` ermitteln, üblicherweise `coolify-proxy`):
+`docker logs coolify-proxy 2>&1 | grep -i acme`.
+**Mögliche Fehler:** Traefik erhält kein Zertifikat, weil DNS noch nicht auf den Server zeigt,
+Port 80/443 nicht erreichbar ist, oder die Traefik-Labels am `caddy`-Dienst nicht zu den
+tatsächlichen Entrypoint-/Certresolver-Namen von Coolify passen (Standardnamen `http`/`https` und
+`letsencrypt`, in `/data/coolify/proxy/docker-compose.yml` auf dem Server zu prüfen, siehe
+`docs/vps/08-hostinger-coolify.md`); Firewall aus Schritt 7 zusätzlich prüfen.
 
 ## 18. Health-Check von außen
 

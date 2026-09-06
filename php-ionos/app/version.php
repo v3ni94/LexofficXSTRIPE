@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.0';
+const APP_VERSION = '4.1';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.1', 'date' => '06.09.2026', 'title' => 'Tarifwechsel, Upsell und Hostinger-VPS',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Tarifwechsel durch den Inhaber unter Firma > Abonnement (Upgrade sofort mit anteiliger Berechnung, Downgrade mit Gutschrift, Downgrade-Schutz für Benutzer), Bestellbestätigung und Protokoll wie beim Abschluss (Migration 019).'],
+            ['type' => 'Neu', 'text' => 'Upsell bei erreichten Grenzen: Hinweis auf den nächsthöheren Tarif beim Benutzerlimit, ab 80 Prozent und bei ausgeschöpftem Einzugskontingent, einmal je Periode auch per E-Mail an den Inhaber. Erscheint nur, wenn mindestens zwei Tarife aktiv sind.'],
+            ['type' => 'Geändert', 'text' => 'VPS-Stack auf Hostinger KVM 8 mit Coolify ausgerichtet: TLS am Coolify-Proxy, Caddy als interner HTTP-Server, Ressourcenlimits für 8 vCPU und 32 GB, Einrichtungsanleitung Kapitel 08.'],
+         ]],
         ['version' => '4.0', 'date' => '06.09.2026', 'title' => 'Hintergrundverarbeitung und VPS-Migration vorbereitet',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Zentrale Job-Queue mit Prioritäten, Wiederholungen mit gestaffeltem Backoff, Dead-Letter-Ansicht im Admin, Worker mit Heartbeat, Scheduler, Circuit Breaker je Anbindung (Migration 018).'],

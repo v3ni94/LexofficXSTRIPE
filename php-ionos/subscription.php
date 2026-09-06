@@ -43,6 +43,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Bestellbestätigung (AGB, Unternehmerbestätigung) wird protokolliert, dann Stripe Checkout
             billing_record_consent($org, $plan, $ctx, $_POST);
             redirect(billing_checkout_url($org, $plan, $owner));
+        } elseif ($action === 'change_plan' || $action === 'choose_plan') {
+            // Tarifwechsel (laufendes Abo) bzw. Tarifwahl (vor Abschluss). Nur aktive, öffentliche Tarife.
+            $newPlan = plan_get((string)($_POST['plan_code'] ?? ''));
+            if ($newPlan['code'] !== (string)($_POST['plan_code'] ?? '')) {
+                throw new RuntimeException('Unbekannter Tarif.');
+            }
+            if ($action === 'change_plan') {
+                $res = billing_change_plan($org, $newPlan, $ctx, $_POST);
+                security_notify_owner($tenantId, 'Tarif geändert', [
+                    sprintf('Der Tarif der Firma %s wurde von %s auf %s geändert (%s).', $org['name'], $res['old_plan']['name'], $newPlan['name'],
+                        $res['direction'] === 'upgrade' ? 'Upgrade, anteilige Berechnung sofort' : 'Downgrade, anteilige Gutschrift auf die nächste Rechnung'),
+                ]);
+                flash_set('success', sprintf('Tarif auf %s geändert. %s', $newPlan['name'],
+                    $res['direction'] === 'upgrade' ? 'Die anteilige Berechnung wird sofort über Ihre hinterlegte Zahlungsmethode eingezogen.' : 'Die anteilige Gutschrift erscheint auf Ihrer nächsten Rechnung.'));
+            } else {
+                billing_choose_plan($org, $newPlan, $ctx);
+                flash_set('success', sprintf('Tarif %s gewählt. Schließen Sie jetzt das Abonnement ab.', $newPlan['name']));
+                redirect('subscription.php?bestellen=1#bestellen');
+            }
         } elseif ($action === 'portal') {
             redirect(billing_portal_url($org));
         } elseif ($action === 'cancel' || $action === 'resume') {
@@ -134,10 +153,52 @@ layout_header('Abonnement', $ctx);
     </div>
 </div>
 
+<?php
+$hasSub = !empty($org['platform_stripe_subscription_id']) && in_array((string)$org['subscription_status'], ['active', 'past_due'], true);
+$otherPlans = array_values(array_filter($publicPlans, fn($p) => $p['code'] !== $plan['code']));
+$quotaNow = collections_quota_check($tenantId);
+$seatsNow = seats_can_invite($tenantId, $plan);
+?>
+<?php if (plan_upsell_available() && (int)$org['billing_exempt'] !== 1 && billing_enabled()): ?>
+<div class="card" id="tarif">
+    <h2>Tarif wechseln</h2>
+    <p class="hint">Aktuell: <?= e($plan['name']) ?>, <?= e(plan_limit_label($plan, 'users')) ?> Benutzer (<?= (int)$seatsNow['used'] ?> belegt), <?= e(plan_limit_label($plan, 'collections')) ?> Einzüge je Abrechnungsperiode<?= $quotaNow['limit'] !== null ? ' (' . (int)$quotaNow['used'] . ' belegt)' : '' ?>.
+        <?= $hasSub ? 'Ein Upgrade gilt sofort, die anteilige Differenz wird sofort berechnet und eingezogen. Ein Downgrade gilt ebenfalls sofort, die anteilige Gutschrift erscheint auf der nächsten Rechnung.' : 'Wählen Sie den Tarif, mit dem Sie das Abonnement abschließen möchten.' ?></p>
+    <div class="card-grid">
+    <?php foreach ($otherPlans as $p): $dir = plan_change_direction($plan, $p); $chk = plan_change_allowed($tenantId, $p); ?>
+        <div class="stat-card" style="text-align:left;">
+            <div class="stat-value" style="font-size: 20px;"><?= e($p['name']) ?> <span class="badge <?= $dir === 'upgrade' ? 'badge-success' : 'badge-neutral' ?>"><?= $dir === 'upgrade' ? 'Upgrade' : 'Downgrade' ?></span></div>
+            <div class="stat-label"><?= format_eur_cents((int)$p['price_cents']) ?> netto je <?= (int)$p['period_days'] ?> Tage<?= billing_vat_hint((int)$p['price_cents']) ?></div>
+            <div class="hint" style="margin: 6px 0 10px;"><?= e(plan_limit_label($p, 'users')) ?> Benutzer · <?= e(plan_limit_label($p, 'collections')) ?> Einzüge je Periode</div>
+            <?php if (!$chk['allowed']): ?>
+                <p class="hint"><?= e((string)$chk['reason']) ?></p>
+            <?php elseif ($hasSub && empty($p['stripe_price_id'])): ?>
+                <p class="hint">Dieser Tarif ist noch nicht für den Online-Wechsel freigeschaltet. Bitte wenden Sie sich an den Support.</p>
+            <?php else: ?>
+            <form method="post">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="<?= $hasSub ? 'change_plan' : 'choose_plan' ?>">
+                <input type="hidden" name="plan_code" value="<?= e($p['code']) ?>">
+                <?php if ($hasSub): ?>
+                <label style="display:flex; gap:8px; align-items:flex-start; margin-top:6px;"><input type="checkbox" name="unternehmer" value="1" required><span class="hint">Ich handle als Unternehmen.</span></label>
+                <label style="display:flex; gap:8px; align-items:flex-start; margin-top:6px;"><input type="checkbox" name="agb" value="1" required><span class="hint">Ich akzeptiere die <a href="<?= e(marketing_url('/agb')) ?>" target="_blank" rel="noopener">AGB</a> für den geänderten Tarif.</span></label>
+                <div class="form-actions" style="margin-top:10px;"><button type="submit" class="btn <?= $dir === 'upgrade' ? '' : 'btn-secondary' ?>" onclick="return confirm('Tarif jetzt auf <?= e($p['name']) ?> wechseln?')"><?= $dir === 'upgrade' ? 'Zahlungspflichtig auf ' . e($p['name']) . ' wechseln' : 'Auf ' . e($p['name']) . ' wechseln' ?></button></div>
+                <?php else: ?>
+                <div class="form-actions" style="margin-top:10px;"><button type="submit" class="btn btn-secondary">Tarif <?= e($p['name']) ?> wählen</button></div>
+                <?php endif; ?>
+            </form>
+            <?php endif; ?>
+        </div>
+    <?php endforeach; ?>
+    </div>
+    <p class="hint">Jeder Wechsel wird mit Zeitpunkt, Tarif und Preis protokolliert. Bestandskunden des Starttarifs behalten ihre Konditionen, solange sie nicht selbst wechseln.</p>
+</div>
+<?php endif; ?>
+
 <div class="card">
     <h2>Leistungen</h2>
     <ul class="check-list">
-        <li>Unbegrenzt SEPA-Einzüge und unbegrenzt Mitarbeiter im Tarif UNLIMITED START</li>
+        <li><?= e(plan_limit_label($plan, 'collections')) ?> SEPA-Einzüge je Abrechnungsperiode und <?= e(plan_limit_label($plan, 'users')) ?> Benutzer im Tarif <?= e($plan['name']) ?></li>
         <li>Lexware-Office-Anbindung, Stripe-Anbindung, Hintergrundsynchronisation</li>
         <li>SEPA-Verwaltung mit Mandatsdokument, Einzugshistorie, Statussynchronisation, Rechnungsarchiv, Support</li>
     </ul>

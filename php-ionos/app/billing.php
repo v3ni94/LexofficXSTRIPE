@@ -21,11 +21,108 @@ require_once __DIR__ . '/audit.php';
 
 function billing_client(): StripeClient
 {
+    // Testhaken (nur CLI): Ersatz-Client ohne echte Stripe-Aufrufe.
+    if (PHP_SAPI === 'cli' && isset($GLOBALS['lexsepa_billing_client_factory']) && is_callable($GLOBALS['lexsepa_billing_client_factory'])) {
+        $c = ($GLOBALS['lexsepa_billing_client_factory'])();
+        if ($c instanceof StripeClient) {
+            return $c;
+        }
+    }
     $b = config('billing', []);
     if (empty($b['enabled']) || empty($b['stripe_secret_key'])) {
         throw new RuntimeException('Die Plattform-Abrechnung ist nicht konfiguriert.');
     }
     return new StripeClient((string)$b['stripe_secret_key']);
+}
+
+/**
+ * Tarifwechsel eines Inhabers mit bestehendem Stripe-Abonnement (Paket 4b).
+ * Upgrade (höherer Preis): sofort wirksam, anteilige Berechnung wird sofort in Rechnung gestellt und
+ * eingezogen (proration_behavior always_invoice, payment_behavior error_if_incomplete: scheitert die
+ * Zahlung, bleibt der alte Tarif bestehen). Downgrade: sofort wirksam, anteilige Gutschrift auf die
+ * nächste Rechnung (create_prorations); Downgrade-Schutz über plan_change_allowed (Benutzer).
+ * Bestellbestätigung (AGB, Unternehmer) wird wie beim Abschluss protokolliert, der Wechsel im Audit.
+ * @return array{direction:string,plan:array,old_plan:array}
+ */
+function billing_change_plan(array $org, array $newPlan, array $actor, array $post): array
+{
+    if (!billing_enabled()) {
+        throw new RuntimeException('Die Plattform-Abrechnung ist nicht freigeschaltet; ein Tarifwechsel ist derzeit nicht möglich.');
+    }
+    if ((int)($newPlan['active'] ?? 0) !== 1 || (int)($newPlan['public_visible'] ?? 0) !== 1) {
+        throw new RuntimeException('Dieser Tarif steht nicht zur Auswahl.');
+    }
+    if (empty($newPlan['stripe_price_id'])) {
+        throw new RuntimeException('Für diesen Tarif ist noch keine Stripe-Preis-ID hinterlegt. Bitte wenden Sie sich an den Support.');
+    }
+    $old = plan_for_org($org);
+    if ($old['code'] === $newPlan['code']) {
+        throw new RuntimeException('Dieser Tarif ist bereits aktiv.');
+    }
+    if (empty($org['platform_stripe_subscription_id']) || !in_array((string)($org['subscription_status'] ?? ''), ['active', 'past_due'], true)) {
+        throw new RuntimeException('Für diese Firma besteht kein laufendes Abonnement. Bitte zuerst den Tarif wählen und das Abonnement abschließen.');
+    }
+    $chk = plan_change_allowed($org['id'], $newPlan);
+    if (!$chk['allowed']) {
+        throw new RuntimeException($chk['reason']);
+    }
+    $direction = plan_change_direction($old, $newPlan);
+    billing_record_consent($org, $newPlan, $actor, $post, $direction === 'upgrade' ? 'Zahlungspflichtig auf höheren Tarif wechseln' : 'Tarif wechseln');
+
+    $client = billing_client();
+    $subId = (string)$org['platform_stripe_subscription_id'];
+    $sub = $client->call('GET', '/subscriptions/' . rawurlencode($subId));
+    $itemId = (string)($sub['items']['data'][0]['id'] ?? '');
+    if ($itemId === '') {
+        throw new RuntimeException('Das Abonnement bei Stripe enthält keine Position; bitte wenden Sie sich an den Support.');
+    }
+    $params = [
+        'items[0][id]'         => $itemId,
+        'items[0][price]'      => (string)$newPlan['stripe_price_id'],
+        'proration_behavior'   => $direction === 'upgrade' ? 'always_invoice' : 'create_prorations',
+        'metadata[plan_code]'  => (string)$newPlan['code'],
+        'metadata[tenant_id]'  => (string)$org['id'],
+    ];
+    if ($direction === 'upgrade') {
+        $params['payment_behavior'] = 'error_if_incomplete';
+    }
+    $updated = $client->call('POST', '/subscriptions/' . rawurlencode($subId), $params);
+    if (!isset($updated['metadata']['plan_code'])) {
+        $updated['metadata']['plan_code'] = (string)$newPlan['code'];
+    }
+    billing_apply_subscription($org['id'], $updated);
+    db()->prepare('UPDATE organizations SET plan_code = ?, plan_changed_at = NOW() WHERE id = ?')->execute([$newPlan['code'], $org['id']]);
+    plan_get('');
+    audit_log($org['id'], $actor, 'subscription_plan_changed', 'organization', $org['id'], [
+        'from' => $old['code'], 'to' => $newPlan['code'], 'direction' => $direction,
+        'price_cents_net_from' => (int)$old['price_cents'], 'price_cents_net_to' => (int)$newPlan['price_cents'],
+        'proration' => $params['proration_behavior'],
+    ]);
+    return ['direction' => $direction, 'plan' => $newPlan, 'old_plan' => $old];
+}
+
+/**
+ * Tarif für eine Firma OHNE laufendes Stripe-Abonnement wählen (vor dem Abschluss oder nach Kündigung).
+ * Ändert nur plan_code; der Abschluss erfolgt anschließend über den Checkout mit diesem Tarif.
+ */
+function billing_choose_plan(array $org, array $newPlan, array $actor): void
+{
+    if (!billing_enabled()) {
+        throw new RuntimeException('Die Plattform-Abrechnung ist nicht freigeschaltet; die Tarifwahl ist derzeit nicht möglich.');
+    }
+    if ((int)($newPlan['active'] ?? 0) !== 1 || (int)($newPlan['public_visible'] ?? 0) !== 1) {
+        throw new RuntimeException('Dieser Tarif steht nicht zur Auswahl.');
+    }
+    if (!empty($org['platform_stripe_subscription_id']) && in_array((string)($org['subscription_status'] ?? ''), ['active', 'past_due'], true)) {
+        throw new RuntimeException('Für diese Firma läuft bereits ein Abonnement; bitte den Tarifwechsel verwenden.');
+    }
+    $chk = plan_change_allowed($org['id'], $newPlan);
+    if (!$chk['allowed']) {
+        throw new RuntimeException($chk['reason']);
+    }
+    $old = plan_for_org($org);
+    db()->prepare('UPDATE organizations SET plan_code = ?, plan_changed_at = NOW() WHERE id = ?')->execute([$newPlan['code'], $org['id']]);
+    audit_log($org['id'], $actor, 'plan_selected', 'organization', $org['id'], ['from' => $old['code'], 'to' => $newPlan['code']]);
 }
 
 /** Stripe-Kunden der Firma im Plattform-Konto sicherstellen. */
@@ -277,7 +374,7 @@ function billing_invoice_status_label(string $status): string
  * Unternehmerbestätigung). Wirft bei fehlender Zustimmung. Der Audit-Eintrag hält
  * Zeitpunkt, IP (über audit_log), AGB-Fassung und Preis fest.
  */
-function billing_record_consent(array $org, array $plan, array $actor, array $post): void
+function billing_record_consent(array $org, array $plan, array $actor, array $post, string $button = 'Zahlungspflichtig abonnieren'): void
 {
     if (($post['agb'] ?? '') !== '1') {
         throw new RuntimeException('Bitte bestätigen Sie die Allgemeinen Geschäftsbedingungen, um das Abonnement abzuschließen.');
@@ -288,6 +385,6 @@ function billing_record_consent(array $org, array $plan, array $actor, array $po
     audit_log($org['id'], $actor, 'subscription_consent', 'organization', $org['id'], [
         'plan' => $plan['code'], 'price_cents_net' => (int)$plan['price_cents'], 'period_days' => (int)$plan['period_days'],
         'agb_version' => (string)config('agb_version', 'AGB smart-einzug.de, Stand ' . date('d.m.Y')),
-        'agb_url' => public_base_url() . '/agb', 'button' => 'Zahlungspflichtig abonnieren',
+        'agb_url' => public_base_url() . '/agb', 'button' => $button,
     ]);
 }

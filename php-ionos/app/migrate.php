@@ -51,6 +51,7 @@ function migrations_markers(): array
         '016' => ['trusted_devices', null],
         '017' => ['monitor_checks', null],
         '018' => ['jobs', null],
+        '019' => ['organizations', 'quota_warning_period_start'],
     ];
 }
 

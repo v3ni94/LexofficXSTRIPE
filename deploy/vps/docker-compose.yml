@@ -7,7 +7,12 @@
 #   docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env up -d
 #
 # Grundsaetze (siehe README.md):
-#  - Kein Datenbank- oder Redis-Port wird nach aussen veroeffentlicht.
+#  - Kein Datenbank- oder Redis-Port wird nach aussen veroeffentlicht. Auch Caddy veroeffentlicht keine
+#    Ports: Auf dem Hostinger-VPS (Ubuntu 24.04 mit Coolify) haelt der Coolify-Proxy (Traefik) die Ports
+#    80/443, beendet TLS (Let's Encrypt) und reicht Anfragen ueber das Docker-Netz PROXY_NETWORK an
+#    unseren Caddy weiter (Traefik-Labels am caddy-Dienst). Caddy ist damit nur noch der interne
+#    HTTP-Server vor php-fpm (Sicherheitsregeln, php_fastcgi, statische Dateien). Kein zweiter Reverse
+#    Proxy auf 80/443, kein Konflikt mit Coolify.
 #  - Der Code des aktiven Release liegt unter /opt/smarteinzug/releases/current (Symlink innerhalb
 #    des Release-Ordners, siehe scripts/deploy.sh) und wird nur LESEND in die Container eingebunden.
 #    config.php und storage/ liegen ausserhalb der Releases unter /opt/smarteinzug/shared/ und werden
@@ -85,13 +90,15 @@ x-php-background: &php-background
       condition: service_healthy
 
 networks:
-  # edge: einziges Netz mit Weg nach aussen, nur Caddy haengt daran (Ports 80/443).
-  edge:
-    driver: bridge
+  # proxy: das bereits vorhandene Netz des Coolify-Proxys (Standardname "coolify", auf dem Server mit
+  # "docker network ls" pruefen). Nur Caddy haengt daran; ueber dieses Netz erreicht Traefik unseren Caddy.
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-coolify}
   # smarteinzug_internal: kein Zugriff von aussen (internal: true). Fester Adressbereich, damit die
-  # Adressen der Container vorhersagbar bleiben. Hinweis: Caddy uebergibt per php_fastcgi REMOTE_ADDR und
-  # HTTPS direkt, trusted_proxies in app/config.php bleibt deshalb LEER; nur wenn ein weiterer Proxy oder
-  # ein CDN vor Caddy steht, dessen Adressen dort eintragen.
+  # Adressen der Container vorhersagbar bleiben. Hinweis: TLS endet am Coolify-Proxy, deshalb muss
+  # trusted_proxies in app/config.php die Docker-Netzbereiche enthalten (z.B. ['172.16.0.0/12',
+  # '10.0.0.0/8']), damit X-Forwarded-Proto und X-Forwarded-For (von rechts ausgewertet) gelten.
   smarteinzug_internal:
     driver: bridge
     internal: true
@@ -111,16 +118,29 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    networks: [edge, smarteinzug_internal]
-    ports:
-      - "80:80"
-      - "443:443"
+    networks: [proxy, smarteinzug_internal]
+    # Keine "ports:": 80/443 gehoeren dem Coolify-Proxy. Traefik findet diesen Container ueber die Labels.
     environment:
       DOMAIN_APP: ${DOMAIN_APP}
       DOMAIN_ADMIN: ${DOMAIN_ADMIN}
       DOMAIN_API: ${DOMAIN_API}
       DOMAIN_STATUS: ${DOMAIN_STATUS}
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    labels:
+      # Traefik (Coolify-Proxy): Entrypoints "http"/"https" und Certresolver "letsencrypt" entsprechen der
+      # Standardkonfiguration von Coolify (/data/coolify/proxy/docker-compose.yml auf dem Server pruefen).
+      traefik.enable: "true"
+      traefik.docker.network: ${PROXY_NETWORK:-coolify}
+      traefik.http.routers.smarteinzug-http.rule: Host(`${DOMAIN_APP}`) || Host(`${DOMAIN_ADMIN}`) || Host(`${DOMAIN_API}`) || Host(`${DOMAIN_STATUS}`)
+      traefik.http.routers.smarteinzug-http.entrypoints: http
+      traefik.http.routers.smarteinzug-http.middlewares: smarteinzug-redirect
+      traefik.http.middlewares.smarteinzug-redirect.redirectscheme.scheme: https
+      traefik.http.middlewares.smarteinzug-redirect.redirectscheme.permanent: "true"
+      traefik.http.routers.smarteinzug-https.rule: Host(`${DOMAIN_APP}`) || Host(`${DOMAIN_ADMIN}`) || Host(`${DOMAIN_API}`) || Host(`${DOMAIN_STATUS}`)
+      traefik.http.routers.smarteinzug-https.entrypoints: https
+      traefik.http.routers.smarteinzug-https.tls: "true"
+      traefik.http.routers.smarteinzug-https.tls.certresolver: letsencrypt
+      traefik.http.routers.smarteinzug-https.service: smarteinzug
+      traefik.http.services.smarteinzug.loadbalancer.server.port: "80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

@@ -696,6 +696,10 @@ ALTER TABLE organizations
     ADD COLUMN IF NOT EXISTS sync_paused        TINYINT(1)   NOT NULL DEFAULT 0 AFTER collections_paused_at,
     ADD COLUMN IF NOT EXISTS sync_paused_reason VARCHAR(160) NULL AFTER sync_paused,
     ADD COLUMN IF NOT EXISTS feature_flags      TEXT         NULL AFTER sync_paused_reason;
+-- Migration 019: Tarifwechsel und Upsell (Kontingentwarnung je Periode, letzter Tarifwechsel)
+ALTER TABLE organizations
+    ADD COLUMN IF NOT EXISTS quota_warning_period_start DATETIME NULL AFTER feature_flags,
+    ADD COLUMN IF NOT EXISTS plan_changed_at            DATETIME NULL AFTER quota_warning_period_start;
 
 CREATE TABLE IF NOT EXISTS platform_settings (
     `key`      VARCHAR(64)  NOT NULL PRIMARY KEY,

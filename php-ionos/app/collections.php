@@ -1378,6 +1378,12 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
             'scheduled_date' => $scheduledDate, 'submit_not_before' => $submitNotBefore,
             'customer_number' => $customer['customer_number'], 'note' => $note,
         ]);
+        try {
+            // Einmal je Abrechnungsperiode: Hinweis an den Inhaber ab 80 Prozent des Einzugskontingents (mit Upsell).
+            plan_quota_warning_maybe_send($tenantId);
+        } catch (Throwable $e) {
+            error_log('Kontingenthinweis: ' . $e->getMessage());
+        }
     } else {
         // --- Sofort: Stripe jetzt aufrufen ---
         $stripe = _get_stripe_client($tenantId);

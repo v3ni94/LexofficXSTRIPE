@@ -1,7 +1,7 @@
 # Lexware-Einzug (LexSEPA) – Projektregeln für Claude
 
 Betreiber: Müller Holding AG. Produkt: Lexware-Einzug, SEPA-Lastschriften für Rechnungen aus Lexware Office über Stripe.
-Struktur: `php-ionos/` (PHP 8, MariaDB, ohne Composer; läuft auf IONOS Webhosting und vorbereitet für den IONOS VPS in Docker), `php-ionos/bin/` (CLI: worker, scheduler, migrate, healthcheck, host-metrics), `deploy/vps/` (Docker-Stack, Caddy, Skripte für den VPS), `websites/*` (statisches HTML je Domain, `status.smart-einzug.de` für die Statusseite), `tools/` (QA-Skripte, `build-docs.py` für die technische Dokumentation), `docs/` (Fachdokumentation, `docs/vps/` Einrichtung und Betrieb).
+Struktur: `php-ionos/` (PHP 8, MariaDB, ohne Composer; läuft auf IONOS Webhosting und vorbereitet für den Hostinger VPS KVM 8 mit Coolify in Docker), `php-ionos/bin/` (CLI: worker, scheduler, migrate, healthcheck, host-metrics), `deploy/vps/` (Docker-Stack hinter dem Coolify-Proxy, Caddy intern, Skripte für den VPS), `websites/*` (statisches HTML je Domain, `status.smart-einzug.de` für die Statusseite), `tools/` (QA-Skripte, `build-docs.py` für die technische Dokumentation), `docs/` (Fachdokumentation, `docs/vps/` Einrichtung und Betrieb).
 
 ## Arbeitsweise und Wirtschaftlichkeit (verbindlich)
 
@@ -26,6 +26,8 @@ Struktur: `php-ionos/` (PHP 8, MariaDB, ohne Composer; läuft auf IONOS Webhosti
 
 - `APP_VERSION` in `php-ionos/app/version.php` und die Liste in `app_changelog()` bei jedem Release pflegen: erste Stelle für große Ausbaustufen (3.0, 4.0), zweite Stelle für kleine Ergänzungen und Korrekturen (4.1, 4.2). Jeder Eintrag mit Datum, Art (Neu, Geändert, Behoben) und kurzer Erklärung. Anzeige im Adminbereich unter System, Versionen und in der Fußzeile.
 - Hintergrundverarbeitung: Feature-Flag `features.queue`. Aus (Standard, Webhosting) bedeutet Cron wie bisher; an bedeutet Warteschlange (`app/queue.php`, `app/jobs.php`) mit Worker- und Scheduler-Containern auf dem VPS oder Inline-Verarbeitung im Cron. Neue wiederkehrende Aufgaben werden als Jobtyp in `app/jobs.php` ergänzt, nicht als eigene Cron-Datei.
+- Tarife und Limits kommen ausschließlich aus der Tabelle `plans` (`app/plans.php`). Upsell und Tarifwechsel (`billing_change_plan`, `plan_upgrade_candidate`) wirken nur, wenn `billing.enabled` gesetzt ist und mindestens zwei Tarife aktiv und öffentlich sind; Preise nie im Frontend fest verdrahten.
+- VPS: TLS endet am Coolify-Proxy (Traefik), Caddy veröffentlicht keine Ports; Coolify verwaltet die Anwendung nicht (kein Autodeploy), einziger Deploymentweg ist der GitHub-Workflow über SSH.
 - Externe Aufrufe (Lexware, Stripe, Mail) laufen durch `api_call_gate()` (Circuit Breaker, Ratenbegrenzung); technische Fehler werden mit `circuit_failure()` gemeldet, fachliche Ablehnungen nicht.
 
 ## Abläufe

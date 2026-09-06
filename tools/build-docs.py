@@ -49,6 +49,7 @@ CHAPTERS = [
     ('vps/05-dns-ssl.md', None),
     ('vps/06-betrieb.md', None),
     ('vps/07-cutover-checkliste.md', None),
+    ('vps/08-hostinger-coolify.md', None),
     ('migrations.md', None),
     ('monitoring.md', None),
     ('multiaccount.md', None),

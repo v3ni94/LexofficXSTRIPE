@@ -528,7 +528,11 @@ layout_header('Firmendaten', $ctx);
     <h2>Mitarbeiter einladen</h2>
     <?php $seats = seats_can_invite($tenantId, $plan); ?>
     <?php if (!$seats['allowed']): ?>
-        <div class="flash flash-info"><?= e($seats['reason']) ?></div>
+        <div class="flash flash-info"><?= e($seats['reason']) ?>
+            <?php if (!empty($seats['upgrade'])): ?> <a class="btn btn-sm" href="subscription.php#tarif">Tarif <?= e($seats['upgrade']['name']) ?> ansehen</a><?php endif; ?>
+        </div>
+    <?php elseif ($seats['limit'] !== null): ?>
+        <p class="hint">Benutzer: <?= (int)$seats['used'] ?> von <?= (int)$seats['limit'] ?> belegt (offene Einladungen zählen mit).<?php if (($cand = plan_upgrade_candidate($plan, 'users', (int)$seats['limit'] + 1)) && $isOwner): ?> Mehr Benutzer: <a href="subscription.php#tarif">Tarif <?= e($cand['name']) ?></a>.<?php endif; ?></p>
     <?php endif; ?>
     <form method="post">
         <?= csrf_field() ?>
@@ -664,7 +668,9 @@ $subStatus = (string)($org['subscription_status'] ?? 'pending');
     <h2>Abonnement</h2>
     <dl class="kv">
         <dt>Registriert am</dt><dd><?= format_datetime($org['created_at'] ?? null) ?></dd>
-        <dt>Tarif</dt><dd><?= e($plan['name']) ?> · <?= format_eur_cents((int)$plan['price_cents']) ?> netto je <?= (int)$plan['period_days'] ?> Tage<?= billing_vat_hint((int)$plan['price_cents']) ?></dd>
+        <dt>Tarif</dt><dd><?= e($plan['name']) ?> · <?= format_eur_cents((int)$plan['price_cents']) ?> netto je <?= (int)$plan['period_days'] ?> Tage<?= billing_vat_hint((int)$plan['price_cents']) ?>
+            <span class="hint">· <?= e(plan_limit_label($plan, 'users')) ?> Benutzer, <?= e(plan_limit_label($plan, 'collections')) ?> Einzüge je Periode</span>
+            <?php if ($isOwner && billing_enabled() && (int)$org['billing_exempt'] !== 1 && plan_upsell_available()): ?> <a href="subscription.php#tarif">Tarif wechseln</a><?php endif; ?></dd>
         <dt>Status</dt><dd>
             <?php if ((int)$org['billing_exempt'] === 1): ?><span class="badge badge-success">Befreit</span>
             <?php elseif (!billing_enabled()): ?><span class="badge badge-neutral">Abrechnung noch nicht freigeschaltet</span> <span class="hint">Bis dahin entstehen keine Einschränkungen und keine Kosten.</span>

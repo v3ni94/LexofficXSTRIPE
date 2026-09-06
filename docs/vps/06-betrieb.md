@@ -1,8 +1,12 @@
 # Betrieb
 
-Stand: 06.09.2026 (Auftrag III). Laufender Betrieb des VPS-Stacks nach abgeschlossener
-Einrichtung (`docs/vps/02-einrichtung-vps.md`). Alle Befehle im Verzeichnis
-`/opt/smarteinzug/deploy` ausführen, sofern nicht anders angegeben.
+Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`). Laufender Betrieb des VPS-Stacks nach abgeschlossener
+Einrichtung (`docs/vps/02-einrichtung-vps.md`, tatsächlicher Weg: `docs/vps/08-hostinger-coolify.md`).
+Alle Befehle im Verzeichnis `/opt/smarteinzug/deploy` ausführen, sofern nicht anders angegeben.
+Auf dem Server läuft neben diesem Stack auch Coolify selbst (Proxy und Serverübersicht, siehe
+`docs/vps/01-architektur.md`); Coolifys eigene Postgres-/Redis-Instanz und der Proxy-Container
+gehören nicht zu diesem Compose-Projekt und werden hier nicht verwaltet.
 
 ## Logs
 

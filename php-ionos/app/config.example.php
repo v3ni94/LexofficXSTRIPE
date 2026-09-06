@@ -218,8 +218,9 @@ return [
     // Strukturiertes Logging: 'stderr' (Docker), 'file' (app/storage/logs) oder 'error_log'
     'log' => ['target' => 'file'],
     // Vertrauenswürdige Reverse Proxys: nur Anfragen von diesen Adressen dürfen X-Forwarded-Proto/-For setzen.
-    // VPS mit Caddy php_fastcgi: leer lassen (REMOTE_ADDR und HTTPS kommen direkt von Caddy). Nur füllen, wenn
-    // ein weiterer Proxy oder ein CDN VOR Caddy steht (dann dessen Adressen, z.B. ['172.16.0.0/12']).
+    // Hostinger-VPS mit Coolify: TLS endet am Coolify-Proxy (Traefik), der über das Docker-Netz an Caddy und
+    // php-fpm weiterreicht. Dort die Docker-Netzbereiche eintragen, z.B. ['172.16.0.0/12', '10.0.0.0/8']
+    // (mit "docker network inspect" prüfen). IONOS Webhosting: leer lassen.
     'trusted_proxies' => [],
     // Schreibbares Speicherverzeichnis außerhalb des Codes (VPS: /opt/smarteinzug/shared/storage); leer = app/storage
     'storage_dir' => '',

@@ -1,34 +1,38 @@
-# SmartEinzug: Override fuer den Produktions-VPS (app.smart-einzug.de, admin.smart-einzug.de,
-# api.smart-einzug.de, status.smart-einzug.de). Immer zusammen mit docker-compose.yml verwenden:
+# SmartEinzug: Override fuer den Produktions-VPS (Hostinger KVM 8: 8 vCPU, 32 GB RAM, 400 GB NVMe;
+# Ubuntu 24.04 mit Coolify). Immer zusammen mit docker-compose.yml verwenden:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d
 #
-# Enthaelt nur Ressourcenlimits, die zur tatsaechlichen Kapazitaet des Produktions-VPS passen.
-# Alle Dienste inklusive des zweiten Lexware-Workers (worker-lexware-2) sind in der Basis-Datei
-# definiert; Staging schaltet worker-lexware-2 ueber ein Profil ab (docker-compose.staging.yml).
+# Enthaelt nur Ressourcenlimits. Sie sind bewusst deutlich unter der Kapazitaet des Servers angesetzt:
+# Reserve fuer Betriebssystem, Coolify (eigene Postgres/Redis/Proxy, rund 2 GB), Backups und Lastspitzen.
+# Summe der Limits unten rund 12 GB RAM und 8 CPU-Anteile (Docker verteilt CPU anteilig, kein hartes
+# Kontingent). Mehr Worker bringen wegen der API-Ratenbegrenzung von Lexware Office und Stripe nichts;
+# die Anzahl bleibt bei zwei Lexware-Workern und je einem Worker fuer Stripe, Mail und Wartung.
+# Alle Dienste inklusive worker-lexware-2 sind in der Basis-Datei definiert; Staging schaltet
+# worker-lexware-2 ueber ein Profil ab (docker-compose.staging.yml).
 
 services:
   caddy:
-    mem_limit: 128m
+    mem_limit: 256m
     cpus: "0.50"
 
   php:
-    mem_limit: 384m
-    cpus: "1.00"
+    mem_limit: 1536m
+    cpus: "2.00"
 
   scheduler:
-    mem_limit: 128m
+    mem_limit: 192m
     cpus: "0.25"
 
   worker-lexware-1:
-    mem_limit: 640m
-    cpus: "0.50"
+    mem_limit: 768m
+    cpus: "0.75"
 
   worker-lexware-2:
-    mem_limit: 640m
-    cpus: "0.50"
+    mem_limit: 768m
+    cpus: "0.75"
 
   worker-stripe:
-    mem_limit: 384m
+    mem_limit: 512m
     cpus: "0.50"
 
   worker-mail:
@@ -36,7 +40,7 @@ services:
     cpus: "0.25"
 
   worker-maintenance:
-    mem_limit: 256m
+    mem_limit: 384m
     cpus: "0.25"
 
   metrics:
@@ -44,13 +48,17 @@ services:
     cpus: "0.25"
 
   mariadb:
-    mem_limit: 1024m
-    cpus: "1.50"
+    mem_limit: 4096m
+    cpus: "2.00"
+    # Groesserer InnoDB-Pufferpool als in mariadb/my.cnf (512M), passend zum 4 GB-Limit; die uebrigen
+    # Werte aus my.cnf gelten weiter.
+    command: ["--innodb-buffer-pool-size=2560M", "--innodb-log-file-size=512M"]
 
   redis:
-    mem_limit: 320m
+    mem_limit: 512m
     cpus: "0.25"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--maxmemory", "384mb"]
 
   backup:
-    mem_limit: 256m
+    mem_limit: 512m
     cpus: "0.50"

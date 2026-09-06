@@ -102,21 +102,27 @@ function seats_limit(array $plan): ?int
 function seats_can_invite(string $tenantId, array $plan): array
 {
     if ((int)($plan['user_invites_enabled'] ?? 1) !== 1) {
-        return ['allowed' => false, 'reason' => 'Ihr Tarif erlaubt keine zusätzlichen Benutzer.',
-                'used' => seats_used($tenantId), 'limit' => seats_limit($plan)];
+        $used = seats_used($tenantId);
+        $reason = 'Ihr Tarif erlaubt keine zusätzlichen Benutzer.';
+        $cand = plan_upgrade_candidate($plan, 'users', $used + 1);
+        if ($cand) {
+            $reason .= ' ' . plan_upsell_text($cand);
+        }
+        return ['allowed' => false, 'reason' => $reason, 'used' => $used, 'limit' => seats_limit($plan), 'upgrade' => $cand];
     }
     $used = seats_used($tenantId);
     $limit = seats_limit($plan);
     if ($limit !== null && $used >= $limit) {
-        return [
-            'allowed' => false,
-            'reason'  => sprintf(
-                'Das Benutzerlimit Ihres Tarifs (%d) ist erreicht. Offene Einladungen zählen mit. '
-                . 'Bitte zunächst eine Einladung widerrufen oder einen Benutzer entfernen.',
-                $limit
-            ),
-            'used' => $used, 'limit' => $limit,
-        ];
+        $reason = sprintf(
+            'Das Benutzerlimit Ihres Tarifs (%d) ist erreicht. Offene Einladungen zählen mit. '
+            . 'Bitte zunächst eine Einladung widerrufen oder einen Benutzer entfernen.',
+            $limit
+        );
+        $cand = plan_upgrade_candidate($plan, 'users', $used + 1);
+        if ($cand) {
+            $reason .= ' ' . plan_upsell_text($cand);
+        }
+        return ['allowed' => false, 'reason' => $reason, 'used' => $used, 'limit' => $limit, 'upgrade' => $cand];
     }
     return ['allowed' => true, 'reason' => null, 'used' => $used, 'limit' => $limit];
 }
@@ -187,17 +193,156 @@ function collections_quota_check(string $tenantId): array
     );
     $stmt->execute([$tenantId, $since]);
     $used = (int)$stmt->fetchColumn();
+    $percent = $limit > 0 ? (int)floor($used * 100 / $limit) : 0;
+    $warn = $percent >= PLAN_QUOTA_WARN_PERCENT;
     if ($used >= $limit) {
-        return [
-            'allowed' => false,
-            'reason'  => sprintf(
-                'Das Einzugskontingent Ihres Tarifs (%d je Abrechnungsperiode) ist ausgeschöpft.',
-                $limit
-            ),
-            'used' => $used, 'limit' => $limit,
-        ];
+        $reason = sprintf('Das Einzugskontingent Ihres Tarifs (%d je Abrechnungsperiode) ist ausgeschöpft.', $limit);
+        if ($cand = plan_upgrade_candidate($plan, 'collections', $used + 1)) {
+            $reason .= ' ' . plan_upsell_text($cand);
+        }
+        return ['allowed' => false, 'reason' => $reason, 'used' => $used, 'limit' => $limit, 'percent' => $percent, 'warn' => true, 'period_start' => $since];
     }
-    return ['allowed' => true, 'reason' => null, 'used' => $used, 'limit' => $limit];
+    return ['allowed' => true, 'reason' => null, 'used' => $used, 'limit' => $limit, 'percent' => $percent, 'warn' => $warn, 'period_start' => $since];
+}
+
+// ---------------------------------------------------------------------------
+// Tarifwechsel und Upsell (Paket 4b). Wirkt nur, wenn mindestens zwei Tarife aktiv und öffentlich sind.
+// ---------------------------------------------------------------------------
+
+/** Ab diesem Anteil des Einzugskontingents wird auf den nächsthöheren Tarif hingewiesen. */
+const PLAN_QUOTA_WARN_PERCENT = 80;
+
+/** Aktive, öffentlich sichtbare Tarife in Sortierreihenfolge. */
+function plans_public(): array
+{
+    return array_values(array_filter(plan_list(true), static fn(array $p): bool => (int)($p['public_visible'] ?? 0) === 1));
+}
+
+/** Gibt es überhaupt eine Wahl (mindestens zwei aktive, öffentliche Tarife)? */
+function plan_upsell_available(): bool
+{
+    // Ohne freigeschaltete Abrechnung gibt es nichts zu wechseln; Hinweise blieben sonst ins Leere.
+    return billing_enabled() && count(plans_public()) >= 2;
+}
+
+/** Grenze eines Tarifs für 'users' oder 'collections' (null = unbegrenzt). */
+function plan_limit(array $plan, string $need): ?int
+{
+    if ($need === 'users') {
+        return seats_limit($plan);
+    }
+    return $plan['max_collections_per_period'] === null ? null : (int)$plan['max_collections_per_period'];
+}
+
+/** Lesbare Grenze ("unbegrenzt" oder Zahl). */
+function plan_limit_label(array $plan, string $need): string
+{
+    $l = plan_limit($plan, $need);
+    return $l === null ? 'unbegrenzt' : (string)$l;
+}
+
+/**
+ * Nächsthöherer aktiver, öffentlicher Tarif, der den Bedarf deckt ($need 'users' oder 'collections',
+ * $required = benötigte Anzahl). Kandidaten sind Tarife mit höherem Preis als der aktuelle (Upgrade),
+ * geordnet nach sort_order und Preis; der günstigste passende gewinnt. null, wenn es keine Wahl gibt,
+ * kein Tarif passt oder der aktuelle Tarif für den Bedarf bereits unbegrenzt ist.
+ */
+function plan_upgrade_candidate(array $current, string $need, int $required = 1): ?array
+{
+    if (!plan_upsell_available() || plan_limit($current, $need) === null) {
+        return null;
+    }
+    foreach (plans_public() as $p) {
+        if ($p['code'] === $current['code'] || (int)$p['price_cents'] <= (int)$current['price_cents']) {
+            continue;
+        }
+        if ($need === 'users' && (int)($p['user_invites_enabled'] ?? 1) !== 1) {
+            continue;
+        }
+        $limit = plan_limit($p, $need);
+        if ($limit === null || $limit >= $required) {
+            return $p;
+        }
+    }
+    return null;
+}
+
+/** Kurzer Hinweistext auf einen Tarif (für Meldungen ohne HTML). */
+function plan_upsell_text(array $plan): string
+{
+    return sprintf(
+        'Im Tarif %s (%s netto je %d Tage) stehen Ihnen %s Benutzer und %s Einzüge je Abrechnungsperiode zur Verfügung; der Wechsel ist unter Firma > Abonnement möglich.',
+        $plan['name'], format_eur_cents((int)$plan['price_cents']), (int)$plan['period_days'],
+        plan_limit_label($plan, 'users'), plan_limit_label($plan, 'collections')
+    );
+}
+
+/** Richtung eines Tarifwechsels nach Preis. */
+function plan_change_direction(array $from, array $to): string
+{
+    return (int)$to['price_cents'] > (int)$from['price_cents'] ? 'upgrade' : 'downgrade';
+}
+
+/**
+ * Einmal je Abrechnungsperiode den Inhaber per E-Mail auf ein zu 80 Prozent oder vollständig
+ * ausgeschöpftes Kontingent hinweisen (mit Upsell, sofern ein Tarif passt). Liefert true, wenn gesendet.
+ */
+function plan_quota_warning_maybe_send(string $tenantId): bool
+{
+    $quota = collections_quota_check($tenantId);
+    if ($quota['limit'] === null || empty($quota['warn']) || empty($quota['period_start'])) {
+        return false;
+    }
+    $pdo = db();
+    $st = $pdo->prepare('SELECT * FROM organizations WHERE id = ?');
+    $st->execute([$tenantId]);
+    $org = $st->fetch();
+    if (!$org || !array_key_exists('quota_warning_period_start', $org)) {
+        return false; // Migration 019 fehlt
+    }
+    $periodStart = substr((string)$quota['period_start'], 0, 10);
+    if ($org['quota_warning_period_start'] !== null && substr((string)$org['quota_warning_period_start'], 0, 10) === $periodStart) {
+        return false;
+    }
+    // Zuerst markieren (verhindert Doppelversand bei parallelen Läufen), dann senden.
+    $upd = $pdo->prepare('UPDATE organizations SET quota_warning_period_start = ? WHERE id = ? AND (quota_warning_period_start IS NULL OR quota_warning_period_start <> ?)');
+    $upd->execute([$quota['period_start'], $tenantId, $quota['period_start']]);
+    if ($upd->rowCount() !== 1) {
+        return false;
+    }
+    $owner = $pdo->prepare("SELECT u.email, u.first_name FROM organization_members m JOIN users u ON u.id = m.user_id WHERE m.organization_id = ? AND m.role = 'owner' LIMIT 1");
+    $owner->execute([$tenantId]);
+    $o = $owner->fetch();
+    if (!$o || empty($o['email'])) {
+        return false;
+    }
+    $plan = plan_for_org($org);
+    $lines = [
+        'Guten Tag' . (!empty($o['first_name']) ? ' ' . $o['first_name'] : '') . ',',
+        '',
+        sprintf('für die Firma %s sind in der laufenden Abrechnungsperiode %d von %d Einzügen Ihres Tarifs %s belegt (%d Prozent).',
+            $org['name'], (int)$quota['used'], (int)$quota['limit'], $plan['name'], (int)$quota['percent']),
+    ];
+    if ($cand = plan_upgrade_candidate($plan, 'collections', (int)$quota['limit'] + 1)) {
+        $lines[] = '';
+        $lines[] = plan_upsell_text($cand);
+        $lines[] = app_base_url() . '/subscription.php#tarif';
+    } else {
+        $lines[] = '';
+        $lines[] = 'Ist das Kontingent ausgeschöpft, lassen sich bis zum Beginn der nächsten Periode keine weiteren Einzüge vormerken.';
+    }
+    $lines[] = '';
+    $lines[] = 'Diese Nachricht erhalten Sie einmal je Abrechnungsperiode.';
+    require_once __DIR__ . '/mailer.php';
+    require_once __DIR__ . '/audit.php';
+    $subject = sprintf('%s: Einzugskontingent zu %d Prozent belegt', product_name(), (int)$quota['percent']);
+    try {
+        mail_send((string)$o['email'], $subject, implode("\n", $lines));
+    } catch (Throwable $e) {
+        error_log('Kontingenthinweis: ' . $e->getMessage());
+    }
+    audit_log($tenantId, null, 'quota_warning_sent', 'organization', $tenantId, ['used' => (int)$quota['used'], 'limit' => (int)$quota['limit'], 'percent' => (int)$quota['percent']]);
+    return true;
 }
 
 /** Ist die Plattform-Abrechnung aktiv konfiguriert? */

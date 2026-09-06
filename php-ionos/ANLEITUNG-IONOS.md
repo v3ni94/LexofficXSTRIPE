@@ -143,6 +143,16 @@ die E-Mail-Bestätigung entfällt.
    bevor Rechnungen, Einzüge und Kunden nutzbar sind. Bestandsfirmen bleiben befreit.
 5. Optional `agb_version` in config.php setzen (z. B. "AGB smart-einzug.de, Stand
    01.10.2026"); die Fassung wird bei jeder Bestellbestätigung protokolliert.
+6. Weitere Tarife (Version 4.1): Sollen BASIC, PLUS oder PRO angeboten werden, je Tarif in Stripe
+   ein wiederkehrender Preis (alle 4 Wochen) und in Admin > Tarife die Preis-ID eintragen, dann
+   `active` und `public_visible` setzen. Sobald mindestens zwei Tarife aktiv und sichtbar sind und
+   `billing.enabled` gesetzt ist, erscheinen automatisch der Kasten "Tarif wechseln" unter
+   Firma > Abonnement (Upgrade sofort mit anteiliger Berechnung, Downgrade mit Gutschrift auf die
+   nächste Rechnung, Downgrade-Schutz für Benutzer) sowie die Upsell-Hinweise beim Benutzerlimit,
+   ab 80 Prozent und bei ausgeschöpftem Einzugskontingent (einmal je Periode auch per E-Mail an
+   den Inhaber). Mit nur einem aktiven Tarif ändert sich nichts. Vor der Freischaltung einen
+   Tarifwechsel im Stripe-Testmodus prüfen (Rechnung mit anteiliger Position, Webhook
+   `customer.subscription.updated`).
 
 Ablauf für den Kunden (nur Inhaber): Ohne aktives Abo erscheint auf jeder Seite
 ein Hinweisbalken mit Button; unter Firma > Abonnement stehen Registrierungsdatum,

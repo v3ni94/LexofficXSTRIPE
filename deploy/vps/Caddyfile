@@ -11,14 +11,14 @@
 #                    Anwendung selbst, die diese Endpunkte ebenfalls selbst absichert)
 #   {$DOMAIN_STATUS} statische Statusseite (websites/status.smart-einzug.de, im Release unter status/), kein PHP
 #
-# HTTPS wird von Caddy automatisch erzwungen (HTTP-Anfragen werden auf HTTPS umgeleitet) und die
-# Zertifikate werden automatisch ueber Let's Encrypt bezogen und erneuert; kein certbot noetig
-# (Begruendung Caddy statt nginx: README.md, Abschnitt "Warum Caddy").
+# HTTPS-Umleitung und Let's Encrypt-Zertifikate uebernimmt der Coolify-Proxy (Traefik) auf 80/443;
+# dieser Caddy ist der interne HTTP-Server hinter dem Proxy (Begruendung: README.md, "Warum Caddy").
 ########################################################################################
 
 {
-	email {$LETSENCRYPT_EMAIL}
-	# Auf dem Staging-Host separate Caddyfile.staging verwenden (dort ggf. eigener ACME-CA fuer Tests).
+	# TLS und Let's Encrypt uebernimmt der Coolify-Proxy (Traefik) vor diesem Container. Caddy spricht
+	# hier nur HTTP auf Port 80 im Docker-Netz; kein eigener Zertifikatsbezug, keine eigene Umleitung.
+	auto_https off
 }
 
 # --- Wiederverwendbare Bausteine --------------------------------------------------------------
@@ -68,7 +68,7 @@
 }
 
 # --- Kundenanwendung ----------------------------------------------------------------------------
-{$DOMAIN_APP} {
+http://{$DOMAIN_APP}:80 {
 	import security_headers
 	import deny_internal_paths
 	import static_cache
@@ -88,7 +88,7 @@
 # Dieselbe Anwendung, derselbe Dokumentenstamm; die eigentliche Trennung (nur Anmeldung, 2FA,
 # Passwort, Sicherheit, Abmelden und Assets auf diesem Host erreichbar) erzwingt PHP selbst
 # (enforce_host_rules in app/bootstrap.php), sobald admin_base_url in app/config.php gesetzt ist.
-{$DOMAIN_ADMIN} {
+http://{$DOMAIN_ADMIN}:80 {
 	import security_headers
 	import deny_internal_paths
 	import static_cache
@@ -103,7 +103,7 @@
 }
 
 # --- API-Host: nur Webhooks, Health-Check und Tracking-Pixel -------------------------------------
-{$DOMAIN_API} {
+http://{$DOMAIN_API}:80 {
 	import security_headers
 	import deny_internal_paths
 
@@ -123,7 +123,7 @@
 
 # --- Statusseite (statisch, kein PHP) -------------------------------------------------------------
 # Entspricht websites/status.smart-einzug.de/.htaccess.
-{$DOMAIN_STATUS} {
+http://{$DOMAIN_STATUS}:80 {
 	# Der Workflow legt die Statusseite je Release unter releases/<sha>/status/ ab; ueber den current-Symlink
 	# wird damit immer der Stand des aktiven Release ausgeliefert.
 	root * /opt/smarteinzug/releases/current/status

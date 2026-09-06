@@ -1,9 +1,12 @@
 # Cutover-Checkliste
 
-Stand: 06.09.2026 (Auftrag III). Abzuarbeiten für jeden Produktions-Cutover einer oder mehrerer
-Firmen vom IONOS-Webhosting auf den VPS. Jeden Punkt tatsächlich prüfen, nicht nur abhaken; bei
-einem gescheiterten Punkt den Cutover anhalten und die Ursache klären, bevor der nächste
-Phasenschritt beginnt.
+Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`). Abzuarbeiten für jeden Produktions-Cutover einer oder mehrerer
+Firmen vom IONOS-Webhosting auf den Hostinger-VPS. Jeden Punkt tatsächlich prüfen, nicht nur
+abhaken; bei einem gescheiterten Punkt den Cutover anhalten und die Ursache klären, bevor der
+nächste Phasenschritt beginnt. Zum Stand dieses Nachtrags wurde noch nichts produktiv
+eingerichtet und kein DNS-Eintrag geändert (siehe `docs/vps/08-hostinger-coolify.md`, Tabelle
+„Status“).
 
 ## Phasenplan (1 bis 12)
 
