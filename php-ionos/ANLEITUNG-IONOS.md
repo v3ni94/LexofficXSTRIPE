@@ -227,6 +227,18 @@ ausnahmsweise außerhalb des Fensters einreichen (2FA-Code, protokolliert als
 `collections_due_forced`). Der Not-Stopp bietet beim Aktivieren an, alle
 vorgemerkten und terminierten Einzüge gesammelt zu stornieren.
 
+## 7d. Hilfe-Center und Support-Anfragen (Migration 012)
+
+Menüpunkt Hilfe (`hilfe.php`): Anleitungen und häufige Fragen aus
+`app/help_content.php` (reines Inhaltsarray, dort pflegen), Suche, Formular
+für Support-Anfragen. Anfragen landen in `support_tickets` mit Verlauf
+(`support_ticket_messages`), der Betreiber antwortet unter Support >
+Support-Anfragen (`admin-support.php`). Benachrichtigungen per E-Mail, sofern
+der Mailversand aktiv ist: an `support_email` (leer = `operator.email`) bei
+neuer oder ergänzter Anfrage, an den Fragesteller bei Antwort. Zugangsdaten
+(Stripe-Schlüssel, Webhook-Secret) und vollständige IBANs werden im Formular
+abgewiesen. Höchstens zehn offene Anfragen je Firma.
+
 ## 8. SEPA-Mandate
 
 - Unter "Firma": Anschrift, Gläubiger-Identifikationsnummer (Deutsche Bundesbank,

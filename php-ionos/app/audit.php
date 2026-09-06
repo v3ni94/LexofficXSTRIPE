@@ -161,6 +161,9 @@ function audit_action_label(string $action): string
         'collections_import_discarded' => 'Stripe-Import verworfen',
         'profile_updated'          => 'Profil geändert (Name, Telefon, Bild)',
         'migration_applied'        => 'Datenbankmigration eingespielt',
+        'support_ticket_created'   => 'Support-Anfrage gestellt',
+        'support_ticket_replied'   => 'Support-Anfrage beantwortet oder ergänzt',
+        'support_ticket_closed'    => 'Support-Anfrage geschlossen',
     ];
     return $map[$action] ?? $action;
 }

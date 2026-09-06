@@ -29,6 +29,7 @@ function migrations_markers(): array
         '009' => ['payment_collections', 'source'],
         '010' => ['users', 'phone_business'],
         '011' => ['payment_collections', 'submit_not_before'],
+        '012' => ['support_tickets', null],
     ];
 }
 

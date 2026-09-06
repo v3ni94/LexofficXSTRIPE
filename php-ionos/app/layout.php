@@ -99,6 +99,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <?php if (can_manage_settings($ctx)): ?>
                 <a href="settings.php">Einstellungen</a>
             <?php endif; ?>
+            <a href="hilfe.php?von=<?= e(current_script()) ?>" title="Anleitungen, häufige Fragen, Support-Anfrage">Hilfe</a>
             <?php if (!empty($ctx['is_superadmin'])): ?>
                 <a href="<?= e(admin_base_url() !== '' ? admin_base_url() . '/admin.php' : 'admin.php') ?>" class="nav-admin">Admin</a>
             <?php endif; ?>
@@ -123,6 +124,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                         <a href="export.php">Export</a>
                     <?php endif; ?>
                     <a href="security.php">Sicherheit</a>
+                    <?php if (!on_admin_host()): ?><a href="hilfe.php">Hilfe</a><?php endif; ?>
                     <?php if (!on_admin_host() && empty($ctx['support_mode'])): ?><a href="companies.php">Firmen</a><?php endif; ?>
                     <?php if (on_admin_host()): ?><a href="<?= e(app_base_url()) ?>/dashboard.php">Kundenanwendung</a><?php endif; ?>
                     <a href="logout.php" class="menu-logout">Abmelden</a>
