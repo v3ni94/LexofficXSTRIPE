@@ -1,10 +1,11 @@
 /*
- * Lexware-Einzug, site.js (identisch auf lexware-einzug.de und lexoffice-einzug.de)
+ * SmartEinzug, site.js (identisch auf allen Marketingdomains; Google-Kennungen je Hostname in GA_IDS/ADS_IDS)
  * Keine Abhängigkeiten, kein Framework.
  * 1) UTM-Parameter an Links zur App-Domain weiterreichen
  * 2) Anonyme, cookielose Reichweitenmessung (eigener Endpunkt, keine Cookies)
  * 3) Sticky Mobile-CTA-Leiste ein-/ausblenden
- * 4) Einwilligung (Consent), Google Analytics 4 und Google Ads (nur lexware-einzug.de): gtag.js wird erst nach
+ * 4) Einwilligung (Consent), Google Analytics 4 (smart-einzug.de, lexware-einzug.de, lexoffice-einzug.de) und
+ *    Google Ads (nur lexware-einzug.de): gtag.js wird erst nach
  *    ausdrücklicher Zustimmung geladen. Ohne Zustimmung wird kein Google-Skript
  *    geladen und kein Cookie gesetzt. Entscheidung wird lokal gespeichert
  *    (localStorage, 12 Monate) und kann über "Cookie-Einstellungen" geändert werden.
@@ -16,6 +17,8 @@
   var TRACK_ENDPOINT = 'https://app.smart-einzug.de/track.php';
   var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
   var GA_IDS = {
+    'smart-einzug.de': 'G-8C1W9817PV',
+    'www.smart-einzug.de': 'G-8C1W9817PV',
     'lexware-einzug.de': 'G-SXEH8K7HP7',
     'www.lexware-einzug.de': 'G-SXEH8K7HP7',
     'lexoffice-einzug.de': 'G-9NCFJ1Y4Z3',
