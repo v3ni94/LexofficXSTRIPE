@@ -43,11 +43,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'collect') {
             $opts = ['confirm_amount_cents' => ($_POST['confirm_amount_cents'] ?? '') !== '' ? (int)$_POST['confirm_amount_cents'] : null];
             $cid = submit_collection($tenantId, $_POST['invoice_id'] ?? '', null, $ctx, $opts);
-            $s = $pdo->prepare('SELECT amount_cents, note FROM payment_collections WHERE id = ?');
+            $s = $pdo->prepare('SELECT amount_cents, note, queued_immediate, submit_not_before FROM payment_collections WHERE id = ?');
             $s->execute([$cid]);
             $c = $s->fetch();
-            flash_set('success', 'Lastschrift über ' . format_eur_cents((int)$c['amount_cents']) . ' wurde bei Stripe eingereicht.'
-                . ($c['note'] ? ' Vermerk: ' . $c['note'] : ''));
+            if ((int)($c['queued_immediate'] ?? 0) === 1) {
+                flash_set('success', 'Lastschrift über ' . format_eur_cents((int)$c['amount_cents']) . ' wurde vorgemerkt. Einreichung bei Stripe ab '
+                    . date('d.m.Y H:i', strtotime((string)$c['submit_not_before'])) . ' Uhr; bis dahin können Sie den Einzug unter "Einzüge" stornieren.'
+                    . ($c['note'] ? ' Vermerk: ' . $c['note'] : ''));
+            } else {
+                flash_set('success', 'Lastschrift über ' . format_eur_cents((int)$c['amount_cents']) . ' wurde bei Stripe eingereicht.'
+                    . ($c['note'] ? ' Vermerk: ' . $c['note'] : ''));
+            }
 
         } elseif ($action === 'schedule') {
             $date = $_POST['scheduled_date'] ?? '';

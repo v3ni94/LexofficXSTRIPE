@@ -115,7 +115,7 @@ $collN = (int)($collStats['collected_count'] ?? 0); $failN = (int)($collStats['f
     </div>
     <div class="stat-card">
         <div class="stat-value <?= $schedN > 0 ? 'stat-warn' : 'stat-muted' ?>"><?= $schedN ?></div>
-        <div class="stat-label">Terminierte Einzüge<span class="stat-sub">(<?= format_eur_cents((int)($collStats['scheduled_cents'] ?? 0)) ?>)</span></div>
+        <div class="stat-label">Vorgemerkte und terminierte Einzüge<span class="stat-sub">(<?= format_eur_cents((int)($collStats['scheduled_cents'] ?? 0)) ?>)</span></div>
     </div>
     <div class="stat-card">
         <div class="stat-value <?= $collN > 0 ? 'stat-ok' : 'stat-muted' ?>"><?= $collN ?></div>

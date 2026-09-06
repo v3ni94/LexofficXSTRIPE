@@ -192,6 +192,7 @@ if ($config && !empty($config['db']['host'])) {
             '008' => [['table' => 'support_sessions']],
             '009' => [['table' => 'stripe_imports'], ['table' => 'stripe_import_items'], ['table' => 'payment_collections', 'column' => 'source']],
             '010' => [['table' => 'users', 'column' => 'avatar_path'], ['table' => 'users', 'column' => 'phone_business']],
+            '011' => [['table' => 'payment_collections', 'column' => 'submit_not_before'], ['table' => 'payment_collections', 'column' => 'queued_immediate']],
         ];
         foreach ($migrationChecks as $mig => $items) {
             $lack = [];

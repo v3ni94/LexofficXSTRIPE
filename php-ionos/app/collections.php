@@ -136,6 +136,178 @@ function collections_set_paused(string $tenantId, bool $paused, ?array $actor = 
 }
 
 // ---------------------------------------------------------------------------
+// Karenzzeit und Einreichfenster (Plattformregel, config 'collections')
+//
+// Ein Sofort-Einzug wird nicht mehr direkt an Stripe übergeben, sondern als
+// "vorgemerkt" gespeichert (is_scheduled = 1, queued_immediate = 1) und
+// frühestens nach der Karenzzeit innerhalb des Einreichfensters (Standard
+// 23:00 bis 06:00) vom Cron eingereicht. Bis dahin ist er stornierbar.
+// Terminierte Einzüge werden am Fälligkeitstag ebenfalls nur im Fenster
+// eingereicht. Termine, die länger als overdue_days zurückliegen, werden nicht
+// automatisch nachgeholt, sondern als überfällig angezeigt.
+// ---------------------------------------------------------------------------
+
+/** Einreichregeln mit Standardwerten. */
+function collections_rules_config(): array
+{
+    $c = (array)config('collections', []);
+    $time = static fn($v, string $default): string => preg_match('/^\d{2}:\d{2}$/', (string)$v) ? (string)$v : $default;
+    return [
+        'grace_hours'    => max(0, min(72, (int)($c['grace_hours'] ?? 4))),
+        'window_enabled' => (bool)($c['window_enabled'] ?? true),
+        'window_start'   => $time($c['window_start'] ?? null, '23:00'),
+        'window_end'     => $time($c['window_end'] ?? null, '06:00'),
+        'overdue_days'   => max(1, min(30, (int)($c['overdue_days'] ?? 3))),
+    ];
+}
+
+/** Aktuelle Zeit; in Tests über $GLOBALS['lexsepa_now_override'] setzbar. */
+function collections_now(): DateTimeImmutable
+{
+    $override = $GLOBALS['lexsepa_now_override'] ?? null;
+    return $override instanceof DateTimeImmutable ? $override : new DateTimeImmutable('now');
+}
+
+function _collections_minutes(string $hhmm): int
+{
+    [$h, $m] = array_map('intval', explode(':', $hhmm));
+    return $h * 60 + $m;
+}
+
+/** True, wenn der Zeitpunkt im Einreichfenster liegt (Fenster darf über Mitternacht gehen). Ohne Fenster immer true. */
+function collections_window_open(?DateTimeImmutable $at = null): bool
+{
+    $r = collections_rules_config();
+    if (!$r['window_enabled']) {
+        return true;
+    }
+    $at = $at ?? collections_now();
+    $min = (int)$at->format('G') * 60 + (int)$at->format('i');
+    $s = _collections_minutes($r['window_start']);
+    $e = _collections_minutes($r['window_end']);
+    if ($s === $e) {
+        return true;
+    }
+    return $s < $e ? ($min >= $s && $min < $e) : ($min >= $s || $min < $e);
+}
+
+/** Beginn des nächsten Einreichfensters ab $at, oder $at selbst, wenn das Fenster offen ist. */
+function collections_window_next_open(?DateTimeImmutable $at = null): DateTimeImmutable
+{
+    $at = $at ?? collections_now();
+    if (collections_window_open($at)) {
+        return $at;
+    }
+    [$h, $m] = array_map('intval', explode(':', collections_rules_config()['window_start']));
+    $start = $at->setTime($h, $m, 0);
+    if ($start <= $at) {
+        $start = $start->modify('+1 day');
+    }
+    return $start;
+}
+
+/** Frühester Einreichzeitpunkt für einen jetzt ausgelösten Einzug: erst Karenzzeit, dann Einreichfenster. */
+function collections_earliest_submit(?DateTimeImmutable $at = null): DateTimeImmutable
+{
+    $at = $at ?? collections_now();
+    $r = collections_rules_config();
+    return collections_window_next_open($at->modify('+' . $r['grace_hours'] . ' hours'));
+}
+
+/** True, wenn Sofort-Einzüge vorgemerkt statt direkt eingereicht werden (Karenzzeit oder Fenster aktiv). */
+function collections_grace_active(): bool
+{
+    $r = collections_rules_config();
+    return $r['grace_hours'] > 0 || $r['window_enabled'];
+}
+
+/** Lesbare Beschreibung der Regel für Hinweistexte. */
+function collections_rules_text(): string
+{
+    $r = collections_rules_config();
+    $parts = [];
+    if ($r['grace_hours'] > 0) {
+        $parts[] = sprintf('frühestens %d Stunden nach dem Auslösen', $r['grace_hours']);
+    }
+    if ($r['window_enabled']) {
+        $parts[] = sprintf('nur im Einreichfenster %s bis %s Uhr', $r['window_start'], $r['window_end']);
+    }
+    return $parts ? 'Einreichung bei Stripe ' . implode(', ', $parts) . '. Bis zur Einreichung kann jeder Einzug storniert werden.' : 'Einzüge werden sofort bei Stripe eingereicht.';
+}
+
+/**
+ * Überblick über noch nicht eingereichte Einzüge einer Firma.
+ * @return array{total:int,total_cents:int,queued:int,due:int,overdue:int,future:int}
+ */
+function collections_pending_overview(string $tenantId): array
+{
+    $r = collections_rules_config();
+    $now = collections_now();
+    $cutoff = $now->modify('-' . $r['overdue_days'] . ' days')->format('Y-m-d');
+    $nowStr = $now->format('Y-m-d H:i:s');
+    $stmt = db()->prepare(
+        "SELECT COUNT(*) AS total, COALESCE(SUM(amount_cents), 0) AS total_cents,
+                COALESCE(SUM(queued_immediate = 1), 0) AS queued,
+                COALESCE(SUM(scheduled_date < ?), 0) AS overdue,
+                COALESCE(SUM(scheduled_date >= ? AND COALESCE(submit_not_before, scheduled_date) <= ?), 0) AS due,
+                COALESCE(SUM(COALESCE(submit_not_before, scheduled_date) > ?), 0) AS future
+         FROM payment_collections
+         WHERE tenant_id = ? AND is_scheduled = 1 AND scheduled_submitted = 0 AND stripe_status = 'scheduled'"
+    );
+    $stmt->execute([$cutoff, $cutoff, $nowStr, $nowStr, $tenantId]);
+    $row = $stmt->fetch() ?: [];
+    return [
+        'total' => (int)($row['total'] ?? 0), 'total_cents' => (int)($row['total_cents'] ?? 0),
+        'queued' => (int)($row['queued'] ?? 0), 'due' => (int)($row['due'] ?? 0),
+        'overdue' => (int)($row['overdue'] ?? 0), 'future' => (int)($row['future'] ?? 0),
+    ];
+}
+
+/** True, wenn ein noch nicht eingereichter Einzug als überfällig gilt (Termin älter als overdue_days). */
+function collection_is_overdue(array $collection): bool
+{
+    if (!(int)$collection['is_scheduled'] || (int)$collection['scheduled_submitted'] || $collection['stripe_status'] !== 'scheduled') {
+        return false;
+    }
+    $cutoff = collections_now()->modify('-' . collections_rules_config()['overdue_days'] . ' days')->format('Y-m-d');
+    return (string)$collection['scheduled_date'] < $cutoff;
+}
+
+/**
+ * Alle vorgemerkten und terminierten Einzüge einer Firma stornieren (z.B. beim
+ * Not-Stopp). Bereits eingereichte oder gerade beanspruchte Einzüge bleiben unberührt.
+ * @return array{cancelled:int,amount_cents:int}
+ */
+function collections_cancel_all_pending(string $tenantId, ?array $actor = null, string $reason = ''): array
+{
+    $pdo = db();
+    $stmt = $pdo->prepare(
+        "SELECT id, invoice_id, amount_cents FROM payment_collections
+         WHERE tenant_id = ? AND is_scheduled = 1 AND scheduled_submitted = 0 AND stripe_status = 'scheduled'"
+    );
+    $stmt->execute([$tenantId]);
+    $cancelled = 0;
+    $cents = 0;
+    foreach ($stmt->fetchAll() as $c) {
+        $upd = $pdo->prepare("UPDATE payment_collections SET stripe_status = 'cancelled' WHERE id = ? AND tenant_id = ? AND stripe_status = 'scheduled' AND scheduled_submitted = 0");
+        $upd->execute([$c['id'], $tenantId]);
+        if ($upd->rowCount() !== 1) {
+            continue; // inzwischen beansprucht oder eingereicht
+        }
+        $pdo->prepare("UPDATE invoices SET collection_status = 'open' WHERE id = ? AND tenant_id = ? AND collection_status = 'scheduled'")
+            ->execute([$c['invoice_id'], $tenantId]);
+        $cancelled++;
+        $cents += (int)$c['amount_cents'];
+    }
+    if ($cancelled > 0) {
+        audit_log($tenantId, $actor, 'collections_bulk_cancelled', 'organization', $tenantId, [
+            'cancelled' => $cancelled, 'amount_cents' => $cents, 'reason' => mb_substr(trim($reason), 0, 255),
+        ]);
+    }
+    return ['cancelled' => $cancelled, 'amount_cents' => $cents];
+}
+
+// ---------------------------------------------------------------------------
 // Restbetrag laut Lexware Office
 // ---------------------------------------------------------------------------
 
@@ -1134,8 +1306,31 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
 
     $collectionId = uuid4();
 
+    // Sofort-Einzug mit Karenzzeit: als vorgemerkt speichern (is_scheduled), Einreichung
+    // frühestens nach der Karenzzeit im Einreichfenster durch den Cron. Die Stripe-
+    // Verbindung muss jetzt schon bestehen, damit der Fehler sofort sichtbar wird.
+    $queuedImmediate = false;
+    $submitNotBefore = null;
+    if ($scheduledDate === null && collections_grace_active()) {
+        _get_stripe_client($tenantId);
+        // Kein Vormerken, solange ein früherer Versuch für diese Rechnung offen oder unklar ist
+        $openAttempts = collection_attempts_open($tenantId, $invoice['id']);
+        if ($openAttempts) {
+            $a = $openAttempts[0];
+            throw new CollectionException(sprintf(
+                'Für Rechnung %s ist ein Einzugsversuch vom %s mit Status "%s" nicht abgeschlossen. '
+                . 'Bis zur Klärung (Einzüge > "Unklare Versuche prüfen") wird kein weiterer Einzug vorgemerkt.',
+                $a['voucher_number'], format_datetime($a['created_at']), collection_attempt_open_label($a)
+            ));
+        }
+        $earliest = collections_earliest_submit();
+        $scheduledDate = $earliest->format('Y-m-d');
+        $submitNotBefore = $earliest->format('Y-m-d H:i:s');
+        $queuedImmediate = true;
+    }
+
     if ($scheduledDate !== null) {
-        // --- Terminiert: noch kein Stripe-Aufruf; der Restbetrag wird am Fälligkeitstag live geprüft ---
+        // --- Terminiert oder vorgemerkt: noch kein Stripe-Aufruf; der Restbetrag wird bei der Einreichung live geprüft ---
         $cached = invoice_open_amount_cached($invoice);
         if ($cached !== null && $cached < $amountCents) {
             $own = invoice_own_collections_cents($tenantId, $invoice['id']);
@@ -1161,26 +1356,27 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
         $pdo->prepare(
             'INSERT INTO payment_collections
                 (id, tenant_id, invoice_id, mandate_id, customer_iban_id, amount_cents, currency,
-                 stripe_status, description, note, is_scheduled, scheduled_date, scheduled_submitted, created_by_user_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?)'
+                 stripe_status, description, note, is_scheduled, scheduled_date, scheduled_submitted, submit_not_before, queued_immediate, created_by_user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?, ?)'
         )->execute([
             $collectionId, $tenantId, $invoice['id'], $mandate['id'], $iban['id'],
-            $amountCents, 'EUR', 'scheduled', $description, $note, $scheduledDate, $userId,
+            $amountCents, 'EUR', 'scheduled', $description, $note, $scheduledDate,
+            $submitNotBefore, $queuedImmediate ? 1 : 0, $userId,
         ]);
         $pdo->prepare("UPDATE invoices SET collection_status = 'scheduled' WHERE id = ?")
             ->execute([$invoice['id']]);
 
-        if ($preNotify) {
+        if ($preNotify && !$queuedImmediate) {
             if (!_send_prenotification($org, $customer, $invoice, $mandate, $amountCents, $scheduledDate)) {
                 throw new CollectionException('Die Vorabankündigung konnte nicht versendet werden; der Einzug wurde nicht terminiert.');
             }
             $pdo->prepare('UPDATE payment_collections SET prenotified_at = NOW() WHERE id = ?')->execute([$collectionId]);
         }
 
-        audit_log($tenantId, $actor, 'collection_scheduled', 'collection', $collectionId, [
+        audit_log($tenantId, $actor, $queuedImmediate ? 'collection_queued' : 'collection_scheduled', 'collection', $collectionId, [
             'voucher_number' => $invoice['voucher_number'], 'amount_cents' => $amountCents,
-            'scheduled_date' => $scheduledDate, 'customer_number' => $customer['customer_number'],
-            'note' => $note,
+            'scheduled_date' => $scheduledDate, 'submit_not_before' => $submitNotBefore,
+            'customer_number' => $customer['customer_number'], 'note' => $note,
         ]);
     } else {
         // --- Sofort: Stripe jetzt aufrufen ---
@@ -1234,18 +1430,22 @@ function cancel_scheduled_collection(string $tenantId, string $collectionId, ?ar
         throw new CollectionException('Einzug nicht gefunden.');
     }
     if (!(int)$collection['is_scheduled']) {
-        throw new CollectionException('Nur terminierte Einzüge können storniert werden.');
+        throw new CollectionException('Nur vorgemerkte oder terminierte Einzüge können storniert werden.');
     }
-    if ((int)$collection['scheduled_submitted'] || $collection['stripe_status'] === 'submitting') {
+    if ((int)$collection['scheduled_submitted'] || $collection['stripe_status'] !== 'scheduled') {
         throw new CollectionException('Einzug wurde bereits bei Stripe eingereicht und kann nicht mehr storniert werden.');
     }
 
-    $pdo->prepare("UPDATE payment_collections SET stripe_status = 'cancelled' WHERE id = ?")
-        ->execute([$collectionId]);
+    // Atomar: ein parallel laufender Cron darf denselben Einzug nicht gleichzeitig einreichen
+    $upd = $pdo->prepare("UPDATE payment_collections SET stripe_status = 'cancelled' WHERE id = ? AND stripe_status = 'scheduled' AND scheduled_submitted = 0");
+    $upd->execute([$collectionId]);
+    if ($upd->rowCount() !== 1) {
+        throw new CollectionException('Einzug wird gerade eingereicht und kann nicht mehr storniert werden.');
+    }
     $pdo->prepare("UPDATE invoices SET collection_status = 'open' WHERE id = ?")
         ->execute([$collection['invoice_id']]);
     audit_log($tenantId, $actor, 'collection_cancelled', 'collection', $collectionId, [
-        'amount_cents' => (int)$collection['amount_cents'],
+        'amount_cents' => (int)$collection['amount_cents'], 'queued_immediate' => (int)($collection['queued_immediate'] ?? 0) === 1,
     ]);
 }
 
@@ -1452,25 +1652,49 @@ function count_ready_for_collection(string $tenantId): array
 }
 
 /**
- * Fällige terminierte Einzüge bei Stripe einreichen.
+ * Fällige vorgemerkte und terminierte Einzüge bei Stripe einreichen.
  * Ohne $tenantId (cron.php): alle Firmen. Mit $tenantId (Button): nur die eigene.
  * Firmen mit Not-Stopp werden übersprungen und protokolliert; zurückgestellte
  * Einzüge (CollectionDeferredException) bleiben unverändert terminiert.
  *
- * @return array{submitted:int,failed:int,deferred:int,skipped_paused:int}
+ * Regeln (collections_rules_config): Einreichung nur im Einreichfenster
+ * (Option ignore_window = true umgeht das Fenster, nur nach Zweitbestätigung),
+ * nur wenn der früheste Einreichzeitpunkt erreicht ist, und nur, wenn der
+ * Termin nicht länger als overdue_days zurückliegt (sonst überfällig, manuell
+ * neu terminieren). Option deadline (microtime) begrenzt die Laufzeit je Aufruf;
+ * der Rest folgt beim nächsten Lauf.
+ *
+ * @param array{ignore_window?:bool,deadline?:float} $options
+ * @return array{submitted:int,failed:int,deferred:int,unknown:int,skipped_paused:int,outside_window:int,overdue_skipped:int,remaining:int}
  */
-function process_scheduled_collections(?string $tenantId = null, ?array $actor = null): array
+function process_scheduled_collections(?string $tenantId = null, ?array $actor = null, array $options = []): array
 {
     $pdo = db();
-    $result = ['submitted' => 0, 'failed' => 0, 'deferred' => 0, 'unknown' => 0, 'skipped_paused' => 0];
+    $result = ['submitted' => 0, 'failed' => 0, 'deferred' => 0, 'unknown' => 0, 'skipped_paused' => 0,
+        'outside_window' => 0, 'overdue_skipped' => 0, 'remaining' => 0];
+    $rules = collections_rules_config();
+    $now = collections_now();
+    $nowStr = $now->format('Y-m-d H:i:s');
+    $cutoff = $now->modify('-' . $rules['overdue_days'] . ' days')->format('Y-m-d');
+    $tenantSql = $tenantId !== null ? ' AND tenant_id = ?' : '';
+    $tenantParams = $tenantId !== null ? [$tenantId] : [];
+
+    // Fällig: frühester Einreichzeitpunkt erreicht, Termin nicht überfällig
+    $dueWhere = "is_scheduled = 1 AND scheduled_submitted = 0 AND stripe_status = 'scheduled'
+                 AND COALESCE(submit_not_before, scheduled_date) <= ? AND scheduled_date >= ?" . $tenantSql;
+    $dueParams = array_merge([$nowStr, $cutoff], $tenantParams);
+
+    $stmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM payment_collections WHERE is_scheduled = 1 AND scheduled_submitted = 0
+           AND stripe_status = 'scheduled' AND scheduled_date < ?" . $tenantSql
+    );
+    $stmt->execute(array_merge([$cutoff], $tenantParams));
+    $result['overdue_skipped'] = (int)$stmt->fetchColumn();
 
     if (platform_collections_paused()) {
         error_log('Not-Stopp (Plattform) aktiv: keine terminierten Einzüge eingereicht.');
-        $stmt = $pdo->prepare(
-            "SELECT COUNT(*) FROM payment_collections WHERE is_scheduled = 1 AND scheduled_submitted = 0
-               AND stripe_status = 'scheduled' AND scheduled_date <= CURDATE()" . ($tenantId !== null ? ' AND tenant_id = ?' : '')
-        );
-        $stmt->execute($tenantId !== null ? [$tenantId] : []);
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM payment_collections WHERE $dueWhere");
+        $stmt->execute($dueParams);
         $result['skipped_paused'] = (int)$stmt->fetchColumn();
         if ($result['skipped_paused'] > 0) {
             audit_log($tenantId, $actor, 'collections_due_skipped_paused', 'organization', $tenantId, [
@@ -1480,20 +1704,26 @@ function process_scheduled_collections(?string $tenantId = null, ?array $actor =
         return $result;
     }
 
-    $sql = "SELECT * FROM payment_collections
-            WHERE is_scheduled = 1 AND scheduled_submitted = 0
-              AND stripe_status = 'scheduled' AND scheduled_date <= CURDATE()";
-    $params = [];
-    if ($tenantId !== null) {
-        $sql .= ' AND tenant_id = ?';
-        $params[] = $tenantId;
+    if (!collections_window_open($now) && empty($options['ignore_window'])) {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM payment_collections WHERE $dueWhere");
+        $stmt->execute($dueParams);
+        $result['outside_window'] = (int)$stmt->fetchColumn();
+        return $result;
     }
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+
+    $stmt = $pdo->prepare(
+        "SELECT * FROM payment_collections WHERE $dueWhere ORDER BY COALESCE(submit_not_before, scheduled_date) ASC, created_at ASC"
+    );
+    $stmt->execute($dueParams);
     $due = $stmt->fetchAll();
+    $deadline = isset($options['deadline']) ? (float)$options['deadline'] : null;
 
     $pausedTenants = [];
-    foreach ($due as $collection) {
+    foreach ($due as $index => $collection) {
+        if ($deadline !== null && microtime(true) >= $deadline) {
+            $result['remaining'] = count($due) - $index;
+            break;
+        }
         $t = $collection['tenant_id'];
         if (!array_key_exists($t, $pausedTenants)) {
             $pausedTenants[$t] = collections_pause_reason($t);

@@ -209,6 +209,8 @@ function status_badge(string $status, ?string $scheduledDate = null): string
         'collected'     => ['success', 'Eingezogen'],
         'failed'        => ['danger',  'Fehlgeschlagen'],
         'scheduled'     => ['info',    'Terminiert'],
+        'queued'        => ['info',    'Vorgemerkt'],
+        'overdue'       => ['warn',    'Überfällig'],
         // Stripe-Status
         'submitting'    => ['info',    'Wird eingereicht'],
         'processing'    => ['info',    'In Bearbeitung'],

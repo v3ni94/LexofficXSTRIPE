@@ -139,3 +139,11 @@ Tabelle `collection_rules` (`is_active` Standard 0, `customer_scope` all oder se
 7. Restbetrag im Rahmen der Synchronisation optional mitführen (ein zusätzlicher API-Aufruf je Rechnung).
 8. Alarm-E-Mail setzt aktiven Mailversand voraus (`mail.enabled`); produktiv verifizieren, sobald SMTP eingerichtet ist.
 9. Datenschutzhinweis auf `mandat.php` und Bundesbank-Hinweis zur Vorabankündigungsfrist in `team.php` sind Entwürfe und durch Rechtsberatung zu prüfen.
+
+## Karenzzeit und Einreichfenster (Paket 2, Migration 011)
+
+- Sofort-Einzüge werden als vorgemerkt gespeichert (`payment_collections.is_scheduled = 1`, `queued_immediate = 1`, `submit_not_before`) und erst nach der Karenzzeit (`collections.grace_hours`, Standard 4 Stunden) im Einreichfenster (`collections.window_start` bis `window_end`, Standard 23:00 bis 06:00) vom Cron eingereicht. Bis dahin sind sie stornierbar; die Rechnung geht dann auf offen zurück.
+- Beim Vormerken werden Stripe-Verbindung, Mandat, Restbetrag (gespeicherter Wert) und offene Einzugsversuche geprüft; der Restbetrag wird bei der Einreichung erneut live abgefragt (`_submit_single_scheduled`).
+- `process_scheduled_collections` reicht nur im Fenster ein (`ignore_window` nur nach Zweitbestätigung durch Inhaber oder Administrator, Audit `collections_due_forced`), nur wenn `submit_not_before` erreicht ist, nur wenn der Termin nicht älter als `collections.overdue_days` ist, und höchstens bis zur übergebenen Deadline (Cron: halbes Zeitbudget). Überfällige Termine bleiben zur manuellen Entscheidung (neu terminieren oder stornieren).
+- Storno ist atomar (`UPDATE ... WHERE stripe_status = 'scheduled' AND scheduled_submitted = 0`), sodass ein parallel laufender Cron denselben Einzug nicht mehr beansprucht. Sammelstorno beim Not-Stopp: `collections_cancel_all_pending`, Audit `collections_bulk_cancelled`.
+- Zeitvergleiche laufen mit der Anwendungszeit (`collections_now()`, in Tests überschreibbar), nicht mit `NOW()` der Datenbank, damit Zeitzonenunterschiede zwischen PHP und MariaDB keine Rolle spielen.

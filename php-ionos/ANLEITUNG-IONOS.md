@@ -200,6 +200,26 @@ Rechnungen erhalten den passenden Status, Erstattungen werden wie beim
 Webhook übernommen (Klärungsbedarf). Bekannte Zahlungen werden übersprungen,
 der Import ist wiederholbar. Mandate und IBANs werden nicht übernommen.
 
+## 7c. Karenzzeit und Einreichfenster (Migration 011)
+
+Ein Sofort-Einzug wird nicht mehr direkt an Stripe übergeben, sondern
+"vorgemerkt": Einreichung frühestens `collections.grace_hours` Stunden nach
+dem Auslösen (Standard 4) und nur im Einreichfenster
+`collections.window_start` bis `collections.window_end` (Standard 23:00 bis
+06:00). Bis zur Einreichung kann jeder Einzug unter Einzüge storniert werden;
+die Rechnung ist danach wieder offen. Der Cron reicht im Fenster bei jedem
+Lauf einen Teil ein (höchstens die Hälfte des Zeitbudgets), der Rest folgt im
+nächsten Lauf. Terminierte Einzüge werden am Fälligkeitstag ebenfalls nur im
+Fenster eingereicht.
+
+Termine, die länger als `collections.overdue_days` Tage (Standard 3)
+zurückliegen, zum Beispiel nach einem Not-Stopp, werden nicht automatisch
+nachgeholt, sondern als überfällig angezeigt und müssen neu terminiert oder
+storniert werden. Inhaber und Administratoren können fällige Einzüge
+ausnahmsweise außerhalb des Fensters einreichen (2FA-Code, protokolliert als
+`collections_due_forced`). Der Not-Stopp bietet beim Aktivieren an, alle
+vorgemerkten und terminierten Einzüge gesammelt zu stornieren.
+
 ## 8. SEPA-Mandate
 
 - Unter "Firma": Anschrift, Gläubiger-Identifikationsnummer (Deutsche Bundesbank,

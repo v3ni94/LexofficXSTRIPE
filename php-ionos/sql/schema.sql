@@ -360,6 +360,8 @@ CREATE TABLE IF NOT EXISTS payment_collections (
     failure_reason           TEXT         NULL,
     description              VARCHAR(140) NULL,
     scheduled_date           DATE         NULL,
+    submit_not_before        DATETIME     NULL,     -- frühester Einreichzeitpunkt (Karenzzeit, Fenster; Migration 011)
+    queued_immediate         TINYINT(1)   NOT NULL DEFAULT 0, -- 1 = vorgemerkter Sofort-Einzug
     is_scheduled             TINYINT(1)   NOT NULL DEFAULT 0,
     scheduled_submitted      TINYINT(1)   NOT NULL DEFAULT 0,
     created_by_user_id       CHAR(36)     NULL,

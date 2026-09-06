@@ -159,6 +159,21 @@ return [
         'vat_rate_percent'       => 19,      // nur für die Anzeige des Bruttobetrags in der Anwendung
     ],
 
+    // --- Einreichregeln für SEPA-Einzüge (Plattformregel, gilt für alle Firmen) ---
+    // grace_hours: Karenzzeit in Stunden zwischen Auslösen und Einreichung bei Stripe
+    //   (Sofort-Einzüge werden "vorgemerkt" und sind bis zur Einreichung stornierbar).
+    // window_enabled/window_start/window_end: Einreichung nur im Zeitfenster (darf über
+    //   Mitternacht gehen). Der Cron reicht im Fenster bei jedem Lauf einen Teil ein.
+    // overdue_days: Termine, die länger zurückliegen, werden nicht automatisch nachgeholt,
+    //   sondern als überfällig angezeigt (neu terminieren oder stornieren).
+    'collections' => [
+        'grace_hours'    => 4,
+        'window_enabled' => true,
+        'window_start'   => '23:00',
+        'window_end'     => '06:00',
+        'overdue_days'   => 3,
+    ],
+
     // --- Feature-Schalter (Standard: aus) ---
     // mandate_request: digitale Mandatsanforderung (Link per E-Mail, Stripe
     // Checkout im Modus setup, öffentliche Seite mandat.php). Erst nach

@@ -87,7 +87,7 @@ function alerts_for_tenant(string $tenantId): array
     if ($overdue > 0) {
         $alerts[] = [
             'level' => 'mittel',
-            'text'  => sprintf('%d terminierte(r) Einzug/Einzüge mit Fälligkeit in der Vergangenheit wurde(n) noch nicht eingereicht (Cron prüfen oder "Fällige terminierte Einzüge jetzt einreichen").', $overdue),
+            'text'  => sprintf('%d terminierte(r) Einzug/Einzüge mit Fälligkeit in der Vergangenheit wurde(n) noch nicht eingereicht (Einreichfenster abwarten, Cron prüfen; überfällige Termine unter Einzüge neu terminieren oder stornieren).', $overdue),
             'link'  => 'collections.php',
         ];
     }

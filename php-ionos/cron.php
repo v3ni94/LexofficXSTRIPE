@@ -59,12 +59,20 @@ try {
 require_once __DIR__ . '/app/support.php';
 try { support_sessions_expire(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 008 */ }
 
-$result = process_scheduled_collections();
+// Fällige vorgemerkte und terminierte Einzüge: nur im Einreichfenster, höchstens die
+// Hälfte des Zeitbudgets je Lauf; der Rest folgt beim nächsten Lauf (alle 5 Minuten).
+$result = process_scheduled_collections(null, null, ['deadline' => $start + $totalBudget * 0.5]);
 echo sprintf(
-    "[%s] Terminierte Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen\n",
+    "[%s] Einzüge verarbeitet: %d eingereicht, %d fehlgeschlagen, %d zurückgestellt, %d unklar, %d wegen Not-Stopp übersprungen%s%s%s\n",
     date('d.m.Y H:i:s'),
     $result['submitted'],
-    $result['failed']
+    $result['failed'],
+    $result['deferred'],
+    $result['unknown'],
+    $result['skipped_paused'],
+    $result['outside_window'] > 0 ? sprintf(', %d fällig, warten auf das Einreichfenster', $result['outside_window']) : '',
+    $result['remaining'] > 0 ? sprintf(', %d folgen im nächsten Lauf', $result['remaining']) : '',
+    $result['overdue_skipped'] > 0 ? sprintf(', %d überfällig (manuell neu terminieren)', $result['overdue_skipped']) : ''
 );
 
 // Unklare Einzugsversuche je Firma mit Stripe-Verbindung klären (Timeout-Fälle)

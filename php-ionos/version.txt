@@ -1,3 +1,3 @@
 SmartEinzug App
-Stand: 06.09.2026 01:55
-Paket 1: Profilmenue, Dashboard-Karten, Glaeubiger-ID optional, automatische Migrationen
+Stand: 06.09.2026 02:30
+Paket 2: Karenzzeit, Einreichfenster, Storno im Status Vorgemerkt, Not-Stopp mit Sammelstorno
