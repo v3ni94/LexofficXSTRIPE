@@ -187,6 +187,13 @@ Jede Migration hat einen Marker (Tabelle oder Spalte); vorhandene Marker
 gelten als eingespielt, nichts wird doppelt ausgeführt. Der Stand steht in
 `schema_migrations` und im `setup-check.php`.
 
+Automatisch nach dem Upload: Der GitHub-Workflow `deploy.yml` ruft nach dem
+SFTP-Upload `migrate.php` per POST mit dem Header `X-Migration-Token` auf und
+erwartet HTTP 200 mit `{"success": true}`. Der Tokenwert steht als GitHub-Secret
+`MIGRATION_TOKEN` und in `config.php` als `migration_token` (leer = `cron_token`
+gilt). Schlägt eine Migration fehl, wird der Lauf rot und der Fehler steht im
+Actions-Protokoll; die Dateien sind dann bereits hochgeladen.
+
 ## 7a. Bestehende Einzüge aus Stripe übernehmen (Migration 009)
 
 Nach einem Neuaufbau oder einer neuen Verknüpfung der Firma kennt die

@@ -150,7 +150,7 @@ function enforce_host_rules(): void
         return;
     }
     $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
-    $selfProtected = ['cron.php', 'stripe-webhook.php', 'billing-webhook.php', 'track.php'];
+    $selfProtected = ['cron.php', 'stripe-webhook.php', 'billing-webhook.php', 'track.php', 'migrate.php'];
 
     if (!in_array($script, $selfProtected, true) && !host_allowed()) {
         host_not_found();

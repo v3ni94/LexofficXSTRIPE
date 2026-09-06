@@ -34,6 +34,10 @@ return [
 
     // --- Cron-Token (Schutz für cron.php, mind. 32 Zufallszeichen) ---
     'cron_token' => 'HIER-32-ZUFALLSZEICHEN-EINTRAGEN',
+    // Token für den automatischen Migrationsaufruf nach dem Upload (GitHub Actions ruft
+    // migrate.php per POST mit Header X-Migration-Token auf). Derselbe Wert wie das
+    // GitHub-Secret MIGRATION_TOKEN. Leer lassen = der cron_token gilt auch hier.
+    'migration_token' => '',
     // Zeitbudget je Cron-Aufruf in Sekunden. Externe Cron-Dienste (cron-job.org) brechen oft nach 30 s ab,
     // deshalb Standard 20 (ein laufender Schritt darf kurz überziehen). Die Synchronisation setzt beim nächsten Aufruf fort.
     'cron_time_budget_seconds' => 20,
