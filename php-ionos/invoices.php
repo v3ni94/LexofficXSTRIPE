@@ -306,14 +306,14 @@ layout_header('Rechnungen', $ctx);
                         <?php endif; ?>
                         <?php if (!$preNotify): ?>
                         <form method="post" class="inline-form"
-                              onsubmit="return confirm(<?= e(json_encode('Lastschrift für Rechnung ' . $inv['voucher_number'] . ($partial ? ' über den Restbetrag ' . format_eur_cents($restCents) : '') . ' jetzt einreichen?', JSON_UNESCAPED_UNICODE)) ?>)">
+                              onsubmit="return confirm(<?= e(json_encode('Lastschrift für Rechnung ' . $inv['voucher_number'] . ($partial ? ' über den Restbetrag ' . format_eur_cents($restCents) : '') . (collections_grace_active() ? ' vormerken? Einreichung bei Stripe ab ' . collections_earliest_submit()->format('d.m.Y H:i') . ' Uhr, bis dahin stornierbar.' : ' jetzt einreichen?'), JSON_UNESCAPED_UNICODE)) ?>)">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="collect">
                             <input type="hidden" name="invoice_id" value="<?= e($inv['id']) ?>">
                             <?php if ($partial): ?><input type="hidden" name="confirm_amount_cents" value="<?= $restCents ?>"><?php endif; ?>
                             <input type="hidden" name="back_status" value="<?= e($filter) ?>">
                             <input type="hidden" name="back_sepa" value="<?= e($sepaFilter) ?>">
-                            <button type="submit" class="btn btn-sm"<?= $pauseReason ? ' disabled title="Not-Stopp aktiv"' : '' ?>><?= $partial ? 'Restbetrag einziehen' : 'Einziehen' ?></button>
+                            <button type="submit" class="btn btn-sm"<?= $pauseReason ? ' disabled title="Not-Stopp aktiv"' : '' ?>><?= $partial ? (collections_grace_active() ? 'Restbetrag vormerken' : 'Restbetrag einziehen') : (collections_grace_active() ? 'Einzug vormerken' : 'Einziehen') ?></button>
                         </form>
                         <?php endif; ?>
                         <form method="post" class="inline-form">

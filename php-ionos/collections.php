@@ -26,12 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Einzug wurde auf den ' . format_date($newDate) . ' umterminiert.');
 
         } elseif ($action === 'process_due' || $action === 'process_due_now') {
+            support_guard(); // Support-Modus: keine Einreichung, weder im Fenster noch als Ausnahme
             $force = $action === 'process_due_now';
             if ($force) {
                 if (!can_manage_settings($ctx)) {
                     throw new RuntimeException('Die Einreichung außerhalb des Einreichfensters dürfen nur Inhaber und Administratoren auslösen.');
                 }
-                support_guard();
                 require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
                 audit_log($tenantId, $ctx, 'collections_due_forced', 'organization', $tenantId);
             }
@@ -181,8 +181,8 @@ layout_header('Einzüge', $ctx);
         <form method="post">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="process_due">
-            <button type="submit" class="btn"<?= ($dueCount === 0 || $pauseReason || !$windowOpen) ? ' disabled' : '' ?>
-                    title="<?= $windowOpen ? 'Fällige Einzüge jetzt bei Stripe einreichen' : 'Einreichung nur im Einreichfenster' ?>">
+            <button type="submit" class="btn"<?= ($dueCount === 0 || $pauseReason || !$windowOpen || !empty($ctx['support_mode'])) ? ' disabled' : '' ?>
+                    title="<?= !empty($ctx['support_mode']) ? 'Im Support-Modus gesperrt' : ($windowOpen ? 'Fällige Einzüge jetzt bei Stripe einreichen' : 'Einreichung nur im Einreichfenster') ?>">
                 Fällige Einzüge jetzt einreichen<?= $dueCount > 0 ? " ($dueCount)" : '' ?>
             </button>
         </form>
@@ -213,11 +213,13 @@ layout_header('Einzüge', $ctx);
     <?php if (!$preNotify): ?>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <form method="post"
-              onsubmit="return confirm('Achtung: Löst echte SEPA-Lastschriften aus.\n\n<?= $ready['count'] ?> Rechnung(en) mit insgesamt <?= e(format_eur($ready['amount'])) ?> werden jetzt bei Stripe eingezogen.\n\nWirklich fortfahren?')">
+              onsubmit="return confirm(<?= e(json_encode(collections_grace_active()
+                  ? sprintf("%d Rechnung(en) mit insgesamt %s werden vorgemerkt und ab %s Uhr bei Stripe eingezogen. Bis dahin können Sie jeden Einzug unter Einzüge stornieren.\n\nFortfahren?", $ready['count'], format_eur($ready['amount']), collections_earliest_submit()->format('d.m.Y H:i'))
+                  : sprintf("Achtung: Löst echte SEPA-Lastschriften aus.\n\n%d Rechnung(en) mit insgesamt %s werden jetzt bei Stripe eingezogen.\n\nWirklich fortfahren?", $ready['count'], format_eur($ready['amount'])), JSON_UNESCAPED_UNICODE)) ?>)">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="submit_all_ready">
             <button type="submit" class="btn btn-danger"<?= ($ready['count'] === 0 || $pauseReason) ? ' disabled' : '' ?>>
-                Alle bereiten Einzüge jetzt einreichen<?= $ready['count'] > 0 ? " ({$ready['count']}, " . format_eur($ready['amount']) . ')' : '' ?>
+                <?= collections_grace_active() ? 'Alle bereiten Einzüge vormerken' : 'Alle bereiten Einzüge jetzt einreichen' ?><?= $ready['count'] > 0 ? " ({$ready['count']}, " . format_eur($ready['amount']) . ')' : '' ?>
             </button>
         </form>
     </div>

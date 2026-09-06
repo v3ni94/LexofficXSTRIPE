@@ -8,6 +8,7 @@
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/audit.php';
+require_once __DIR__ . '/app/collections.php';
 
 $ctx = require_login();
 $tenantId = $ctx['org_id'];
@@ -20,6 +21,12 @@ $params = [$tenantId];
 if (in_array($filter, $allowed, true)) {
     $where .= ' AND pc.stripe_status = ?';
     $params[] = $filter;
+} elseif ($filter === 'overdue') {
+    // Wie der Filter auf der Einzugsseite: noch nicht eingereicht, Termin älter als overdue_days
+    $where .= " AND pc.is_scheduled = 1 AND pc.scheduled_submitted = 0 AND pc.stripe_status = 'scheduled' AND pc.scheduled_date < ?";
+    $params[] = collections_now()->modify('-' . collections_rules_config()['overdue_days'] . ' days')->format('Y-m-d');
+} else {
+    $filter = '';
 }
 
 $stmt = $pdo->prepare(

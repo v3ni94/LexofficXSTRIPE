@@ -1432,6 +1432,12 @@ function cancel_scheduled_collection(string $tenantId, string $collectionId, ?ar
     if (!(int)$collection['is_scheduled']) {
         throw new CollectionException('Nur vorgemerkte oder terminierte Einzüge können storniert werden.');
     }
+    if ($collection['stripe_status'] === 'cancelled') {
+        throw new CollectionException('Einzug ist bereits storniert.');
+    }
+    if ($collection['stripe_status'] === 'failed') {
+        throw new CollectionException('Einzug ist fehlgeschlagen und muss nicht storniert werden.');
+    }
     if ((int)$collection['scheduled_submitted'] || $collection['stripe_status'] !== 'scheduled') {
         throw new CollectionException('Einzug wurde bereits bei Stripe eingereicht und kann nicht mehr storniert werden.');
     }
@@ -1469,12 +1475,27 @@ function reschedule_collection(string $tenantId, string $collectionId, string $n
     if (!(int)$collection['is_scheduled']) {
         throw new CollectionException('Nur terminierte Einzüge können umterminiert werden.');
     }
-    if ((int)$collection['scheduled_submitted'] || $collection['stripe_status'] === 'submitting') {
+    if ($collection['stripe_status'] === 'cancelled') {
+        throw new CollectionException('Einzug ist bereits storniert und kann nicht umterminiert werden.');
+    }
+    if ($collection['stripe_status'] === 'failed') {
+        throw new CollectionException('Einzug ist fehlgeschlagen und kann nicht umterminiert werden; bitte die Rechnung neu einziehen.');
+    }
+    if ((int)$collection['scheduled_submitted'] || $collection['stripe_status'] !== 'scheduled') {
         throw new CollectionException('Einzug wurde bereits bei Stripe eingereicht.');
     }
 
-    $pdo->prepare('UPDATE payment_collections SET scheduled_date = ? WHERE id = ?')
-        ->execute([$newDate, $collectionId]);
+    // Umterminieren macht aus einem vorgemerkten Sofort-Einzug einen regulären terminierten
+    // Einzug: die Vormerkung (submit_not_before, queued_immediate) wird zurückgesetzt, sonst
+    // bliebe der alte Einreichzeitpunkt maßgeblich. Atomar gegen parallelen Cron-Claim.
+    $upd = $pdo->prepare(
+        "UPDATE payment_collections SET scheduled_date = ?, submit_not_before = NULL, queued_immediate = 0
+         WHERE id = ? AND stripe_status = 'scheduled' AND scheduled_submitted = 0"
+    );
+    $upd->execute([$newDate, $collectionId]);
+    if ($upd->rowCount() !== 1) {
+        throw new CollectionException('Einzug wird gerade eingereicht oder wurde inzwischen storniert und kann nicht umterminiert werden.');
+    }
 
     // Vorabankündigung mit neuem Termin wiederholen
     if ($preNotify) {
@@ -1489,14 +1510,15 @@ function reschedule_collection(string $tenantId, string $collectionId, string $n
             if (_send_prenotification($org, $customer, $invoice, $mandate, (int)$collection['amount_cents'], $newDate)) {
                 $pdo->prepare('UPDATE payment_collections SET prenotified_at = NOW() WHERE id = ?')->execute([$collectionId]);
             } else {
-                $pdo->prepare('UPDATE payment_collections SET scheduled_date = ? WHERE id = ?')
-                    ->execute([$collection['scheduled_date'], $collectionId]);
+                $pdo->prepare('UPDATE payment_collections SET scheduled_date = ?, submit_not_before = ?, queued_immediate = ? WHERE id = ?')
+                    ->execute([$collection['scheduled_date'], $collection['submit_not_before'] ?? null, (int)($collection['queued_immediate'] ?? 0), $collectionId]);
                 throw new CollectionException('Die Vorabankündigung für den neuen Termin konnte nicht versendet werden; der Termin bleibt unverändert.');
             }
         }
     }
     audit_log($tenantId, $actor, 'collection_rescheduled', 'collection', $collectionId, [
         'old_date' => $collection['scheduled_date'], 'new_date' => $newDate,
+        'old_submit_not_before' => $collection['submit_not_before'] ?? null, 'was_queued' => (int)($collection['queued_immediate'] ?? 0) === 1,
     ]);
 }
 
