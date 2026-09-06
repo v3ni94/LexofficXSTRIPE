@@ -154,6 +154,22 @@ Pflichthäkchen für AGB und Unternehmerbestätigung und dem Button
 AGB-Fassung protokolliert (`subscription_consent`). Rechnungen des Abonnements
 werden aus Stripe gelesen und unter Abonnement als Archiv angezeigt (Ansehen, PDF).
 
+Checkliste vor dem Scharfschalten (Entscheidung 06.09.2026: Rechnungsstellung
+bleibt bei Stripe, keine Rechnungen aus Lexware Office):
+
+- [ ] Preis-ID `price_...` unter Admin > Tarife eingetragen (Schritt 1).
+- [ ] Stripe Tax im Konto aktiv, Steuersätze für Deutschland und EU geprüft.
+- [ ] Rechnungs-CI im Stripe-Dashboard (Einstellungen > Branding und Rechnungsvorlage):
+      Logo und Farben der Müller Holding AG, vollständige Firmenangaben mit
+      Handelsregister und Vorstand in der Rechnungsfußzeile, Nummernkreis,
+      Zahlungsbedingungen, Support-Kontakt. Testrechnung im Testmodus erzeugen und
+      gegen die Pflichtangaben prüfen (Steuerberater einbeziehen).
+- [ ] AGB freigegeben, `agb_version` gesetzt (Schritt 5).
+- [ ] Webhook `billing-webhook.php` mit Signing Secret eingetragen und Test-Event empfangen (Schritt 2).
+- [ ] Kundenportal aktiviert (Schritt 3).
+- [ ] Testkauf im Stripe-Testmodus: Bestellbestätigung, Abo, Rechnungsarchiv unter Firmendaten > Abonnement.
+- [ ] Erst danach `billing.enabled = true` (Schritt 4).
+
 Spätere Tarife (BASIC, PLUS, PRO, UNLIMITED) sind angelegt, aber inaktiv und
 nicht öffentlich. Ein Wechsel auf einen Tarif mit weniger Benutzern wird
 abgelehnt, solange mehr Benutzer oder offene Einladungen vorhanden sind.
