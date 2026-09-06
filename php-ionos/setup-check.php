@@ -178,8 +178,8 @@ if ($config && !empty($config['db']['host'])) {
             }
             require_once __DIR__ . '/app/migrate.php';
             $pendingMig = array_filter(migrations_status(), static fn(array $m): bool => $m['state'] !== 'applied');
-            add_check('Migrationen automatisch', !$pendingMig,
-                $pendingMig ? 'Offen: ' . implode(', ', array_column($pendingMig, 'filename')) . ' (Cron spielt sie ein, oder migrate.php?token=... aufrufen)' : 'alle eingespielt');
+            add_check('Migrationen (Stand)', !$pendingMig,
+                $pendingMig ? 'Nicht eingespielt: ' . implode(', ', array_map(static fn(array $m): string => $m['filename'] . ' [' . $m['state'] . ']', $pendingMig)) . ' (Einspielen nur über den Deployment-Workflow, Klärung siehe docs/migrations.md)' : 'alle eingespielt');
         } catch (Throwable $e) {
             add_check('Migrationen automatisch', false, $e->getMessage());
         }

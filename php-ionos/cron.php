@@ -42,19 +42,8 @@ $start = microtime(true);
 // und setzt beim nächsten Aufruf fort (config: cron_time_budget_seconds, Standard 20).
 $totalBudget = max(10, min(110, (int)config('cron_time_budget_seconds', 20)));
 
-// Ausstehende Datenbankmigrationen automatisch einspielen (nach einem Upload neuer Dateien)
-require_once __DIR__ . '/app/audit.php';
-require_once __DIR__ . '/app/migrate.php';
-try {
-    $mig = migrations_apply('cron');
-    if ($mig['applied'] || $mig['failed']) {
-        echo sprintf("[%s] Migrationen: %s%s\n", date('d.m.Y H:i:s'),
-            $mig['applied'] ? 'eingespielt ' . implode(', ', $mig['applied']) : 'keine neuen',
-            $mig['failed'] ? '; FEHLER bei ' . $mig['failed'] . ': ' . $mig['error'] : '');
-    }
-} catch (Throwable $e) {
-    error_log('Cron Migrationen fehlgeschlagen: ' . $e->getMessage());
-}
+// Datenbankmigrationen laufen NICHT im Cron (nur über migrate.php nach dem Upload,
+// siehe docs/migrations.md), damit sie nie während eines laufenden Uploads starten.
 
 require_once __DIR__ . '/app/support.php';
 try { support_sessions_expire(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 008 */ }

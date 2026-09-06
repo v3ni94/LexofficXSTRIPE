@@ -187,24 +187,22 @@ Grenze wechseln und `cron_time_budget_seconds` auf 90 erhöhen.
 ## 7b. Datenbankmigrationen automatisch
 
 Neue Versionen bringen ihre Migrationsdateien unter `sql/migrations/` mit
-(per Web nicht abrufbar). Der Cron spielt ausstehende Migrationen bei jedem
-Lauf automatisch ein, spätestens also fünf Minuten nach einem Upload. Sofort
-einspielen und den Stand prüfen:
+(per Web nicht abrufbar). Eingespielt werden sie ausschließlich durch den
+Deployment-Workflow: Nach vollständig erfolgreichem SFTP-Upload ruft
+`deploy.yml` genau einmal `https://app.smart-einzug.de/migrate.php` per POST
+mit dem Header `X-Migration-Token` auf und erwartet HTTP 200 mit exakt
+`{"success":true}`. Der Cron führt keine Migrationen mehr aus, ein Aufruf per
+GET liefert 405.
 
-```
-https://app.smart-einzug.de/migrate.php?token=<cron_token aus config.php>
-```
+Voraussetzungen: `migration_token` in `app/config.php` (eigener Zufallswert,
+unabhängig vom `cron_token`) und derselbe Wert als GitHub-Secret
+`MIGRATION_TOKEN`. Ohne beides bleibt der Workflow vor dem Upload stehen bzw.
+der Endpunkt antwortet mit 500 `server_configuration_error`.
 
-Jede Migration hat einen Marker (Tabelle oder Spalte); vorhandene Marker
-gelten als eingespielt, nichts wird doppelt ausgeführt. Der Stand steht in
-`schema_migrations` und im `setup-check.php`.
-
-Automatisch nach dem Upload: Der GitHub-Workflow `deploy.yml` ruft nach dem
-SFTP-Upload `migrate.php` per POST mit dem Header `X-Migration-Token` auf und
-erwartet HTTP 200 mit `{"success": true}`. Der Tokenwert steht als GitHub-Secret
-`MIGRATION_TOKEN` und in `config.php` als `migration_token` (leer = `cron_token`
-gilt). Schlägt eine Migration fehl, wird der Lauf rot und der Fehler steht im
-Actions-Protokoll; die Dateien sind dann bereits hochgeladen.
+Stand prüfen: `setup-check.php?token=<cron_token>`, Zeile "Migrationen
+(Stand)". Schlägt eine Migration fehl, bleibt sie als `failed` vermerkt und
+blockiert weitere Läufe, bis sie manuell geklärt ist (Ablauf in
+docs/migrations.md). Keine automatische Wiederholung.
 
 ## 7a. Bestehende Einzüge aus Stripe übernehmen (Migration 009)
 
