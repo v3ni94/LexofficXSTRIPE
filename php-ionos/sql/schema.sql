@@ -644,3 +644,14 @@ CREATE TABLE IF NOT EXISTS stripe_import_items (
     KEY ix_import_item_tenant (tenant_id, match_state),
     CONSTRAINT fk_import_item_import FOREIGN KEY (import_id) REFERENCES stripe_imports (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Stand der automatischen Migrationen (app/migrate.php). Wird zur Laufzeit
+-- ebenfalls per CREATE TABLE IF NOT EXISTS angelegt.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version    VARCHAR(10)  NOT NULL PRIMARY KEY,
+    filename   VARCHAR(255) NOT NULL,
+    applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    applied_by VARCHAR(40)  NOT NULL DEFAULT 'auto'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

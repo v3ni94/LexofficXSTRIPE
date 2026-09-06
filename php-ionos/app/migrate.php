@@ -102,6 +102,9 @@ function migration_split_statements(string $sql): array
         if ($trim === '' || str_starts_with($trim, '--') || str_starts_with($trim, '#')) {
             continue;
         }
+        // Kommentar am Zeilenende nach einem Semikolon entfernen ("...; -- Hinweis"),
+        // sonst würde das Semikolon nicht als Trenner erkannt.
+        $line = preg_replace('/;\s*--.*$/', ';', $line) ?? $line;
         $lines[] = $line;
     }
     $clean = implode("\n", $lines);

@@ -47,16 +47,16 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <link rel="icon" href="assets/img/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('assets/img/favicon-32.png')) ?>" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
     <title><?= e($title) ?> | <?= e($titleSuffix) ?></title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
     <?php if (!$useHvmCi): ?>
     <style>
         :root { --brand-accent: #E3AC48; --brand-dark: #2E2D2E; }
     </style>
     <?php endif; ?>
-    <script src="assets/js/app.js" defer></script>
+    <script src="<?= e(asset_url('assets/js/app.js')) ?>" defer></script>
     <?= $opts['head'] ?? '' ?>
 </head>
 <body class="<?= $useHvmCi ? 'theme-hvm' : 'theme-product' ?>">
@@ -73,7 +73,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <?php elseif ($useHvmCi): ?>
                 <span class="brand-mark">HVM</span>
             <?php else: ?>
-                <img class="brand-image" src="assets/img/logo-horizontal.png" srcset="assets/img/logo-horizontal.png 1x, assets/img/logo-horizontal@2x.png 2x" alt="<?= e($brandName) ?>" height="48">
+                <img class="brand-image" src="<?= e(asset_url('assets/img/logo-horizontal.png')) ?>" srcset="<?= e(asset_url('assets/img/logo-horizontal.png')) ?> 1x, <?= e(asset_url('assets/img/logo-horizontal@2x.png')) ?> 2x" alt="<?= e($brandName) ?>" height="48">
             <?php endif; ?>
             <span class="brand-text">
                 <?php if ($hasLogo || $useHvmCi): ?><span class="brand-name"><?= e($brandName) ?></span><?php endif; ?>

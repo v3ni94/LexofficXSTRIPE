@@ -222,6 +222,22 @@ function redirect(string $path): void
     exit;
 }
 
+/**
+ * Pfad einer statischen Datei (CSS, JS, Bilder) mit Versionsparameter aus dem
+ * Änderungszeitpunkt der Datei. Nach jedem Upload lädt der Browser die neue
+ * Fassung, ohne dass jemand Strg+F5 drücken muss; zugleich dürfen die Dateien
+ * lange gecacht werden (.htaccess).
+ */
+function asset_url(string $relativePath): string
+{
+    static $cache = [];
+    if (!isset($cache[$relativePath])) {
+        $mtime = @filemtime(dirname(__DIR__) . '/' . ltrim($relativePath, '/'));
+        $cache[$relativePath] = $relativePath . '?v=' . substr(md5((string)($mtime ?: 0)), 0, 8);
+    }
+    return $cache[$relativePath];
+}
+
 /** Betrag in Cent als "1.234,56 EUR" formatieren */
 function format_eur_cents(int $cents): string
 {
@@ -270,6 +286,7 @@ if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli') {
     ]);
     ini_set('session.use_strict_mode', '1');   // keine fremd vorgegebenen Session-IDs annehmen
     ini_set('session.use_only_cookies', '1');
+    session_cache_limiter('nocache');          // Seiten mit Kundendaten nie im Browser- oder Proxy-Cache (unabhängig von der Hoster-INI)
     session_name('LXEINZUGSESSID');
     session_start();
 }

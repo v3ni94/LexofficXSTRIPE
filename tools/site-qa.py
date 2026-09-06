@@ -7,13 +7,18 @@ Open Graph, genau ein <h1>, <html lang="de">, Bilder mit alt, interne Links
 auf existierende Dateien, Sitemap-Konsistenz (nur indexierbare, existierende
 Seiten), JSON-LD parsebar, keine Gedankenstriche, Disclaimer und Signatur,
 sowie domainübergreifend die Textähnlichkeit des Hauptinhalts
-(Navigation, Footer, Rechtstexte entfernt).
+(Navigation, Footer, Rechtstexte entfernt), sowie den Versionsparameter von
+site.css/site.js gegen den mit tools/asset-version.py berechneten Hash.
 
 Aufruf:  python3 tools/site-qa.py [--strict]
 Exit 1 bei Fehlern (und bei --strict auch bei Warnungen).
 """
 import glob, json, os, re, sys, html
 from difflib import SequenceMatcher
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import importlib
+asset_version = importlib.import_module('asset-version')
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'websites')
 DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de']
@@ -47,6 +52,7 @@ def check_domain(domain):
     base = os.path.join(ROOT, domain)
     files = sorted(glob.glob(os.path.join(base, '**', '*.html'), recursive=True))
     titles, descs, indexable = {}, {}, []
+    asset_hashes = asset_version.domain_hashes(domain)
     for f in files:
         rel = os.path.relpath(f, base)
         s = open(f, encoding='utf-8').read()
@@ -81,6 +87,8 @@ def check_domain(domain):
             if 'alt=' not in img: err(f'{tag}: <img> ohne alt')
         if '—' in strip_tags(s) or ' – ' in strip_tags(s): err(f'{tag}: Gedankenstrich im Text')
         if 'Kein Produkt der Haufe-Lexware' not in s: err(f'{tag}: Markenhinweis fehlt')
+        for problem in asset_version.find_asset_problems(s, asset_hashes):
+            err(f'{tag}: {problem}')
         if 'In Liebe zu Charlotte' not in s: warn(f'{tag}: Signaturkommentar fehlt')
         if 'noindex' in s and rel.startswith('lp/') and 'follow' not in s: err(f'{tag}: Landingpage braucht noindex,follow')
         if s.count('In Liebe zu Charlotte') > 1: warn(f'{tag}: Signaturkommentar mehrfach')

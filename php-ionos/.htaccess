@@ -26,6 +26,21 @@ RewriteRule ^sql/ - [F,L]
 # Verzeichnislisten deaktivieren
 Options -Indexes
 
+# Statische Dateien: CSS und JS werden mit Versionsparameter eingebunden
+# (asset_url in app/bootstrap.php) und dürfen deshalb lange gecacht werden.
+# Bilder ohne Versionsparameter kürzer, damit ein Austausch sichtbar wird.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?)$">
+        Header set Cache-Control "public, max-age=2592000"
+    </FilesMatch>
+</IfModule>
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml
+</IfModule>
+
 # Sicherheits-Header
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
