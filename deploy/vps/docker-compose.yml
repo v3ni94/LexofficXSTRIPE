@@ -85,7 +85,9 @@ x-php-common: &php-common
   logging: *default-logging
 
 # Scheduler und Worker: identisch zu php-common, zusaetzlich langer Stop-Grace fuer laufende Jobs
-# und der Heartbeat-Healthcheck.
+# und der Heartbeat-Healthcheck. Dieser Anker gilt NUR fuer Prozesse, die ueber bin/worker.php bzw.
+# bin/scheduler.php einen Heartbeat schreiben; der Metrik-Sammler hat einen eigenen Healthcheck
+# (--metrics), siehe Dienst "metrics" weiter unten.
 x-php-background: &php-background
   <<: *php-common
   stop_grace_period: 660s
@@ -221,6 +223,17 @@ services:
       # Lokale Kopie der Coolify-Datenbankbackups (nur lesend): der Sammler meldet Zeitpunkt und Groesse der
       # neuesten Sicherung als backup-status.json an das Monitoring (Admin > System, Komponente Sicherungen).
       COOLIFY_BACKUP_DIR: /coolify-backups
+    # Eigener Healthcheck: Der Sammler schreibt keinen Worker-Heartbeat, der Anker *heartbeat-healthcheck
+    # passt hier also nicht (er meldete beim ersten Deployment dauerhaft "ungesund" und brach deploy.sh ab).
+    # --metrics prueft, dass bin/host-metrics.php als PID 1 laeuft UND die Schleife zuletzt innerhalb von
+    # METRICS_MAX_AGE_SECONDS (Standard 300 s) einen Durchlauf beendet hat. Bewusst als Liste ohne
+    # Shell-Ausdruck: so enthaelt der Healthcheck kein "$", das Docker Compose als Variable auswerten wuerde.
+    healthcheck:
+      test: ["CMD", "php", "bin/healthcheck.php", "--metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     working_dir: /opt/smarteinzug/releases/current
     volumes:
       - type: bind

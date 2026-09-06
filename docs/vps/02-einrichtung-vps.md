@@ -95,7 +95,8 @@ scp ~/.ssh/smarteinzug_vps_admin.pub root@HIER-VPS-IP:/root/admin_key.pub
 ## 5. Grundeinrichtung mit setup-vps.sh ausführen
 
 **Zweck:** System aktualisieren, Grundwerkzeuge installieren, Benutzer `deploy` mit dem
-übertragenen Schlüssel anlegen, Docker installieren, Firewall (ufw) und `fail2ban` einrichten,
+übertragenen Schlüssel anlegen, Docker installieren, die Kernel-Einstellung
+`vm.overcommit_memory` für Redis setzen, Firewall (ufw) und `fail2ban` einrichten,
 Verzeichnisstruktur `/opt/smarteinzug` anlegen. Das Skript ist idempotent (mehrfaches Ausführen
 schadet nicht).
 **Befehle (auf dem Server als root):**
@@ -106,9 +107,13 @@ ssh root@HIER-VPS-IP
 cd /root/deploy-vps/scripts
 bash setup-vps.sh /root/admin_key.pub
 ```
-**Erwartetes Ergebnis:** Ausgabe mit Schritten 1 bis 9 (Systemaktualisierung, Grundwerkzeuge,
-Benutzer `deploy`, Docker, ufw, fail2ban, unattended-upgrades, Verzeichnisstruktur, Hinweis zur
-SSH-Härtung). Das Skript ändert `sshd_config` in diesem Schritt noch NICHT automatisch ab (siehe
+**Erwartetes Ergebnis:** Ausgabe mit Schritten 1 bis 10 (Systemaktualisierung, Grundwerkzeuge,
+Benutzer `deploy`, Docker, Kernel-Einstellung `vm.overcommit_memory` für Redis, Verzeichnisstruktur,
+ufw, fail2ban, unattended-upgrades, Hinweis zur SSH-Härtung). Schritt 5 von 10 setzt idempotent
+`vm.overcommit_memory = 1` über `/etc/sysctl.d/99-smarteinzug.conf` (Redis benötigt
+Memory-Overcommit für zuverlässige Hintergrund-Speicherabzüge, sonst die Warnung „Memory overcommit
+must be enabled“); eine bereits vorhandene Einstellung in dieser Datei wird dabei nicht
+überschrieben. Das Skript ändert `sshd_config` in diesem Schritt noch NICHT automatisch ab (siehe
 Kopfkommentar im Skript); es bereitet nur vor.
 **Prüfkommando:** `id deploy` (Benutzer existiert), `docker --version`, `ls /opt/smarteinzug`
 (Ordner `releases`, `shared`, `deploy`, `status`, `backups` vorhanden).
@@ -277,9 +282,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env 
 keinen Dienst `backup` mehr in diesem Stack: Die Datenbank läuft bereits als eigene, private
 Coolify-Datenbankressource, die Sicherung übernimmt Coolify.
 **Prüfkommando:** `docker compose -f docker-compose.yml -f docker-compose.prod.yml ps` (alle
-Dienste `running`, PHP zusätzlich `healthy`, sobald der Healthcheck einmal durchgelaufen ist und
-die Verbindung zur Coolify-MariaDB steht); zusätzlich in Coolify prüfen, dass die Datenbankressource
-als `healthy` angezeigt wird.
+Dienste `running`; `php`, `scheduler`, alle `worker-*`, `metrics` und `redis` zusätzlich `healthy`,
+sobald der jeweilige Healthcheck einmal durchgelaufen ist und die Verbindung zur Coolify-MariaDB
+steht). `metrics` gehört ausdrücklich zu den gesunden Containern dazu und hat einen eigenen,
+passenden Healthcheck (`bin/healthcheck.php --metrics`, kein geerbter Worker-Heartbeat-Check;
+Einzelheiten und die Tabelle aller Healthchecks: `docs/vps/06-betrieb.md`, Abschnitt „Healthchecks
+der Container“). Zusätzlich in Coolify prüfen, dass die Datenbankressource als `healthy` angezeigt
+wird.
 **Mögliche Fehler:** `php` bleibt `unhealthy` oder startet nicht, weil `config.php` fehlt, fehlerhaft
 ist, oder `db.host`/Netzzuordnung nicht zur Coolify-MariaDB passen (falscher Containername, falsches
 Netz, falsche Zugangsdaten; `docker compose logs php`, siehe auch `docs/vps/08-hostinger-coolify.md`,

@@ -4,6 +4,8 @@
  *   php bin/healthcheck.php --db            Datenbank SELECT 1
  *   php bin/healthcheck.php --redis         Redis PING (nur wenn konfiguriert)
  *   php bin/healthcheck.php --heartbeat     Heartbeat-Datei dieses Containers jünger als 90 s (Worker/Scheduler)
+ *   php bin/healthcheck.php --metrics       Metrik-Sammler: bin/host-metrics.php läuft als PID 1 und hat zuletzt
+ *                                           innerhalb von METRICS_MAX_AGE_SECONDS (Standard 300 s) einen Durchlauf beendet
  *   php bin/healthcheck.php --workers=lexware,stripe   je Pool mindestens ein lebender Worker (DB)
  *   php bin/healthcheck.php --scheduler     Scheduler-Heartbeat in der DB jünger als 120 s
  *   php bin/healthcheck.php --queue         Warteschlange lesbar, keine Jobs mit abgelaufenem Heartbeat > 10
@@ -42,6 +44,34 @@ if (isset($opts['heartbeat'])) {
         $f = (string)(getenv('WORKER_HEARTBEAT_FILE') ?: sys_get_temp_dir() . '/smarteinzug-worker-heartbeat');
         if (!is_file($f)) { $f = sys_get_temp_dir() . '/smarteinzug-scheduler-heartbeat'; }
         return is_file($f) && time() - (int)file_get_contents($f) < 90 ? true : 'kein frischer Heartbeat';
+    });
+}
+if (isset($opts['metrics'])) {
+    // Metrik-Sammler (bin/host-metrics.php): Er erzeugt bewusst KEINEN Worker-Heartbeat in der Datenbank,
+    // der Heartbeat-Check der Worker passt hier also nicht (er meldete sonst dauerhaft "ungesund", obwohl
+    // der Prozess läuft, siehe docs/vps/06-betrieb.md). Geprüft wird deshalb zweistufig:
+    //  1. Läuft im Container tatsächlich host-metrics.php als PID 1 (kein anderer oder beendeter Prozess)?
+    //  2. Hat die Schleife zuletzt innerhalb der erlaubten Zeit einen Durchlauf abgeschlossen (eigene
+    //     Heartbeat-Datei, rein lokal geschrieben)? Damit fällt auch ein hängender Prozess auf, ohne dass
+    //     eine kurzzeitig nicht erreichbare Datenbank den Container fälschlich als ungesund markiert.
+    $check('metrics', function () {
+        // Testhaken (nur CLI): Datei mit dem zu prüfenden Kommandozeileninhalt statt /proc/1/cmdline.
+        $cmdlineFile = (string)(getenv('HEALTHCHECK_PID1_FILE') ?: '/proc/1/cmdline');
+        $cmdline = @file_get_contents($cmdlineFile);
+        if ($cmdline === false) {
+            return 'Kommandozeile von PID 1 nicht lesbar (' . $cmdlineFile . ')';
+        }
+        // /proc/<pid>/cmdline trennt Argumente mit Nullbytes.
+        if (!str_contains(str_replace("\0", ' ', $cmdline), 'bin/host-metrics.php')) {
+            return 'bin/host-metrics.php läuft nicht als PID 1';
+        }
+        $file = metrics_heartbeat_file();
+        if (!is_file($file)) {
+            return 'noch kein Durchlauf abgeschlossen';
+        }
+        $maxAge = max(60, (int)(getenv('METRICS_MAX_AGE_SECONDS') ?: 300));
+        $age = time() - (int)@file_get_contents($file);
+        return $age < $maxAge ? true : 'letzter Durchlauf vor ' . $age . ' s (erlaubt: ' . $maxAge . ' s)';
     });
 }
 if ($all || isset($opts['workers'])) {

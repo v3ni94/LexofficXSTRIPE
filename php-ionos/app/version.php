@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.3';
+const APP_VERSION = '4.4';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.4', 'date' => '06.09.2026', 'title' => 'Healthcheck des Metrik-Sammlers',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Der Container des Metrik-Sammlers galt auf dem VPS dauerhaft als ungesund und brach das Deployment ab, weil er den Healthcheck der Worker erbte, aber keinen Worker-Heartbeat schreibt. Er hat jetzt einen eigenen Healthcheck (bin/healthcheck.php --metrics: Prozessprüfung und eigenes Lebenszeichen der Sammelschleife).'],
+            ['type' => 'Geändert', 'text' => 'Das PHP-Image gibt keinen Standard-Healthcheck mehr vor; jeder Dienst legt seinen passenden Healthcheck selbst fest. Eine automatische Prüfung (tools/compose-check.py) verhindert künftig, dass ein Dienst einen unpassenden Healthcheck erbt oder ein Dollarzeichen in einem Healthcheck falsch ausgewertet wird.'],
+            ['type' => 'Geändert', 'text' => 'Die Servereinrichtung setzt die von Redis empfohlene Kernel-Einstellung vm.overcommit_memory dauerhaft und wiederholbar.'],
+            ['type' => 'Behoben', 'text' => 'Datum von SEPA-Mandaten und die Prüfung überfälliger Termine richten sich nach der Zeitzone der Anwendung statt nach dem Datum des Datenbankservers. Läuft die Datenbank in UTC, trug ein zwischen Mitternacht und 02:00 Uhr digital erteiltes Mandat bisher das Datum des Vortages.'],
+         ]],
         ['version' => '4.3', 'date' => '06.09.2026', 'title' => 'VPS-Stack nutzt die Coolify-Datenbank',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Der Docker-Stack auf dem Hostinger-VPS startet keine eigene MariaDB und keinen eigenen Backup-Container mehr; genutzt wird die bereits eingerichtete private Coolify-MariaDB 11.8 (kein öffentlicher Port), gesichert durch Coolify mit externem Ziel Hetzner Object Storage.'],

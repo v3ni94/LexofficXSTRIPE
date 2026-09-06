@@ -23,6 +23,7 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 | `scripts/db-verify.php` | Tabellen, Zeilenzahlen, CHECKSUM TABLE als JSON (Alt/Neu-Abgleich) |
 | `scripts/maintenance.sh` | Wartungsmodus (`app/storage/maintenance.flag`) ein-/ausschalten |
 | `backup/restore-test.sh` | Wiederherstellungstest eines Coolify-Dumps in einer temporaeren Datenbank (Client-Container im Coolify-Netz); `backup.sh`/`Dockerfile` nur Ausweichloesung ohne Coolify, nicht im Stack |
+| `tools/compose-check.py` (liegt unter `tools/`, nicht unter diesem Ordner, gehoert aber zur Pruefung dieses Ordners) | Prueft die Compose-Dateien und `php/Dockerfile` ohne laufenden Docker-Daemon: jeder Dienst aus dem PHP-Image hat einen eigenen, zum Prozess passenden Healthcheck, kein Healthcheck enthaelt ein unescaptes "$", Variablen haben einen Vorgabewert oder stehen in `.env.example` |
 
 ## Start
 
@@ -193,6 +194,21 @@ Weiterhin offen und vor dem produktiven Betrieb zu entscheiden:
   Start der Container mit Health Checks, Let's Encrypt und SSH-Deployment war in der
   Entwicklungsumgebung ohne Docker-Daemon nicht moeglich und ist Teil der Staging-Erprobung.
 
+## Healthchecks
+
+Jeder Dienst aus dem gemeinsamen PHP-Image definiert seinen Healthcheck in `docker-compose.yml`
+selbst (`php`: `--db`, `scheduler` und alle `worker-*`: `--heartbeat`, `metrics`: `--metrics`);
+`php/Dockerfile` setzt bewusst `HEALTHCHECK NONE`, damit ein vergessener Eintrag als "kein
+Healthcheck" auffaellt und nicht als falsches Ergebnis eines fuer die jeweilige Rolle unpassenden,
+vererbten Standard-Healthchecks. Genau dieser Fall (Dienst `metrics` erbte den
+Worker-Heartbeat-Healthcheck, obwohl `bin/host-metrics.php` keinen Worker-Heartbeat schreibt) fuehrte
+beim ersten Deployment zu einem dauerhaft "unhealthy" gemeldeten Container und einem abgebrochenen
+`deploy.sh`; Einzelheiten, die Tabelle aller Healthchecks und die Stoerungspruefung stehen in
+`docs/vps/06-betrieb.md`, Abschnitt "Healthchecks der Container". `redis` prueft ueber
+`redis-cli ping`; `caddy` hat bewusst keinen Container-Healthcheck (das Basisimage bringt keinen mit,
+`deploy.sh` wartet nur auf Container mit Healthcheck und prueft die Proxykette anschliessend
+funktional ueber `health.php`).
+
 ## Pruefungen, die dieser Ordner ohne laufenden Docker-Daemon besteht
 
 ```bash
@@ -204,4 +220,5 @@ docker compose -f deploy/vps/docker-compose.yml -f deploy/vps/docker-compose.sta
 
 bash -n deploy/vps/scripts/*.sh deploy/vps/backup/*.sh
 php -l deploy/vps/scripts/db-verify.php
+python3 tools/compose-check.py
 ```

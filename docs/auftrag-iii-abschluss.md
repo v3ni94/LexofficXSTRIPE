@@ -279,6 +279,111 @@ hat außerdem eine Coolify-GitHub-App für SmartEinzug angelegt.
 - Testverbindung aus einem kurzlebigen Client-Container im Netz `coolify` gegen die Coolify-MariaDB
   ausführen (siehe `docs/vps/08-hostinger-coolify.md`, Schritt 5a).
 
+## Nachtrag Erst-Deployment: Healthcheck des Metrik-Sammlers (Version 4.4)
+
+Stand: 06.09.2026. Der manuelle Erst-Deploy auf dem Hostinger-VPS KVM 8 ist erfolgreich
+abgeschlossen: `/opt/smarteinzug/releases/current` zeigt auf `releases/manual-initial`; `php`,
+`redis`, `scheduler`, `worker-lexware-1`, `worker-lexware-2`, `worker-stripe`, `worker-mail`,
+`worker-maintenance` und `metrics` sind `healthy`, Caddy läuft; genutzt wird die bestehende
+Coolify-MariaDB (Containername `fywft1vc4rr5uyy3mw7lgy4s`, Docker-Netz `coolify`, Datenbank
+`smarteinzug`); die IONOS-Bestandsdaten wurden importiert; `bin/migrate.php` meldet
+„0 eingespielt, 0 offen“. Bei diesem ersten Deployment trat ein Fehler auf, dessen endgültige
+Lösung dieser Nachtrag beschreibt.
+
+### Fehlerbild
+
+Der Container `smarteinzug-metrics-1` wurde als `unhealthy` gemeldet, und `deploy.sh` brach ab,
+obwohl der Metrik-Prozess tatsächlich lief. Meldung: „UNGESUND: heartbeat: kein frischer
+Heartbeat“.
+
+### Ursache
+
+Der Dienst `metrics` hatte in `deploy/vps/docker-compose.yml` keinen eigenen Healthcheck und
+übernahm deshalb den Standard-Healthcheck des PHP-Images (`HEALTHCHECK` im Dockerfile:
+`php bin/healthcheck.php --heartbeat`). Dieser Healthcheck prüft den Worker-Heartbeat, den
+`bin/host-metrics.php` bewusst nicht schreibt.
+
+Als getestete Zwischenlösung auf dem Server diente ein `CMD-SHELL`-Healthcheck mit einem
+PHP-Einzeiler, der `/proc/1/cmdline` liest; dabei zeigte sich eine zweite Falle: In Docker Compose
+muss `$$c` statt `$c` geschrieben werden, sonst wertet Compose `$c` als eigene Variable aus („The
+"c" variable is not set. Defaulting to a blank string.“), und im Container entsteht ein
+beschädigter PHP-Befehl.
+
+### Endgültige Lösung im Repository
+
+1. Neuer dedizierter Modus `php bin/healthcheck.php --metrics`. Er prüft zweistufig, ob
+   `bin/host-metrics.php` als PID 1 läuft (gelesen aus `/proc/1/cmdline`, Argumente dort durch
+   Nullbytes getrennt) und ob die Sammelschleife zuletzt innerhalb von
+   `METRICS_MAX_AGE_SECONDS` (Standard 300 Sekunden) einen Durchlauf beendet hat. Letzteres beruht
+   auf einer eigenen Heartbeat-Datei (`METRICS_HEARTBEAT_FILE`), die `bin/host-metrics.php` beim
+   Start und nach jedem Durchlauf rein lokal schreibt, bewusst außerhalb der Fehlerbehandlung,
+   damit eine kurzzeitig nicht erreichbare Datenbank den Container nicht fälschlich als ungesund
+   markiert; sie belegt „die Schleife läuft“, nicht „alle Messwerte liegen vor“.
+2. `deploy/vps/php/Dockerfile` enthält jetzt `HEALTHCHECK NONE`. Jeder Dienst definiert seinen
+   Healthcheck in `docker-compose.yml` selbst (`php`: `--db`, `scheduler` und alle `worker-*`:
+   `--heartbeat`, `metrics`: `--metrics`); ein vergessener Eintrag fällt dadurch als „kein
+   Healthcheck“ auf und nicht als falsches Ergebnis eines fremden Checks.
+3. Neuer Regressionstest `tools/compose-check.py` (ohne Docker-Daemon lauffähig, benötigt
+   PyYAML). Er prüft unter anderem, dass jeder Dienst aus dem Image `smarteinzug-php:local` einen
+   eigenen, zum tatsächlichen Kommando passenden Healthcheck hat, dass kein Healthcheck ein
+   unescaptes `$` enthält, dass jede Compose-Variable einen Vorgabewert hat oder in
+   `.env.example` steht, und dass das Dockerfile `HEALTHCHECK NONE` enthält. Der Test ist im
+   GitHub-Workflow im Job „test“ eingebunden und wurde mit vier Negativproben verifiziert (`metrics`
+   ohne Healthcheck, `metrics` mit geerbtem Worker-Heartbeat, Healthcheck mit unescaptem `$c`,
+   Dockerfile mit vererbbarem Standard-Healthcheck). Lokaler Aufruf: `python3 tools/compose-check.py`.
+4. Neuer Test `scratchpad/test_healthcheck.php` mit 11 Prüfungen, alle bestanden (unter anderem:
+   richtiger Prozess mit frischem Lebenszeichen gesund, ohne Lebenszeichen ungesund, Lebenszeichen
+   400 Sekunden alt ungesund, `METRICS_MAX_AGE_SECONDS` hebt die Grenze an, php-fpm oder ein Worker
+   als PID 1 ungesund, `--heartbeat` unverändert, Lebenszeichen liegt binnen 1,5 Sekunden nach dem
+   Start vor, weshalb `start_period` von 20 Sekunden genügt).
+
+### Begründung der Architekturentscheidung
+
+Die Prüflogik liegt damit in versioniertem, testbarem PHP-Code statt in YAML; der Healthcheck
+enthält kein Dollarzeichen mehr, die Escaping-Falle der Zwischenlösung entfällt also strukturell.
+Ein hängender Prozess wird zusätzlich erkannt (über die Heartbeat-Datei), während eine reine
+Prozessprüfung ihn fälschlich als gesund gemeldet hätte; der Mechanismus der Prozessprüfung selbst
+(`/proc/1/cmdline`) ist derselbe wie in der auf dem Server getesteten Zwischenlösung, die
+Zuverlässigkeit also mindestens gleich. Caddy hat weiterhin keinen Container-Healthcheck (das
+Basisimage `caddy:2-alpine` bringt keinen mit); `deploy.sh` wartet nur auf Container mit
+Healthcheck und prüft die Kette Coolify-Proxy, Caddy, php-fpm anschließend funktional über den
+HTTPS-Aufruf von `health.php`. Ein zusätzlicher Caddy-Healthcheck wurde bewusst nicht eingeführt,
+weil er ungeprüft in den deploy-blockierenden Pfad eingreifen würde.
+
+### Sysctl-Ergänzung: vm.overcommit_memory
+
+Unabhängig vom Healthcheck-Fehler setzt `setup-vps.sh` seit dieser Version in Schritt 5 von 10
+idempotent `vm.overcommit_memory = 1` über `/etc/sysctl.d/99-smarteinzug.conf` (Redis benötigt
+Memory-Overcommit für zuverlässige Hintergrund-Speicherabzüge, sonst die Warnung „Memory
+overcommit must be enabled“); eine vorhandene Einstellung in dieser Datei wird nicht
+überschrieben. Die Schrittnummerierung von `setup-vps.sh` lautet jetzt 1/10 bis 10/10 (neu: 5/10
+Kernel-Einstellung für Redis; die früheren Schritte 5 bis 9 sind jetzt 6 bis 10). Auf dem Server
+ist die Einstellung bereits persistent gesetzt (auf dem Server zu prüfen: `sysctl
+vm.overcommit_memory`).
+
+### Statusstufen
+
+| Baustein | Stand |
+|---|---|
+| Erster, manueller Deploy auf dem Hostinger-VPS (`releases/manual-initial`, alle Dienste `healthy`, Coolify-MariaDB genutzt) | produktiv abgeschlossen (vom Betreiber bestätigt) |
+| Datenbankimport der IONOS-Bestandsdaten, Migrationsstand „0 eingespielt, 0 offen“ | produktiv abgeschlossen (vom Betreiber bestätigt) |
+| Eigener Healthcheck-Modus `--metrics`, `HEALTHCHECK NONE` im Dockerfile, je Dienst passender Healthcheck in `docker-compose.yml` | umgesetzt (im Repository) |
+| Regressionstest `tools/compose-check.py`, eingebunden im GitHub-Workflow (Job „test“) | umgesetzt und mit vier Negativproben verifiziert (im Repository) |
+| Test `scratchpad/test_healthcheck.php` (11 Prüfungen) | umgesetzt, alle Prüfungen bestanden |
+| `vm.overcommit_memory = 1` über `setup-vps.sh` (neuer Schritt 5 von 10) | umgesetzt (im Repository); auf dem Server bereits persistent gesetzt (vom Betreiber bestätigt) |
+| Erstes Deployment über den GitHub-Workflow (`workflow_dispatch`) | offen, siehe `docs/vps/08-hostinger-coolify.md`, Schritt 9 |
+
+
+### Nebenbefund aus dem Testlauf: Datum aus der Datenbank statt aus der Anwendung
+
+Der vollständige Testlauf zu Version 4.4 fiel in das Zeitfenster zwischen 00:00 und 02:00 Uhr deutscher Zeit und deckte dadurch einen bis dahin unentdeckten Fehler auf: Drei Abfragen verwendeten `CURDATE()`, also das Datum des Datenbankservers. Die Testdatenbank läuft in UTC, die Anwendung rechnet mit Europe/Berlin; in diesem Zeitfenster liegen beide Daten einen Tag auseinander.
+
+Auswirkung in der Produktion: Ein digital über Stripe erteiltes SEPA-Mandat hätte zwischen 00:00 und 02:00 Uhr (Sommerzeit, im Winter zwischen 01:00 und 02:00 Uhr) als Unterschrifts- und Mandatsdatum den Vortag getragen. Das Mandatsdatum ist auf dem Mandat ausgewiesen und rechtlich erheblich. Ebenso wurden terminierte Einzüge in diesem Fenster gegen ein um einen Tag abweichendes Datum auf Überfälligkeit geprüft.
+
+Behoben in `app/mandate_requests.php` (digitale Mandatserteilung), `app/mandates.php` (Anlage eines Mandats) und `app/alerts.php` (Überfälligkeit): Das Vergleichs- und Speicherdatum stammt jetzt aus der Anwendung, deren Zeitzone `app/bootstrap.php` aus der Konfiguration setzt. Die verbleibenden `CURDATE()`-Aufrufe in `admin.php` betreffen ausschließlich die Zeitachse zweier Diagramme über 13 Wochen und sind unkritisch. Der zuvor fehlschlagende Test (`test_payment_safety.php`, Prüfung "Mandat digital erteilt") besteht seitdem; die Suite liefert wieder 140 von 140.
+
+Auf dem VPS ist dieser Punkt besonders relevant, weil die Zeitzone der Coolify-MariaDB nicht von der Anwendung gesetzt wird (auf dem Server zu prüfen: `SELECT @@global.time_zone, @@session.time_zone;`). Mit der Korrektur ist das Verhalten unabhängig von der Einstellung der Datenbank.
+
 ## Verbleibende Risiken
 
 - Ein VPS ohne Hochverfügbarkeit: Ausfall bedeutet Nichtverfügbarkeit bis zur Wiederherstellung aus Backup (bewusst, Auftrag Abschnitt 97).

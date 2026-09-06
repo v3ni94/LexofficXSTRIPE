@@ -168,6 +168,14 @@ jobs:
       # test_rules_sync.php und test_totp.php laufen lokal gegen eine frische
       # MariaDB-Instanz, nicht im CI-Runner ohne Datenbankdienst.
 
+      - name: VPS-Compose pruefen (Healthchecks, Variablen)
+        if: hashFiles('tools/compose-check.py') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --disable-pip-version-check pyyaml
+          python3 tools/compose-check.py
+
       - name: Marketingseiten pruefen (site-qa)
         if: needs.changes.outputs.websites == 'true'
         shell: bash

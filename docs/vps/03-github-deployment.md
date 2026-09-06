@@ -133,12 +133,21 @@ wird (Bedingung in `deploy.yml`: `vars.VPS_DEPLOY_ENABLED == 'true'`). Danach:
 2. GitHub Actions > Workflow „Deployment IONOS-Webhosting und VPS“ > „Run workflow“
    (`workflow_dispatch`) auf dem gewünschten Branch auslösen.
 3. Ablauf beobachten: Job „changes“ (bei `workflow_dispatch` gilt alles als geändert), Job „test“
-   (PHP-Lint, gegebenenfalls Website-QA, Dokumentation), Job „deploy-vps“ (rsync von `php-ionos/`,
+   (PHP-Lint, gegebenenfalls Website-QA, Dokumentation, zusätzlich `python3 tools/compose-check.py`,
+   siehe unten), Job „deploy-vps“ (rsync von `php-ionos/`,
    `deploy/vps/` und der Statusseite, Ausführung von `deploy/vps/scripts/deploy.sh <git-sha>` aus dem neuen Release auf dem Server,
    Health-Check).
 4. Bei `VPS_HEALTH_STRICT=false` (empfohlen, solange DNS noch nicht auf den VPS zeigt) endet der
    Job auch bei fehlgeschlagenem externen Health-Check mit einer Warnung, nicht mit einem Abbruch;
    der eigentliche Deploy-Erfolg zeigt sich am Exit-Code von `deploy.sh` auf dem Server.
+
+`tools/compose-check.py` im Job „test“ prüft die Compose-Dateien unter `deploy/vps/` ohne laufenden
+Docker-Daemon (Details und Aufruf: `deploy/vps/README.md`) und verhindert dadurch bereits vor dem
+Deployment, dass ein Dienst ohne eigenen oder mit einem zum Prozess nicht passenden Healthcheck auf
+den VPS gelangt, so wie es beim ersten Deployment mit dem Dienst `metrics` der Fall war (siehe
+`docs/vps/06-betrieb.md`, Abschnitt „Healthchecks der Container“). Ein Fehler dieses Skripts lässt
+den Job „test“ und damit den gesamten Workflow-Lauf fehlschlagen, bevor ein Deployment überhaupt
+versucht wird.
 5. Ergebnis prüfen: `ssh -i ~/.ssh/smarteinzug_vps_admin deploy@HIER-VPS-IP "readlink -f /opt/smarteinzug/releases/current"` zeigt den neuen Git-SHA; `docker compose ... ps` zeigt neu gestartete Container.
 6. Erst nach einem erfolgreichen Testlauf `VPS_HEALTH_STRICT` auf `true` setzen (siehe
    `docs/vps/02-einrichtung-vps.md`, Schritt 18 ff.).

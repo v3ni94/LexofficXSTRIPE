@@ -44,7 +44,13 @@ COPY www.conf /usr/local/etc/php-fpm.d/www.conf
 RUN install -d -m 1733 /var/lib/php/sessions
 WORKDIR /opt/smarteinzug/releases/current
 
-# Healthcheck wird in docker-compose.yml je Rolle gesetzt (Web: --db, Scheduler/Worker: --heartbeat),
-# hier nur ein neutraler Fallback fuer den Fall, dass ein Compose-Override keinen eigenen definiert.
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=20s \
-    CMD php bin/healthcheck.php --heartbeat || exit 1
+# Bewusst KEIN Standard-Healthcheck im Image: dasselbe Image traegt Web (php-fpm), Scheduler, Worker und
+# den Metrik-Sammler; ein gemeinsamer Vorgabewert waere fuer mindestens eine dieser Rollen falsch. Genau das
+# ist beim ersten Deployment passiert: der Dienst "metrics" erbte den Worker-Healthcheck
+# (bin/healthcheck.php --heartbeat), erzeugt aber keinen Worker-Heartbeat, meldete dauerhaft
+# "UNGESUND: heartbeat: kein frischer Heartbeat" und brach deploy.sh ab, obwohl der Prozess lief.
+# Seitdem definiert jeder Dienst in docker-compose.yml seinen passenden Healthcheck selbst
+# (Web: --db, Scheduler/Worker: --heartbeat, Metrik-Sammler: --metrics); tools/compose-check.py prueft das.
+# HEALTHCHECK NONE stellt sicher, dass ein vergessener Eintrag als "kein Healthcheck" auffaellt und nicht
+# als falsch-negatives Ergebnis eines fremden Checks.
+HEALTHCHECK NONE

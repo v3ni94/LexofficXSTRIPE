@@ -29,6 +29,9 @@ function cpu_sample(string $proc): ?array
 
 $prev = cpu_sample($proc);
 $prevQ = null;
+// Lebenszeichen sofort schreiben (der erste Messdurchlauf erfolgt erst nach $interval Sekunden) und danach
+// nach jedem Durchlauf erneuern; bin/healthcheck.php --metrics prüft diese Datei.
+metrics_heartbeat_touch();
 while (true) {
     sleep($interval);
     try {
@@ -75,8 +78,22 @@ while (true) {
     } catch (Throwable $e) {
         app_log('warning', 'Host-Metriken teilweise nicht erfasst', ['error_code' => monitor_category($e)]);
     }
+    // Ausserhalb des try: das Lebenszeichen soll auch dann erneuert werden, wenn einzelne Messungen
+    // fehlschlagen (z.B. Datenbank kurz nicht erreichbar). Es belegt "die Schleife laeuft", nicht "alle
+    // Messwerte liegen vor".
+    metrics_heartbeat_touch();
     if (isset($opts['once'])) {
         break;
+    }
+}
+
+/** Lebenszeichen des Sammlers schreiben (Fehler werden bewusst ignoriert, sie duerfen den Lauf nicht stoppen). */
+function metrics_heartbeat_touch(): void
+{
+    $file = metrics_heartbeat_file();
+    $tmp = $file . '.tmp';
+    if (@file_put_contents($tmp, (string)time()) !== false) {
+        @rename($tmp, $file);
     }
 }
 

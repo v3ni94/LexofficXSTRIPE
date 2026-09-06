@@ -30,6 +30,16 @@ function cli_opts(array $argv): array
     return $o;
 }
 
+/**
+ * Heartbeat-Datei des Metrik-Sammlers (bin/host-metrics.php schreibt sie nach jedem Durchlauf,
+ * bin/healthcheck.php --metrics liest sie). Rein containerlokal, unabhängig von Datenbank und Redis.
+ */
+function metrics_heartbeat_file(): string
+{
+    $f = (string)getenv('METRICS_HEARTBEAT_FILE');
+    return $f !== '' ? $f : sys_get_temp_dir() . '/smarteinzug-metrics-heartbeat';
+}
+
 function cli_out(string $line): void
 {
     fwrite(STDOUT, '[' . date('d.m.Y H:i:s') . '] ' . $line . "\n");

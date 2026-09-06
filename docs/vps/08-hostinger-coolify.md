@@ -33,8 +33,9 @@ Hostinger-Kundenbereich).
 | `deploy/vps/` (Compose, Caddyfile, `.env.example`) auf Coolify/Traefik-Proxy und Coolify-MariaDB umgestellt (kein `mariadb`-, kein `backup`-Dienst mehr im Stack) | vorbereitet (im Repository) |
 | `setup-vps.sh` erkennt Coolify (Firewall wird ergänzt statt zurückgesetzt, Port 8000 gesperrt bzw. optional per `COOLIFY_UI_ALLOW_FROM` freigegeben) | vorbereitet (im Repository); Wirkung beim ersten Lauf auf dem Server zu prüfen |
 | Diese Anleitung (Schritte 1 bis 13) | vorbereitet, noch nicht vollständig durchgeführt |
-| Erstes Deployment über den GitHub-Workflow | offen |
-| Datenbankimport von Bestandsdaten | offen |
+| Erstes Deployment, manuell auf dem Server ausgeführt: `/opt/smarteinzug/releases/current` zeigt auf `releases/manual-initial`; `php`, `redis`, `scheduler`, `worker-lexware-1`, `worker-lexware-2`, `worker-stripe`, `worker-mail`, `worker-maintenance` und `metrics` `healthy`, Caddy läuft; genutzt wird die bestehende Coolify-MariaDB (Containername `fywft1vc4rr5uyy3mw7lgy4s`, Docker-Netz `coolify`, Datenbank `smarteinzug`) | produktiv abgeschlossen (vom Betreiber bestätigt); erstes Deployment über den GitHub-Workflow (`workflow_dispatch`, Schritt 9 unten) weiterhin offen |
+| Datenbankimport von Bestandsdaten (IONOS-Bestandsdaten importiert, Migrationsstand „0 eingespielt, 0 offen“) | produktiv abgeschlossen (vom Betreiber bestätigt) |
+| `vm.overcommit_memory = 1` (von Redis für zuverlässige Hintergrund-Speicherabzüge benötigt, siehe Schritt 3) | auf dem Server bereits gesetzt (vom Betreiber bestätigt); `setup-vps.sh` setzt die Einstellung künftig automatisch in Schritt 5 von 10, siehe unten |
 | Produktive DNS-Umstellung, Cutover | offen, ausdrücklich noch nicht vorgenommen |
 
 Alles, was sich nur durch tatsächliches Ausführen auf dem Server bestätigen lässt, ist in den
@@ -116,11 +117,15 @@ cd /root/deploy-vps/scripts
 sudo bash setup-vps.sh /root/admin_key.pub
 ```
 
-**Erwartetes Ergebnis:** Ausgabe der neun Schritte des Skripts (Systemaktualisierung,
-Grundwerkzeuge, Benutzer `deploy`, Docker, `ufw`, `fail2ban`, `unattended-upgrades`,
-Verzeichnisstruktur, Hinweis zur SSH-Härtung). `setup-vps.sh` erkennt eine bereits laufende
-Coolify-Installation (Container mit Namen `coolify*`) und verhält sich dann abweichend vom
-Verhalten auf einem Server ohne Coolify:
+**Erwartetes Ergebnis:** Ausgabe der zehn Schritte des Skripts (Systemaktualisierung,
+Grundwerkzeuge, Benutzer `deploy`, Docker, Kernel-Einstellung `vm.overcommit_memory` für Redis,
+Verzeichnisstruktur, `ufw`, `fail2ban`, `unattended-upgrades`, Hinweis zur SSH-Härtung). Schritt 5
+von 10 setzt idempotent `vm.overcommit_memory = 1` über `/etc/sysctl.d/99-smarteinzug.conf` (Redis
+benötigt Memory-Overcommit für zuverlässige Hintergrund-Speicherabzüge, sonst die Warnung „Memory
+overcommit must be enabled“); eine bereits vorhandene Einstellung in dieser Datei wird nicht
+überschrieben. Auf dem beschafften Server ist die Einstellung bereits persistent gesetzt (siehe
+Statustabelle oben). `setup-vps.sh` erkennt eine bereits laufende Coolify-Installation (Container mit
+Namen `coolify*`) und verhält sich dann abweichend vom Verhalten auf einem Server ohne Coolify:
 
 - Docker wird nur installiert, wenn `docker --version` vorher fehlschlägt; auf der Hostinger-Vorlage
   „Ubuntu 24.04 with Coolify“ ist Docker bereits vorhanden, das Skript installiert hier nichts neu.
@@ -405,6 +410,14 @@ fehlgeschlagener externer Health-Check nur mit einer Warnung, nicht mit einem Ab
 **Prüfkommando:** GitHub Actions, Log des Jobs „deploy-vps“.
 
 **Mögliche Fehler:** siehe `docs/vps/03-github-deployment.md`, Abschnitt Fehlerbilder.
+
+**Bekanntes Problem (behoben):** Beim ersten, manuell durchgeführten Deployment wurde der Container
+`smarteinzug-metrics-1` als `unhealthy` gemeldet, und `deploy.sh` brach ab, obwohl der
+Metrik-Prozess tatsächlich lief. Ursache war ein fehlender eigener Healthcheck des Dienstes
+`metrics`. Der Dienst hat inzwischen einen eigenen, passenden Healthcheck
+(`bin/healthcheck.php --metrics`), und `tools/compose-check.py` verhindert ein Wiederauftreten
+dieser Fehlerklasse dauerhaft. Einzelheiten, Prüfbefehle und die Architekturentscheidung dazu:
+`docs/vps/06-betrieb.md`, Abschnitt „Healthchecks der Container“.
 
 ## 10. Auf dem Server prüfen
 

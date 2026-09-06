@@ -30,17 +30,17 @@ if ! grep -qE '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-)' "$PUBKEY_FILE"; then
     exit 1
 fi
 
-echo "== 1/9: System aktualisieren =="
+echo "== 1/10: System aktualisieren =="
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get upgrade -y
 
-echo "== 2/9: Grundwerkzeuge =="
+echo "== 2/10: Grundwerkzeuge =="
 apt-get install -y --no-install-recommends \
     ca-certificates curl gnupg lsb-release ufw fail2ban unattended-upgrades \
     apt-listchanges rsync jq
 
-echo "== 3/9: Benutzer deploy anlegen (idempotent) =="
+echo "== 3/10: Benutzer deploy anlegen (idempotent) =="
 if ! id -u deploy >/dev/null 2>&1; then
     useradd --create-home --shell /bin/bash deploy
     echo "Benutzer 'deploy' angelegt."
@@ -61,7 +61,7 @@ fi
 chown deploy:deploy "$AUTH_KEYS"
 chmod 600 "$AUTH_KEYS"
 
-echo "== 4/9: Docker aus dem offiziellen Repository (inkl. compose-plugin) =="
+echo "== 4/10: Docker aus dem offiziellen Repository (inkl. compose-plugin) =="
 # Hostinger-Vorlage "Ubuntu 24.04 with Coolify" bringt Docker bereits mit; dann wird hier nichts installiert.
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^coolify'; then
     echo "Coolify erkannt (Container coolify*). Docker und Coolify-Proxy bleiben unveraendert."
@@ -84,7 +84,33 @@ fi
 usermod -aG docker deploy || true
 systemctl enable --now docker
 
-echo "== 5/9: Verzeichnisstruktur unter /opt/smarteinzug =="
+echo "== 5/10: Kernel-Einstellung fuer Redis (vm.overcommit_memory) =="
+# Redis warnt ohne diese Einstellung "Memory overcommit must be enabled" und kann bei knappem Speicher
+# einen Hintergrund-Speicherabzug (fork) nicht abschliessen. Idempotent ueber eine eigene Datei in
+# /etc/sysctl.d; vorhandene Dateien anderer Pakete bleiben unberuehrt. Auf einem VPS mit Coolify gilt die
+# Einstellung fuer den ganzen Host, also auch fuer die Coolify-eigenen Dienste (Redis/Postgres) - das ist
+# die von Redis empfohlene Einstellung und keine Einschraenkung fuer andere Programme.
+SYSCTL_FILE=/etc/sysctl.d/99-smarteinzug.conf
+SYSCTL_LINE="vm.overcommit_memory = 1"
+install -d -m 755 /etc/sysctl.d
+if [[ -f "$SYSCTL_FILE" ]] && grep -qE "^[[:space:]]*vm\.overcommit_memory[[:space:]]*=" "$SYSCTL_FILE"; then
+    echo "$SYSCTL_FILE enthaelt bereits vm.overcommit_memory, Datei bleibt unveraendert."
+else
+    printf '# SmartEinzug: von deploy/vps/scripts/setup-vps.sh gesetzt.\n# Redis benoetigt Memory-Overcommit fuer zuverlaessige Hintergrund-Speicherabzuege (fork).\n%s\n' \
+        "$SYSCTL_LINE" > "$SYSCTL_FILE"
+    chmod 644 "$SYSCTL_FILE"
+    echo "$SYSCTL_FILE geschrieben ($SYSCTL_LINE)."
+fi
+sysctl --system >/dev/null 2>&1 || sysctl -p "$SYSCTL_FILE" >/dev/null 2>&1 || true
+CURRENT_OVERCOMMIT="$(sysctl -n vm.overcommit_memory 2>/dev/null || echo unbekannt)"
+if [[ "$CURRENT_OVERCOMMIT" == "1" ]]; then
+    echo "vm.overcommit_memory = 1 ist aktiv (auch nach einem Neustart, da in $SYSCTL_FILE hinterlegt)."
+else
+    echo "::warning:: vm.overcommit_memory steht auf '$CURRENT_OVERCOMMIT' statt 1. Bitte pruefen:"
+    echo "            sysctl vm.overcommit_memory && grep -r overcommit /etc/sysctl.conf /etc/sysctl.d"
+fi
+
+echo "== 6/10: Verzeichnisstruktur unter /opt/smarteinzug =="
 install -d -m 750 -o deploy -g deploy \
     /opt/smarteinzug \
     /opt/smarteinzug/releases \
@@ -101,7 +127,7 @@ if [[ ! -f /opt/smarteinzug/shared/config.php ]]; then
     echo "Leere /opt/smarteinzug/shared/config.php angelegt. Vor dem ersten Start mit echtem Inhalt fuellen."
 fi
 
-echo "== 6/9: ufw (Firewall) =="
+echo "== 7/10: ufw (Firewall) =="
 # Auf einem Hostinger-VPS mit Coolify-Vorlage laeuft der Coolify-Proxy bereits auf 80/443 und die
 # Coolify-Oberflaeche auf 8000 (Websockets 6001/6002). Die Oberflaeche wird NICHT oeffentlich freigegeben,
 # sondern per SSH-Tunnel erreicht (ssh -L 8000:127.0.0.1:8000 deploy@SERVER, dann http://127.0.0.1:8000).
@@ -129,10 +155,10 @@ cat <<'EOF'
 HINWEIS Docker und ufw:
 Docker traegt eigene iptables-Regeln in die Kette DOCKER-USER ein und umgeht damit ufw fuer
 veroeffentlichte Container-Ports. Da hier NUR Caddy Ports veroeffentlicht (80/443, siehe
-docker-compose.yml) und MariaDB/Redis bewusst ohne "ports:"-Eintrag laufen, ist das Risiko gering.
-Trotzdem vor dem produktiven Start pruefen:
-  - "docker ps" zeigt nur 0.0.0.0:80->80 und 0.0.0.0:443->443 fuer den caddy-Dienst, keine weiteren
-    veroeffentlichten Ports.
+der Coolify-Proxy Ports veroeffentlicht (80/443) und die SmartEinzug-Dienste einschliesslich Redis
+bewusst ohne "ports:"-Eintrag laufen, ist das Risiko gering. Trotzdem vor dem produktiven Start pruefen:
+  - "docker ps" zeigt nur 0.0.0.0:80->80 und 0.0.0.0:443->443 fuer den Coolify-Proxy, keine weiteren
+    veroeffentlichten Ports (insbesondere nicht 3306 der Coolify-MariaDB).
   - Empfehlung fuer zusaetzliche Absicherung: Paket "ufw-docker" (https://github.com/chaifeng/ufw-docker)
     installieren, das die DOCKER-USER-Kette an ufw-Regeln bindet, oder manuell eine Regel in
     /etc/ufw/after.rules ergaenzen, die die DOCKER-USER-Kette an ufw's Standardablehnung koppelt.
@@ -140,7 +166,7 @@ Trotzdem vor dem produktiven Start pruefen:
     Punkte) und muss vor der Inbetriebnahme mit Produktivdaten bewusst entschieden werden.
 EOF
 
-echo "== 7/9: fail2ban (sshd-Jail) =="
+echo "== 8/10: fail2ban (sshd-Jail) =="
 install -d -m 755 /etc/fail2ban/jail.d
 cat > /etc/fail2ban/jail.d/sshd.local <<'EOF'
 [sshd]
@@ -154,7 +180,7 @@ EOF
 systemctl enable --now fail2ban
 systemctl restart fail2ban
 
-echo "== 8/9: unattended-upgrades (Sicherheitsupdates automatisch) =="
+echo "== 9/10: unattended-upgrades (Sicherheitsupdates automatisch) =="
 dpkg-reconfigure -f noninteractive unattended-upgrades || true
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
@@ -162,7 +188,7 @@ APT::Periodic::Unattended-Upgrade "1";
 EOF
 systemctl enable --now unattended-upgrades
 
-echo "== 9/9: sshd haerten (nur nach ausdruecklicher Bestaetigung) =="
+echo "== 10/10: sshd haerten (nur nach ausdruecklicher Bestaetigung) =="
 cat <<'EOF'
 
 VOR DEM NAECHSTEN SCHRITT: In einem ZWEITEN Terminal jetzt pruefen, dass die Anmeldung funktioniert:

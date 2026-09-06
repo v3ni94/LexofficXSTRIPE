@@ -51,6 +51,55 @@ mindestens ein lebender Worker, Scheduler-Heartbeat aktuell, Warteschlange lesba
 abgelaufenem Heartbeat. Einzelprüfungen: `--db`, `--redis`, `--workers=lexware,stripe`,
 `--scheduler`, `--queue`.
 
+## Healthchecks der Container
+
+Jeder Dienst aus dem gemeinsamen PHP-Image (`smarteinzug-php:local`) definiert seinen Healthcheck
+in `docker-compose.yml` selbst; das Image selbst gibt keinen Vorgabewert vor (`HEALTHCHECK NONE` in
+`deploy/vps/php/Dockerfile`), weil dasselbe Image Web, Scheduler, Worker und den Metrik-Sammler
+trägt und ein gemeinsamer Vorgabewert für mindestens eine dieser Rollen falsch wäre. Ein vergessener
+Healthcheck fällt dadurch als „kein Healthcheck“ auf, nicht als falsches Ergebnis eines fremden
+Checks. `tools/compose-check.py` prüft das ohne laufenden Docker-Daemon (siehe unten).
+
+| Dienst | Prozess | Healthcheck | Bedeutung |
+|---|---|---|---|
+| `php` | php-fpm (Web) | `bin/healthcheck.php --db` | Datenbank über `SELECT 1` erreichbar |
+| `scheduler` | `bin/scheduler.php` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des Containers jünger als 90 Sekunden |
+| `worker-lexware-1`, `worker-lexware-2`, `worker-stripe`, `worker-mail`, `worker-maintenance` | `bin/worker.php --pool=...` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des jeweiligen Worker-Containers jünger als 90 Sekunden |
+| `metrics` | `bin/host-metrics.php` | `bin/healthcheck.php --metrics` | `bin/host-metrics.php` läuft als PID 1 UND die Sammelschleife hat zuletzt innerhalb von `METRICS_MAX_AGE_SECONDS` (Standard 300 Sekunden) einen Durchlauf beendet |
+| `redis` | `redis-server` | `redis-cli ping` | Redis antwortet |
+| `caddy` | `caddy` | keiner | Das Basisimage `caddy:2-alpine` bringt keinen eigenen Healthcheck mit; kein Mangel, siehe unten |
+
+Zu `caddy`: `deploy/vps/scripts/deploy.sh` wartet beim Deployment nur auf Container, die einen
+Healthcheck besitzen, und prüft die Kette Coolify-Proxy, Caddy, php-fpm anschließend funktional über
+den HTTPS-Aufruf von `health.php`. Ein zusätzlicher Container-Healthcheck für Caddy wurde bewusst
+nicht eingeführt, weil er ungeprüft in den deploy-blockierenden Pfad eingreifen würde.
+
+### Störung: metrics meldet unhealthy
+
+**Symptom:** `docker compose ... ps` zeigt den Dienst `metrics` als `unhealthy`; ein laufendes
+Deployment bricht ab, obwohl der Metrik-Sammler-Prozess selbst läuft.
+
+**Ursache:** Der Dienst `metrics` hatte in einer früheren Fassung von
+`deploy/vps/docker-compose.yml` keinen eigenen Healthcheck und übernahm dadurch den
+Standard-Healthcheck des PHP-Images (`bin/healthcheck.php --heartbeat`). Dieser Healthcheck prüft
+den Worker-Heartbeat, den `bin/host-metrics.php` bewusst nicht schreibt (Meldung
+„UNGESUND: heartbeat: kein frischer Heartbeat“). Seit der Einführung des eigenen Modus
+`bin/healthcheck.php --metrics` (siehe Tabelle oben) ist dieser Fehler strukturell ausgeschlossen;
+`tools/compose-check.py` verhindert ein Wiederauftreten dauerhaft.
+
+**Heutige Prüfung:**
+
+```bash
+docker inspect --format '{{.State.Health.Status}}' smarteinzug-metrics-1
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec metrics php bin/healthcheck.php --metrics
+```
+
+Der zweite Befehl gibt bei einer echten Störung eine Kurzmeldung aus (zum Beispiel „bin/host-metrics.php
+läuft nicht als PID 1“ oder „letzter Durchlauf vor ... s“) und hilft, zwischen einem hängenden
+Prozess und einer zu kurzen Wartezeit nach dem Start zu unterscheiden. Ein dauerhaft ungesunder
+`metrics`-Container bricht ein Deployment ab, da `deploy.sh` auf den gesunden Zustand aller
+Container mit Healthcheck wartet.
+
 ## Worker skalieren und neu starten
 
 ```bash
