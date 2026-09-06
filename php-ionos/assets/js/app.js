@@ -29,12 +29,30 @@
             if (event.key === 'Escape' && menu.hasAttribute('open')) { menu.removeAttribute('open'); }
         });
     }
+    function initCountdownRedirect() {
+        // Registrierung mit bestehendem Konto: sichtbarer Countdown, danach Weiterleitung zur Anmeldung.
+        // Der Button "Jetzt anmelden" ist ein normaler Link und funktioniert unabhängig davon.
+        var els = document.querySelectorAll('[data-countdown-redirect]');
+        for (var i = 0; i < els.length; i++) {
+            (function (el) {
+                var seconds = parseInt(el.getAttribute('data-countdown-seconds') || '5', 10);
+                var target = el.getAttribute('data-countdown-redirect');
+                var out = el.querySelector('[data-countdown-value]');
+                var timer = window.setInterval(function () {
+                    seconds -= 1;
+                    if (out) { out.textContent = String(Math.max(seconds, 0)); }
+                    if (seconds <= 0) { window.clearInterval(timer); window.location.href = target; }
+                }, 1000);
+            })(els[i]);
+        }
+    }
     function init() {
         var boxes = document.querySelectorAll('input[type="checkbox"][data-toggle-password]');
         for (var i = 0; i < boxes.length; i++) {
             bindToggle(boxes[i]);
         }
         initProfileMenu();
+        initCountdownRedirect();
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

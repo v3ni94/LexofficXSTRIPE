@@ -350,7 +350,7 @@ function login_throttle_check(string $email): ?string
 
     $stmt = $pdo->prepare(
         "SELECT COUNT(*) FROM login_attempts
-         WHERE email = ? AND success = 0 AND stage <> 'reset' AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+         WHERE email = ? AND success = 0 AND stage NOT IN ('reset', 'register') AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
     );
     $stmt->execute([$email, LOGIN_LOCK_MINUTES]);
     if ((int)$stmt->fetchColumn() >= LOGIN_MAX_FAILS_EMAIL) {
@@ -361,7 +361,7 @@ function login_throttle_check(string $email): ?string
     if ($ip) {
         $stmt = $pdo->prepare(
             "SELECT COUNT(*) FROM login_attempts
-             WHERE ip = ? AND success = 0 AND stage <> 'reset' AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+             WHERE ip = ? AND success = 0 AND stage NOT IN ('reset', 'register') AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
         );
         $stmt->execute([$ip, LOGIN_LOCK_MINUTES]);
         if ((int)$stmt->fetchColumn() >= LOGIN_MAX_FAILS_IP) {
@@ -962,17 +962,31 @@ function auth_register(
     }
 
     $pdo = db();
-    $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email');
-    $stmt->execute(['email' => $email]);
-    if ($stmt->fetch()) {
-        return 'Diese E-Mail-Adresse ist bereits registriert. Bitte melden Sie sich an.';
+    // Gleichzeitige Registrierungen serialisieren (Abschnitt 6.2). Zusätzlich schützt der
+    // eindeutige Index auf users.email; dessen Verletzung wird unten abgefangen.
+    if (!registration_lock_acquire($pdo)) {
+        return 'Die Registrierung ist derzeit belegt. Bitte in wenigen Sekunden erneut versuchen.';
     }
-    $stmt = $pdo->prepare('SELECT 1 FROM organizations WHERE mandate_prefix = ?');
-    $stmt->execute([$mandatePrefix]);
-    if ($stmt->fetch()) {
-        return "Das Mandatspräfix \"$mandatePrefix\" wird bereits verwendet. Bitte ein anderes wählen.";
+    try {
+        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email');
+        $stmt->execute(['email' => $email]);
+        if ($stmt->fetch()) {
+            return 'Diese E-Mail-Adresse ist bereits registriert. Bitte melden Sie sich an.';
+        }
+        $stmt = $pdo->prepare('SELECT 1 FROM organizations WHERE mandate_prefix = ?');
+        $stmt->execute([$mandatePrefix]);
+        if ($stmt->fetch()) {
+            return "Das Mandatspräfix \"$mandatePrefix\" wird bereits verwendet. Bitte ein anderes wählen.";
+        }
+        return _auth_register_create($pdo, $email, $password, $orgName, $firstName, $lastName, $mandatePrefix);
+    } finally {
+        registration_lock_release($pdo);
     }
+}
 
+/** Benutzer, Firma, Mitgliedschaft und Integrationsdatensatz anlegen (unter gehaltener Registrierungssperre). */
+function _auth_register_create(PDO $pdo, string $email, string $password, string $orgName, ?string $firstName, ?string $lastName, string $mandatePrefix): ?string
+{
     $firstName = trim((string)$firstName) ?: null;
     $lastName = trim((string)$lastName) ?: null;
     $displayName = trim(($firstName ?? '') . ' ' . ($lastName ?? '')) ?: null;
@@ -1012,6 +1026,10 @@ function auth_register(
         $pdo->commit();
     } catch (Throwable $e) {
         $pdo->rollBack();
+        if ($e instanceof PDOException && (string)$e->getCode() === '23000') {
+            // Eindeutiger Index (users.email) hat eine gleichzeitige Doppelregistrierung verhindert
+            return 'Diese E-Mail-Adresse ist bereits registriert. Bitte melden Sie sich an.';
+        }
         error_log('Registrierung fehlgeschlagen: ' . $e->getMessage());
         return 'Registrierung fehlgeschlagen. Bitte später erneut versuchen.';
     }
@@ -1047,37 +1065,64 @@ function create_company(string $userId, string $orgName, string $mandatePrefix):
     }
 
     $pdo = db();
-    $stmt = $pdo->prepare('SELECT 1 FROM organizations WHERE mandate_prefix = ?');
-    $stmt->execute([$mandatePrefix]);
-    if ($stmt->fetch()) {
-        return ['org_id' => null, 'error' => "Das Mandatspräfix \"$mandatePrefix\" wird bereits verwendet."];
+    // Alle Firmenanlagen laufen nacheinander (Abschnitt 6.2): Präfix- und Namensprüfung gelten
+    // damit auch bei gleichzeitig abgeschickten Anfragen. Die Sperre ist unabhängig von Transaktionen.
+    if (!registration_lock_acquire($pdo)) {
+        return ['org_id' => null, 'error' => 'Die Firmenanlage ist derzeit belegt. Bitte in wenigen Sekunden erneut versuchen.'];
     }
-
-    // Herkunft der ersten Firma des Nutzers übernehmen (für die Auswertung)
-    $stmt = $pdo->prepare(
-        "SELECT o.signup_domain FROM organization_members m JOIN organizations o ON o.id = m.organization_id
-         WHERE m.user_id = ? AND m.role = 'owner' ORDER BY o.created_at ASC LIMIT 1"
-    );
-    $stmt->execute([$userId]);
-    $domain = $stmt->fetchColumn() ?: null;
-
-    $pdo->beginTransaction();
+    $outer = $pdo->inTransaction(); // z.B. Abschluss eines Registrierungsvorgangs (registration_request_complete)
     try {
-        $orgId = uuid4();
-        $pdo->prepare(
-            'INSERT INTO organizations (id, name, mandate_prefix, use_hvm_ci, plan_code, subscription_status, signup_domain)
-             VALUES (?, ?, ?, 0, ?, ?, ?)'
-        )->execute([$orgId, $orgName, $mandatePrefix, 'unlimited_start', 'pending', $domain]);
-        $pdo->prepare('INSERT INTO organization_members (id, organization_id, user_id, role, status) VALUES (?, ?, ?, ?, ?)')
-            ->execute([uuid4(), $orgId, $userId, 'owner', 'active']);
-        $pdo->prepare('INSERT INTO integrations (id, tenant_id) VALUES (?, ?)')
-            ->execute([uuid4(), $orgId]);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        $pdo->rollBack();
-        error_log('Firma anlegen fehlgeschlagen: ' . $e->getMessage());
-        return ['org_id' => null, 'error' => 'Firma konnte nicht angelegt werden.'];
+        $stmt = $pdo->prepare('SELECT 1 FROM organizations WHERE mandate_prefix = ?');
+        $stmt->execute([$mandatePrefix]);
+        if ($stmt->fetch()) {
+            return ['org_id' => null, 'error' => "Das Mandatspräfix \"$mandatePrefix\" wird bereits verwendet."];
+        }
+        // Gleicher Firmenname ist kein Berechtigungsnachweis und wird nicht global eindeutig gemacht;
+        // je Benutzer darf derselbe Name aber nur einmal zugeordnet sein (Abschnitt 6.1).
+        if (user_has_company_named($userId, $orgName, $pdo)) {
+            return ['org_id' => null, 'error' => 'Eine Firma mit diesem Namen ist Ihrem Benutzerkonto bereits zugeordnet. Bitte wechseln Sie über die Firmenübersicht dorthin oder wählen Sie einen anderen Namen.'];
+        }
+
+        // Herkunft der ersten Firma des Nutzers übernehmen (für die Auswertung)
+        $stmt = $pdo->prepare(
+            "SELECT o.signup_domain FROM organization_members m JOIN organizations o ON o.id = m.organization_id
+             WHERE m.user_id = ? AND m.role = 'owner' ORDER BY o.created_at ASC LIMIT 1"
+        );
+        $stmt->execute([$userId]);
+        $domain = $stmt->fetchColumn() ?: null;
+
+        if (!$outer) {
+            $pdo->beginTransaction();
+        }
+        try {
+            $orgId = uuid4();
+            $pdo->prepare(
+                'INSERT INTO organizations (id, name, mandate_prefix, use_hvm_ci, plan_code, subscription_status, signup_domain)
+                 VALUES (?, ?, ?, 0, ?, ?, ?)'
+            )->execute([$orgId, $orgName, $mandatePrefix, 'unlimited_start', 'pending', $domain]);
+            $pdo->prepare('INSERT INTO organization_members (id, organization_id, user_id, role, status) VALUES (?, ?, ?, ?, ?)')
+                ->execute([uuid4(), $orgId, $userId, 'owner', 'active']);
+            $pdo->prepare('INSERT INTO integrations (id, tenant_id) VALUES (?, ?)')
+                ->execute([uuid4(), $orgId]);
+            if (!$outer) {
+                $pdo->commit();
+            }
+        } catch (Throwable $e) {
+            if (!$outer && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('Firma anlegen fehlgeschlagen: ' . $e->getMessage());
+            if ($outer) {
+                throw $e; // äußere Transaktion entscheidet
+            }
+            return ['org_id' => null, 'error' => 'Firma konnte nicht angelegt werden.'];
+        }
+    } finally {
+        registration_lock_release($pdo);
     }
+
+    // Mehrere Firmen zugeordnet: Multiaccount automatisch aktivieren (Abschnitt 3.2)
+    user_multiaccount_autoenable($userId);
 
     audit_log($orgId, ['user_id' => $userId], 'company_created', 'organization', $orgId, ['name' => $orgName]);
     return ['org_id' => $orgId, 'error' => null];
@@ -1128,4 +1173,285 @@ function user_load(string $userId): ?array
     $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
     $stmt->execute([$userId]);
     return $stmt->fetch() ?: null;
+}
+
+// ---------------------------------------------------------------------------
+// Multiaccount (mehrere Firmen je Benutzerkonto) und Registrierung mit
+// bestehender E-Mail-Adresse (Auftrag II, Abschnitte 3, 4 und 6)
+// ---------------------------------------------------------------------------
+
+const REGISTRATION_REQUEST_MINUTES = 30; // Gültigkeit eines zwischengespeicherten Registrierungsvorgangs
+const REGISTER_MAX_ATTEMPTS_IP     = 10; // Registrierungsversuche mit bekannter E-Mail je IP in LOGIN_LOCK_MINUTES
+const REGISTRATION_LOCK_NAME       = 'smarteinzug_registration';
+
+/** Datenbankweite Sperre für Benutzer- und Firmenanlage (unabhängig von Transaktionen). */
+function registration_lock_acquire(PDO $pdo, int $waitSeconds = 5): bool
+{
+    try {
+        $stmt = $pdo->prepare('SELECT GET_LOCK(?, ?)');
+        $stmt->execute([REGISTRATION_LOCK_NAME, $waitSeconds]);
+        $got = (int)$stmt->fetchColumn() === 1;
+        $stmt->closeCursor();
+        return $got;
+    } catch (Throwable $e) {
+        error_log('Registrierungssperre: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function registration_lock_release(PDO $pdo): void
+{
+    try {
+        $stmt = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+        $stmt->execute([REGISTRATION_LOCK_NAME]);
+        $stmt->closeCursor();
+    } catch (Throwable $e) {
+        // Verbindung endet ohnehin mit dem Request; die Sperre fällt dann weg.
+    }
+}
+
+/**
+ * Firmennamen für den Dublettenvergleich normalisieren: Kleinschreibung, Leerzeichen
+ * zusammenfassen und abschneiden. Rechtsformen oder Namensbestandteile werden nicht entfernt.
+ */
+function org_name_normalize(string $name): string
+{
+    $n = mb_strtolower(trim($name));
+    return preg_replace('/\s+/u', ' ', $n) ?? $n;
+}
+
+/** Anzahl der aktiven, zugänglichen Firmen eines Benutzers. */
+function user_company_count(string $userId, ?PDO $pdo = null): int
+{
+    $stmt = ($pdo ?? db())->prepare(
+        "SELECT COUNT(*) FROM organization_members m JOIN organizations o ON o.id = m.organization_id
+         WHERE m.user_id = ? AND m.status = 'active' AND o.deleted_at IS NULL"
+    );
+    $stmt->execute([$userId]);
+    return (int)$stmt->fetchColumn();
+}
+
+/** Ist der Benutzer bereits einer aktiven Firma mit diesem (normalisierten) Namen zugeordnet? */
+function user_has_company_named(string $userId, string $orgName, ?PDO $pdo = null): bool
+{
+    $stmt = ($pdo ?? db())->prepare(
+        "SELECT o.name FROM organization_members m JOIN organizations o ON o.id = m.organization_id
+         WHERE m.user_id = ? AND m.status = 'active' AND o.deleted_at IS NULL"
+    );
+    $stmt->execute([$userId]);
+    $needle = org_name_normalize($orgName);
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $name) {
+        if (org_name_normalize((string)$name) === $needle) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Multiaccount-Zustand eines Benutzers.
+ *  active:    Firmenübersicht anzeigen (manuell aktiviert oder mehrere Firmen zugeordnet)
+ *  locked:    kann nicht deaktiviert werden, weil mehrere Firmen zugeordnet sind (Abschnitt 3.2)
+ *  manual:    gespeicherter Schalter users.multiaccount_enabled
+ *  companies: Anzahl zugänglicher Firmen
+ *  migrated:  Migration 015 vorhanden; ohne sie bleibt die Firmenübersicht wie bisher sichtbar
+ */
+function user_multiaccount_state(string $userId): array
+{
+    $count = user_company_count($userId);
+    try {
+        $stmt = db()->prepare('SELECT multiaccount_enabled FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $manual = (int)$stmt->fetchColumn() === 1;
+    } catch (Throwable $e) {
+        return ['active' => true, 'locked' => $count > 1, 'manual' => false, 'companies' => $count, 'migrated' => false];
+    }
+    $locked = $count > 1;
+    return ['active' => $manual || $locked, 'locked' => $locked, 'manual' => $manual, 'companies' => $count, 'migrated' => true];
+}
+
+/** Manuellen Multiaccount-Schalter setzen. Bei mehreren Firmen ist Deaktivieren nicht möglich. */
+function user_multiaccount_set(string $userId, bool $enabled, ?string $tenantId = null): ?string
+{
+    $state = user_multiaccount_state($userId);
+    if (!$state['migrated']) {
+        return 'Für Multiaccount fehlt noch die Datenbankmigration 015. Bitte den Betreiber informieren.';
+    }
+    if (!$enabled && $state['locked']) {
+        return 'Multiaccount ist aktiviert, weil Ihrem Benutzerkonto mehrere Firmen zugeordnet sind. Es kann daher nicht deaktiviert werden.';
+    }
+    if ($state['manual'] === $enabled) {
+        return null;
+    }
+    db()->prepare('UPDATE users SET multiaccount_enabled = ? WHERE id = ?')->execute([$enabled ? 1 : 0, $userId]);
+    audit_log($tenantId, ['user_id' => $userId], $enabled ? 'multiaccount_enabled' : 'multiaccount_disabled', 'user', $userId);
+    return null;
+}
+
+/** Multiaccount automatisch aktivieren, sobald mehrere Firmen zugeordnet sind (Abschnitt 3.2). */
+function user_multiaccount_autoenable(string $userId): void
+{
+    try {
+        if (user_company_count($userId) > 1) {
+            db()->prepare('UPDATE users SET multiaccount_enabled = 1 WHERE id = ? AND multiaccount_enabled = 0')->execute([$userId]);
+        }
+    } catch (Throwable $e) {
+        // Spalte fehlt bis Migration 015; die Firmenübersicht bleibt dann ohnehin sichtbar.
+    }
+}
+
+/**
+ * Registrierung einordnen (Abschnitt 4): 'new' (E-Mail unbekannt), 'existing_other' (Benutzer
+ * vorhanden, gleichnamige Firma noch nicht zugeordnet), 'existing_same' (Benutzer ist einer
+ * Firma dieses Namens bereits zugeordnet).
+ */
+function registration_classify(string $email, string $orgName): array
+{
+    $email = mb_strtolower(trim($email));
+    $stmt = db()->prepare('SELECT id, email, is_active FROM users WHERE email = ?');
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+    if (!$user) {
+        return ['case' => 'new', 'user' => null];
+    }
+    return [
+        'case' => user_has_company_named($user['id'], $orgName) ? 'existing_same' : 'existing_other',
+        'user' => $user,
+    ];
+}
+
+/**
+ * Ratenbegrenzung für Registrierungsversuche mit bereits bekannter E-Mail-Adresse (je IP).
+ * Diese Versuche zählen bewusst nicht gegen die Anmeldesperre des echten Kontoinhabers.
+ * Die Rückmeldung "Konto vorhanden" bleibt eine bewusste Offenlegung; die Begrenzung
+ * verlangsamt das Ausprobieren, beseitigt es aber nicht (siehe docs/multiaccount.md).
+ */
+function register_throttle_check(): ?string
+{
+    $ip = client_ip();
+    if (!$ip) {
+        return null;
+    }
+    $stmt = db()->prepare(
+        "SELECT COUNT(*) FROM login_attempts
+         WHERE ip = ? AND stage = 'register' AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+    );
+    $stmt->execute([$ip, LOGIN_LOCK_MINUTES]);
+    if ((int)$stmt->fetchColumn() >= REGISTER_MAX_ATTEMPTS_IP) {
+        return 'Zu viele Registrierungsversuche von Ihrer Verbindung. Bitte versuchen Sie es später erneut oder melden Sie sich mit Ihrem bestehenden Konto an.';
+    }
+    return null;
+}
+
+/** Firmendaten einer Registrierung mit bekannter E-Mail-Adresse zwischenspeichern (kein Passwort). */
+function registration_request_create(string $userId, string $orgName, string $mandatePrefix): string
+{
+    $id = uuid4();
+    db()->prepare(
+        "INSERT INTO registration_requests (id, user_id, org_name, mandate_prefix, status, ip, expires_at)
+         VALUES (?, ?, ?, ?, 'pending', ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))"
+    )->execute([$id, $userId, mb_substr(trim($orgName), 0, 255), $mandatePrefix, client_ip(), REGISTRATION_REQUEST_MINUTES]);
+    return $id;
+}
+
+/**
+ * Offenen Registrierungsvorgang aus der Sitzung laden. Gehört er nicht dem angemeldeten
+ * Benutzer oder ist er nicht mehr gültig, wird der Sitzungsverweis entfernt und null geliefert.
+ * Rückgabe enthält 'foreign' => true, wenn der Vorgang einem anderen Benutzer gehört.
+ */
+function registration_request_pending(string $userId): ?array
+{
+    $id = $_SESSION['register_continue'] ?? null;
+    if (!$id) {
+        return null;
+    }
+    try {
+        $stmt = db()->prepare(
+            "SELECT *, (expires_at > NOW()) AS still_valid FROM registration_requests WHERE id = ? AND status = 'pending'"
+        );
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+    } catch (Throwable $e) {
+        $row = false;
+    }
+    if (!$row || (int)$row['still_valid'] !== 1) {
+        unset($_SESSION['register_continue']);
+        return null;
+    }
+    if ($row['user_id'] !== $userId) {
+        // Sitzung eines anderen Benutzers übernimmt den Vorgang nicht (Abschnitt 4.2)
+        unset($_SESSION['register_continue']);
+        return ['foreign' => true];
+    }
+    return $row;
+}
+
+/**
+ * Registrierungsvorgang abschließen: Zeilensperre, Statuswechsel und Firmenanlage in einer
+ * Transaktion, damit die Firma genau einmal entsteht (auch bei Doppelklick oder Wiederholung).
+ */
+function registration_request_complete(string $requestId, string $userId): array
+{
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT *, (expires_at > NOW()) AS still_valid FROM registration_requests WHERE id = ? AND user_id = ? FOR UPDATE"
+        );
+        $stmt->execute([$requestId, $userId]);
+        $req = $stmt->fetch();
+        if (!$req || $req['status'] !== 'pending') {
+            $pdo->rollBack();
+            return ['org_id' => null, 'error' => 'Dieser Registrierungsvorgang wurde bereits abgeschlossen oder ist nicht mehr gültig.'];
+        }
+        if ((int)$req['still_valid'] !== 1) {
+            $pdo->prepare("UPDATE registration_requests SET status = 'expired' WHERE id = ?")->execute([$requestId]);
+            $pdo->commit();
+            unset($_SESSION['register_continue']);
+            return ['org_id' => null, 'error' => 'Der Registrierungsvorgang ist abgelaufen. Bitte legen Sie die Firma über die Firmenübersicht erneut an.'];
+        }
+        $result = create_company($userId, (string)$req['org_name'], (string)$req['mandate_prefix']);
+        if ($result['error']) {
+            $pdo->rollBack();
+            return $result;
+        }
+        $pdo->prepare("UPDATE registration_requests SET status = 'completed', completed_at = NOW(), created_org_id = ? WHERE id = ?")
+            ->execute([$result['org_id'], $requestId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Registrierungsfortsetzung fehlgeschlagen: ' . $e->getMessage());
+        return ['org_id' => null, 'error' => 'Die Firma konnte nicht angelegt werden. Bitte später erneut versuchen.'];
+    }
+    unset($_SESSION['register_continue']);
+    audit_log($result['org_id'], ['user_id' => $userId], 'registration_continued', 'organization', $result['org_id'], ['request_id' => $requestId]);
+    return $result;
+}
+
+/** Offenen Vorgang bewusst verwerfen. */
+function registration_request_discard(string $requestId, string $userId): void
+{
+    try {
+        db()->prepare("UPDATE registration_requests SET status = 'discarded' WHERE id = ? AND user_id = ? AND status = 'pending'")
+            ->execute([$requestId, $userId]);
+    } catch (Throwable $e) {
+        // Tabelle fehlt bis Migration 015
+    }
+    unset($_SESSION['register_continue']);
+}
+
+/** Regelmäßige Bereinigung (Cron): abgelaufene Vorgänge markieren, alte Einträge löschen. */
+function registration_requests_cleanup(): void
+{
+    $pdo = db();
+    $pdo->exec("UPDATE registration_requests SET status = 'expired' WHERE status = 'pending' AND expires_at < NOW()");
+    $pdo->exec("DELETE FROM registration_requests WHERE status <> 'pending' AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+}
+
+/** Ziel nach erfolgreicher Anmeldung: offener Registrierungsvorgang oder Dashboard. */
+function post_login_target(): string
+{
+    return !empty($_SESSION['register_continue']) ? 'register-fortsetzen.php' : 'dashboard.php';
 }

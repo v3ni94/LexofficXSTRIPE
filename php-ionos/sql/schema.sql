@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_reset_token_hash  CHAR(64)     NULL,
     password_reset_expires_at  DATETIME     NULL,
     is_superadmin              TINYINT(1)   NOT NULL DEFAULT 0,
+    multiaccount_enabled       TINYINT(1)   NOT NULL DEFAULT 0,  -- manuell aktiviert (Migration 015); automatisch wirksam bei mehreren Firmen
     last_login_at              DATETIME     NULL,
     failed_login_count         INT          NOT NULL DEFAULT 0,
     locked_until               DATETIME     NULL,
@@ -177,6 +178,24 @@ CREATE TABLE IF NOT EXISTS invitations (
     UNIQUE KEY uq_invitation_org_email (organization_id, email),
     UNIQUE KEY uq_invitation_token (token),
     CONSTRAINT fk_invitation_org FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Registrierung mit bereits bekannter E-Mail-Adresse: Firmendaten bis zur Anmeldung des
+-- bestehenden Benutzers zwischenspeichern (Migration 015). Keine Passwörter, keine Geheimnisse.
+CREATE TABLE IF NOT EXISTS registration_requests (
+    id             CHAR(36)     NOT NULL PRIMARY KEY,
+    user_id        CHAR(36)     NOT NULL,
+    org_name       VARCHAR(255) NOT NULL,
+    mandate_prefix VARCHAR(10)  NOT NULL,
+    status         VARCHAR(20)  NOT NULL DEFAULT 'pending', -- pending | completed | expired | discarded
+    created_org_id CHAR(36)     NULL,
+    ip             VARCHAR(45)  NULL,
+    expires_at     DATETIME     NOT NULL,
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at   DATETIME     NULL,
+    KEY ix_regreq_user_status (user_id, status),
+    KEY ix_regreq_expires (expires_at),
+    CONSTRAINT fk_regreq_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS integrations (

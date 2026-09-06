@@ -47,6 +47,8 @@ $totalBudget = max(10, min(110, (int)config('cron_time_budget_seconds', 20)));
 
 require_once __DIR__ . '/app/support.php';
 try { support_sessions_expire(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 008 */ }
+require_once __DIR__ . '/app/auth.php';
+try { registration_requests_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 015 */ }
 
 // Fällige vorgemerkte und terminierte Einzüge: nur im Einreichfenster, höchstens die
 // Hälfte des Zeitbudgets je Lauf; der Rest folgt beim nächsten Lauf (alle 5 Minuten).

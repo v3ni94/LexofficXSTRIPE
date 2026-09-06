@@ -63,6 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Für das Profil fehlt noch die Datenbankmigration 010. Bitte den Betreiber informieren.');
             }
             profile_update($ctx, (string)($_POST['display_name'] ?? ''), (string)($_POST['phone_private'] ?? ''), (string)($_POST['phone_business'] ?? ''));
+            if (empty($ctx['support_mode'])) {
+                // Multiaccount (benutzerbezogen, Abschnitt 3): bei mehreren Firmen fest aktiv
+                $ma = user_multiaccount_state($ctx['user_id']);
+                $wantMa = !empty($_POST['multiaccount_enabled']);
+                if ($ma['migrated'] && !$ma['locked'] && $wantMa !== $ma['manual']) {
+                    if ($err = user_multiaccount_set($ctx['user_id'], $wantMa, $ctx['org_id'])) {
+                        throw new RuntimeException($err);
+                    }
+                }
+            }
             if (!empty($_POST['remove_avatar'])) {
                 profile_avatar_delete($ctx);
             } elseif (!empty($_FILES['avatar']['name'])) {
@@ -386,6 +396,19 @@ layout_header('Firmendaten', $ctx);
             </div>
         </div>
         <p class="hint">Telefonnummern sind nur für Sie und den Inhaber der Firma sichtbar und dienen der Erreichbarkeit bei Rückfragen, zum Beispiel beim Support.</p>
+        <?php $ma = user_multiaccount_state($ctx['user_id']); ?>
+        <?php if ($ma['migrated'] && empty($ctx['support_mode'])): ?>
+        <div id="multiaccount" style="margin-top: 14px;">
+            <label class="checkbox">
+                <input type="checkbox" name="multiaccount_enabled" value="1"<?= $ma['active'] ? ' checked' : '' ?><?= $ma['locked'] ? ' disabled' : '' ?>>
+                Multiaccount aktivieren
+            </label>
+            <?php if ($ma['locked']): ?>
+                <p class="hint">Multiaccount ist aktiviert, weil Ihrem Benutzerkonto mehrere Firmen zugeordnet sind.</p>
+            <?php endif; ?>
+            <p class="hint">Verwalten Sie mehrere Firmen mit einem gemeinsamen Benutzerkonto. Nach der Aktivierung finden Sie im Profilmenü die Firmenübersicht. Dort können Sie weitere Firmen anlegen und zwischen Ihren Firmen wechseln.</p>
+        </div>
+        <?php endif; ?>
         <div class="form-actions"><button type="submit" class="btn">Profil speichern</button></div>
     </form>
 </div>

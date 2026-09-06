@@ -9,18 +9,25 @@ if (current_user()) {
 signup_attribution_capture();
 
 $error = null;
+// Vorbelegte E-Mail-Adresse aus einem Registrierungsversuch mit bekanntem Konto (nur aus der
+// Sitzung, nicht aus der URL; ein Passwort wird nie übernommen).
+$prefillEmail = (string)($_SESSION['login_prefill_email'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $result = auth_login($_POST['email'] ?? '', $_POST['password'] ?? '');
     if ($result['status'] === '2fa') {
+        unset($_SESSION['login_prefill_email']);
         redirect('twofa-verify.php');
     }
     if ($result['status'] === 'ok') {
-        redirect('dashboard.php');
+        unset($_SESSION['login_prefill_email']);
+        redirect(post_login_target());
     }
     $error = $result['message'];
+    $prefillEmail = (string)($_POST['email'] ?? '');
 }
+$continueOpen = !empty($_SESSION['register_continue']);
 
 layout_header('Anmelden');
 ?>
@@ -34,10 +41,13 @@ layout_header('Anmelden');
         <form method="post" action="login.php">
             <?= csrf_field() ?>
             <label for="email">E-Mail-Adresse</label>
-            <input type="email" id="email" name="email" required autofocus autocomplete="username"
-                   value="<?= e($_POST['email'] ?? '') ?>">
+            <input type="email" id="email" name="email" required <?= $prefillEmail === '' ? 'autofocus' : '' ?> autocomplete="username"
+                   value="<?= e($prefillEmail) ?>">
             <label for="password">Passwort</label>
-            <input type="password" id="password" name="password" required autocomplete="current-password">
+            <input type="password" id="password" name="password" required <?= $prefillEmail !== '' ? 'autofocus' : '' ?> autocomplete="current-password">
+            <?php if ($continueOpen): ?>
+                <p class="hint">Nach der Anmeldung schließen Sie die Anlage Ihrer weiteren Firma ab.</p>
+            <?php endif; ?>
             <button type="submit" class="btn">Weiter</button>
         </form>
         <p class="auth-links">

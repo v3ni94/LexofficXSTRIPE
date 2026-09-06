@@ -196,6 +196,7 @@ if ($config && !empty($config['db']['host'])) {
             '012' => [['table' => 'support_tickets'], ['table' => 'support_ticket_messages']],
             '013' => [['table' => 'invoices', 'column' => 'lexoffice_updated_at'], ['table' => 'customers', 'column' => 'lexoffice_synced_at']],
             '014' => [['table' => 'sync_state', 'column' => 'lock_owner']],
+            '015' => [['table' => 'users', 'column' => 'multiaccount_enabled'], ['table' => 'registration_requests']],
         ];
         foreach ($migrationChecks as $mig => $items) {
             $lack = [];

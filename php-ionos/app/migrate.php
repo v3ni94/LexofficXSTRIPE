@@ -47,6 +47,7 @@ function migrations_markers(): array
         '012' => ['support_tickets', null],
         '013' => ['invoices', 'lexoffice_updated_at'],
         '014' => ['sync_state', 'lock_owner'],
+        '015' => ['users', 'multiaccount_enabled'],
     ];
 }
 

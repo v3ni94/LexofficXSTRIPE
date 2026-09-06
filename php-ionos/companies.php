@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException($result['error']);
             }
             switch_company($ctx['user_id'], $result['org_id']);
-            flash_set('success', 'Neue Firma angelegt und aktiviert. Bitte jetzt Lexware Office und Stripe verbinden.');
+            flash_set('success', 'Die neue Firma wurde Ihrem Benutzerkonto hinzugefügt und aktiviert. Bitte jetzt Lexware Office und Stripe verbinden. Über die Firmenübersicht wechseln Sie zwischen Ihren Firmen.');
             redirect('onboarding.php');
 
         } elseif ($action === 'switch') {
@@ -43,12 +43,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $companies = list_user_companies($ctx['user_id']);
+$ma = user_multiaccount_state($ctx['user_id']);
 
 layout_header('Firmenübersicht', $ctx);
 ?>
 <h1>Firmenübersicht</h1>
-<p class="page-sub">Mehrere Firmen mit jeweils vollständig getrennten Kunden, Rechnungen, Einzügen
-    und eigener Lexware Office-/Stripe-Anbindung verwalten.</p>
+<p class="page-sub">Mehrere Firmen mit jeweils vollständig getrennten Kunden, Rechnungen, Einzügen,
+    eigener Lexware Office-/Stripe-Anbindung und eigenem Abonnement verwalten. Multiaccount verbindet nur
+    Anmeldung und Navigation, nicht die Datenbestände.</p>
+<?php if (!$ma['active']): ?>
+<div class="flash flash-info">Multiaccount ist in Ihrem Profil derzeit deaktiviert, daher erscheint die Firmenübersicht nicht im Profilmenü.
+    Sie können hier trotzdem eine weitere Firma anlegen; Multiaccount wird dann automatisch aktiviert. Manuell aktivieren Sie es unter
+    <a href="team.php#multiaccount">Firmendaten, Mein Profil</a>.</div>
+<?php endif; ?>
 
 <div class="card">
     <h2>Ihre Firmen</h2>

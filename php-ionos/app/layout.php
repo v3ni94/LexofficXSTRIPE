@@ -119,7 +119,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                         <a href="export.php" title="Einzugsjournal als CSV">Export</a>
                     <?php endif; ?>
                     <a href="security.php">Sicherheit</a>
-                    <?php if (!on_admin_host() && empty($ctx['support_mode'])): ?><a href="companies.php">Firmenübersicht</a><?php endif; ?>
+                    <?php if (!on_admin_host() && empty($ctx['support_mode']) && user_multiaccount_state((string)$ctx['user_id'])['active']): ?><a href="companies.php">Firmenübersicht</a><?php endif; ?>
                     <a href="logout.php" class="menu-logout">Abmelden</a>
                 </div>
             </details>

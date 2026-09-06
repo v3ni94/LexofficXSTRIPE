@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result['used_recovery']) {
             flash_set('info', 'Sie haben sich mit einem Recovery-Code angemeldet. Jeder Code ist nur einmal gültig. Prüfen Sie unter "Sicherheit", wie viele Codes verbleiben.');
         }
-        redirect('dashboard.php');
+        redirect(post_login_target());
     }
     $error = $result['message'];
     if (!pending_2fa_user()) {
