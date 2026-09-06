@@ -15,11 +15,11 @@ return [
                 . '<li><strong>Zwei-Faktor-Authentifizierung.</strong> Die Einrichtung mit einer Authenticator-App ist verpflichtend.</li>'
                 . '<li><strong>Lexware Office verbinden.</strong> API-Schlüssel unter <a href="settings.php">Einstellungen</a> hinterlegen.</li>'
                 . '<li><strong>Stripe verbinden und Webhook einrichten.</strong> Secret Key hinterlegen und den Webhook-Endpunkt im eigenen Stripe-Konto anlegen.</li>'
-                . '<li><strong>Firmendaten und erste Synchronisation.</strong> Firmendaten unter <a href="team.php">Firma</a> ergänzen und die erste Synchronisation der Rechnungen anstoßen.</li>'
+                . '<li><strong>Firmendaten und erste Synchronisation.</strong> Firmendaten unter <a href="team.php">Firmendaten</a> ergänzen und die erste Synchronisation der Rechnungen anstoßen.</li>'
                 . '</ol>'
                 . '<p>Danach lassen sich Kunden mit IBAN und SEPA-Mandat unter <a href="sepa-pflegen.php">SEPA Pflegen</a> anlegen und Einzüge auslösen. Prüfen Sie nach der Einrichtung, ob die Synchronisation Rechnungen lädt und ob die Stripe-Verbindung als aktiv angezeigt wird, bevor Sie den ersten Einzug freigeben.</p>'
                 . '<h3>Nach der Einrichtung</h3>'
-                . '<p>Legen Sie unter <a href="team.php">Firma</a> die Firmendaten und, soweit vorhanden, die Gläubiger-Identifikationsnummer an. Weitere Mitarbeiter laden Sie ebenfalls unter <a href="team.php">Firma</a> ein; jedes Mitglied richtet dabei verpflichtend eine eigene Zwei-Faktor-Authentifizierung ein.</p>',
+                . '<p>Legen Sie unter <a href="team.php">Firmendaten</a> die Firmendaten und, soweit vorhanden, die Gläubiger-Identifikationsnummer an. Weitere Mitarbeiter laden Sie ebenfalls unter <a href="team.php">Firmendaten</a> ein; jedes Mitglied richtet dabei verpflichtend eine eigene Zwei-Faktor-Authentifizierung ein.</p>',
         ],
         [
             'slug' => 'lexware-verbindung',
@@ -167,7 +167,7 @@ return [
                 . '<h3>Formelschutz</h3>'
                 . '<p>Zellen, die mit einem Zeichen beginnen, das eine Tabellenkalkulation als Formel deuten könnte, werden beim Export automatisch entschärft.</p>'
                 . '<h3>Protokoll</h3>'
-                . '<p>Unter <a href="team.php">Firma</a> steht ein Protokoll zur Verfügung, das festhält, wer welche Aktion wann ausgelöst hat, zum Beispiel das Auslösen eines Einzugs, das Setzen und Aufheben des Not-Stopps, Änderungen an Mandaten und den Export selbst.</p>'
+                . '<p>Unter <a href="team.php">Firmendaten</a> steht ein Protokoll zur Verfügung, das festhält, wer welche Aktion wann ausgelöst hat, zum Beispiel das Auslösen eines Einzugs, das Setzen und Aufheben des Not-Stopps, Änderungen an Mandaten und den Export selbst.</p>'
                 . '<h3>Aufbewahrung</h3>'
                 . '<p>Journal und Protokoll dienen auch der Nachvollziehbarkeit gegenüber Kunden und, soweit erforderlich, gegenüber Behörden. Prüfen Sie unabhängig von SmartEinzug, welche handels- und steuerrechtlichen Aufbewahrungsfristen für Ihre Unterlagen gelten. Der Export selbst wird im Protokoll der Firma vermerkt, mit Angabe der auslösenden Person und des Zeitpunkts.</p>',
         ],
@@ -182,7 +182,7 @@ return [
                 . '<h3>Kontosperre</h3>'
                 . '<p>Nach mehreren Fehlversuchen wird ein Konto vorübergehend gesperrt.</p>'
                 . '<h3>Inhaberschaft übertragen</h3>'
-                . '<p>Die Übertragung der Inhaberschaft unter <a href="team.php">Firma</a> erfordert das Passwort und einen aktuellen 2FA-Code des bisherigen Inhabers; der neue Inhaber muss zuvor selbst die Zwei-Faktor-Authentifizierung eingerichtet haben.</p>'
+                . '<p>Die Übertragung der Inhaberschaft unter <a href="team.php">Firmendaten</a> erfordert das Passwort und einen aktuellen 2FA-Code des bisherigen Inhabers; der neue Inhaber muss zuvor selbst die Zwei-Faktor-Authentifizierung eingerichtet haben.</p>'
                 . '<h3>Support-Zugriff des Betreibers</h3>'
                 . '<p>Ein Support-Zugriff des Betreibers ist zeitlich begrenzt und wird protokolliert. Der Inhaber wird darüber per E-Mail informiert.</p>'
                 . '<h3>Passwort und Recovery-Codes</h3>'
@@ -225,14 +225,14 @@ return [
         ['topic' => 'einzug-ablauf', 'q' => 'Kann ich einen Einzug zurücknehmen?', 'a' => '<p>Solange sich ein Einzug im Status Vorgemerkt oder Terminiert befindet und noch nicht bei Stripe eingereicht wurde, können Sie ihn unter <a href="collections.php">Einzüge</a> stornieren. Die zugehörige Rechnung ist dann wieder offen.</p>'],
         ['topic' => 'einzug-ablauf', 'q' => 'Was passiert bei einer Teilzahlung?', 'a' => '<p>SmartEinzug prüft den Restbetrag vor der Einreichung live bei Lexware Office. Wurde bereits ein Teilbetrag gezahlt, wird nur der verbleibende Restbetrag eingezogen.</p>'],
         ['topic' => 'kunden-iban-mandate', 'q' => 'Warum steht auf dem Kontoauszug des Kunden eine andere Gläubiger-ID?', 'a' => '<p>Da der technische Einzug über Stripe läuft, erscheint auf dem Kontoauszug des Kunden in der Regel die Gläubiger-Identifikationsnummer von Stripe und nicht die eigene Gläubiger-ID der Firma. Die interne Mandatsreferenz und die Stripe-Referenz werden in SmartEinzug getrennt angezeigt.</p>'],
-        ['topic' => 'kunden-iban-mandate', 'q' => 'Brauche ich eine Gläubiger-Identifikationsnummer?', 'a' => '<p>Die Angabe unter <a href="team.php">Firma</a> ist freiwillig. Für den Einzug über Stripe verwendet Stripe seine eigene Gläubiger-ID.</p>'],
+        ['topic' => 'kunden-iban-mandate', 'q' => 'Brauche ich eine Gläubiger-Identifikationsnummer?', 'a' => '<p>Die Angabe unter <a href="team.php">Firmendaten</a> ist freiwillig. Für den Einzug über Stripe verwendet Stripe seine eigene Gläubiger-ID.</p>'],
         ['topic' => 'abo-abrechnung', 'q' => 'Was kostet SmartEinzug?', 'a' => '<p>Im Tarif UNLIMITED START gilt für bis zum 31.12.2026 angelegte Firmenaccounts ein Einführungspreis von 25,00 EUR netto je 4 Wochen (bisher 50,00 EUR), zuzüglich gesetzlicher Umsatzsteuer.</p>'],
         ['topic' => 'rollen-sicherheit', 'q' => 'Wie viele Benutzer kann ich anlegen?', 'a' => '<p>Das Sitzlimit richtet sich nach Ihrem Tarif. Bestandskunden des Starttarifs behalten in der Regel eine unbegrenzte Zahl an Benutzern, solange der Tarif administrativ nicht geändert wird.</p>'],
         ['topic' => 'ruecklastschrift-erstattung', 'q' => 'Was passiert bei einer Rücklastschrift?', 'a' => '<p>Stripe meldet die Rücklastschrift über den Webhook. SmartEinzug markiert die betroffene Rechnung zur Klärung. Ein neuer Einzug wird nicht automatisch ausgelöst, sondern erst nach abgeschlossener Klärung.</p>'],
         ['topic' => 'stripe-verbindung', 'q' => 'Muss jeder Kunde einen Webhook anlegen?', 'a' => '<p>Nein. Der Webhook liegt im Stripe-Konto Ihrer Firma und wird einmalig eingerichtet, nicht je Kunde.</p>'],
         ['topic' => 'lexware-verbindung', 'q' => 'Wird die Zahlung in Lexware Office verbucht?', 'a' => '<p>Nein. SmartEinzug schreibt Zahlungen nicht nach Lexware Office zurück. Die Zuordnung der Zahlung zur Rechnung erfolgt in Lexware Office manuell.</p>'],
         ['topic' => 'einzug-ablauf', 'q' => 'Wie lange dauert eine SEPA-Lastschrift?', 'a' => '<p>Nach der Einreichung bei Stripe dauert es einige Bankarbeitstage, bis der Status feststeht. SmartEinzug zeigt den jeweiligen Status im Einzugsjournal an.</p>'],
-        ['topic' => 'einzug-ablauf', 'q' => 'Was ist die Vorabankündigung?', 'a' => '<p>Bei terminierten Einzügen kann SmartEinzug eine Vorabankündigung per E-Mail versenden. Die Frist dafür ist unter <a href="team.php">Firma</a> einstellbar, Standard sind 14 Tage vor Fälligkeit.</p>'],
+        ['topic' => 'einzug-ablauf', 'q' => 'Was ist die Vorabankündigung?', 'a' => '<p>Bei terminierten Einzügen kann SmartEinzug eine Vorabankündigung per E-Mail versenden. Die Frist dafür ist unter <a href="team.php">Firmendaten</a> einstellbar, Standard sind 14 Tage vor Fälligkeit.</p>'],
         ['topic' => 'stripe-verbindung', 'q' => 'Kann ich SmartEinzug im Stripe-Testmodus ausprobieren?', 'a' => '<p>Ja. Unter <a href="settings.php">Einstellungen</a> lässt sich ein Secret Key im Testmodus hinterlegen. SmartEinzug zeigt an, in welchem Modus die Verbindung steht.</p>'],
         ['topic' => 'not-stopp', 'q' => 'Was ist der Not-Stopp?', 'a' => '<p>Der Not-Stopp hält alle neuen Einreichungen bei Stripe an. Vorgemerkte und terminierte Einzüge bleiben bestehen und können gesammelt storniert werden. Bereits eingereichte Lastschriften sind davon nicht betroffen.</p>'],
         ['topic' => 'abo-abrechnung', 'q' => 'Wie kündige ich?', 'a' => '<p>Unter <a href="subscription.php">Abonnement</a> können Inhaber die Kündigung vormerken. Sie wirkt zum Ende der laufenden Abrechnungsperiode; bis dahin bleibt das Abonnement nutzbar.</p>'],

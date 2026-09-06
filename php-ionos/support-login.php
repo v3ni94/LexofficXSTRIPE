@@ -54,7 +54,7 @@ security_notify_owner($org['id'], 'Support-Zugriff auf Ihren Firmenaccount', [
     sprintf('Der Plattformbetreiber (%s) hat am %s einen zeitlich begrenzten Support-Zugriff auf den Firmenaccount "%s" begonnen.',
         product_name(), date('d.m.Y \u\m H:i'), $org['name']),
     'Grund: ' . $row['reason'],
-    'Im Support-Modus sind Einzüge, IBAN-Änderungen und Zugangsdaten gesperrt. Alle Aktionen werden im Protokoll Ihrer Firma mit Support-Vermerk aufgeführt (Menü Firma, Abschnitt Protokoll).',
+    'Im Support-Modus sind Einzüge, IBAN-Änderungen und Zugangsdaten gesperrt. Alle Aktionen werden im Protokoll Ihrer Firma mit Support-Vermerk aufgeführt (Menü Firmendaten, Abschnitt Protokoll).',
     'Wenn Sie diesen Zugriff nicht erwartet haben, antworten Sie bitte auf diese E-Mail.',
 ]);
 flash_set('info', 'Support-Modus für die Firma ' . $org['name'] . ' aktiv (höchstens ' . SUPPORT_SESSION_MINUTES . ' Minuten). Beenden über den Link im gelben Hinweis.');

@@ -201,7 +201,7 @@ layout_header('Einzüge', $ctx);
             </details>
             <?php endif; ?>
         <?php endif; ?>
-        <a class="btn btn-secondary" href="export.php<?= $filter !== '' ? '?status=' . e($filter) : '' ?>">Journal als CSV exportieren</a>
+        <a class="btn btn-secondary" href="export.php<?= $filter !== '' ? '?status=' . e($filter) : '' ?>" title="Gleicher CSV-Export wie im Profilmenü unter Export, hier mit dem aktuell gewählten Statusfilter"><?= $filter !== '' ? 'Gefilterte Einzüge als CSV exportieren' : 'Journal als CSV exportieren' ?></a>
         <form method="post">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="sync_status">

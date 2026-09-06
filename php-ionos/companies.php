@@ -44,9 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $companies = list_user_companies($ctx['user_id']);
 
-layout_header('Firmen', $ctx);
+layout_header('Firmenübersicht', $ctx);
 ?>
-<h1>Firmen</h1>
+<h1>Firmenübersicht</h1>
 <p class="page-sub">Mehrere Firmen mit jeweils vollständig getrennten Kunden, Rechnungen, Einzügen
     und eigener Lexware Office-/Stripe-Anbindung verwalten.</p>
 

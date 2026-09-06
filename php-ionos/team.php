@@ -347,9 +347,9 @@ $seatsUsed = seats_used($tenantId);
 $seatLimit = seats_limit($plan);
 $audit = $isOwner ? audit_recent($tenantId, 40) : [];
 
-layout_header('Firma', $ctx);
+layout_header('Firmendaten', $ctx);
 ?>
-<h1>Firma</h1>
+<h1>Firmendaten</h1>
 <p class="page-sub"><?= e($org['name']) ?> · Tarif <?= e($plan['name']) ?> ·
     <?= $seatLimit === null ? $seatsUsed . ' Benutzer (unbegrenzt)' : $seatsUsed . ' von ' . $seatLimit . ' Sitzen belegt' ?>
     <?php if ($isOwner): ?> · <a href="subscription.php">Abonnement</a><?php endif; ?></p>

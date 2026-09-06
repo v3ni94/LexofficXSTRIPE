@@ -140,7 +140,7 @@ layout_header('Einstellungen', $ctx);
 ?>
 <h1>Einstellungen</h1>
 <p class="page-sub">API-Verbindungen für <?= e($ctx['org_name']) ?><?= $canEdit ? '' : ' (nur Ansicht; Änderungen durch Inhaber oder Administrator)' ?>
-    · Firmendaten, Gläubiger-ID und SEPA-Regeln unter <a href="team.php">Firma</a></p>
+    · Firmendaten, Gläubiger-ID und SEPA-Regeln unter <a href="team.php">Firmendaten</a></p>
 
 <div class="card">
     <h2>Lexware Office

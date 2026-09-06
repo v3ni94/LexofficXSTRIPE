@@ -91,14 +91,9 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <a href="dashboard.php">Dashboard</a>
             <a href="invoices.php">Rechnungen</a>
             <a href="collections.php">Einzüge</a>
-            <a href="export.php" title="Einzugsjournal als CSV">Export</a>
             <a href="customers.php">Kunden</a>
             <a href="sepa-pflegen.php">SEPA Pflegen</a>
-            <a href="team.php">Firma</a>
             <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php" title="Einzüge dieser Firma sofort anhalten">Not-Stopp</a><?php endif; ?>
-            <?php if (can_manage_settings($ctx)): ?>
-                <a href="settings.php">Einstellungen</a>
-            <?php endif; ?>
             <a href="hilfe.php?von=<?= e(current_script()) ?>" title="Anleitungen, häufige Fragen, Support-Anfrage">Hilfe</a>
             <?php if (!empty($ctx['is_superadmin'])): ?>
                 <a href="<?= e(admin_base_url() !== '' ? admin_base_url() . '/admin.php' : 'admin.php') ?>" class="nav-admin">Admin</a>
@@ -119,14 +114,12 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                         <span class="user-role"><?= e(role_label($ctx['role'])) ?><?= !on_admin_host() ? ' · ' . e($ctx['org_name']) : '' ?></span>
                     </div>
                     <?php if (!on_admin_host()): ?>
+                        <a href="team.php">Firmendaten</a>
                         <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Einstellungen</a><?php endif; ?>
-                        <a href="team.php">Firma</a>
-                        <a href="export.php">Export</a>
+                        <a href="export.php" title="Einzugsjournal als CSV">Export</a>
                     <?php endif; ?>
                     <a href="security.php">Sicherheit</a>
-                    <?php if (!on_admin_host()): ?><a href="hilfe.php">Hilfe</a><?php endif; ?>
-                    <?php if (!on_admin_host() && empty($ctx['support_mode'])): ?><a href="companies.php">Firmen</a><?php endif; ?>
-                    <?php if (on_admin_host()): ?><a href="<?= e(app_base_url()) ?>/dashboard.php">Kundenanwendung</a><?php endif; ?>
+                    <?php if (!on_admin_host() && empty($ctx['support_mode'])): ?><a href="companies.php">Firmenübersicht</a><?php endif; ?>
                     <a href="logout.php" class="menu-logout">Abmelden</a>
                 </div>
             </details>
