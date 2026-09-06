@@ -23,6 +23,15 @@ SSH-Deployment nachweislich funktioniert (siehe Abschnitt „Deployment testen�
 GitHub-App wieder entfernt werden, sowohl in Coolify (Bereich „Sources“) als auch in GitHub
 (Settings > Applications bzw. Installed GitHub Apps), da sie in diesem Modell keine Funktion trägt.
 
+## Unabhängigkeit von Webhosting- und VPS-Deployment
+
+Der Job `deploy-vps` hängt über `needs` ausschließlich von `changes` und `test` ab, nicht von
+`deploy-webhosting`; ein Fehler des Webhosting-Jobs blockiert einen gültigen VPS-Deploy also nicht.
+Beide Jobs laufen zudem in getrennten Nebenläufigkeitsgruppen (`production-sftp` für
+`deploy-webhosting`, `production-vps` für `deploy-vps`), sodass ein wartender oder fehlgeschlagener
+Lauf des einen Jobs den anderen nicht verzögert. `deploy-vps` läuft weiterhin nur, wenn die
+Variable `VPS_DEPLOY_ENABLED` auf `true` steht.
+
 ## Secrets und Variablen im Überblick
 
 GitHub-Repository > Settings > Secrets and variables > Actions. Zwei getrennte Bereiche: Secrets
@@ -39,6 +48,7 @@ GitHub-Repository > Settings > Secrets and variables > Actions. Zwei getrennte B
 | `SFTP_PATH` | Secret | Zielpfad im Webspace |
 | `MIGRATION_TOKEN` | Secret | Header `X-Migration-Token` für `migrate.php`, muss zusätzlich in `app/config.php` des Webhostings stehen |
 | `WEBHOSTING_APP_DEPLOY` | Variable | `false`, sobald das Webhosting nur noch Marketingseiten ausliefert |
+| `WEBHOSTING_MIGRATE_URL` | Variable | Vollständige Adresse des Migrationsendpunkts des Webhostings, z. B. `https://<technisch eindeutige Adresse des Webhostings>/migrate.php`. Pflicht, solange `WEBHOSTING_APP_DEPLOY` nicht `false` ist; bewusst kein Vorgabewert. Geprüft durch `tools/check-migrate-url.sh` vor dem Upload und unmittelbar vor dem Aufruf (https, Pfad endet auf `/migrate.php`, keine Zugangsdaten oder Parameter, kein zum VPS gehörender Name); enthält kein Geheimnis, der Token bleibt im Header |
 
 ### Neu, VPS
 
@@ -187,3 +197,12 @@ Zwei Wege:
 
 Nach jedem Rollback: Health-Check von außen wiederholen (`docs/vps/02-einrichtung-vps.md`,
 Schritt 18) und Version im Adminbereich System > Versionen mit dem erwarteten Stand vergleichen.
+
+## Offener Punkt: Node-Warnung bei Upload/Download-Artifact
+
+`actions/upload-artifact@v4` und `actions/download-artifact@v4` melden im Workflow-Log eine
+Node-20-Warnung. Diese Warnung ist nicht die Ursache eines Fehlers und wurde bewusst nicht durch
+eine Versionsanhebung behoben, da sich die aktuelle offizielle Nachfolgeversion aus dieser
+Arbeitsumgebung heraus nicht überprüfen ließ und ein falscher Versionsverweis den gesamten
+Workflow unbrauchbar machen würde. Vor einer Anhebung die aktuelle offizielle Version auf der
+Seite der jeweiligen Action prüfen (zu prüfen).

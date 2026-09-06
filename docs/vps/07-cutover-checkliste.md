@@ -12,6 +12,11 @@ eingerichtet und kein DNS-Eintrag geändert (siehe `docs/vps/08-hostinger-coolif
 
 1. **Vorbereitung:** VPS eingerichtet (`docs/vps/02-einrichtung-vps.md`), GitHub-Deployment
    getestet (`docs/vps/03-github-deployment.md`), DNS-TTL gesenkt (`docs/vps/05-dns-ssl.md`).
+   Solange die Anwendung noch auf dem Webhosting läuft, vor dieser Phase und ausdrücklich vor der
+   DNS-Umstellung (Phase 6) die GitHub-Variable `WEBHOSTING_MIGRATE_URL` auf eine technisch
+   eindeutige, vom Umzug nicht betroffene Adresse des Webhostings setzen (`docs/vps/03-github-deployment.md`,
+   `docs/migrations.md`); ein zum VPS gehörender Name wird von `tools/check-migrate-url.sh`
+   abgewiesen.
 2. **Erstimport:** Datenbank-Dump importiert, erste Prüfungen bestanden
    (`docs/vps/04-datenbankmigration.md`, Schritte 1 bis 8).
 3. **Funktionstest auf dem VPS:** Test mit einer nicht kritischen Firma oder Testfirma
@@ -31,7 +36,10 @@ eingerichtet und kein DNS-Eintrag geändert (siehe `docs/vps/08-hostinger-coolif
 11. **Beobachtungsphase:** mindestens 24 Stunden erhöhte Aufmerksamkeit (Logs, Adminbereich
     System, Dead-Letter-Liste, Circuit Breaker).
 12. **Nachlauf:** alte Webhosting-Datenbank einige Tage als Referenz halten, danach Zugangsdaten
-    entfernen (`docs/vps/04-datenbankmigration.md`, Schritt 11); DNS-TTL wieder erhöhen.
+    entfernen (`docs/vps/04-datenbankmigration.md`, Schritt 11); DNS-TTL wieder erhöhen. Sobald die
+    Anwendung vollständig auf dem VPS läuft, die GitHub-Variable `WEBHOSTING_APP_DEPLOY` auf
+    `false` setzen; danach werden nur noch die Marketingseiten hochgeladen, der App-Ordner und der
+    Migrationsaufruf entfallen vollständig.
 
 ## Prüfpunkte (abhakbar)
 
@@ -96,6 +104,14 @@ eingerichtet und kein DNS-Eintrag geändert (siehe `docs/vps/08-hostinger-coolif
 
 - [ ] `bin/migrate.php --status` zeigt ausschließlich `success`.
 - [ ] Kein Eintrag `failed` oder `unknown` in `schema_migrations`.
+
+### Deployment-Variablen (Webhosting)
+
+- [ ] Vor der DNS-Umstellung wurde `WEBHOSTING_MIGRATE_URL` auf eine technisch eindeutige, vom
+      Umzug nicht betroffene Adresse des Webhostings gesetzt (nicht auf einen der fünf Namen
+      unterhalb von smart-einzug.de, die zum VPS gehören).
+- [ ] Nach vollständigem Umzug der Anwendung auf den VPS wurde `WEBHOSTING_APP_DEPLOY` auf `false`
+      gesetzt; der Job `deploy-webhosting` überträgt danach nur noch die Marketingseiten.
 
 ### DB
 

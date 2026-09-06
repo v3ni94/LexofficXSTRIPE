@@ -384,6 +384,82 @@ Behoben in `app/mandate_requests.php` (digitale Mandatserteilung), `app/mandates
 
 Auf dem VPS ist dieser Punkt besonders relevant, weil die Zeitzone der Coolify-MariaDB nicht von der Anwendung gesetzt wird (auf dem Server zu prüfen: `SELECT @@global.time_zone, @@session.time_zone;`). Mit der Korrektur ist das Verhalten unabhängig von der Einstellung der Datenbank.
 
+## Nachtrag Cutover: fehlgeschlagener Migrationsaufruf
+
+Stand: 06.09.2026. Während des laufenden Umzugs von IONOS auf den Hostinger-VPS ist ein Lauf des
+Workflows „Deployment IONOS-Webhosting und VPS“ im Job `deploy-webhosting` fehlgeschlagen.
+
+### Fehlerbild
+
+Meldung: „curl: (60) SSL certificate problem: self-signed certificate“ und „Verbindungsfehler oder
+Timeout beim Migrationsaufruf“, danach die Warnung „Dateien sind bereits hochgeladen. Es erfolgt
+kein automatischer Rollback.“
+
+### Ursache
+
+Der Migrationsaufruf war im Workflow zu diesem Zeitpunkt fest auf
+`https://app.smart-einzug.de/migrate.php` verdrahtet (diese Adresse ist als Anweisung überholt,
+siehe Korrektur unten). Im laufenden Umzug zeigt dieser Name inzwischen auf den Hostinger-VPS. Dort
+beantwortet der Coolify-Proxy (Traefik) die Anfrage mit seinem Standardzertifikat, das nicht
+öffentlich vertrauenswürdig ist, weil für diesen Namen noch kein Let's-Encrypt-Zertifikat vorlag.
+curl bricht deshalb bei der Zertifikatsprüfung ab, also beim TLS-Handshake und damit bevor die
+HTTP-Anfrage überhaupt übertragen wird. Es wurde dadurch keine Migration gestartet, weder auf dem
+Webhosting noch auf dem VPS: Die Zertifikatsprüfung hat verhindert, dass der Migrationsaufruf den
+falschen Server und die falsche Datenbank erreicht.
+
+### Korrektur
+
+1. Die Adresse ist nicht mehr fest verdrahtet, sondern kommt aus der neuen GitHub-Repository-
+   Variablen `WEBHOSTING_MIGRATE_URL` (kein Secret, enthält kein Geheimnis, der Token bleibt im
+   Header), zum Beispiel `https://<technisch eindeutige Adresse des Webhostings>/migrate.php`.
+   Bewusst kein Vorgabewert, damit nie wieder ein Name verwendet wird, der im Umzug den Besitzer
+   wechselt.
+2. Neues Prüfskript `tools/check-migrate-url.sh`. Es weist eine leere Adresse ab, `http` statt
+   `https`, einen Pfad, der nicht auf `/migrate.php` endet, Parameter oder Anker in der Adresse,
+   Zugangsdaten in der Adresse sowie die fünf Namen, die zum VPS gehören (`app.smart-einzug.de`,
+   `admin.smart-einzug.de`, `api.smart-einzug.de`, `status.smart-einzug.de`,
+   `staging.smart-einzug.de`). Bei anderen Namen unterhalb von smart-einzug.de erzeugt es eine
+   Warnung, keinen Abbruch.
+3. Die Prüfung läuft jetzt zweimal: einmal im Schritt „Voraussetzungen vor dem Upload prüfen“, also
+   vor dem SFTP-Upload, und einmal unmittelbar vor dem Aufruf. Dadurch werden keine Dateien mehr
+   hochgeladen, wenn die Migrationsadresse fehlt oder unbrauchbar ist, genau der Fall, der hier
+   eingetreten war: Die Dateien lagen bereits auf dem Server, als der Aufruf scheiterte.
+4. Die Fehlermeldung im Workflow nennt jetzt die verwendete Adresse, erklärt die Umzugsursache und
+   weist ausdrücklich darauf hin, dass keine Migration gestartet wurde und die Zertifikatsprüfung
+   nicht abgeschaltet wird.
+5. Nicht geändert und ausdrücklich so gewollt: Die Zertifikatsprüfung bleibt aktiv, es wird kein
+   `curl -k`/`--insecure` verwendet.
+
+Der Job `deploy-vps` hängt über `needs` nur von `changes` und `test` ab, nicht von
+`deploy-webhosting`; ein Fehler des Webhosting-Jobs blockiert also keinen gültigen VPS-Deploy. Beide
+Jobs laufen in getrennten Nebenläufigkeitsgruppen (`production-sftp` und `production-vps`), und
+`deploy-vps` läuft weiterhin nur, wenn `VPS_DEPLOY_ENABLED` auf `true` steht.
+
+### Auswirkung auf den Datenbankstand
+
+Es wurde keine Migration gestartet. Seit Version 4.1 (Migration 019) wurde keine weitere
+Migrationsdatei ergänzt; die Versionen 4.2, 4.3 und 4.4 enthalten keine Datenbankänderung. Der
+fehlgeschlagene Aufruf hätte also voraussichtlich nichts einzuspielen gehabt (zu prüfen über
+`setup-check.php` mit dem `cron_token`, Zeile „Migrationen (Stand)“).
+
+Empfohlene Reihenfolge beim weiteren Umzug: Solange die Anwendung noch auf dem Webhosting läuft,
+`WEBHOSTING_MIGRATE_URL` vor der DNS-Umstellung auf eine technisch eindeutige, vom Umzug nicht
+betroffene Adresse des Webhostings setzen. Sobald die Anwendung vollständig auf dem VPS läuft,
+`WEBHOSTING_APP_DEPLOY` auf `false` setzen; dann entfallen App-Ordner und Migrationsaufruf
+vollständig, das ist der Zielzustand. Auf dem VPS laufen Migrationen ausschließlich über
+`deploy.sh` mit `php bin/migrate.php` im php-Container, nie über HTTP (siehe
+`docs/vps/07-cutover-checkliste.md`, `docs/migrations.md`).
+
+### Statusstufen
+
+| Baustein | Stand |
+|---|---|
+| Ursache geklärt (Zertifikatsprüfung des VPS-Proxys, kein fest verdrahteter Name mehr geeignet) | geklärt |
+| GitHub-Variable `WEBHOSTING_MIGRATE_URL`, Prüfskript `tools/check-migrate-url.sh`, doppelte Prüfung im Workflow | umgesetzt (im Repository) |
+| Auswirkung auf den Datenbankstand (keine Migration gestartet, keine Migrationsdatei seit Version 4.1) | geprüft, unauffällig |
+| Wert von `WEBHOSTING_MIGRATE_URL` produktiv gesetzt | zu prüfen (auf GitHub-Repository-Ebene zu prüfen) |
+| `WEBHOSTING_APP_DEPLOY` auf `false` nach Abschluss des Umzugs | offen, erst nach vollständigem Cutover |
+
 ## Verbleibende Risiken
 
 - Ein VPS ohne Hochverfügbarkeit: Ausfall bedeutet Nichtverfügbarkeit bis zur Wiederherstellung aus Backup (bewusst, Auftrag Abschnitt 97).

@@ -35,11 +35,19 @@ name: Deployment IONOS-Webhosting und VPS
 # Secrets/Variablen IONOS-Webhosting (Job deploy-webhosting):
 #   Secrets:  SFTP_HOST, SFTP_USER, SFTP_PASSWORD, SFTP_PORT, SFTP_PATH, MIGRATION_TOKEN.
 #             MIGRATION_TOKEN muss auch in der geschuetzten Serverkonfiguration stehen.
-#   Variable: WEBHOSTING_APP_DEPLOY (Standard true, jeder Wert ausser "false" gilt als
+#   Variablen: WEBHOSTING_APP_DEPLOY (Standard true, jeder Wert ausser "false" gilt als
 #             true). Auf "false" setzen, sobald die App vollstaendig auf den VPS umgezogen
 #             ist und das Webhosting nur noch die Marketingseiten ausliefert: dann werden
 #             nur die websites-Ordner uebertragen, der App-Ordner (php-ionos -> app) und der
 #             Migrationsaufruf entfallen.
+#             WEBHOSTING_MIGRATE_URL: vollstaendige Adresse des Migrationsendpunkts des
+#             Webhostings, z.B. https://<technikdomain-des-webhostings>/migrate.php. Pflicht,
+#             solange WEBHOSTING_APP_DEPLOY nicht "false" ist. Bewusst keine Vorgabe und keine
+#             feste Verdrahtung: Waehrend des Umzugs zeigen die smart-einzug.de-Namen auf den
+#             VPS; ein fest verdrahteter Name traf dadurch den falschen Server. Die Adresse muss
+#             vom Umzug unabhaengig sein; tools/check-migrate-url.sh weist VPS-Namen ab.
+#             Der Job "deploy-vps" haengt NICHT von diesem Job ab (kein needs), ein Fehler hier
+#             verhindert also keinen gueltigen VPS-Deploy.
 #   migrate.php muss POST mit X-Migration-Token unterstuetzen und nach vollstaendigem
 #   Erfolg HTTP 200 mit JSON {"success":true} zurueckgeben.
 #
@@ -222,9 +230,15 @@ jobs:
         shell: bash
         env:
           MIGRATION_TOKEN: ${{ secrets.MIGRATION_TOKEN }}
+          WEBHOSTING_MIGRATE_URL: ${{ vars.WEBHOSTING_MIGRATE_URL }}
         run: |
           set -euo pipefail
           : "${MIGRATION_TOKEN:?GitHub-Secret MIGRATION_TOKEN fehlt}"
+
+          # Adresse des Migrationsendpunkts VOR dem Upload pruefen. Schlaegt die Pruefung erst nach dem
+          # Upload fehl, liegen neue Dateien ohne passenden Datenbankstand auf dem Server (genau dieser
+          # Fall trat beim Umzug auf, als der fest verdrahtete Name bereits auf den VPS zeigte).
+          bash tools/check-migrate-url.sh "${WEBHOSTING_MIGRATE_URL:-}"
 
           if [[ "$MIGRATION_TOKEN" == *$'\n'* || "$MIGRATION_TOKEN" == *$'\r'* ]]; then
             echo "::error::MIGRATION_TOKEN darf keine Zeilenumbrueche enthalten."
@@ -413,9 +427,13 @@ jobs:
         shell: bash
         env:
           MIGRATION_TOKEN: ${{ secrets.MIGRATION_TOKEN }}
+          WEBHOSTING_MIGRATE_URL: ${{ vars.WEBHOSTING_MIGRATE_URL }}
         run: |
           set -euo pipefail
           : "${MIGRATION_TOKEN:?GitHub-Secret MIGRATION_TOKEN fehlt}"
+          # Erneute Pruefung unmittelbar vor dem Aufruf (guenstig und schuetzt vor einer zwischenzeitlich
+          # geaenderten Variablen). Die Adresse muss auf das IONOS-Webhosting zeigen, nicht auf den VPS.
+          bash tools/check-migrate-url.sh "${WEBHOSTING_MIGRATE_URL:-}"
           umask 077
           workdir="$(mktemp -d)"
           trap 'rm -rf "$workdir"' EXIT
@@ -439,9 +457,14 @@ jobs:
             --retry 0 \
             --output "$workdir/response.json" \
             --write-out '%{http_code}' \
-            'https://app.smart-einzug.de/migrate.php')"; then
-            echo "::error::Verbindungsfehler oder Timeout beim Migrationsaufruf."
-            echo "Datenbankzustand vor einem erneuten Start pruefen."
+            "$WEBHOSTING_MIGRATE_URL")"; then
+            echo "::error::Verbindungsfehler, Zertifikatsfehler oder Timeout beim Migrationsaufruf an ${WEBHOSTING_MIGRATE_URL}."
+            echo "Die Zertifikatspruefung bleibt aktiviert; sie wird nicht abgeschaltet."
+            echo "Haeufigste Ursache waehrend des Umzugs: Der Name zeigt inzwischen auf den VPS, dessen Proxy"
+            echo "fuer diesen Namen noch kein gueltiges Zertifikat hat. Dann WEBHOSTING_MIGRATE_URL auf eine"
+            echo "technisch eindeutige Adresse des Webhostings setzen oder WEBHOSTING_APP_DEPLOY auf false."
+            echo "Es wurde keine Migration gestartet: Der Fehler tritt vor der Uebertragung der Anfrage auf."
+            echo "Datenbankzustand vor einem erneuten Start dennoch pruefen (setup-check.php)."
             exit 1
           fi
 

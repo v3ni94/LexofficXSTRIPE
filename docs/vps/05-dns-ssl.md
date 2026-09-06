@@ -37,6 +37,15 @@ weiterer Firmen, siehe `docs/vps/04-datenbankmigration.md`) die TTL der betroffe
 bestätigter Umstellung kann die TTL wieder auf einen höheren Wert (z. B. 3600 Sekunden) gesetzt
 werden.
 
+Während der Propagierung treffen Aufrufe auf die bereits umgestellten Namen den VPS, dessen
+Coolify-Proxy dort bis zur Zertifikatsausstellung durch Let's Encrypt nur das Standardzertifikat
+des Proxys liefert (siehe unten und die Zeile „Zertifikatsfehler“ in der Tabelle „Mögliche
+Fehler“). Das ist in diesem Zeitfenster erwartbar und kein Fehler der Anwendung; ein
+Migrationsaufruf des GitHub-Workflows über einen solchen, bereits umgestellten Namen bricht dann
+mit einem Zertifikatsfehler ab, ohne dass eine Migration gestartet wird (siehe
+`docs/migrations.md`, Abschnitt „Störung: Zertifikatsfehler beim Migrationsaufruf während des
+Umzugs“).
+
 ## Coolify-Proxy (Traefik) und Let's Encrypt
 
 Auf dem Hostinger-VPS bezieht und erneuert NICHT Caddy die TLS-Zertifikate, sondern der bereits

@@ -215,10 +215,24 @@ Grenze wechseln und `cron_time_budget_seconds` auf 90 erhöhen.
 Neue Versionen bringen ihre Migrationsdateien unter `sql/migrations/` mit
 (per Web nicht abrufbar). Eingespielt werden sie ausschließlich durch den
 Deployment-Workflow: Nach vollständig erfolgreichem SFTP-Upload ruft
-`deploy.yml` genau einmal `https://app.smart-einzug.de/migrate.php` per POST
-mit dem Header `X-Migration-Token` auf und erwartet HTTP 200 mit exakt
-`{"success":true}`. Der Cron führt keine Migrationen mehr aus, ein Aufruf per
-GET liefert 405.
+`deploy.yml` genau einmal per POST mit dem Header `X-Migration-Token` die
+Adresse aus der GitHub-Repository-Variablen `WEBHOSTING_MIGRATE_URL` auf und
+erwartet HTTP 200 mit exakt `{"success":true}`. Der Cron führt keine
+Migrationen mehr aus, ein Aufruf per GET liefert 405.
+
+`WEBHOSTING_MIGRATE_URL` enthält die vollständige Adresse des Migrations-
+endpunkts des Webhostings, zum Beispiel
+`https://<technisch eindeutige Adresse des Webhostings>/migrate.php`. Für
+diese Variable gibt es bewusst keinen Vorgabewert: Während des Umzugs auf den
+Hostinger-VPS zeigen die Namen unterhalb von smart-einzug.de zunehmend auf den
+VPS, ein fest verdrahteter Name hätte den falschen Server getroffen. Das
+Skript `tools/check-migrate-url.sh` prüft die Adresse zweimal, einmal vor dem
+SFTP-Upload und einmal unmittelbar vor dem Aufruf, und weist unter anderem die
+zum VPS gehörenden Namen ab; dadurch werden keine Dateien mehr hochgeladen,
+wenn die Adresse fehlt oder nicht verwendbar ist. Sobald die Anwendung
+vollständig auf dem VPS läuft, ist die Variable `WEBHOSTING_APP_DEPLOY` auf
+`false` zu setzen: Dann entfallen der App-Ordner und der Migrationsaufruf
+vollständig, das Webhosting liefert nur noch die Marketingseiten aus.
 
 Voraussetzungen: `migration_token` in `app/config.php` (eigener Zufallswert,
 unabhängig vom `cron_token`) und derselbe Wert als GitHub-Secret

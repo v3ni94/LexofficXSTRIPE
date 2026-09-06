@@ -10,7 +10,7 @@ Stand 06.09.2026. Gilt für die Anwendungsdatenbank von SmartEinzug (php-ionos).
 | Endpunkt | `php-ionos/migrate.php` | Einziger Einstieg, der Migrationen ausführt. Nur POST mit Header `X-Migration-Token`. Antwort ausschließlich JSON. |
 | Migrationsdateien | `php-ionos/sql/migrations/NNN_*.sql` | Wiederholbare SQL-Anweisungen (`IF NOT EXISTS`), eine Datei je Version. Per Web gesperrt (`php-ionos/sql/.htaccess`, `php-ionos/.htaccess`). |
 | Stand anzeigen | `php-ionos/setup-check.php?token=<cron_token>` | Zeile "Migrationen (Stand)": eingespielt, offen, failed, unknown. Nur lesend. |
-| Workflow | `.github/workflows/deploy.yml` | Nach vollständig erfolgreichem SFTP-Upload genau ein POST auf `https://app.smart-einzug.de/migrate.php`; Erfolg nur bei HTTP 200 und JSON `{"success":true}`; keine Wiederholung. |
+| Workflow | `.github/workflows/deploy.yml` | Nach vollständig erfolgreichem SFTP-Upload genau ein POST auf die Adresse aus der GitHub-Repository-Variablen `WEBHOSTING_MIGRATE_URL` (nicht mehr fest verdrahtet); geprüft durch `tools/check-migrate-url.sh`, einmal vor dem Upload und einmal unmittelbar vor dem Aufruf. Erfolg nur bei HTTP 200 und JSON `{"success":true}`; keine Wiederholung. |
 
 Geprüfte frühere Aufrufer und ihr Stand:
 
@@ -70,12 +70,22 @@ Es gibt keine automatische Rückabwicklung. MariaDB führt DDL nicht transaktion
 
 ## Deployment-Ablauf
 
-1. Workflow prüft Secrets (`MIGRATION_TOKEN` ohne Zeilenumbruch, `migrate.php` vorhanden, `sql/.htaccess` vorhanden).
+1. Workflow prüft Secrets (`MIGRATION_TOKEN` ohne Zeilenumbruch, `migrate.php` vorhanden, `sql/.htaccess` vorhanden) sowie, im selben Schritt, mit `tools/check-migrate-url.sh` die Adresse aus `WEBHOSTING_MIGRATE_URL` (https, Pfad endet auf `/migrate.php`, keine Zugangsdaten oder Parameter in der Adresse, kein zum VPS gehörender Name). Fehlt oder eignet sich die Adresse nicht, bricht der Workflow bereits hier ab, es wird nichts hochgeladen.
 2. SFTP-Upload je Ordner (ohne `config.php`, `storage`, Logs, ohne `--delete`), zuletzt `sql/.htaccess` und `sql/migrations/`.
-3. Nur bei vollständig erfolgreichem Upload: ein POST auf `migrate.php`, Auswertung von HTTP 200 und `success: true` mit `jq`, `--retry 0`, keine Weiterleitungen.
+3. Nur bei vollständig erfolgreichem Upload: `tools/check-migrate-url.sh` läuft ein zweites Mal unmittelbar vor dem Aufruf, danach ein POST auf die geprüfte Adresse, Auswertung von HTTP 200 und `success: true` mit `jq`, `--retry 0`, keine Weiterleitungen. Die HTTPS-Zertifikatsprüfung bleibt dabei aktiv, es wird kein `curl -k`/`--insecure` verwendet.
 4. Bei Fehler nach dem Upload: Hinweis, kein Rollback, keine Wiederholung.
 
 `concurrency: production-sftp` mit `cancel-in-progress: false` verhindert parallele Workflows derselben Gruppe; ein zweiter Push wartet, bis Upload und Migrationsaufruf des ersten abgeschlossen sind. Da der Cron keine Migrationen mehr startet, kann während eines Uploads keine Migration auf einen unvollständigen Dateibestand treffen.
+
+## Störung: Zertifikatsfehler beim Migrationsaufruf während des Umzugs
+
+Beobachtet im Job `deploy-webhosting`: Abbruch mit „curl: (60) SSL certificate problem: self-signed certificate“ und „Verbindungsfehler oder Timeout beim Migrationsaufruf“, danach die Warnung „Dateien sind bereits hochgeladen. Es erfolgt kein automatischer Rollback.“
+
+Ursache: Der Migrationsaufruf war zu diesem Zeitpunkt fest auf `https://app.smart-einzug.de/migrate.php` verdrahtet (überholt, siehe unten). Im laufenden Umzug von IONOS auf den Hostinger-VPS zeigte dieser Name bereits auf den VPS. Der dortige Coolify-Proxy (Traefik) beantwortete die Anfrage mit seinem Standardzertifikat, weil für diesen Namen noch kein Let's-Encrypt-Zertifikat vorlag; curl brach deshalb beim TLS-Handshake ab, also bevor die HTTP-Anfrage überhaupt übertragen wurde. Es wurde dadurch keine Migration gestartet, weder auf dem Webhosting noch auf dem VPS; die Zertifikatsprüfung hat verhindert, dass der Aufruf den falschen Server und die falsche Datenbank erreicht.
+
+Korrektur: Die Adresse ist nicht mehr fest verdrahtet, sondern kommt aus der Repository-Variablen `WEBHOSTING_MIGRATE_URL` (siehe Tabelle oben und `tools/check-migrate-url.sh`); die Angabe `https://app.smart-einzug.de/migrate.php` ist damit als Anweisung überholt. Die Prüfung läuft zweimal (vor dem Upload und unmittelbar vor dem Aufruf), sodass eine fehlende oder unbrauchbare Adresse keinen Upload mehr auslöst. Die Zertifikatsprüfung selbst bleibt unverändert aktiv.
+
+Empfohlenes Vorgehen beim Umzug: Solange die Anwendung noch auf dem Webhosting läuft, `WEBHOSTING_MIGRATE_URL` vor der DNS-Umstellung auf eine technisch eindeutige, vom Umzug nicht betroffene Adresse des Webhostings setzen (siehe `docs/vps/07-cutover-checkliste.md`). Sobald die Anwendung vollständig auf dem VPS läuft, `WEBHOSTING_APP_DEPLOY` auf `false` setzen; ein Migrationsaufruf über eine Domain, die künftig auf den VPS zeigt, ist dann weder nötig noch zulässig, Migrationen laufen auf dem VPS ausschließlich über `deploy.sh` mit `php bin/migrate.php`.
 
 ## Tests (nur Testdatenbank)
 
