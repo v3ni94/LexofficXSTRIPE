@@ -1,14 +1,14 @@
 name: Automatisch zu IONOS-Webhosting hochladen
 
-# Nur fuer IONOS-WEBHOSTING mit den unten verifizierten Server-Fingerabdruecken.
-# Nicht ungeprueft fuer VPS, Cloud-Server, dedizierte Server oder andere Hoster nutzen.
-# Kein Secret SSH_KNOWN_HOSTS erforderlich; die Serverpruefung bleibt aktiviert.
-# Vor Aktivierung Zielverzeichnis und Ausschluesse pruefen; Serverdateien sichern.
-# Erforderliche Secrets: SFTP_HOST, SFTP_USER, SFTP_PASSWORD, SFTP_PORT, SFTP_PATH.
-# SFTP_PATH ist das Wurzelverzeichnis des Webspace, in dem die Ordner app,
-# smart-einzug.de, lexware-einzug.de usw. liegen (bei IONOS meist "/").
-# Zuordnung Repository-Ordner zu Webspace-Ordner: siehe Schritt "Dateien hochladen".
-# Veröffentlichungs-Branch: claude/setup-lexsepa-monorepo-v5ZcZ (und main).
+# Nur fuer IONOS-Webhosting mit den unten verifizierten Server-Fingerabdruecken.
+# Nicht ungeprueft fuer VPS, Cloud-Server oder andere Hoster nutzen.
+# Erforderliche Secrets:
+# SFTP_HOST, SFTP_USER, SFTP_PASSWORD, SFTP_PORT, SFTP_PATH, MIGRATION_TOKEN.
+# MIGRATION_TOKEN muss auch in der geschuetzten Serverkonfiguration stehen.
+# migrate.php muss POST mit X-Migration-Token unterstuetzen und nach
+# vollstaendigem Erfolg HTTP 200 mit JSON {"success":true} zurueckgeben.
+# Diese Datei richtet weder Backups noch Wartungsmodus oder Rollback ein.
+
 on:
   push:
     branches: [main, claude/setup-lexsepa-monorepo-v5ZcZ]
@@ -21,7 +21,8 @@ on:
 permissions:
   contents: read
 
-# Keine zwei Uploads aus diesem Repository gleichzeitig ausführen.
+# Upload UND anschliessende Migration laufen nicht parallel zu einem
+# weiteren Workflow derselben Gruppe. Serverseitige Sperre bleibt notwendig.
 concurrency:
   group: production-sftp
   cancel-in-progress: false
@@ -30,7 +31,7 @@ jobs:
   deploy:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/setup-lexsepa-monorepo-v5ZcZ'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Projekt aus GitHub laden
@@ -38,15 +39,37 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: SFTP-Werkzeug installieren
+      - name: Voraussetzungen vor dem Upload pruefen
+        shell: bash
+        env:
+          MIGRATION_TOKEN: ${{ secrets.MIGRATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${MIGRATION_TOKEN:?GitHub-Secret MIGRATION_TOKEN fehlt}"
+
+          if [[ "$MIGRATION_TOKEN" == *$'\n'* || "$MIGRATION_TOKEN" == *$'\r'* ]]; then
+            echo "::error::MIGRATION_TOKEN darf keine Zeilenumbrueche enthalten."
+            exit 1
+          fi
+
+          if [[ ! -f php-ionos/migrate.php ]]; then
+            echo "::error::php-ionos/migrate.php fehlt. Kein Upload gestartet."
+            exit 1
+          fi
+
+          if [[ -d php-ionos/sql/migrations && ! -f php-ionos/sql/.htaccess ]]; then
+            echo "::error::php-ionos/sql/.htaccess fehlt. Kein Upload gestartet."
+            exit 1
+          fi
+
+      - name: Werkzeuge installieren
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends lftp openssh-client
+          sudo apt-get install -y --no-install-recommends lftp openssh-client curl jq
 
-      # Diese Vorlage ist für direkt auslieferbare Dateien gedacht.
-      # Nötige Build-/Testschritte müssen VOR dem Upload ergänzt werden.
-      # Bei einem Build unten ./ durch den tatsächlichen Ausgabeordner ersetzen.
       - name: Dateien hochladen
+        id: upload
+        timeout-minutes: 15
         shell: bash
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
@@ -62,12 +85,10 @@ jobs:
           : "${SFTP_PATH:?SFTP_PATH fehlt}"
           : "${LFTP_PASSWORD:?SFTP_PASSWORD fehlt}"
 
-          # Einfache, absolute Zielpfade ohne Steuerzeichen/Skript-Syntax.
           [[ "$SFTP_PATH" =~ ^/[a-zA-Z0-9_./-]*$ ]] || {
             echo "Zielpfad: / am Anfang; nur Buchstaben, Zahlen, _, ., / und -."
             exit 1
           }
-          # SFTP_HOST: nur Servername/IPv4, ohne sftp://, Port oder Pfad.
           [[ "$SFTP_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || {
             echo "::error::SFTP_HOST muss ein reiner Servername sein."
             exit 1
@@ -86,19 +107,17 @@ jobs:
           : > "$verified_hosts"
           chmod 600 "$verified_hosts"
 
-          # Abruf oeffentlicher Server-Schluessel: keine Anmeldung erforderlich.
-          # Der Abruf allein waere NICHT vertrauenswuerdig. Daher werden unten
-          # ausschliesslich Schluessel mit verifiziertem SHA256-Wert uebernommen.
+          # Abgerufene Hostschluessel erst nach Fingerabdruckpruefung verwenden.
           if ! ssh-keyscan -T 10 -p "$port" -t ed25519,ecdsa,rsa \
             "$SFTP_HOST" > "$workdir/candidates" 2> "$workdir/scan.log"; then
             echo "::error::Server-Schluessel nicht abrufbar. SFTP_HOST, Port und Erreichbarkeit pruefen."
             exit 1
           fi
 
-          # Offizielle IONOS-Webhosting-Fingerabdruecke, abgerufen am 05.09.2026:
+          # Offizielle IONOS-Webhosting-Fingerabdruecke, geprueft am 06.09.2026:
           # https://www.ionos.de/hilfe/hosting/ssh-zugaenge-einrichten-und-verwalten/uebersicht-der-ssh-fingerabdruecke-im-ionos-webhosting/
-          # Bei Schluesselwechsel die neue Angabe bei IONOS verifizieren und
-          # diese Liste aktualisieren. Die Pruefung NICHT einfach deaktivieren.
+          # Bei Schluesselwechsel neue Werte bei IONOS verifizieren.
+          # Die Serverpruefung NICHT deaktivieren.
           while IFS= read -r hostkey || [[ -n "$hostkey" ]]; do
             [[ -z "$hostkey" || "$hostkey" == \#* ]] && continue
             printf '%s\n' "$hostkey" > "$workdir/one_key"
@@ -117,21 +136,17 @@ jobs:
 
           if [[ ! -s "$verified_hosts" ]]; then
             echo "::error::Kein passender IONOS-Webhosting-Schluessel gefunden. Upload wurde NICHT gestartet."
-            echo "Servername, Hosting-Produkt und die aktuellen IONOS-Fingerabdruecke pruefen."
+            echo "Servername, Hosting-Produkt und aktuelle IONOS-Fingerabdruecke pruefen."
             exit 1
           fi
           echo "IONOS-Webhosting-Hostschluessel erfolgreich verifiziert."
 
-          # Keine --delete-Option: entfernte Dateien werden NICHT gelöscht.
-          # Achtung: gleichnamige, nicht ausgeschlossene Dateien werden ersetzt.
-          # Nie hochgeladen: app/config.php (Zugangsdaten, liegt nur auf dem Server),
-          # app/storage (hochgeladene Mandatsdokumente), Logs, .git, schema.sql.
-          # Ausnahme: sql/migrations/*.sql werden mitgeliefert (per .htaccess gesperrt),
-          # der Cron bzw. migrate.php spielt sie automatisch ein.
+          # Keine --delete-Option: entfernte Dateien werden NICHT geloescht.
+          # Gleichnamige, nicht ausgeschlossene Dateien werden ersetzt.
+          # config.php, storage, Logs, .env und Datenbankdateien bleiben ausgenommen.
+          # Migrationsdateien werden danach gesondert hochgeladen.
           root="${SFTP_PATH%/}"
 
-          # Zuordnung Repository-Ordner -> Webspace-Ordner (Ordnernamen wie bei IONOS angelegt).
-          # Bei abweichenden Ordnernamen nur die rechte Seite anpassen.
           mapping=(
             "php-ionos|app"
             "websites/smart-einzug.de|smart-einzug.de"
@@ -150,13 +165,12 @@ jobs:
             echo "set net:max-retries 2"
             echo "set sftp:auto-confirm no"
             echo "set sftp:connect-program \"ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$verified_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o VerifyHostKeyDNS=no -o ConnectTimeout=15\""
-            # Passwort kommt aus der Umgebungsvariable LFTP_PASSWORD (--env-password), nie aus dem Skript.
             echo "open --env-password -u \"$SFTP_USER\" -p $port \"sftp://$SFTP_HOST\""
             for entry in "${mapping[@]}"; do
               src="${entry%%|*}"
               dst="${entry##*|}"
               if [[ ! -d "$src" ]]; then
-                echo "::warning::Ordner $src fehlt im Repository, wird übersprungen." >&2
+                echo "::warning::Ordner $src fehlt im Repository, wird uebersprungen." >&2
                 continue
               fi
               echo "mkdir -pf \"$root/$dst\""
@@ -166,18 +180,81 @@ jobs:
               echo "  --exclude '(\.sql(\.gz)?|\.sqlite3?|\.db|\.log|\.pem|\.key|\.bak)\$' \\"
               echo "  \"$src/\" \"$root/$dst\""
             done
-            # Migrationsdateien getrennt hochladen (Ordner sql ist per .htaccess für den Webzugriff gesperrt).
-            # Der Cron bzw. migrate.php spielt sie automatisch ein.
+
+            # Zuerst die vorhandene .htaccess, dann die SQL-Migrationen.
+            # Die wirksame Web-Zugriffssperre muss serverseitig geprueft sein.
             if [[ -d php-ionos/sql/migrations ]]; then
               echo "mkdir -pf \"$root/app/sql/migrations\""
-              echo "mirror --reverse --no-perms --parallel=2 --exclude '(^|/)\.git[^/]*(/|\$)' \"php-ionos/sql/migrations/\" \"$root/app/sql/migrations\""
               echo "put -O \"$root/app/sql\" \"php-ionos/sql/.htaccess\""
+              echo "mirror --reverse --no-perms --parallel=2 --exclude '(^|/)\.git[^/]*(/|\$)' \"php-ionos/sql/migrations/\" \"$root/app/sql/migrations\""
             fi
             echo "bye"
           } > "$script"
 
           echo "Upload-Plan:"
           grep -E '^(mkdir|put|  \")' "$script" | sed 's/^/  /'
-          # Verbindung wird im Skript selbst geöffnet (open ...), lftp führt das Skript aus und beendet sich.
           lftp -f "$script"
           echo "Upload abgeschlossen."
+
+      - name: Datenbankmigration ausfuehren
+        id: migration
+        if: ${{ success() && steps.upload.outcome == 'success' }}
+        timeout-minutes: 6
+        shell: bash
+        env:
+          MIGRATION_TOKEN: ${{ secrets.MIGRATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${MIGRATION_TOKEN:?GitHub-Secret MIGRATION_TOKEN fehlt}"
+          umask 077
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+
+          # Token nicht in URL oder Log schreiben.
+          # Geschuetzte Headerdatei statt Token als Prozessargument.
+          printf 'X-Migration-Token: %s\n' "$MIGRATION_TOKEN" > "$workdir/header"
+
+          # Keine Weiterleitungen, keine automatischen Wiederholungen.
+          # HTTPS-Zertifikatspruefung bleibt aktiviert.
+          if ! status="$(curl --disable \
+            --silent \
+            --show-error \
+            --proto '=https' \
+            --request POST \
+            --header "@$workdir/header" \
+            --header 'Accept: application/json' \
+            --header 'Cache-Control: no-store' \
+            --connect-timeout 15 \
+            --max-time 300 \
+            --retry 0 \
+            --output "$workdir/response.json" \
+            --write-out '%{http_code}' \
+            'https://app.smart-einzug.de/migrate.php')"; then
+            echo "::error::Verbindungsfehler oder Timeout beim Migrationsaufruf."
+            echo "Datenbankzustand vor einem erneuten Start pruefen."
+            exit 1
+          fi
+
+          if [[ "$status" != "200" ]]; then
+            echo "::error::Migrationsaufruf nicht erfolgreich: HTTP ${status}."
+            echo "Serverprotokoll pruefen. Keine automatische Wiederholung."
+            exit 1
+          fi
+
+          # Nur EIN gueltiges JSON-Objekt mit success=true akzeptieren.
+          # Keine HTML-Seite und kein blosser HTTP-200-Status als Erfolg.
+          if ! jq -e -s \
+            'length == 1 and (.[0] | type == "object" and .success == true)' \
+            "$workdir/response.json" >/dev/null 2>&1; then
+            echo "::error::Keine eindeutige Erfolgsbestaetigung von migrate.php."
+            echo 'Erwartet: HTTP 200 und ein JSON-Objekt mit "success":true.'
+            echo "Migration kann bereits gelaufen sein. Zustand vor erneutem Start pruefen."
+            exit 1
+          fi
+
+          echo "Server hat den erfolgreichen Abschluss der Migrationen bestaetigt."
+
+      - name: Hinweis bei Fehler nach dem Upload
+        if: ${{ failure() && steps.upload.outcome == 'success' }}
+        run: |
+          echo "::warning::Dateien sind bereits hochgeladen. Es erfolgt kein automatischer Rollback. Vor erneutem Deployment Anwendung und Datenbankzustand pruefen."
