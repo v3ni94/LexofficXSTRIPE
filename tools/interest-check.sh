@@ -31,7 +31,8 @@ if mariadb_sandbox_available; then
     echo "3) Bestaetigung, Angaben, Einladung, Abmeldung, Sperrvermerk"
     erw "falscher Token" confirm_falsch invalid; erw "Muell-Token" confirm_muell invalid; erw "Bestaetigung" confirm confirmed
     erw "Status confirmed" status_bestaetigt confirmed; erw "confirmed_at gesetzt" confirmed_at 1; erw "Token A nach Bestaetigung geloescht" token_a_geloescht 1; erw "Token A nicht wiederverwendbar" confirm_erneut invalid
-    erw "Kennzahl Bestaetigung" funnel_confirmed 1; erw "erneute Anmeldung nach Bestaetigung: gleiche Antwort" nach_bestaetigung_state already; erw "keine weitere Mail" nach_bestaetigung_mails 3
+    erw "frischer Token B aus interest_confirm" manage_neu_passt 1; erw "Mail nach Bestaetigung mit Abmeldelink" bestaetigt_mail 1; erw "Bestaetigung sendet genau eine Mail (4)" mails_nach_confirm 4
+    erw "Kennzahl Bestaetigung" funnel_confirmed 1; erw "erneute Anmeldung nach Bestaetigung: gleiche Antwort" nach_bestaetigung_state already; erw "keine weitere Mail" nach_bestaetigung_mails 4
     erw "freiwillige Angaben gespeichert" angaben 1; erw "Betatest-Interesse" beta 1; erw "Rechnungen je Monat" ipm 21_100; erw "Stripe vorhanden" has_stripe 1; erw "API-Zugang nein" has_api 0; erw "ungueltiger Bereich wird NULL" ipm_ungueltig_null 1
     erw "Betaeinladung fuer bestaetigten Eintrag" invite 1
     erw "falscher Abmeldetoken" unsub_falsch invalid; erw "Abmeldung ueber Token B" unsub unsubscribed; erw "Status unsubscribed" status_abgemeldet unsubscribed; erw "keine Angaben nach Abmeldung" angaben_nach_abmeldung 0

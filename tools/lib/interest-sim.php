@@ -58,8 +58,15 @@ $out('err_waitlist_zu', (string)interest_register(['provider'=>'sevdesk','email'
 $pdo->exec("DELETE FROM platform_settings");
 
 $out('confirm_falsch', interest_confirm(str_repeat('0', 64))); $out('confirm_muell', interest_confirm('abc'));
-$out('confirm', interest_confirm($tk['a']));
+$manageNeu = null;
+$out('confirm', interest_confirm($tk['a'], $manageNeu));
 $r = $row();
+$out('manage_neu_passt', ($manageNeu !== null && hash('sha256', $manageNeu) === (string)$r['manage_token_hash']) ? 1 : 0);
+$letzte = (string)(json_decode((string)$pdo->query("SELECT payload FROM jobs WHERE type='mail' ORDER BY created_at DESC LIMIT 1")->fetchColumn(), true)['text'] ?? '');
+$alleMails = implode(' ', array_map(static fn($pl) => (string)(json_decode((string)$pl, true)['text'] ?? ''), $pdo->query("SELECT payload FROM jobs WHERE type='mail'")->fetchAll(PDO::FETCH_COLUMN)));
+$out('bestaetigt_mail', (str_contains($alleMails, 'ist bestätigt') && str_contains($alleMails, 'abmelden=' . $manageNeu)) ? 1 : 0);
+$out('mails_nach_confirm', $mails());
+$tk['b'] = $manageNeu;
 $out('status_bestaetigt', $r['status']); $out('confirmed_at', $r['confirmed_at'] ? 1 : 0); $out('token_a_geloescht', $r['token_hash'] === null ? 1 : 0);
 $out('confirm_erneut', interest_confirm($tk['a']));
 $out('funnel_confirmed', (int)$pdo->query("SELECT COUNT(*) FROM funnel_events WHERE event='interest_confirmed'")->fetchColumn());

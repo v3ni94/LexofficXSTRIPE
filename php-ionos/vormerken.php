@@ -118,15 +118,14 @@ if ($tokenA !== '') {
         ], $back, 'Erneut vormerken', null, 410);
     }
     if ($method === 'POST' && $aktion === 'bestaetigen') {
-        $ergebnis = interest_confirm($tokenA);
-        if ($ergebnis === 'invalid') {
+        $manage = null;
+        $ergebnis = interest_confirm($tokenA, $manage);
+        if ($ergebnis === 'invalid' || $manage === null) {
             vormerken_page('Bestätigung nicht möglich', ['Diese Vormerkung wurde abgemeldet oder der Link ist nicht mehr gültig.'], $back, 'Erneut vormerken', null, 410);
         }
-        // Freiwillige Angaben laufen über Token B; dafür wird ein frischer Token B erzeugt (nur als Hash gespeichert).
-        $manage = bin2hex(random_bytes(32));
-        db()->prepare('UPDATE interest_registrations SET manage_token_hash = ? WHERE id = ?')->execute([hash('sha256', $manage), $row['id']]);
+        // Freiwillige Angaben laufen über den frischen Token B aus interest_confirm (nur als Hash gespeichert).
         vormerken_page('Ihre Vormerkung ist bestätigt', [
-            'Wir informieren Sie über die sevdesk-Anbindung und den geplanten Start. Derzeit müssen Sie noch kein sevdesk- oder Stripe-Konto verbinden.',
+            'Wir informieren Sie über die sevdesk-Anbindung und den geplanten Start. Derzeit müssen Sie noch kein sevdesk- oder Stripe-Konto verbinden. Eine Bestätigung mit Abmeldelink ist an Ihre Adresse unterwegs.',
             'Es entsteht kein Abonnement und keine Zahlungspflicht. Abmelden können Sie sich jederzeit über den Link in jeder E-Mail.',
             'Wenn Sie möchten, helfen uns die folgenden freiwilligen Angaben bei der Planung. Sie können diesen Schritt auch überspringen.',
         ], $back, 'Zur Produktseite', vormerken_angaben_form($manage));

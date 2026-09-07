@@ -244,8 +244,12 @@ function interest_by_manage_token(string $token): ?array
     return $row ?: null;
 }
 
-/** Bestätigung über Token A: 'confirmed', 'already' oder 'invalid' (auch für abgemeldete und gesperrte Zeilen). */
-function interest_confirm(string $token): string
+/**
+ * Bestätigung über Token A: 'confirmed', 'already' oder 'invalid' (auch für abgemeldete und gesperrte Zeilen).
+ * Bei Erfolg wird ein frischer Token B erzeugt (Rückgabe über $manageToken, nur der Hash wird gespeichert) und
+ * die Bestätigungsmail mit Abmeldelink versendet; jede Vormerkung erhält damit immer eine Bestätigung per E-Mail.
+ */
+function interest_confirm(string $token, ?string &$manageToken = null): string
 {
     $row = interest_by_token($token);
     if (!$row || $row['status'] === 'unsubscribed' || $row['blocked_at'] !== null) {
@@ -254,9 +258,17 @@ function interest_confirm(string $token): string
     if ($row['status'] === 'confirmed') {
         return 'already';
     }
-    db()->prepare("UPDATE interest_registrations SET status = 'confirmed', confirmed_at = UTC_TIMESTAMP(), token_hash = NULL, token_expires_at = NULL WHERE id = ?")
-        ->execute([$row['id']]);
+    $manageToken = bin2hex(random_bytes(32));
+    db()->prepare("UPDATE interest_registrations SET status = 'confirmed', confirmed_at = UTC_TIMESTAMP(), token_hash = NULL, token_expires_at = NULL, manage_token_hash = ? WHERE id = ?")
+        ->execute([hash('sha256', $manageToken), $row['id']]);
     funnel_event($row['source_domain'], 'interest_confirmed', null, null, (string)$row['provider_code']);
+    $provider = integration_provider((string)$row['provider_code']);
+    $tpl = mail_tpl_interest_confirmed(
+        (string)($provider['name'] ?? $row['provider_code']),
+        app_base_url() . '/vormerken.php?abmelden=' . $manageToken,
+        public_base_url() . ($row['provider_code'] === 'sevdesk' ? '/integrationen/sevdesk/' : '/integrationen/')
+    );
+    mail_send((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html']);
     return 'confirmed';
 }
 

@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.20';
+const APP_VERSION = '4.21';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.21', 'date' => '07.09.2026', 'title' => 'E-Mails im Corporate Design, Willkommensmail, Bestätigung der Vormerkung, Mailprüfung',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Alle E-Mails (mail_layout) im Corporate Design der Müller Holding AG: Kopfnaht mit Goldsegment, Wortmarke SmartEinzug, Goldbalken, Fließtext Anthrazit, Gold nur als Akzent, Fußband mit den Pflichtangaben nach § 80 AktG (Sitz, Registergericht, HRB 104291, Vorstand, Aufsichtsratsvorsitzender), Zweitlink für Abmeldungen. Textfassung gleichwertig.'],
+            ['type' => 'Neu', 'text' => 'Jede Registrierung erhält eine Willkommensmail mit Bestätigungslink und den nächsten Schritten (Zwei-Faktor, Buchhaltungssystem, Stripe). Jede bestätigte Vorregistrierung erhält eine Bestätigungsmail mit Abmeldelink; der Abmeldetoken wird dabei frisch erzeugt.'],
+            ['type' => 'Neu', 'text' => 'bin/mail-check.php zeigt den Stand des Mailversands (Passwörter nie im Klartext) und sendet mit --send eine Testmail im Corporate Design. Anleitung docs/mail-einrichtung.md im Adminbereich. Hintergrund: In Produktion steht mail.enabled auf false; damit sendet die Anwendung keine E-Mails und die Vorregistrierung nimmt keine Einträge an.'],
+            ['type' => 'Geändert', 'text' => 'Statusseite: Verfügbarkeit zusätzlich „seit Erfassungsbeginn“ mit Tagesangabe, solange die Fenster von 30 und 90 Tagen noch nicht mit Messdaten gefüllt sind. Die Komponente E-Mail bleibt unbekannt, bis der Mailversand aktiviert ist. docs/sevdesk.md um die Checkliste für das sevdesk-Testkonto ergänzt. Test tools/mail-ci-check.php (28 Fälle).'],
+         ]],
         ['version' => '4.20', 'date' => '07.09.2026', 'title' => 'sevdesk-Seite als Inhaltsseite, Altreleases bleiben Rollback-Ziel',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'smart-einzug.de/integrationen/sevdesk/ zur vollständigen Inhaltsseite ausgebaut (rund 1.900 Wörter): Ausgangslage, geplanter Ablauf, Nutzen, Zielgruppen, Grundlagen der SEPA-Lastschrift (Mandat, Vorabankündigung, Rücklastschrift, Gläubiger-ID), Voraussetzungen, Vergleich manueller Einzug gegen geplanten Ablauf, Abgrenzung zu Lexware Office, elf Fragen mit FAQ-Markup (schema.org FAQPage), Zeitplan, zwei Formulare. Title und Description auf die Suchbegriffe sevdesk, SEPA-Lastschrift, Stripe ausgerichtet; alle Aussagen zur Anbindung als geplant gekennzeichnet.'],

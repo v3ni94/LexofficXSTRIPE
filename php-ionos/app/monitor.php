@@ -1216,6 +1216,23 @@ function monitor_public_availability(string $publicKey, int $days): array
     }
     $coverage = $best ? (float)$best['coverage_pct'] : 0.0;
     $pct = $best && $coverage >= (float)$cfg['public_min_coverage_pct'] ? $best['availability_pct'] : null;
+    // Zusätzlich: Verfügbarkeit seit Erfassungsbeginn. Solange das Fenster von 30 oder 90 Tagen noch nicht mit
+    // Messdaten gefüllt ist, zeigt dieser Wert den tatsächlich beobachteten Zeitraum (ehrlich beschriftet mit Tagen).
+    $sincePct = null;
+    $sinceDays = null;
+    if ($firstTs !== null && $firstTs > $from && $to - $firstTs >= 3600) {
+        $sinceBest = null;
+        foreach ($defs[$publicKey]['internal'] ?? [] as $ic) {
+            $u = monitor_uptime($ic, $firstTs, $to);
+            if ($sinceBest === null || ($u['availability_pct'] ?? 101) < ($sinceBest['availability_pct'] ?? 101)) {
+                $sinceBest = $u;
+            }
+        }
+        if ($sinceBest && (float)$sinceBest['coverage_pct'] >= (float)$cfg['public_min_coverage_pct']) {
+            $sincePct = $sinceBest['availability_pct'];
+        }
+        $sinceDays = max(1, (int)round(($to - $firstTs) / 86400));
+    }
     return [
         'pct' => $pct,
         'coverage_pct' => round($coverage, 2),
@@ -1223,6 +1240,9 @@ function monitor_public_availability(string $publicKey, int $days): array
         'observed_to' => mon_iso($to),
         'label' => $pct === null ? 'Unvollständige Messdaten' : number_format((float)$pct, 2, ',', '.') . ' %',
         'min_coverage_pct' => (float)$cfg['public_min_coverage_pct'],
+        'since_pct' => $sincePct,
+        'since_days' => $sinceDays,
+        'since_label' => $sincePct === null ? null : number_format((float)$sincePct, 2, ',', '.') . ' % seit Erfassungsbeginn (' . $sinceDays . ' ' . ($sinceDays === 1 ? 'Tag' : 'Tage') . ')',
     ];
 }
 

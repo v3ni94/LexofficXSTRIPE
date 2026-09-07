@@ -342,16 +342,23 @@ function mail_smtp_send(array $smtp, string $from, string $to, string $headers, 
  * @param array{label:string,url:string}|null $button
  * @return array{text:string,html:string}
  */
-function mail_layout(string $title, array $paragraphs, ?array $button = null, ?string $footerNote = null): array
+function mail_layout(string $title, array $paragraphs, ?array $button = null, ?string $footerNote = null, ?array $secondaryLink = null): array
 {
+    // Gestaltungssprache "Goldpunkt" der Müller Holding AG (Skill mhag-ci): Kopfnaht mit Goldsegment, Wortmarke,
+    // Goldbalken unter der Überschrift, Fließtext Anthrazit, Gold nur als Akzent, Fußband mit den Pflichtangaben
+    // nach § 80 AktG (Rechtsform und Sitz, Registergericht, HRB, Vorstand, Aufsichtsratsvorsitzender).
     $productName = mail_product_name();
     $font = "Carlito, Calibri, 'Segoe UI', sans-serif";
-    $mandatoryFooter = $productName . ' ist ein Dienst der Müller Holding AG, Rheinpromenade 13, '
-        . '40789 Monheim am Rhein. Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. '
-        . 'Kein Produkt der Haufe-Lexware GmbH & Co. KG.';
-    $autoNote = $productName . '. Diese E-Mail wurde automatisch erzeugt.';
+    $publicBase = function_exists('public_base_url') ? public_base_url() : 'https://smart-einzug.de';
+    $logoUrl = $publicBase . '/assets/img/logo-horizontal.png';
+    $productLine = $productName . ' ist ein Angebot der Müller Holding AG. Unabhängige Softwarelösung mit Schnittstelle zu '
+        . 'Lexware Office. Kein Produkt der Haufe-Lexware GmbH & Co. KG.';
+    $footer1 = 'Müller Holding AG · Rheinpromenade 13 · 40789 Monheim am Rhein · kontakt@mueller-holding.ag · mueller-holding.ag';
+    $footer2 = 'Sitz: Monheim am Rhein · Registergericht: Amtsgericht Düsseldorf · HRB 104291 · Vorstand: Timo Müller · Aufsichtsratsvorsitzender: Jan Walprecht';
+    $autoNote = 'Diese E-Mail wurde automatisch von ' . $productName . ' erzeugt. Antworten erreichen uns über die Adresse im Absender.';
 
     $hasButton = $button !== null && !empty($button['label']) && !empty($button['url']);
+    $hasSecondary = $secondaryLink !== null && !empty($secondaryLink['label']) && !empty($secondaryLink['url']);
 
     // --- Textfassung ---
     $textParts = [$title];
@@ -361,53 +368,67 @@ function mail_layout(string $title, array $paragraphs, ?array $button = null, ?s
     if ($hasButton) {
         $textParts[] = $button['label'] . ': ' . $button['url'];
     }
+    if ($hasSecondary) {
+        $textParts[] = $secondaryLink['label'] . ': ' . $secondaryLink['url'];
+    }
     if ($footerNote !== null && trim($footerNote) !== '') {
         $textParts[] = $footerNote;
     }
     $textParts[] = $autoNote;
-    $textParts[] = $mandatoryFooter;
+    $textParts[] = $productLine;
+    $textParts[] = $footer1 . "\n" . $footer2;
     $text = implode("\n\n", $textParts) . "\n";
 
-    // --- HTML-Fassung ---
+    // --- HTML-Fassung (Tabellenlayout, Inline-Stile, keine externen Stylesheets) ---
     $html = '<!DOCTYPE html>' . "\n"
         . '<html lang="de">' . "\n"
-        . '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>' . "\n"
-        . '<body style="margin:0;padding:0;background-color:#F4F4F4;">' . "\n"
-        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4F4F4;">' . "\n"
+        . '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' . e($title) . '</title></head>' . "\n"
+        . '<body style="margin:0;padding:0;background-color:#FBF6EC;">' . "\n"
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FBF6EC;">' . "\n"
         . '<tr><td align="center" style="padding:24px 12px;">' . "\n"
-        . '<table role="presentation" width="600" cellpadding="0" cellspacing="0" '
-        . 'style="max-width:600px;width:100%;background-color:#FFFFFF;">' . "\n"
-        . '<tr><td style="padding:32px 32px 0 32px;">' . "\n"
-        . '<h1 style="margin:0;font-family:' . $font . ';font-size:21px;line-height:1.3;color:#2E2D2E;">'
-        . e($title) . '</h1>' . "\n"
+        . '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#FFFFFF;">' . "\n"
+        // Kopfnaht: Haarlinie mit Goldsegment
+        . '<tr><td style="padding:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
+        . '<td width="120" style="height:3px;line-height:3px;font-size:0;background-color:#E3AC48;">&nbsp;</td>'
+        . '<td style="height:3px;line-height:3px;font-size:0;background-color:#DDDBD6;">&nbsp;</td>'
+        . '</tr></table></td></tr>' . "\n"
+        // Wortmarke
+        . '<tr><td style="padding:24px 32px 0 32px;">'
+        . '<img src="' . e($logoUrl) . '" alt="' . e($productName) . '" width="185" height="42" style="display:block;border:0;width:185px;height:auto;">'
+        . '</td></tr>' . "\n"
+        . '<tr><td style="padding:28px 32px 0 32px;">' . "\n"
+        . '<h1 style="margin:0;font-family:' . $font . ';font-size:22px;line-height:1.3;color:#2E2D2E;font-weight:bold;">' . e($title) . '</h1>' . "\n"
         . '<div style="margin:14px 0 0 0;width:56px;height:4px;line-height:4px;font-size:0;background-color:#E3AC48;">&nbsp;</div>' . "\n"
         . '</td></tr>' . "\n"
         . '<tr><td style="padding:20px 32px 4px 32px;font-family:' . $font . ';font-size:15px;line-height:1.6;color:#2E2D2E;">' . "\n";
-
     foreach ($paragraphs as $paragraph) {
         $html .= '<p style="margin:0 0 16px 0;">' . nl2br(e((string)$paragraph), false) . '</p>' . "\n";
     }
     $html .= '</td></tr>' . "\n";
-
     if ($hasButton) {
         $html .= '<tr><td style="padding:8px 32px 12px 32px;">' . "\n"
             . '<table role="presentation" cellpadding="0" cellspacing="0"><tr>' . "\n"
             . '<td style="border-radius:4px;background-color:#E3AC48;">' . "\n"
-            . '<a href="' . e($button['url']) . '" style="display:inline-block;padding:12px 24px;'
-            . 'font-family:' . $font . ';font-size:15px;font-weight:bold;color:#2E2D2E;text-decoration:none;'
-            . 'border-radius:4px;">' . e($button['label']) . '</a>' . "\n"
+            . '<a href="' . e($button['url']) . '" style="display:inline-block;padding:12px 24px;font-family:' . $font . ';font-size:15px;font-weight:bold;color:#2E2D2E;text-decoration:none;border-radius:4px;">' . e($button['label']) . '</a>' . "\n"
             . '</td></tr></table>' . "\n"
             . '</td></tr>' . "\n";
     }
-
-    if ($footerNote !== null && trim($footerNote) !== '') {
-        $html .= '<tr><td style="padding:4px 32px 0 32px;font-family:' . $font . ';font-size:13px;line-height:1.5;color:#6B6A69;">'
-            . e($footerNote) . '</td></tr>' . "\n";
+    if ($hasSecondary) {
+        $html .= '<tr><td style="padding:4px 32px 8px 32px;font-family:' . $font . ';font-size:13px;line-height:1.5;color:#5F5E5F;">'
+            . e($secondaryLink['label']) . ': <a href="' . e($secondaryLink['url']) . '" style="color:#8A5A00;text-decoration:underline;">' . e($secondaryLink['url']) . '</a>'
+            . '</td></tr>' . "\n";
     }
-
-    $html .= '<tr><td style="padding:24px 32px 32px 32px;font-family:' . $font . ';font-size:12px;line-height:1.6;color:#9F9F9F;">' . "\n"
-        . e($autoNote) . '<br><br>' . "\n"
-        . e($mandatoryFooter) . "\n"
+    if ($footerNote !== null && trim($footerNote) !== '') {
+        $html .= '<tr><td style="padding:4px 32px 0 32px;font-family:' . $font . ';font-size:13px;line-height:1.5;color:#5F5E5F;">' . e($footerNote) . '</td></tr>' . "\n";
+    }
+    $html .= '<tr><td style="padding:24px 32px 20px 32px;font-family:' . $font . ';font-size:12px;line-height:1.6;color:#9F9F9F;">' . e($autoNote) . '<br>' . e($productLine) . '</td></tr>' . "\n"
+        // Fußband: Anthrazit mit Goldhaarlinie als Oberkante
+        . '<tr><td style="padding:0;"><div style="height:2px;line-height:2px;font-size:0;background-color:#E3AC48;">&nbsp;</div></td></tr>' . "\n"
+        . '<tr><td style="padding:16px 32px 18px 32px;background-color:#2E2D2E;font-family:' . $font . ';font-size:11px;line-height:1.7;color:#CFCDC8;">'
+        . '<span style="color:#FFFFFF;font-weight:bold;">Müller Holding AG</span> · Rheinpromenade 13 · 40789 Monheim am Rhein · '
+        . '<a href="mailto:kontakt@mueller-holding.ag" style="color:#CFCDC8;text-decoration:none;">kontakt@mueller-holding.ag</a> · '
+        . '<a href="https://mueller-holding.ag" style="color:#E3AC48;text-decoration:none;">mueller-holding.ag</a><br>'
+        . e($footer2)
         . '</td></tr>' . "\n"
         . '</table>' . "\n"
         . '</td></tr>' . "\n"
@@ -482,12 +503,48 @@ function mail_tpl_interest_confirm(string $providerName, string $confirmUrl, ?st
         . 'Bitte bestätigen Sie Ihre E-Mail-Adresse über den folgenden Link. Durch die Bestätigung entsteht kein kostenpflichtiges Abonnement. '
         . 'Wenn Sie diese Vormerkung nicht angefordert haben, müssen Sie nichts tun.',
     ];
-    if ($unsubscribeUrl !== null) {
-        $paragraphs[] = 'Abmelden oder Eintrag löschen lassen: ' . $unsubscribeUrl;
-    }
     $button = ['label' => 'E-Mail-Adresse bestätigen', 'url' => $confirmUrl];
     $footerNote = 'Der Bestätigungslink ist 7 Tage gültig. Ohne Bestätigung wird der Eintrag nach spätestens 30 Tagen automatisch gelöscht. '
         . 'Die Vormerkung ist kostenlos und unverbindlich.';
+    $secondary = $unsubscribeUrl !== null ? ['label' => 'Abmelden oder Eintrag löschen lassen', 'url' => $unsubscribeUrl] : null;
+    $layout = mail_layout($subject, $paragraphs, $button, $footerNote, $secondary);
+    return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];
+}
+
+/**
+ * Nach bestätigter Vorregistrierung (Masterplan 7): Bestätigung, nächste Schritte, Abmeldelink.
+ */
+function mail_tpl_interest_confirmed(string $providerName, string $unsubscribeUrl, string $infoUrl): array
+{
+    $subject = 'Ihre ' . $providerName . '-Vormerkung bei ' . mail_product_name() . ' ist bestätigt';
+    $paragraphs = [
+        'Vielen Dank, Ihre Vormerkung ist bestätigt. Wir informieren Sie über die ' . $providerName . '-Anbindung und den geplanten Start.',
+        'Derzeit müssen Sie noch kein ' . $providerName . '- oder Stripe-Konto verbinden. Durch die Vormerkung entsteht kein Abonnement und keine Zahlungspflicht.',
+        'Den aktuellen Stand finden Sie jederzeit auf der Produktseite.',
+    ];
+    $button = ['label' => 'Zum aktuellen Stand', 'url' => $infoUrl];
+    $footerNote = 'Sie erhalten Nachrichten zu Entwicklungsstand und Start dieser Anbindung, gegebenenfalls eine Einladung zum Betatest. '
+        . 'Ihre Angaben werden 30 Tage nach der Startnachricht oder nach einer Abmeldung gelöscht.';
+    $layout = mail_layout($subject, $paragraphs, $button, $footerNote, ['label' => 'Abmelden', 'url' => $unsubscribeUrl]);
+    return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];
+}
+
+/**
+ * Willkommen nach der Registrierung eines Firmenaccounts, mit Bestätigungslink für die E-Mail-Adresse.
+ */
+function mail_tpl_welcome(string $orgName, string $verifyUrl): array
+{
+    $product = mail_product_name();
+    $subject = 'Willkommen bei ' . $product . ': Bitte E-Mail-Adresse bestätigen';
+    $paragraphs = [
+        'Ihr Firmenaccount „' . $orgName . '“ ist angelegt. Bitte bestätigen Sie zunächst Ihre E-Mail-Adresse über den folgenden Link.',
+        'Die nächsten Schritte in der Anwendung: Zwei-Faktor-Anmeldung einrichten, Ihr Buchhaltungssystem verbinden, Ihr eigenes Stripe-Konto verbinden. '
+        . 'Danach stehen offene Rechnungen zum SEPA-Einzug bereit.',
+        'Bei Fragen hilft das Hilfe-Center in der Anwendung oder eine Antwort auf diese E-Mail.',
+    ];
+    $button = ['label' => 'E-Mail-Adresse bestätigen', 'url' => $verifyUrl];
+    $footerNote = 'Der Bestätigungslink ist 24 Stunden gültig; in der Anwendung können Sie ihn jederzeit erneut anfordern. '
+        . 'Falls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail; es entsteht kein Vertrag.';
     $layout = mail_layout($subject, $paragraphs, $button, $footerNote);
     return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];
 }

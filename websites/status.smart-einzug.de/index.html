@@ -112,7 +112,7 @@ noscript .stale { display: block; }
     var html = (data.components || []).map(function (c) {
       var a = av[c.key] || {}, d30 = a.days30 || {}, d90 = a.days90 || {};
       var bar = (hist[c.key] || []).map(function (d) { return '<span class="day day-' + esc(d.state) + '" title="' + esc(d.day) + ': ' + esc(LABELS[d.state] || d.state) + '"></span>'; }).join('');
-      function avTxt(x) { return x.pct == null ? 'Unvollständige Messdaten' : esc(x.label) + ' (Abdeckung ' + esc(x.coverage_pct) + ' %)'; }
+      function avTxt(x) { var base = x.pct == null ? 'Unvollständige Messdaten' : esc(x.label) + ' (Abdeckung ' + esc(x.coverage_pct) + ' %)'; return x.since_label ? base + ' · ' + esc(x.since_label) : base; }
       return '<div class="incident"><h3>' + esc(c.name) + '</h3><div class="meta">30 Tage: ' + avTxt(d30) + ' · 90 Tage: ' + avTxt(d90) + (d90.observed_from ? ' · erfasst seit ' + esc(fmt(d90.observed_from)) : '') + '</div><div class="bar">' + bar + '</div></div>';
     });
     document.getElementById('availability').innerHTML = html.join('') || '<p class="meta">Noch keine Verfügbarkeitsdaten.</p>';

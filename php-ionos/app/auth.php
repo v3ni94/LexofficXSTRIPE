@@ -835,7 +835,7 @@ function token_hash(string $token): string
 }
 
 /** Neuen Bestätigungslink erzeugen und (falls Mailversand aktiv) versenden. */
-function email_verification_send(array $user): bool
+function email_verification_send(array $user, ?string $welcomeOrgName = null): bool
 {
     require_once __DIR__ . '/mailer.php';
     if (!mail_enabled()) {
@@ -846,7 +846,8 @@ function email_verification_send(array $user): bool
         'UPDATE users SET email_verify_token_hash = ?, email_verify_expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?'
     )->execute([token_hash($token), $user['id']]);
     $url = app_base_url() . '/verify-email.php?token=' . $token;
-    $tpl = mail_tpl_verify_email($url);
+    // Erste Mail nach der Registrierung als Willkommensmail (CI, naechste Schritte), spaetere Anforderungen schlicht.
+    $tpl = $welcomeOrgName !== null ? mail_tpl_welcome($welcomeOrgName, $url) : mail_tpl_verify_email($url);
     return mail_send($user['email'], $tpl['subject'], $tpl['text'], $tpl['html']);
 }
 
@@ -1116,7 +1117,7 @@ function _auth_register_create(PDO $pdo, string $email, string $password, string
         'signup_domain' => $attr['domain'] ?? null,
     ]);
     funnel_event($attr['domain'] ?? null, 'registration_completed', $orgId, $userId);
-    email_verification_send($user);
+    email_verification_send($user, $orgName);
     return null;
 }
 

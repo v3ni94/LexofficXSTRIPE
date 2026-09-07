@@ -34,7 +34,8 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.17 | Deployjob robust gegen SSH-Netzaussetzer: `vps-ssh-retry.sh`, `vps-trigger.sh` (triggered/rejected/unclear/unreachable), Frischeprüfung des Endstatus (`JOB_STARTED_AT`), `.release-complete`-Nachweis in `deploy.sh`, Bereinigung unvollständiger Releases, Fristen je Schritt, Doku | 54caa37 | ja (Workflow-Lauf dadurch ausgelöst, Ergebnis nicht einsehbar: GitHub-API in der Session gesperrt) |
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
-| 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | siehe git log | ja (Push nach Freigabe des Ablaufs durch den Betreiber) |
+| 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.21 | E-Mails im CI der Müller Holding AG mit Pflichtangaben, Willkommensmail bei Registrierung, Bestätigungsmail nach Vorregistrierung, `bin/mail-check.php`, `docs/mail-einrichtung.md`, Statusseite „seit Erfassungsbeginn“ | siehe git log | ja |
 
 Betroffene Dateien 4.17: `.github/workflows/deploy.yml`, `.github/scripts/vps-ssh-retry.sh`, `.github/scripts/vps-trigger.sh`,
 `.github/scripts/vps-wait-status.sh`, `deploy/vps/scripts/deploy.sh`, `deploy/vps/scripts/rollback.sh`, `tools/github-ssh-retry-check.sh`,
@@ -102,8 +103,13 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 
-1. Mailversand in Produktion einrichten (`mail.enabled`, SMTP-Postfach), danach das Formular auf
-   smart-einzug.de/integrationen/sevdesk/ mit eigener Adresse durchspielen (Mail, Bestätigung per Button, Adminbereich).
+1. **Betreiber:** Mailversand einrichten nach `docs/mail-einrichtung.md` (Postfach, `mail`-Block in `shared/config.php`,
+   `worker-mail` neu starten, `php bin/mail-check.php --send=...`). Danach Registrierung und Vorregistrierung mit eigener
+   Adresse durchspielen. Ohne diesen Schritt bleiben alle E-Mail-Funktionen aus.
+1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
+1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
+   E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll
+   (Kennzahlen je `signup_domain` sind im Adminbereich vorhanden).
 3. Statusseite prüfen: `curl -sS https://status.smart-einzug.de/status.json | head -c 200` nach etwa vier Minuten
    (Monitoring alle 240 s), Restdateien entfernen, `config.php` im php-Container mit `php -l` prüfen.
 4. DETM-Leadseiten: blockiert bis Impressumsdaten und Entscheidung zum Provisionsnachweis vorliegen.

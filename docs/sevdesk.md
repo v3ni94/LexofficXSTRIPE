@@ -64,6 +64,18 @@ Fähigkeiten und wirft in jeder fachlichen Methode, bis Endpunkte, Felder (Rechn
 Teilzahlungen, Stornos, Gutschriften, Kontaktbezug, Filter, Seitennavigation) und das Verhalten bei Drosselung gegen die
 offizielle Dokumentation und ein Testkonto bestätigt sind. **Blocker: Es gibt kein sevdesk-Testkonto im Projekt.**
 
+## 5a. Checkliste sevdesk-Testkonto (Betreiber)
+
+1. sevdesk-Konto anlegen oder bestehendes nutzen; nach der offiziellen sevdesk-Hilfe wird der API-Zugang für die
+   Systemversion 2.0 im Tarif Buchhaltung Pro angeboten (aktuelle Bedingungen dort prüfen).
+2. API-Token nach der sevdesk-Hilfe erzeugen; Übergabe ausschließlich an den Entwickler über einen sicheren Kanal
+   (nie per Chat, nie ins Repository), Ablage nur verschlüsselt in `integrations` beziehungsweise für Tests in
+   `shared/config.php` des Staging-Servers.
+3. Im Testkonto Beispieldaten anlegen: mindestens drei Kontakte, offene Rechnungen in Euro mit unterschiedlicher
+   Fälligkeit, eine teilbezahlte, eine stornierte, eine Gutschrift.
+4. Danach verifiziert der Entwickler Basisadresse, Headerform (`config('sevdesk')`), Endpunkte und Felder gegen die
+   offizielle Dokumentation und füllt `SevdeskSource`; erst dann wird `sevdesk_connect` für Pilotfirmen gesetzt.
+
 ## 6. Launch und Rollback
 
 Launch: `sevdesk_public_state` auf `verfuegbar`, Seite von Vormerkung auf Einrichtung umstellen (URL bleibt), Startnachricht
