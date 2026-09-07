@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.11';
+const APP_VERSION = '4.12';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.12', 'date' => '07.09.2026', 'title' => 'Plattform-Abrechnung: Inbetriebnahme prüfbar und wiederholbar',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'bin/billing-check.php prüft die Plattform-Abrechnung, ohne etwas zu ändern: Art und Betriebsart des Stripe-Schlüssels (live oder test, nur maskiert ausgegeben), Signaturgeheimnis, Basisadresse, Stripe-Konto und Einzugsfähigkeit, je buchbarem Tarif den hinterlegten Preis (Betrag, Währung, 28-Tage-Periode, Nettopreis über tax_behavior exclusive, Produkt nicht archiviert), den Webhook-Endpunkt samt der fünf benötigten Ereignisse, das Kundenportal, Stripe Tax sowie die Zahl der Firmen, die beim Scharfschalten gesperrt würden (mit Namen).'],
+            ['type' => 'Neu', 'text' => 'bin/billing-setup-stripe.php legt Produkt und Preis je buchbarem Tarif in Stripe an und trägt die Preis-ID in die Tabelle plans ein. Betrag, Periode und Bezeichnung stammen ausschließlich aus plans. Standard ist ein Trockenlauf; die Anlage verlangt --apply, mit Live-Schlüssel zusätzlich --live-bestaetigt. Über den lookup_key lexsepa_<tarifcode> erkennt der wiederholte Aufruf einen vorhandenen Preis und legt keinen zweiten an; passt ein vorhandener Preis nicht zum Tarif, wird die Preis-ID nicht eingetragen.'],
+            ['type' => 'Neu', 'text' => 'docs/abrechnung.md: Anleitung zum Scharfschalten in sieben Schritten (zuerst Testschlüssel, Stripe Tax und Kundenportal, Anlage der Artikel, Webhook, vollständiger Testdurchlauf, Schutz bestehender Firmen über billing_exempt, dann live), mit Rücknahmeweg und Hinweisen für den laufenden Betrieb.'],
+            ['type' => 'Neu', 'text' => 'tools/billing-setup-check.php prüft die Logik ohne Stripe-Konto, ohne Netz und ohne Datenbank (49 Fälle): abweichender Betrag, falsche Währung, archivierter Preis, Bruttopreis statt Nettopreis, Monatsintervall statt 28 Tage, Verbrauchs- und Einmalpreis, fehlende oder deaktivierte Webhook-Endpunkte, fehlende Ereignisse, unvollständige Konfiguration, Maskierung der Schlüssel sowie der Abgleich, dass app/billing.php genau die geprüften Ereignisse verarbeitet.'],
+         ]],
         ['version' => '4.11', 'date' => '07.09.2026', 'title' => 'Deploymentstatus sichtbar, Worker-Shutdown in Sekunden statt 11 Minuten',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'GitHub meldete fälschlich eine Zeitüberschreitung, obwohl der serverseitige Deploy lief und erfolgreich endete: deploy-status.sh lieferte durchgehend "phase: unknown". Ursache: deploy.sh (und rollback.sh) übernehmen deploy/vps per rsync --delete nach /opt/smarteinzug/deploy und schlossen die Laufzeitdateien .deploy-status.json und .deploy.pid nicht aus; die vom Deploy-Runner Sekunden zuvor geschriebene Statusdatei wurde gelöscht und erst nach dem Ende neu geschrieben. Die Excludes umfassen jetzt alle Laufzeitdateien (/.deploy*, /.release*, /.previous_sha, /.php-image.sha256, /.env); deploy.sh trägt zusätzlich den aktuellen Schritt atomar in die Statusdatei ein (Feld step), das GitHub-Polling zeigt jeden Phasen-/Schrittwechsel.'],
