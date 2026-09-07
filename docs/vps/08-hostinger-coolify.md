@@ -36,7 +36,7 @@ Hostinger-Kundenbereich).
 | Erstes Deployment, manuell auf dem Server ausgeführt: `/opt/smarteinzug/releases/current` zeigt auf `releases/manual-initial`; `php`, `redis`, `scheduler`, `worker-lexware-1`, `worker-lexware-2`, `worker-stripe`, `worker-mail`, `worker-maintenance` und `metrics` `healthy`, Caddy läuft; genutzt wird die bestehende Coolify-MariaDB (Containername `fywft1vc4rr5uyy3mw7lgy4s`, Docker-Netz `coolify`, Datenbank `smarteinzug`) | produktiv abgeschlossen (vom Betreiber bestätigt); erstes Deployment über den GitHub-Workflow (`workflow_dispatch`, Schritt 9 unten) weiterhin offen |
 | Datenbankimport von Bestandsdaten (IONOS-Bestandsdaten importiert, Migrationsstand „0 eingespielt, 0 offen“) | produktiv abgeschlossen (vom Betreiber bestätigt) |
 | `vm.overcommit_memory = 1` (von Redis für zuverlässige Hintergrund-Speicherabzüge benötigt, siehe Schritt 3) | auf dem Server bereits gesetzt (vom Betreiber bestätigt); `setup-vps.sh` setzt die Einstellung künftig automatisch in Schritt 5 von 10, siehe unten |
-| Produktive DNS-Umstellung, Cutover | offen, ausdrücklich noch nicht vorgenommen |
+| Produktive DNS-Umstellung, Cutover | Anwendung läuft seit 07.09.2026 nachweislich auf dem VPS (Deployments 4.20 bis 4.31, Mailversand dort in Betrieb); DNS-Nachweis (`dig +short app.smart-einzug.de`) und Abschaltung der Altinstanz auf dem Webhosting sind noch zu bestätigen, siehe Entwicklerdokumentation, Kapitel Architektur |
 
 Alles, was sich nur durch tatsächliches Ausführen auf dem Server bestätigen lässt, ist in den
 Schritten unten als „(auf dem Server zu prüfen)“ gekennzeichnet.

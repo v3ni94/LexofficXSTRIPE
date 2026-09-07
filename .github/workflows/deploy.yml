@@ -195,8 +195,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Schrift Carlito (CI der Mueller Holding AG) fuer die PDF; ohne sie faellt build-docs.py auf eine Ersatzschrift zurueck
+          sudo apt-get install -y -qq fonts-crosextra-carlito >/dev/null 2>&1 || echo "::warning::Carlito nicht installierbar, Ersatzschrift"
           python3 -m pip install --quiet --disable-pip-version-check reportlab
           python3 tools/build-docs.py
+          python3 tools/docs-build-check.py
           echo "built=true" >> "$GITHUB_OUTPUT"
 
       - name: Dokumentation als Artefakt hochladen

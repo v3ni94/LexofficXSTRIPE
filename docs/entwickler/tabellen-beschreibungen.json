@@ -1,0 +1,1225 @@
+{
+  "plans": {
+    "zweck": "Tarifkatalog der Plattformabrechnung (Abonnement der Firmenaccounts bei der Müller Holding AG). Legt Preis, Periode und Limits je Tarifcode fest (Kommentar schema.sql Zeile 11: 'Tarife (Limits kommen ausschliesslich aus dieser Tabelle)').",
+    "modul": "Konten und Firmen / Plattform-Abrechnung",
+    "mandant": "keine (plattformweit, ein Datensatz je Tarifcode)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "sql/schema.sql INSERT IGNORE INTO plans (Installationsdaten, 5 Tarife: unlimited_start, basic, plus, pro, unlimited); keine INSERT-Anweisung im PHP-Code gefunden"
+    ],
+    "veraendert_durch": [
+      "admin.php plan_input_from_post() (Tarifpflege im Adminbereich)",
+      "bin/billing-setup-stripe.php billing_setup_store_price_id() (schreibt stripe_price_id nach Anlage in Stripe)"
+    ],
+    "gelesen_durch": [
+      "app/plans.php (fast alle Funktionen, u.a. plan_upgrade_candidate(), Limitpruefung)",
+      "app/billing.php (billing_change_plan(), billing_choose_plan())",
+      "admin.php, team.php, onboarding.php"
+    ],
+    "loeschung": "nicht gefunden (keine DELETE-Anweisung; Tarife werden ueber active/public_visible aus- statt abgeschaltet)",
+    "geld_zeit_extern": "Betraege: price_cents (Preis in Cent, netto laut CLAUDE.md-Vorgabe); Zeit: period_days (Abrechnungsperiode in Tagen, Standard 28), created_at/updated_at DATETIME; externe IDs: stripe_price_id (Stripe-Preisobjekt der Plattformabrechnung)",
+    "migrationen": [
+      "003_saas_2fa_roles_plans.sql (CREATE TABLE)",
+      "019_plan_upsell.sql (kein Spaltenzusatz an plans selbst, betrifft organizations)"
+    ],
+    "besonderheiten": "Primaerschluessel ist der sprechende code (kein UUID). max_collections_per_period/max_users NULL bedeutet laut Kommentar 'unbegrenzt'. Laut CLAUDE.md wirken Tarifwechsel nur, wenn billing.enabled gesetzt ist und mindestens zwei Tarife aktiv und oeffentlich sind.",
+    "spalten_erlaeuterung": {
+      "unlimited_users": "1 = Benutzeranzahl trotz gesetztem max_users nicht begrenzt (Sonderfall fuer bestimmte Tarife)",
+      "user_invites_enabled": "steuert, ob die Firma laut Tarif weitere Benutzer einladen darf",
+      "public_visible": "steuert, ob der Tarif Kunden zur Wahl angeboten wird (nicht-oeffentliche Tarife nur intern/Bestand)",
+      "sort_order": "Anzeigereihenfolge in Tarifuebersichten"
+    }
+  },
+  "organizations": {
+    "zweck": "Firmenaccount (Mandant) des Portals. Traeger von Tarif, Abrechnungsstatus, SEPA-Stammdaten (Glaeubiger-ID, Mandatspraefix) und Firmenadresse.",
+    "modul": "Konten und Firmen",
+    "mandant": "id (die Tabelle IST der Mandant)",
+    "statuswerte": {
+      "subscription_status": "pending | active | past_due | canceled | exempt (Kommentar schema.sql Zeile 50). Uebergaenge laut app/billing.php: pending/aktiv nach billing_apply_subscription() aus Stripe-Ereignis; past_due wenn Stripe eine faellige Rechnung meldet (billing_handle_event(), nur aus 'active'); exempt manuell durch Plattformadmin (admin.php plan_input_from_post())."
+    },
+    "erzeugt_durch": [
+      "app/auth.php create_company() (Zeile 1214, Firmengruendung bei Registrierung oder Zweitfirma)"
+    ],
+    "veraendert_durch": [
+      "app/legal.php legal_set_secrecy() (professional_secrecy, professional_secrecy_kind)",
+      "app/plans.php plan_quota_warning_maybe_send() (quota_warning_period_start)",
+      "app/collections.php collections_set_paused() (collections_paused, collections_paused_at)",
+      "app/features.php tenant_feature_set() (feature_flags)",
+      "app/billing.php billing_change_plan()/billing_choose_plan() (plan_code, plan_changed_at), billing_ensure_customer() (platform_stripe_customer_id), billing_apply_subscription()/billing_handle_event() (subscription_status, subscription_period_end, cancel_at_period_end)",
+      "team.php (Firmenstammdaten: name, street, zip, city, country, creditor_identifier)",
+      "admin-system.php (sync_paused, sync_paused_reason)",
+      "onboarding.php (onboarding_completed, onboarding_step)",
+      "admin.php plan_input_from_post() (plan_code, billing_exempt, subscription_status)"
+    ],
+    "gelesen_durch": [
+      "so gut wie jede Seite ueber den Tenant-Kontext (require_login()), insbesondere team.php, settings.php, admin.php"
+    ],
+    "loeschung": "Soft-Delete ueber deleted_at (Spalte vorhanden); Loeschcode selbst nicht in den durchsuchten Dateien gefunden, admin-system.php prueft deleted_at IS NULL bei sync_paused",
+    "geld_zeit_extern": "Betraege: keine eigenen (Preise kommen aus plans); Zeit: subscription_period_end, plan_changed_at, quota_warning_period_start, collections_paused_at, deleted_at, created_at/updated_at DATETIME; externe IDs: platform_stripe_customer_id, platform_stripe_subscription_id (Stripe-Konto der Müller Holding AG, getrennt vom Stripe-Konto der Firma in integrations)",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung (existierte bereits vor 001)",
+      "002_add_multi_company_support.sql (mandate_prefix, use_hvm_ci)",
+      "003_saas_2fa_roles_plans.sql (plan_code, subscription_status u.a., signup_domain-Index)",
+      "006_payment_safety.sql (collections_paused, collections_paused_at)",
+      "007_refunds_alerts.sql (pre_notification_days DEFAULT)",
+      "018_queue_worker.sql (sync_paused, sync_paused_reason, feature_flags)",
+      "019_plan_upsell.sql (quota_warning_period_start, plan_changed_at)",
+      "023_legal_documents.sql (professional_secrecy, professional_secrecy_kind)"
+    ],
+    "besonderheiten": "id ist CHAR(36) UUID und zugleich Mandantenschluessel fuer praktisch alle Fachtabellen (tenant_id-Fremdschluessel, teils nur per Anwendungscode abgesichert, teils per FOREIGN KEY ON DELETE CASCADE). creditor_identifier ist die Glaeubiger-Identifikationsnummer fuer SEPA-Lastschriften.",
+    "spalten_erlaeuterung": {
+      "mandate_prefix": "Praefix der SEPA-Mandatsreferenzen dieser Firma (schema.sql-Kommentar); wird mit Kundennummer kombiniert (siehe customer.php)",
+      "use_hvm_ci": "nur fuer die Hausverwaltung Müller GmbH selbst, steuert Anzeige im HVM-Corporate-Design (schema.sql-Kommentar, Migration 002)",
+      "signup_domain": "Domain, ueber die sich die Firma registriert hat (Marketing/Funnel-Auswertung)",
+      "utm_source/utm_medium/utm_campaign/utm_content/referrer": "Marketing-Herkunftsdaten der Registrierung",
+      "billing_exempt": "Firma von der Zwangspruefung eines nutzbaren Abonnements ausgenommen (siehe CLAUDE.md, admin.php)",
+      "professional_secrecy": "Firma erklaert eine berufliche Verschwiegenheitspflicht nach § 203 StGB (Migration 023)",
+      "professional_secrecy_kind": "Freitextangabe der Berufsgruppe (z. B. Steuerberatung), siehe rechtliches.php",
+      "feature_flags": "JSON-Liste je Firma freigeschalteter Funktionen, gesetzt vom Plattformadministrator (app/features.php-Kommentar)",
+      "quota_warning_period_start": "Beginn der laufenden Abrechnungsperiode, fuer die bereits eine Kontingentwarnung gesendet wurde (verhindert Mehrfachversand)"
+    }
+  },
+  "users": {
+    "zweck": "Persoenlicher Benutzerzugang (Login), unabhaengig von der Firmenzugehoerigkeit. Verpflichtende Zwei-Faktor-Authentifizierung (TOTP).",
+    "modul": "Konten und Firmen / Anmeldung",
+    "mandant": "keine (Benutzer koennen laut multiaccount_enabled mehreren Firmen ueber organization_members zugeordnet sein)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/auth.php _auth_register_create() (Zeile 1073, Registrierung)",
+      "invite.php (Zeile 76, Benutzer akzeptiert eine Einladung ohne bestehenden Account)"
+    ],
+    "veraendert_durch": [
+      "app/auth.php auth_login() (failed_login_count, password_hash bei automatischer Rehash-Aktualisierung)",
+      "app/auth.php session_finish_login() (last_login_at, failed_login_count, locked_until)",
+      "app/auth.php user_revoke_sessions() (session_epoch)",
+      "app/auth.php twofa_confirm_setup()/twofa_verify_user()/twofa_reset() (totp_secret_encrypted, totp_enabled, totp_confirmed_at, totp_last_step)",
+      "app/auth.php email_verification_send()/email_verification_consume() (email_verify_token_hash, email_verify_expires_at, email_verified_at)",
+      "app/auth.php password_reset_request()/password_reset_complete()/password_change() (password_reset_token_hash, password_reset_expires_at, password_hash)",
+      "app/auth.php auth_send_pending_welcome_mails() (welcome_mail_pending = 0)",
+      "app/auth.php user_multiaccount_set()/user_multiaccount_autoenable() (multiaccount_enabled)",
+      "app/profile.php profile_update()/profile_avatar_store()/profile_avatar_delete() (display_name, phone_private, phone_business, avatar_path)",
+      "admin-support.php (failed_login_count, locked_until, Support-Entsperrung)"
+    ],
+    "gelesen_durch": [
+      "app/auth.php require_login() und praktisch jede Seite"
+    ],
+    "loeschung": "nicht gefunden (keine DELETE-Anweisung fuer users im durchsuchten Code); organization_members hat ON DELETE CASCADE auf user_id, was auf eine vorgesehene, aber nicht lokalisierte Loeschroutine hindeutet",
+    "geld_zeit_extern": "Betraege: keine; Zeit: totp_confirmed_at, email_verified_at, last_login_at, locked_until, created_at/updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung",
+      "010_profile.sql (avatar_path)",
+      "015_multiaccount_registration.sql (multiaccount_enabled)",
+      "021_mail_pending.sql (welcome_mail_pending)"
+    ],
+    "besonderheiten": "totp_secret_encrypted verschluesselt ueber app/crypto.php (AES-256-GCM, encrypt_value()/decrypt_value()); password_hash mit PHP password_hash(); *_token_hash-Spalten speichern laut Projektkonvention nur den SHA-256-Hash des Links, nie den Klartext.",
+    "spalten_erlaeuterung": {
+      "session_epoch": "wird bei Sicherheitsereignissen erhoeht, um bestehende Sitzungen serverseitig ungueltig zu machen (user_revoke_sessions())",
+      "welcome_mail_pending": "Willkommensmail mit Bestaetigungslink konnte nicht erzeugt werden und steht aus (Migration 021), wird durch Wartung nachgesendet",
+      "totp_last_step": "letzter verwendeter TOTP-Zeitschritt, verhindert Wiederverwendung desselben Codes",
+      "multiaccount_enabled": "manuell aktiviert (Migration 015) oder automatisch wirksam, sobald der Benutzer mehreren Firmen angehoert"
+    }
+  },
+  "user_recovery_codes": {
+    "zweck": "Einmal-Wiederherstellungscodes fuer den Fall eines verlorenen TOTP-Geraets.",
+    "modul": "Konten und Firmen / Anmeldung",
+    "mandant": "keine direkt; ueber user_id an users und damit indirekt an dessen Firmen gebunden",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/auth.php recovery_codes_regenerate()"
+    ],
+    "veraendert_durch": [
+      "app/auth.php recovery_code_consume() (used_at)"
+    ],
+    "gelesen_durch": [
+      "app/auth.php (Login-Ablauf mit Wiederherstellungscode)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber user_id bei Loeschung des Benutzers",
+    "geld_zeit_extern": "Betraege: keine; Zeit: used_at, created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung (Teil der 2FA-Einfuehrung, vermutlich 003)"
+    ],
+    "besonderheiten": "code_hash speichert nur den Hash des Codes; UNIQUE (user_id, code_hash) verhindert Duplikate je Benutzer.",
+    "spalten_erlaeuterung": {}
+  },
+  "login_attempts": {
+    "zweck": "Protokoll aller Anmeldeversuche (Passwort, TOTP, Wiederherstellungscode) fuer Sperrlogik und Missbrauchserkennung.",
+    "modul": "Konten und Firmen / Anmeldung",
+    "mandant": "keine (plattformweit, nur nach E-Mail und IP)",
+    "statuswerte": {
+      "stage": "password | totp | recovery (schema.sql-Kommentar Zeile 128)"
+    },
+    "erzeugt_durch": [
+      "app/auth.php login_record()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "app/auth.php (Sperrlogik nach fehlgeschlagenen Versuchen)"
+    ],
+    "loeschung": "admin-support.php loescht fehlgeschlagene Versuche einer E-Mail bei manueller Entsperrung (DELETE FROM login_attempts WHERE email = ? AND success = 0)",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung"
+    ],
+    "besonderheiten": "Kein Fremdschluessel, nur lose ueber email verknuepft (Protokolltabelle).",
+    "spalten_erlaeuterung": {}
+  },
+  "audit_log": {
+    "zweck": "Revisionssicheres Protokoll geldrelevanter und sicherheitsrelevanter Aktionen (CLAUDE.md: 'jede geldrelevante Aktion in audit_log').",
+    "modul": "Sicherheit und Nachvollziehbarkeit",
+    "mandant": "tenant_id (NULL bei plattformweiten/Support-Aktionen)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/audit.php audit_log() (zentrale Funktion, von sehr vielen Stellen im Code aufgerufen)"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "Adminbereich (Auditansichten), Support-Werkzeuge"
+    ],
+    "loeschung": "app/audit.php audit_cleanup(), aufgerufen aus app/jobs.php (Job 'audit_pruned' innerhalb job_maintenance()); Aufbewahrung ueber audit_retention_days() (config audit.retention_days, Vorgabe 90 Tage, Mindestwert 30)",
+    "geld_zeit_extern": "Betraege: keine eigene Spalte (Betraege stecken ggf. in details_json); Zeit: created_at DATETIME; externe IDs: keine eigene Spalte",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung"
+    ],
+    "besonderheiten": "Bewusst ohne Fremdschluessel (Kommentar schema.sql Zeile 134), damit Eintraege auch nach Loeschung von Firma/Benutzer lesbar bleiben. details_json ist JSON-Freitext.",
+    "spalten_erlaeuterung": {
+      "target_type/target_id": "Art und Kennung des betroffenen Objekts (z. B. 'organization', Organisations-ID)",
+      "details_json": "zusaetzliche Ereignisdaten als JSON, u. a. correlation_id (app/audit.php)"
+    }
+  },
+  "organization_members": {
+    "zweck": "Zuordnung Benutzer zu Firma mit Rolle (Mitgliedschaftstabelle, ermoeglicht Mehrfirmen-Zugehoerigkeit).",
+    "modul": "Konten und Firmen",
+    "mandant": "organization_id",
+    "statuswerte": {
+      "role": "owner | admin | member (schema.sql-Kommentar Zeile 155)",
+      "status": "active | suspended (schema.sql-Kommentar Zeile 156)"
+    },
+    "erzeugt_durch": [
+      "app/auth.php _auth_register_create() (Ersteigentuemer bei Registrierung)",
+      "app/auth.php create_company() (Ersteigentuemer bei Firmengruendung)",
+      "invite.php (Beitritt nach Einladungsannahme)"
+    ],
+    "veraendert_durch": [
+      "team.php (Rollenaenderung, Sperren/Aktivieren, Eigentuemeruebergabe)",
+      "invite.php (Reaktivierung bei erneuter Einladung eines bestehenden Mitglieds)"
+    ],
+    "gelesen_durch": [
+      "app/auth.php require_login() (Rollen- und Zugriffspruefung), team.php"
+    ],
+    "loeschung": "kein DELETE im durchsuchten Code gefunden; ON DELETE CASCADE ueber organization_id und user_id bei Loeschung von Firma oder Benutzer",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at/updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung (Teil der Mehrfirmenstruktur, siehe UNIQUE (organization_id, user_id))"
+    ],
+    "besonderheiten": "UNIQUE (organization_id, user_id) verhindert Doppelmitgliedschaft.",
+    "spalten_erlaeuterung": {}
+  },
+  "invitations": {
+    "zweck": "Einladungen weiterer Benutzer in eine Firma per Link.",
+    "modul": "Konten und Firmen",
+    "mandant": "organization_id",
+    "statuswerte": {
+      "status": "pending | accepted | revoked | expired (schema.sql-Kommentar Zeile 175); Uebergaenge in team.php (revoked) und invite.php (accepted)"
+    },
+    "erzeugt_durch": [
+      "team.php send_invitation_mail() (Zeile 165)"
+    ],
+    "veraendert_durch": [
+      "team.php send_invitation_mail() (erneuter Versand: neuer Token/Reset auf pending; Widerruf: revoked)",
+      "invite.php (Annahme: accepted)"
+    ],
+    "gelesen_durch": [
+      "invite.php (Einladungslink oeffnen), team.php (Uebersicht)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber organization_id bei Loeschung der Firma",
+    "geld_zeit_extern": "Betraege: keine; Zeit: expires_at, accepted_at, revoked_at, last_sent_at, created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung"
+    ],
+    "besonderheiten": "token speichert laut Projektkonvention (schema.sql-Kommentar Zeile 165) den SHA-256-Hash des Links, nie den Klartext. UNIQUE (organization_id, email) verhindert Doppeleinladung derselben Adresse.",
+    "spalten_erlaeuterung": {}
+  },
+  "registration_requests": {
+    "zweck": "Zwischenspeicher fuer Firmendaten, wenn sich eine bereits bekannte E-Mail-Adresse ein zweites Mal registriert, bis der bestehende Benutzer sich anmeldet und die Zweitfirma bestaetigt (Migration 015).",
+    "modul": "Konten und Firmen / Anmeldung",
+    "mandant": "keine eigene tenant_id vor Abschluss; user_id bindet an den bestehenden Benutzer, created_org_id verweist nach Abschluss auf die neue Firma",
+    "statuswerte": {
+      "status": "pending | completed | expired | discarded (schema.sql-Kommentar Zeile 193)"
+    },
+    "erzeugt_durch": [
+      "app/auth.php registration_request_create() (Zeile 1465)"
+    ],
+    "veraendert_durch": [
+      "app/auth.php registration_request_complete() (completed, created_org_id)",
+      "app/auth.php registration_request_discard() (discarded)",
+      "app/auth.php registration_requests_cleanup() (expired, zeitgesteuert)"
+    ],
+    "gelesen_durch": [
+      "app/auth.php (Login-Ablauf, offene Zweitfirmen-Anfrage anzeigen)"
+    ],
+    "loeschung": "nicht gefunden (nur Statuswechsel auf expired/discarded, kein DELETE)",
+    "geld_zeit_extern": "Betraege: keine; Zeit: expires_at, completed_at, created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "015_multiaccount_registration.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "Kommentar schema.sql Zeile 187: 'Keine Passwoerter, keine Geheimnisse.' ON DELETE CASCADE ueber user_id.",
+    "spalten_erlaeuterung": {}
+  },
+  "trusted_devices": {
+    "zweck": "Vertrauenswuerdige Geraete, auf denen die 2FA-Abfrage fuer eine begrenzte Zeit uebersprungen werden kann (Migration 016).",
+    "modul": "Konten und Firmen / Anmeldung",
+    "mandant": "keine direkt; user_id bindet an den Benutzer",
+    "statuswerte": {
+      "scope": "app | admin (schema.sql-Kommentar Zeile 208)"
+    },
+    "erzeugt_durch": [
+      "app/devices.php device_trust_create()"
+    ],
+    "veraendert_durch": [
+      "app/devices.php device_trust_rotate() (Token-Rotation)",
+      "app/devices.php device_revoke() (Einzelgeraet)",
+      "app/devices.php devices_revoke_all() (alle Geraete eines Benutzers)"
+    ],
+    "gelesen_durch": [
+      "app/auth.php (2FA-Pruefung beim Login)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber user_id",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at, expires_at (created_at + 90 Tage, laut Kommentar nie verlaengert), last_used_at, rotated_at, revoked_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "016_trusted_devices.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "token_hash speichert den HMAC-SHA256 des geheimen Tokenteils (schema.sql-Kommentar Zeile 209). Zeiten in UTC laut Kommentar.",
+    "spalten_erlaeuterung": {
+      "revoked_reason": "Grund des Widerrufs, z. B. manuell oder durch devices_revoke_all()"
+    }
+  },
+  "job_runs": {
+    "zweck": "Historie/Monitoring aller Hintergrundlaeufe (Cron, Synchronisation, Einzuege, Monitoring) mit Kennzahlen (Migration 017).",
+    "modul": "Monitoring und Betrieb",
+    "mandant": "tenant_id (NULL bei plattformweiten Laeufen)",
+    "statuswerte": {
+      "status": "running | success | failed | unknown (schema.sql-Kommentar Zeile 230); unknown wird gesetzt, wenn ein Lauf ueberfaellig ist (queue_release_stale(), _mon_mark_stale_runs())"
+    },
+    "erzeugt_durch": [
+      "app/monitor.php job_run_start()"
+    ],
+    "veraendert_durch": [
+      "app/monitor.php job_run_heartbeat(), job_run_finish()",
+      "app/monitor.php _mon_mark_stale_runs() (verwaiste Laeufe auf unknown)",
+      "app/queue.php queue_release_stale() (heartbeat_stale)"
+    ],
+    "gelesen_durch": [
+      "app/monitor.php (Statusseite, Adminbereich System/Wartende Aufgaben)"
+    ],
+    "loeschung": "nicht gefunden im durchsuchten Code (moeglich, aber nicht lokalisiert)",
+    "geld_zeit_extern": "Betraege: keine; Zeit: started_at, heartbeat_at, finished_at DATETIME, duration_ms; externe IDs: keine",
+    "migrationen": [
+      "017_monitoring.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "job_key beschreibt laut Kommentar den fachlichen Auftrag (z. B. sync:<firma>:<start>).",
+    "spalten_erlaeuterung": {
+      "error_category": "bereinigte Fehlerkategorie (siehe monitor_category()), keine Rohtexte"
+    }
+  },
+  "monitor_checks": {
+    "zweck": "Einzelne Gesundheitspruefungen/Messpunkte je Komponente (Migration 017), Grundlage der Statusseite.",
+    "modul": "Monitoring und Betrieb",
+    "mandant": "keine (plattformweit, component-bezogen)",
+    "statuswerte": {
+      "status": "ok | degraded | fail | unknown (schema.sql-Kommentar Zeile 253)"
+    },
+    "erzeugt_durch": [
+      "app/monitor.php monitor_event()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "app/monitor.php (Aggregation zu monitor_daily, Statusseite)"
+    ],
+    "loeschung": "app/monitor.php (DELETE FROM monitor_checks WHERE checked_at < ..., Aufbewahrung MONITOR_RAW_DAYS)",
+    "geld_zeit_extern": "Betraege: keine; Zeit: checked_at DATETIME, valid_seconds (Gueltigkeitsdauer der Messung); externe IDs: keine",
+    "migrationen": [
+      "017_monitoring.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "category enthaelt laut Kommentar eine bereinigte Fehlerkategorie, keine Rohtexte (Vermeidung von Geheimnis-Leaks in oeffentlichen Auswertungen).",
+    "spalten_erlaeuterung": {
+      "source": "internal | instrumented | external (Herkunft der Messung)"
+    }
+  },
+  "monitor_daily": {
+    "zweck": "Tagesaggregat der Verfuegbarkeit je Komponente (Sekunden ok/eingeschraenkt/ausgefallen/unbekannt), Grundlage der oeffentlichen Statusseite.",
+    "modul": "Monitoring und Betrieb",
+    "mandant": "keine (plattformweit)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/monitor.php monitor_aggregate_daily()"
+    ],
+    "veraendert_durch": [
+      "app/monitor.php monitor_aggregate_daily() (ON DUPLICATE KEY UPDATE laut INSERT-Struktur mit Primaerschluessel component+day)"
+    ],
+    "gelesen_durch": [
+      "app/monitor.php (Statusseite, Verfuegbarkeitsverlauf)"
+    ],
+    "loeschung": "app/monitor.php (DELETE FROM monitor_daily WHERE day < ..., Aufbewahrung MONITOR_DAILY_DAYS)",
+    "geld_zeit_extern": "Betraege: keine; Zeit: day DATE, updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "017_monitoring.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "Primaerschluessel (component, day) macht die Tabelle je Tag und Komponente eindeutig.",
+    "spalten_erlaeuterung": {
+      "t_ok": "Sekunden nutzbar inklusive eingeschraenkt (schema.sql-Kommentar)",
+      "t_degraded": "davon eingeschraenkt nutzbar",
+      "t_fail": "Sekunden nicht nutzbar",
+      "t_unknown": "Sekunden ohne gueltigen Nachweis"
+    }
+  },
+  "monitor_requests": {
+    "zweck": "Minutengenaue Kennzahlen aller eingehenden Web-Anfragen (Anzahl, 5xx-Fehler, Antwortzeiten) fuer die Statusseite.",
+    "modul": "Monitoring und Betrieb",
+    "mandant": "keine (plattformweit)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/bootstrap.php csrf_check() (Zeile 459, faktisch am Ende jeder Anfrage im Request-Lebenszyklus, nicht nur bei CSRF-Pruefung)"
+    ],
+    "veraendert_durch": [
+      "app/bootstrap.php (ON DUPLICATE KEY UPDATE ueber Primaerschluessel minute, laut INSERT-Struktur requests = requests + 1 u. ae.)"
+    ],
+    "gelesen_durch": [
+      "app/monitor.php (Statusseite, Lastauswertung)"
+    ],
+    "loeschung": "app/monitor.php (DELETE FROM monitor_requests WHERE minute < ..., Aufbewahrung MONITOR_REQ_DAYS)",
+    "geld_zeit_extern": "Betraege: keine; Zeit: minute DATETIME (Primaerschluessel, auf die Minute gekuerzt, UTC laut Kommentar); externe IDs: keine",
+    "migrationen": [
+      "017_monitoring.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "minute ist zugleich Primaerschluessel, ermoeglicht Upsert je Minute.",
+    "spalten_erlaeuterung": {}
+  },
+  "monitor_incidents": {
+    "zweck": "Stoerungen und geplante Wartungen fuer die oeffentliche Statusseite und interne Nachverfolgung.",
+    "modul": "Monitoring und Betrieb",
+    "mandant": "keine (plattformweit)",
+    "statuswerte": {
+      "kind": "incident | maintenance (schema.sql-Kommentar Zeile 285)",
+      "status": "investigating | identified | monitoring | resolved | scheduled | active | completed (schema.sql-Kommentar Zeile 287)"
+    },
+    "erzeugt_durch": [
+      "app/monitor.php monitor_incident_create()"
+    ],
+    "veraendert_durch": [
+      "app/monitor.php monitor_incident_update() (status, ended_at, public_message)",
+      "app/monitor.php monitor_incident_publish() (published, published_at)"
+    ],
+    "gelesen_durch": [
+      "Statusseite (status.smart-einzug.de), Adminbereich Monitoring"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: started_at, ended_at, scheduled_end_at, published_at, created_at/updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "017_monitoring.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "internal_notes wird laut Kommentar nie veroeffentlicht, nur public_message. components ist eine JSON-Liste oeffentlicher Komponentenschluessel.",
+    "spalten_erlaeuterung": {
+      "published": "steuert, ob der Vorfall auf der oeffentlichen Statusseite erscheint"
+    }
+  },
+  "monitor_incident_updates": {
+    "zweck": "Verlaufsmeldungen (Updates) zu einer Stoerung/Wartung aus monitor_incidents.",
+    "modul": "Monitoring und Betrieb",
+    "mandant": "keine (ueber incident_id an monitor_incidents gebunden, dort plattformweit)",
+    "statuswerte": {
+      "phase": "vermutlich identisch zu monitor_incidents.status (investigating/identified/monitoring/resolved/scheduled/active/completed); im durchsuchten Code kein separates Enum gefunden, daher nicht sicher belegt"
+    },
+    "erzeugt_durch": [
+      "app/monitor.php monitor_incident_update()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "Statusseite, Adminbereich Monitoring"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber incident_id bei Loeschung des Vorfalls",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "017_monitoring.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "internal_note wird laut Analogie zu monitor_incidents nie veroeffentlicht.",
+    "spalten_erlaeuterung": {}
+  },
+  "jobs": {
+    "zweck": "Warteschlange fuer Hintergrundverarbeitung (Feature-Flag features.queue), verarbeitet von Worker-Prozessen auf dem VPS bzw. inline im Cron.",
+    "modul": "Hintergrundverarbeitung / Warteschlange",
+    "mandant": "tenant_id (NULL bei plattformweiten Jobs wie mail oder audit_pruned)",
+    "statuswerte": {
+      "status": "queued | processing | retry | completed | partially_completed | failed | cancelled (schema.sql-Kommentar Zeile 322); Uebergaenge in app/queue.php: queue_reserve() -> processing, queue_complete() -> completed/partially_completed/failed, queue_requeue()/queue_fail() -> retry oder failed, queue_cancel() -> cancelled, queue_retry_now() -> queued"
+    },
+    "erzeugt_durch": [
+      "app/queue.php queue_push()"
+    ],
+    "veraendert_durch": [
+      "app/queue.php queue_reserve(), queue_heartbeat(), queue_complete(), queue_requeue(), queue_update_payload(), queue_prune_payload(), queue_fail(), queue_cancel(), queue_retry_now(), queue_close(), queue_release_one()"
+    ],
+    "gelesen_durch": [
+      "app/jobs.php job_handle() und Worker-CLI (bin/worker.php), admin-system.php (Wartende Aufgaben)"
+    ],
+    "loeschung": "nicht gefunden im durchsuchten Code",
+    "geld_zeit_extern": "Betraege: keine; Zeit: available_at, started_at, finished_at, heartbeat_at, locked_at, closed_at DATETIME; externe IDs: correlation_id (Verknuepfung mit Log-/Audit-Eintraegen, app/log.php)",
+    "migrationen": [
+      "018_queue_worker.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "type entspricht den Jobtypen aus app/jobs.php (u. a. sync_run, collections_due, unclear_attempts, mail, mandate_reminders, maintenance). dedupe_key ist laut Kommentar (Zeile 337 und app/queue.php) nur fuer aktive Jobs gesetzt und sorgt dafuer, dass ein fachlicher Auftrag nur einmal gleichzeitig in der Warteschlange steht (UNIQUE KEY).",
+    "spalten_erlaeuterung": {
+      "priority": "10 HIGH, 50 NORMAL, 90 LOW, kleinere Zahl wird zuerst bearbeitet (schema.sql-Kommentar Zeile 320)",
+      "closed_at": "ein fehlgeschlagener Job wurde vom Administrator dauerhaft geschlossen (queue_close())",
+      "payload": "JSON-Nutzdaten des Jobs, laut Kommentar ohne Geheimnisse; queue_prune_payload() kuerzt sensible Felder bei Mail-Jobs"
+    }
+  },
+  "worker_heartbeats": {
+    "zweck": "Lebenszeichen der laufenden Worker-Prozesse (Scheduler, Worker-Pools) fuer Betriebsueberwachung.",
+    "modul": "Hintergrundverarbeitung / Warteschlange",
+    "mandant": "keine (plattformweit, worker_id-bezogen)",
+    "statuswerte": {
+      "status": "idle | busy | stopping | stopped (schema.sql-Kommentar Zeile 352)"
+    },
+    "erzeugt_durch": [
+      "app/queue.php worker_register()"
+    ],
+    "veraendert_durch": [
+      "app/queue.php worker_heartbeat()",
+      "app/queue.php worker_stop() (status = stopped)"
+    ],
+    "gelesen_durch": [
+      "admin-system.php/Statusseite (Betriebsuebersicht der Worker)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: started_at, heartbeat_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "018_queue_worker.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "worker_id ist Primaerschluessel (ein Datensatz je Worker-Prozess, nicht je Lauf).",
+    "spalten_erlaeuterung": {
+      "pool": "lexware | stripe | mail | maintenance | all | scheduler (schema.sql-Kommentar Zeile 349)"
+    }
+  },
+  "sync_runs": {
+    "zweck": "Historie einzelner Synchronisationslaeufe mit Lexware Office je Firma (Kennzahlen, Fehlerkategorie).",
+    "modul": "Synchronisation",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "status": "running | success | partial | failed | cancelled (schema.sql-Kommentar Zeile 370)"
+    },
+    "erzeugt_durch": [
+      "app/sync_state.php sync_run_open()"
+    ],
+    "veraendert_durch": [
+      "app/sync_state.php sync_run_open() (cancelled bei ueberlappendem neuem Lauf), sync_run_attach(), sync_run_finish()"
+    ],
+    "gelesen_durch": [
+      "invoices.php (Synchronisationshistorie), admin-system.php"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id bei Loeschung der Firma",
+    "geld_zeit_extern": "Betraege: keine; Zeit: started_at (lokale Zeit wie sync_state laut Kommentar Zeile 371), finished_at DATETIME, duration_ms, api_ms, throttle_ms; externe IDs: correlation_id, job_id (Bezug zur jobs-Tabelle)",
+    "migrationen": [
+      "013_sync_performance.sql (vermutlich, da Kennzahlenspalten wie steps/checked/api_calls zur Sync-Performance-Migration passen; im Code nicht abschliessend bestaetigt) und 014_sync_lock_owner.sql (worker_id-Bezug)"
+    ],
+    "besonderheiten": "triggered_by unterscheidet manual | auto | full | admin | cron (schema.sql-Kommentar Zeile 367).",
+    "spalten_erlaeuterung": {
+      "checked/created/updated/removed/skipped": "Kennzahlen der verglichenen bzw. veraenderten Rechnungen/Kontakte je Lauf"
+    }
+  },
+  "api_circuits": {
+    "zweck": "Circuit Breaker je externer API (Lexware Office, Stripe, Mail): unterbindet weitere Aufrufe nach wiederholten technischen Fehlern (CLAUDE.md: api_call_gate()).",
+    "modul": "Externe Anbindungen / Stabilitaet",
+    "mandant": "keine (plattformweit je API)",
+    "statuswerte": {
+      "state": "closed | open | half_open (schema.sql-Kommentar Zeile 393)"
+    },
+    "erzeugt_durch": [
+      "app/queue.php circuit_success() und circuit_failure() (INSERT ... ON DUPLICATE KEY UPDATE-artig, jeweils mit INSERT IGNORE bzw. INSERT bei erstem Datensatz)"
+    ],
+    "veraendert_durch": [
+      "app/queue.php circuit_allow() (half_open), circuit_failure() (failures, state=open)"
+    ],
+    "gelesen_durch": [
+      "app/queue.php api_call_gate() (Aufrufsperre vor externen Aufrufen)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: opened_at, next_probe_at, last_failure_at, last_success_at, updated_at DATETIME; externe IDs: keine (api ist der interne Bezeichner lexoffice|stripe|mail)",
+    "migrationen": [
+      "018_queue_worker.sql (CREATE TABLE, im Kontext der Hintergrundverarbeitung)"
+    ],
+    "besonderheiten": "Primaerschluessel ist der API-Name (api), ein Datensatz je externer Anbindung. last_failure_category wird laut CLAUDE.md ueber circuit_failure() nur bei technischen Fehlern gesetzt, nicht bei fachlichen Ablehnungen.",
+    "spalten_erlaeuterung": {}
+  },
+  "integrations": {
+    "zweck": "Verbindungsdaten je Firma zu Lexware Office und Stripe (verschluesselte Zugangsdaten, Verbindungsstatus) sowie Wahl der aktiven Rechnungsquelle (Migration 024).",
+    "modul": "Externe Anbindungen",
+    "mandant": "tenant_id",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/integrations.php integration_load() (Zeile 26, legt Datensatz bei erstem Zugriff an, falls nicht vorhanden)",
+      "app/auth.php _auth_register_create()/create_company() (bei Firmenanlage)"
+    ],
+    "veraendert_durch": [
+      "settings.php (lexoffice_api_key_encrypted, lexoffice_connected, stripe_secret_key_encrypted, stripe_webhook_secret_encrypted, stripe_connected und jeweilige *_disconnected_at)",
+      "app/invoice_source_switch.php invoice_source_switch()/invoice_source_apply_signup() (invoice_source, invoice_source_changed_at, invoice_source_switches)",
+      "app/integrations.php integration_verify_stripe()/integration_verify_lexoffice() (stripe_account_id, stripe_business_name, stripe_mode, lexoffice_company_name, jeweilige *_last_verified_at)",
+      "app/sync.php sync_invoices_step()/sync_invoices() (lexoffice_last_sync)"
+    ],
+    "gelesen_durch": [
+      "settings.php, onboarding.php, app/sync.php, app/collections.php (Pruefung, ob Anbindungen aktiv sind)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id bei Loeschung der Firma",
+    "geld_zeit_extern": "Betraege: keine; Zeit: lexoffice_last_verified_at, lexoffice_disconnected_at, stripe_last_verified_at, stripe_disconnected_at, lexoffice_last_sync, created_at/updated_at DATETIME; externe IDs: stripe_account_id (Stripe-Konto der Firma, getrennt vom Plattform-Stripe-Konto in organizations)",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung",
+      "004_integration_verification.sql (vermutlich *_last_verified_at/_disconnected_at, *_company_name/_business_name/_mode, dem Namen nach passend)",
+      "024_invoice_source_switch.sql (invoice_source_changed_at, invoice_source_switches)"
+    ],
+    "besonderheiten": "lexoffice_api_key_encrypted, stripe_secret_key_encrypted und stripe_webhook_secret_encrypted sind ueber app/crypto.php (AES-256-GCM) verschluesselt, laut CLAUDE.md nie im Frontend gezeigt. UNIQUE (tenant_id) macht die Tabelle 1:1 zur Firma.",
+    "spalten_erlaeuterung": {
+      "invoice_source": "aktuell genutztes Rechnungssystem (lexware_office | sevdesk laut integration_providers), Standard lexware_office (Migration 024)",
+      "invoice_source_changed_at": "Zeitpunkt des letzten Wechsels, Grundlage einer Sperrfrist von vier Wochen bis zum naechsten Wechsel (Migrationskommentar 024)",
+      "invoice_source_switches": "Zaehler der Wechsel zur Missbrauchserkennung (Migrationskommentar 024)"
+    }
+  },
+  "sync_state": {
+    "zweck": "Serverseitiger Fortschritt der laufenden Lexware-Synchronisation je Firma, damit Browser und Cron denselben Lauf fortsetzen koennen (schema.sql-Kommentar Zeile 427).",
+    "modul": "Synchronisation",
+    "mandant": "tenant_id (zugleich Primaerschluessel, 1:1 zur Firma)",
+    "statuswerte": {
+      "status": "idle | running | done | error (schema.sql-Kommentar Zeile 430)"
+    },
+    "erzeugt_durch": [
+      "app/sync_state.php sync_state_start()"
+    ],
+    "veraendert_durch": [
+      "app/sync_state.php sync_state_start(), sync_state_cancel(), sync_state_step()",
+      "app/jobs.php (mehrere Stellen, u. a. force_full setzen, verwaiste Laeufe schliessen)",
+      "app/queue.php queue_fail() (status=error bei Jobfehler)",
+      "invoices.php (Statuszuruecksetzung nach Anzeige des Ergebnisses)"
+    ],
+    "gelesen_durch": [
+      "invoices.php (Fortschrittsanzeige, automatische Fortsetzung)"
+    ],
+    "loeschung": "nicht zutreffend (1 Zeile je Firma, kein Loeschen, nur Statuswechsel); ON DELETE CASCADE ueber tenant_id bei Loeschung der Firma",
+    "geld_zeit_extern": "Betraege: keine; Zeit: lock_until, last_step_at, started_at, finished_at DATETIME (lokale Zeit laut Kommentar); externe IDs: keine",
+    "migrationen": [
+      "013_sync_performance.sql (vermutlich, Kernnamen passen zu Performance-Ueberarbeitung) und 014_sync_lock_owner.sql (lock_owner)"
+    ],
+    "besonderheiten": "lock_owner (Migration 014) verhindert, dass zwei Prozesse gleichzeitig am selben Synchronisationsschritt arbeiten. cursor_json haelt den Fortsetzungspunkt der Lexware-Abfrage (MEDIUMTEXT).",
+    "spalten_erlaeuterung": {
+      "skipped_starts": "Anzahl uebersprungener Startversuche, waehrend bereits ein Lauf aktiv war"
+    }
+  },
+  "webhook_events": {
+    "zweck": "Idempotenz- und Reihenfolgeschutz fuer verarbeitete Webhook-Ereignisse (verhindert doppelte Verarbeitung).",
+    "modul": "Externe Anbindungen",
+    "mandant": "keine direkt (object_id kann auf Firmenobjekte verweisen, kein tenant_id-Feld)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/billing.php billing_event_claim() (INSERT IGNORE, beansprucht die Ereignis-ID exklusiv)"
+    ],
+    "veraendert_durch": [
+      "app/billing.php billing_handle_event() (object_id, event_created nachtragen)"
+    ],
+    "gelesen_durch": [
+      "app/billing.php (Duplikatspruefung vor Verarbeitung eines Stripe-Ereignisses)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at DATETIME, event_created (BIGINT, vermutlich Unix-Zeitstempel des externen Ereignisses); externe IDs: id (Stripe-Event-ID), object_id",
+    "migrationen": [
+      "nicht eindeutig lokalisiert; thematisch zur Plattform-Abrechnung passend, vermutlich Teil der Abrechnungs-Einfuehrung (nicht in Migrationen 001-024 als eigenstaendiges CREATE TABLE gefunden, moeglicherweise Teil der Basistabellen oder einer nicht separat benannten Abrechnungs-Migration)"
+    ],
+    "besonderheiten": "id ist Primaerschluessel und entspricht der Stripe-Ereignis-ID (VARCHAR(255)), macht InsertIgnore zur Idempotenzsperre.",
+    "spalten_erlaeuterung": {
+      "source": "billing | tenant (schema.sql-Kommentar Zeile 448, unterscheidet Plattform-Abrechnungs-Webhook von firmenspezifischem Stripe-Webhook)"
+    }
+  },
+  "funnel_events": {
+    "zweck": "Anonymes Trichter-/Konversions-Tracking je Herkunftsdomain (cookielos, ohne IP-Adresse laut schema.sql-Kommentar Zeile 456).",
+    "modul": "Marketing und Auswertung",
+    "mandant": "tenant_id (optional, NULL vor Firmenzuordnung)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/audit.php funnel_event()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "app/audit.php (Auswertungsfunktionen), app/interest.php (Kennzahlen interest_submitted/interest_confirmed)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "nicht eindeutig lokalisiert (nicht als eigenstaendiges CREATE TABLE in Migrationen 001-024 gefunden, vermutlich Teil der Basistabellen)"
+    ],
+    "besonderheiten": "Bewusst ohne IP-Adresse zur Datensparsamkeit (DSGVO).",
+    "spalten_erlaeuterung": {
+      "event": "z. B. interest_submitted, interest_confirmed, onboarding_completed (siehe Aufrufe in app/interest.php, onboarding.php)"
+    }
+  },
+  "customers": {
+    "zweck": "Kunden der Firma, synchronisiert aus Lexware Office (Kontakte).",
+    "modul": "Fachdaten je Firma / Kunden",
+    "mandant": "tenant_id",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/sync.php _sync_upsert_customer()"
+    ],
+    "veraendert_durch": [
+      "app/sync.php _sync_upsert_customer() (Stammdatenabgleich aus Lexware Office)",
+      "app/mandate_requests.php mandate_request_grant() (sepa_debit_enabled = 1 nach digital erteiltem Mandat)",
+      "app/customer_settings.php set_customer_sepa_debit()/set_customer_iban() (sepa_debit_enabled)"
+    ],
+    "gelesen_durch": [
+      "customer.php, invoices.php, app/collections.php (praktisch alle kundenbezogenen Ablaeufe)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id bei Loeschung der Firma",
+    "geld_zeit_extern": "Betraege: keine eigene; Zeit: lexoffice_synced_at, created_at/updated_at DATETIME; externe IDs: lexoffice_contact_id",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung",
+      "001_add_sepa_debit_enabled.sql (sepa_debit_enabled)",
+      "013_sync_performance.sql (lexoffice_synced_at)"
+    ],
+    "besonderheiten": "UNIQUE (tenant_id, lexoffice_contact_id) verhindert doppelte Uebernahme desselben Lexware-Kontakts.",
+    "spalten_erlaeuterung": {
+      "is_walk_in": "Laufkunde/Sammelkontakt ohne dauerhafte Kundenbeziehung (z. B. Lexware-Sammelkontakt fuer Barverkauf)",
+      "sepa_debit_enabled": "steuert, ob fuer diesen Kunden ueberhaupt SEPA-Lastschrifteinzug erlaubt ist"
+    }
+  },
+  "customer_ibans": {
+    "zweck": "Bankverbindungen (IBAN/BIC) eines Kunden, mit Historie ueber Aktivierung/Deaktivierung.",
+    "modul": "Fachdaten je Firma / SEPA-Mandate",
+    "mandant": "tenant_id",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/mandate_requests.php mandate_request_grant() (nach digital erteiltem Mandat, source=stripe_digital)",
+      "app/customer_settings.php set_customer_iban() (manuelle Erfassung im Portal, source=manual)"
+    ],
+    "veraendert_durch": [
+      "app/mandate_requests.php mandate_request_grant() (is_active=0 bei Ersetzung)",
+      "app/customer_settings.php set_customer_iban()/deactivate_customer_iban() (is_active)"
+    ],
+    "gelesen_durch": [
+      "app/mandates.php, app/collections.php (Einzug), customer.php"
+    ],
+    "loeschung": "nicht gefunden (Deaktivierung statt Loeschung ueber is_active); ON DELETE CASCADE ueber tenant_id und customer_id",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at/updated_at DATETIME; externe IDs: keine (IBAN/BIC selbst sind Bankdaten, keine externen Systemreferenzen)",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung",
+      "006_payment_safety.sql (source-Spalte, Herkunft der Bankverbindung)"
+    ],
+    "besonderheiten": "Bei digitaler Mandatsanforderung (source=stripe_digital) liegt die IBAN laut schema.sql-Kommentar (Zeile 723) nur maskiert vor.",
+    "spalten_erlaeuterung": {
+      "source": "manual (im Portal erfasst) | stripe_digital (aus digitaler Mandatsanforderung, schema.sql-Kommentar Zeile 722)"
+    }
+  },
+  "iban_history": {
+    "zweck": "Aenderungshistorie zu Bankverbindungen (wer hat wann was geaendert und warum).",
+    "modul": "Fachdaten je Firma / SEPA-Mandate",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "action": "created | deactivated | reactivated (schema.sql-Kommentar Zeile 508)"
+    },
+    "erzeugt_durch": [
+      "app/mandate_requests.php mandate_request_grant()",
+      "app/customer_settings.php set_customer_iban()/deactivate_customer_iban()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "customer.php (Verlaufsanzeige)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber customer_iban_id",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung"
+    ],
+    "besonderheiten": "Reines Anhaengeprotokoll (nur INSERT, keine UPDATE-Anweisung gefunden).",
+    "spalten_erlaeuterung": {
+      "changed_by": "Benutzer-ID, die die Aenderung vorgenommen hat (NOT NULL)"
+    }
+  },
+  "sepa_mandates": {
+    "zweck": "SEPA-Lastschriftmandate der Kunden: Referenz, Unterschrift, Verfall (schema.sql-Kommentar Zeile 519f.), Bezug zu Stripe-Mandat/Zahlungsmethode.",
+    "modul": "Fachdaten je Firma / SEPA-Mandate",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "status": "draft | active | cancelled | expired (schema.sql-Kommentar Zeile 529); Uebergaenge: mandate_cancel() -> cancelled, mandate_check_usable() -> expired nach 36 Monaten ohne Nutzung (MANDATE_EXPIRY_MONTHS in app/mandates.php)"
+    },
+    "erzeugt_durch": [
+      "app/mandates.php get_or_create_mandate() (kein direkter INSERT-Treffer in der Grep-Suche gefunden, Funktion legt laut Namen neue Mandate an; nicht abschliessend im Code bestaetigt, INSERT vermutlich in get_or_create_mandate() selbst)"
+    ],
+    "veraendert_durch": [
+      "app/mandates.php get_or_create_mandate() (customer_iban_id, Ruecksetzen der Stripe-Zahlungsmethode bei IBAN-Wechsel)",
+      "app/mandates.php mandate_mark_document_generated() (document_generated_at, document_generated_by)",
+      "app/mandates.php mandate_mark_signed() (signed_date, signed_place, mandate_date)",
+      "app/mandates.php mandate_cancel() (is_active=0, status=cancelled, cancelled_at, cancel_reason)",
+      "app/mandates.php mandate_touch_used() (last_used_at, bei jeder Nutzung im Einzug)",
+      "app/mandates.php mandate_check_usable() (is_active=0, status=expired nach 36-Monats-Regel)",
+      "app/collections.php store_stripe_mandate_data()/register_iban_with_stripe()/_submit_collection_locked()/_submit_single_scheduled() (stripe_mandate_id, stripe_mandate_reference, stripe_payment_method_id, stripe_customer_id)"
+    ],
+    "gelesen_durch": [
+      "customer.php, app/collections.php (Einzug), app/mandate_files.php"
+    ],
+    "loeschung": "kein Loeschen, nur Statuswechsel auf cancelled/expired; ON DELETE CASCADE ueber tenant_id und customer_id",
+    "geld_zeit_extern": "Betraege: keine eigene (Betrag steht im Einzug payment_collections); Zeit: mandate_date, signed_date DATE, document_generated_at, last_used_at, cancelled_at, created_at/updated_at DATETIME; externe IDs: stripe_payment_method_id, stripe_customer_id, stripe_mandate_id, stripe_mandate_reference",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung",
+      "005_mandate_files.sql (Bezug zu mandate_files)",
+      "006_payment_safety.sql (stripe_mandate_id, stripe_mandate_reference)"
+    ],
+    "besonderheiten": "MANDATE_EXPIRY_MONTHS = 36 (app/mandates.php): Ein Mandat erlischt, wenn 36 Monate lang keine Lastschrift eingezogen wurde (schema.sql-Kommentar Zeile 520, Kommentar app/mandates.php Zeile 15-20, handels- und steuerrechtliche Empfehlung). UNIQUE (tenant_id, mandate_reference).",
+    "spalten_erlaeuterung": {
+      "mandate_reference": "SEPA-Mandatsreferenz, vergeben aus organizations.mandate_prefix + Kundennummer (customer.php-Hinweistext)",
+      "mandate_type": "recurrent | one_off (schema.sql-Kommentar Zeile 530)",
+      "creditor_identifier": "je Mandat gespeicherte Glaeubiger-ID (kann von organizations.creditor_identifier abweichen, falls sich diese spaeter aendert)"
+    }
+  },
+  "invoices": {
+    "zweck": "Aus Lexware Office synchronisierte Rechnungen (Belege) je Firma, mit Einzugsstatus.",
+    "modul": "Fachdaten je Firma / Rechnungen",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "collection_status": "none | open | in_collection | collected | failed | scheduled (schema.sql-Kommentar Zeile 562). Uebergaenge (app/collections.php, app/sync.php, stripe-webhook.php): open -> scheduled (Terminierung, _submit_collection_locked()) -> in_collection (Einreichung) -> collected/failed (Stripe-Webhook bzw. sync_collection_statuses()); collections_cancel_all_pending() setzt scheduled zurueck auf open."
+    },
+    "erzeugt_durch": [
+      "app/sync.php _sync_process_voucher() (kein direkter INSERT-Treffer in Grep-Suche, vermutlich INSERT innerhalb dieser Funktion beim erstmaligen Anlegen einer Rechnung; nicht abschliessend im Code bestaetigt)"
+    ],
+    "veraendert_durch": [
+      "app/stripe_import.php stripe_import_apply() (collection_status bei Uebernahme importierter Einzuege)",
+      "app/sync.php sync_invoices_step()/sync_invoices()/_sync_process_voucher() (lexoffice_status, collection_status, lexoffice_updated_at, last_synced_at, voucher_number, customer_id, contact_name, ... bei jeder Synchronisation)",
+      "app/collections.php collections_cancel_all_pending(), _persist_open_amount() (open_amount, open_amount_fetched_at), _attempt_backfill_collection(), invoice_review_clear() (requires_review, review_reason), _submit_collection_locked(), cancel_scheduled_collection(), sync_collection_statuses(), process_scheduled_collections(), _submit_single_scheduled()",
+      "stripe-webhook.php (collection_status bei erfolgreichem/fehlgeschlagenem Einzug laut Stripe-Ereignis)"
+    ],
+    "gelesen_durch": [
+      "invoices.php, app/collections.php (praktisch alle Rechnungsablaeufe)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id, ON DELETE SET NULL ueber customer_id bei Loeschung des Kunden",
+    "geld_zeit_extern": "Betraege: total_gross_amount, open_amount DECIMAL(10,2); Zeit: due_date DATE, lexoffice_updated_at, last_synced_at, open_amount_fetched_at, created_at/updated_at DATETIME; externe IDs: lexoffice_invoice_id",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung",
+      "013_sync_performance.sql (lexoffice_updated_at)",
+      "006_payment_safety.sql (open_amount, open_amount_fetched_at)",
+      "007_refunds_alerts.sql (requires_review, review_reason)"
+    ],
+    "besonderheiten": "UNIQUE (tenant_id, lexoffice_invoice_id). requires_review=1 blockiert laut schema.sql-Kommentar (Zeile 824) jede Einreichung, bis Inhaber oder Administrator die Klaerung abschliesst.",
+    "spalten_erlaeuterung": {
+      "open_amount": "Restbetrag laut Lexware Office (Payments-Endpunkt), kann vom Rechnungsbetrag abweichen bei Teilzahlung",
+      "keyword/keyword_sepa": "aus den Belegpositionen abgeleitete Stichworte, u. a. zur Erkennung von SEPA-Zahlungsart (app/sync.php, app/collections.php)",
+      "line_items_json": "Rechnungspositionen aus Lexware Office als JSON"
+    }
+  },
+  "payment_collections": {
+    "zweck": "Einzelner SEPA-Lastschrifteinzug zu einer Rechnung ueber Stripe (Kernobjekt des Geldflusses).",
+    "modul": "Fachdaten je Firma / Einzuege",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "stripe_status": "scheduled | submitting | processing | succeeded | failed | disputed | refunded | cancelled (schema.sql-Kommentar Zeile 584). Uebergaenge: scheduled -> submitting (_submit_single_scheduled()) -> processing (stripe-webhook.php) -> succeeded/failed (Stripe-Webhook, sync_collection_statuses()); scheduled -> cancelled (collections_cancel_all_pending(), cancel_scheduled_collection())."
+    },
+    "erzeugt_durch": [
+      "app/collections.php (kein direkter INSERT-Treffer in Grep-Suche fuer payment_collections; INSERT vermutlich in einer Funktion wie schedule_collection()/create_collection() in app/collections.php, nicht abschliessend per Grep bestaetigt), app/stripe_import.php (Uebernahme importierter Einzuege)"
+    ],
+    "veraendert_durch": [
+      "app/collections.php collections_cancel_all_pending(), collection_attempts_resolve(), store_stripe_mandate_data() (stripe_charge_id), _submit_collection_locked() (prenotified_at), cancel_scheduled_collection(), reschedule_collection() (scheduled_date, submit_not_before, queued_immediate, prenotified_at), sync_collection_statuses(), process_scheduled_collections() (note, stripe_status, failure_reason), _submit_single_scheduled() (stripe_status, customer_iban_id, mandate_id, amount_cents, note)",
+      "stripe-webhook.php (stripe_status, completed_at anhand Stripe-Ereignis)"
+    ],
+    "gelesen_durch": [
+      "invoices.php, customer.php, app/collections.php (Einzugsuebersicht)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id und invoice_id",
+    "geld_zeit_extern": "Betraege: amount_cents INT, refunded_cents INT; Zeit: submitted_at, completed_at, refunded_at, scheduled_date DATE, submit_not_before, prenotified_at, created_at/updated_at DATETIME; externe IDs: stripe_payment_intent_id, stripe_charge_id",
+    "migrationen": [
+      "Basistabelle vor Migrationszaehlung",
+      "006_payment_safety.sql (note, stripe_charge_id)",
+      "007_refunds_alerts.sql (refunded_cents, refunded_at, refund_note)",
+      "009_stripe_import.sql (source, imported_mandate_reference)",
+      "011_collection_queue.sql (submit_not_before, queued_immediate)"
+    ],
+    "besonderheiten": "mandate_id kann laut Kommentar (Zeile 579) NULL sein bei importierten Einzuegen (Migration 009). Fremdschluessel zu sepa_mandates und customer_ibans ohne ON DELETE-Regel (nur per Anwendungscode abgesichert, da Mandate/IBANs typischerweise nicht geloescht, nur deaktiviert werden).",
+    "spalten_erlaeuterung": {
+      "submit_not_before": "fruehester Einreichzeitpunkt (Karenzzeit, Einreichfenster; Migration 011); begrenzt laut CLAUDE.md ausschliesslich das Einreichen, nicht andere Ablaeufe",
+      "queued_immediate": "1 = vorgemerkter Sofort-Einzug (schema.sql-Kommentar Zeile 591)",
+      "is_scheduled/scheduled_submitted": "kennzeichnen planmaessig terminierte Einzuege und ob die Einreichung bereits erfolgt ist",
+      "source": "app (im Portal ausgeloest) oder Herkunft aus Stripe-Import (Migration 009)"
+    }
+  },
+  "support_sessions": {
+    "zweck": "Zeitlich begrenzter Support-Zugriff des Plattformbetreibers auf einen Firmenaccount (Migration 008, siehe app/support.php).",
+    "modul": "Support und Administration",
+    "mandant": "organization_id (Zielfirma des Support-Zugriffs)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/support.php support_session_create()"
+    ],
+    "veraendert_durch": [
+      "app/support.php support_session_redeem() (redeemed_at, token_hash=NULL)",
+      "app/support.php support_session_end() (ended_at, ended_by)",
+      "app/support.php support_sessions_expire() (zeitgesteuertes Beenden abgelaufener Sitzungen)"
+    ],
+    "gelesen_durch": [
+      "app/support.php (Zugriffspruefung waehrend aktiver Support-Sitzung)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: redeem_expires_at, redeemed_at, expires_at, ended_at, created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "008_support_sessions.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "token_hash wird nach Einloesung bzw. Beendigung auf NULL gesetzt (Einmalgebrauch). ended_by: admin | expired | revoked | logout (schema.sql-Kommentar Zeile 619).",
+    "spalten_erlaeuterung": {
+      "reason": "vom Administrator angegebener Grund des Support-Zugriffs (Pflichtfeld, NOT NULL)"
+    }
+  },
+  "mandate_files": {
+    "zweck": "Hochgeladene Mandatsdokumente (PDF/JPG/PNG) je Kunde, Dateien liegen unter app/storage/mandates/ (schema.sql-Kommentar Zeile 627).",
+    "modul": "Fachdaten je Firma / SEPA-Mandate",
+    "mandant": "tenant_id",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/mandate_files.php mandate_file_store()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "customer.php (Anzeige/Download hochgeladener Mandatsdokumente)"
+    ],
+    "loeschung": "nicht gefunden im durchsuchten Code (nur INSERT gefunden)",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "005_mandate_files.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "sha256 sichert die Unversehrtheit der gespeicherten Datei; stored_name ist der auf dem Dateisystem verwendete, vom Originalnamen entkoppelte Name. ON DELETE CASCADE ueber tenant_id/customer_id, ON DELETE SET NULL ueber mandate_id.",
+    "spalten_erlaeuterung": {}
+  },
+  "collection_attempts": {
+    "zweck": "Versuchsjournal: jeder Stripe-Aufruf zu einem Einzug wird VOR dem Aufruf mit Idempotenz-Schluessel festgehalten, damit bei Abbruch der Transaktion der Versuch nachvollziehbar bleibt (schema.sql-Kommentar Zeile 664-671, Migration 006).",
+    "modul": "Fachdaten je Firma / Einzuege / Zahlungssicherheit",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "status": "pending (Aufruf laeuft) | succeeded | failed (Stripe hat abgelehnt, neuer Versuch erlaubt) | unknown (Zeitueberschreitung oder Netzwerkfehler, Ergebnis unbekannt, kein neuer Versuch ohne Klaerung) laut schema.sql-Kommentar Zeile 668-670"
+    },
+    "erzeugt_durch": [
+      "app/collections.php collection_attempt_begin()"
+    ],
+    "veraendert_durch": [
+      "app/collections.php collection_attempt_finish()"
+    ],
+    "gelesen_durch": [
+      "app/collections.php collection_attempts_resolve() (Abgleich unklarer Versuche gegen Stripe)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: amount_cents INT; Zeit: created_at/updated_at DATETIME; externe IDs: idempotency_key, stripe_payment_intent_id",
+    "migrationen": [
+      "006_payment_safety.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "UNIQUE (idempotency_key) auf eigener Datenbankverbindung geschrieben (laut Kommentar), damit der Eintrag auch bei Abbruch der Einzugs-Transaktion erhalten bleibt: zentrales Bauteil der Zahlungssicherheit gegen Doppelabbuchung.",
+    "spalten_erlaeuterung": {}
+  },
+  "platform_settings": {
+    "zweck": "Einfacher Schluessel-Wert-Speicher fuer plattformweite Einstellungen, u. a. der plattformweite Not-Stopp fuer Einzuege (schema.sql-Kommentar Zeile 691-693).",
+    "modul": "Sicherheit / Zahlungssicherheit",
+    "mandant": "keine (plattformweit)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "sql/schema.sql INSERT IGNORE (Startwert collections_paused=0)",
+      "app/collections.php platform_setting_set() (ON DUPLICATE KEY UPDATE, wirkt zugleich als Anlage und Aenderung)"
+    ],
+    "veraendert_durch": [
+      "app/collections.php platform_setting_set()"
+    ],
+    "gelesen_durch": [
+      "app/collections.php (Pruefung des plattformweiten Not-Stopps vor jeder Einreichung)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "006_payment_safety.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "Laut CLAUDE.md kann der plattformweite Not-Stopp nur per SQL gesetzt werden (nicht ueber die Oberflaeche), siehe docs/payment-safety.md. `key` und `value` sind reservierte Bezeichner und daher in Backticks.",
+    "spalten_erlaeuterung": {
+      "key/value": "generischer Schluessel-Wert-Speicher, bekannter Schluessel ist collections_paused"
+    }
+  },
+  "mandate_requests": {
+    "zweck": "Digitale Mandatsanforderung per Stripe Checkout (mode=setup): Versand eines Links an den Kunden, der die Bankverbindung selbst hinterlegt (schema.sql-Kommentar Zeile 727-731).",
+    "modul": "Fachdaten je Firma / SEPA-Mandate",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "status": "requested (Link versendet) | pending (Checkout gestartet) | granted | unusable | revoked | expired (schema.sql-Kommentar Zeile 729-731)"
+    },
+    "erzeugt_durch": [
+      "app/mandate_requests.php mandate_request_create()"
+    ],
+    "veraendert_durch": [
+      "app/mandate_requests.php mandate_requests_for_customer() (automatisches Setzen von expired bei Ablauf beim Lesen)",
+      "mandate_request_create() (revoked bei Ersetzung einer bestehenden Anfrage)",
+      "mandate_request_revoke() (revoked)",
+      "mandate_request_load_by_token() (expired bei Tokenablauf)",
+      "mandate_request_start_checkout() (pending, stripe_checkout_session_id)",
+      "mandate_request_grant() (granted, granted_at, stripe_setup_intent_id, stripe_payment_method_id, stripe_mandate_id, mandate_id; unusable bei Fehlschlag)",
+      "mandate_request_remind() (token_hash-Erneuerung, reminders_sent, last_reminded_at)"
+    ],
+    "gelesen_durch": [
+      "customer.php (Status der Mandatsanforderung), app/jobs.php job_mandate_reminders()"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id und customer_id",
+    "geld_zeit_extern": "Betraege: keine; Zeit: expires_at, granted_at, revoked_at, last_reminded_at, created_at DATETIME; externe IDs: stripe_checkout_session_id, stripe_setup_intent_id, stripe_payment_method_id, stripe_mandate_id",
+    "migrationen": [
+      "006_payment_safety.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "token_hash speichert laut Kommentar (Zeile 728) nur den Hash des Links, UNIQUE (token_hash).",
+    "spalten_erlaeuterung": {
+      "reminders_sent": "Anzahl gesendeter Erinnerungen an den Kunden, den Link einzuloesen"
+    }
+  },
+  "collection_rules": {
+    "zweck": "Regelautomatik fuer wiederkehrende Einzuege, laut schema.sql-Kommentar (Zeile 758-760) nur ein Geruest: is_active bleibt 0, es gibt keine Verarbeitung, nur eine Vorschau (collection_rules_preview()) ohne Einreichung.",
+    "modul": "Fachdaten je Firma / Einzuege (Vorstufe, nicht produktiv)",
+    "mandant": "tenant_id",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "nicht gefunden (keine INSERT-Anweisung im durchsuchten PHP-Code, nur Lesezugriff in app/collection_rules.php)"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "app/collection_rules.php collection_rules_preview()"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: max_amount_cents INT (Obergrenze); Zeit: start_date DATE, created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "006_payment_safety.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "Aktuell ohne Schreibpfad im Code auffindbar; passt zum Kommentar, dass es sich um ein reines Geruest ohne produktive Verarbeitung handelt.",
+    "spalten_erlaeuterung": {
+      "require_second_approval": "vorgesehene Vier-Augen-Freigabe fuer automatisierte Einzuege (noch ohne Wirkung, da is_active nie 1 wird)"
+    }
+  },
+  "integration_providers": {
+    "zweck": "Registry der Anbindungen (Rechnungssysteme und Zahlungsdienstleister), Adaptergrenze fuer weitere Integrationen wie sevdesk (CLAUDE.md, schema.sql-Kommentar Zeile 778-779).",
+    "modul": "Externe Anbindungen",
+    "mandant": "keine (plattformweit, Stammdaten-/Referenztabelle)",
+    "statuswerte": {
+      "status": "planned | development | closed_test | released (schema.sql-Kommentar Zeile 784)"
+    },
+    "erzeugt_durch": [
+      "sql/schema.sql INSERT IGNORE (Startdaten: lexware_office, sevdesk, stripe); keine INSERT-Anweisung im PHP-Code gefunden"
+    ],
+    "veraendert_durch": [
+      "nicht gefunden (keine UPDATE-Anweisung im durchsuchten PHP-Code)"
+    ],
+    "gelesen_durch": [
+      "app/integration_state.php, app/sevdesk.php, app/interest.php (Vormerkung je provider_code), app/invoice_source_switch.php"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "006_payment_safety.sql (CREATE TABLE)",
+      "024_invoice_source_switch.sql (Nutzung als Fremdschluesselziel fuer integrations.invoice_source)"
+    ],
+    "besonderheiten": "code ist Primaerschluessel (z. B. lexware_office, sevdesk, stripe). Laut CLAUDE.md zu sevdesk nur die vorsichtige Formulierung verwenden, keine Partnerschafts- oder Zertifizierungsbehauptung.",
+    "spalten_erlaeuterung": {
+      "capabilities_json": "JSON-Liste unterstuetzter Fähigkeiten je Anbindung (z. B. read_customers, sepa_debit)"
+    }
+  },
+  "stripe_imports": {
+    "zweck": "Lauf zum Import bestehender, ausserhalb des Portals getätigter Stripe-Einzuege in die Datenbank (Migration 009, app/stripe_import.php).",
+    "modul": "Fachdaten je Firma / Einzuege (einmaliger Altdatenimport)",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "status": "loading | preview | done | discarded (schema.sql-Kommentar Zeile 847)"
+    },
+    "erzeugt_durch": [
+      "app/stripe_import.php stripe_import_start()"
+    ],
+    "veraendert_durch": [
+      "app/stripe_import.php stripe_import_start() (discarded bei vorherigem offenem Lauf), stripe_import_discard(), stripe_import_fetch() (cursor_pi, pages_fetched, fetched_count, last_error, status=preview), stripe_import_apply() (status=done, imported_count)"
+    ],
+    "gelesen_durch": [
+      "app/stripe_import.php (Fortschrittsanzeige des Imports im Portal)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id",
+    "geld_zeit_extern": "Betraege: keine eigene; Zeit: created_gte, created_at/updated_at, finished_at DATETIME; externe IDs: cursor_pi (Stripe-Paginierungscursor)",
+    "migrationen": [
+      "009_stripe_import.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "period_months begrenzt den Importzeitraum rueckwirkend.",
+    "spalten_erlaeuterung": {}
+  },
+  "stripe_import_items": {
+    "zweck": "Einzelne bei einem Stripe-Import gefundene Zahlungen mit Abgleichsergebnis gegen bestehende Rechnungen/Einzuege.",
+    "modul": "Fachdaten je Firma / Einzuege (einmaliger Altdatenimport)",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "match_state": "matched | already_known | invoice_missing | amount_mismatch | invoice_has_collection | not_ours (schema.sql-Kommentar Zeile 880)"
+    },
+    "erzeugt_durch": [
+      "app/stripe_import.php stripe_import_fetch() (kein direkter INSERT-Treffer in Grep-Suche, vermutlich INSERT innerhalb dieser Funktion beim Einlesen der Stripe-Seiten; nicht abschliessend im Code bestaetigt)"
+    ],
+    "veraendert_durch": [
+      "app/stripe_import.php stripe_import_apply() (collection_id nach Uebernahme in payment_collections)"
+    ],
+    "gelesen_durch": [
+      "app/stripe_import.php (Vorschau vor Uebernahme)"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber import_id",
+    "geld_zeit_extern": "Betraege: amount_cents, amount_refunded_cents INT; Zeit: stripe_created_at, created_at DATETIME; externe IDs: payment_intent_id, charge_id",
+    "migrationen": [
+      "009_stripe_import.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "UNIQUE (import_id, payment_intent_id) verhindert doppelte Erfassung derselben Stripe-Zahlung je Importlauf.",
+    "spalten_erlaeuterung": {
+      "match_state": "Ergebnis des automatischen Abgleichs mit vorhandenen Rechnungen/Kundennummern/Mandatsreferenzen vor der Uebernahme"
+    }
+  },
+  "schema_migrations": {
+    "zweck": "Stand der automatisch angewendeten Migrationen (app/migrate.php), verhindert doppelte Ausfuehrung.",
+    "modul": "Betrieb / Deployment",
+    "mandant": "keine (plattformweit, technische Tabelle)",
+    "statuswerte": {
+      "status": "running | success | failed | unknown (abgeleitet aus app/migrate.php migrations_run(): 'running' beim Start, 'success'/'failed' beim Abschluss, 'unknown' bei abgebrochenem Prozess mit ungeklaertem Zustand)"
+    },
+    "erzeugt_durch": [
+      "app/migrate.php migrations_status() (INSERT IGNORE als Markereintrag), migrations_run() (INSERT beim Start einer Migration)"
+    ],
+    "veraendert_durch": [
+      "app/migrate.php migrations_run() (status, finished_at, applied_at, error_text)"
+    ],
+    "gelesen_durch": [
+      "app/migrate.php (Migrationsstatus, verhindert Doppelausfuehrung)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: applied_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "wird laut schema.sql-Kommentar (Zeile 889-892) zur Laufzeit ebenfalls per CREATE TABLE IF NOT EXISTS angelegt, ist selbst nicht Gegenstand einer eigenen nummerierten Migration"
+    ],
+    "besonderheiten": "version ist Primaerschluessel (Migrationsnummer als Zeichenkette). applied_by unterscheidet automatischen Lauf ('auto') von manuellem Markereintrag ('marker').",
+    "spalten_erlaeuterung": {}
+  },
+  "support_tickets": {
+    "zweck": "Hilfe-Center: Support-Anfragen der Kunden an den Plattformbetreiber (Migration 012, app/support_tickets.php).",
+    "modul": "Support und Administration",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "status": "open | answered | closed (schema.sql-Kommentar Zeile 911). Uebergaenge: ticket_customer_reply() -> open, ticket_support_reply() -> closed oder answered je nach Aktion."
+    },
+    "erzeugt_durch": [
+      "app/support_tickets.php ticket_create()"
+    ],
+    "veraendert_durch": [
+      "app/support_tickets.php ticket_add_message() (last_message_at), ticket_customer_reply() (status=open, closed_at=NULL), ticket_support_reply() (status=closed/answered, answered_at/closed_at)"
+    ],
+    "gelesen_durch": [
+      "admin-support.php, Hilfe-Center-Seiten des Kunden"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id",
+    "geld_zeit_extern": "Betraege: keine; Zeit: last_message_at, answered_at, closed_at, created_at/updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "012_support_tickets.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "page haelt fest, von welcher Seite aus die Anfrage gestellt wurde (Kontext fuer den Support).",
+    "spalten_erlaeuterung": {}
+  },
+  "support_ticket_messages": {
+    "zweck": "Nachrichtenverlauf eines Support-Tickets (Kunde und Support im Wechsel).",
+    "modul": "Support und Administration",
+    "mandant": "tenant_id",
+    "statuswerte": {
+      "author_type": "customer | support (schema.sql-Kommentar Zeile 926)"
+    },
+    "erzeugt_durch": [
+      "app/support_tickets.php ticket_add_message()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "admin-support.php, Hilfe-Center-Seiten des Kunden"
+    ],
+    "loeschung": "nicht gefunden; ON DELETE CASCADE ueber ticket_id",
+    "geld_zeit_extern": "Betraege: keine; Zeit: created_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "012_support_tickets.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "Reines Anhaengeprotokoll (nur INSERT gefunden, keine Aenderung bestehender Nachrichten).",
+    "spalten_erlaeuterung": {}
+  },
+  "interest_registrations": {
+    "zweck": "Vormerkungen (Warteliste) fuer angekuendigte Integrationen, zuerst sevdesk, mit Double-Opt-in (Migration 020, CLAUDE.md-Abschnitt sevdesk).",
+    "modul": "Marketing / Vorregistrierung",
+    "mandant": "keine (plattformweit je Anbieter und E-Mail-Adresse)",
+    "statuswerte": {
+      "status": "pending | confirmed | unsubscribed (schema.sql-Kommentar Zeile 946). Uebergaenge: interest_register() -> pending, interest_confirm() -> confirmed, interest_unsubscribe_id()/interest_block_id() -> unsubscribed (Abmeldung wird laut app/version.php-Changelog nie automatisch aufgehoben)."
+    },
+    "erzeugt_durch": [
+      "app/interest.php interest_register()"
+    ],
+    "veraendert_durch": [
+      "app/interest.php interest_register() (token_hash, mail_pending)",
+      "app/interest.php interest_send_pending() (Wartungsjob, sendet ausstehende Bestaetigungsmails nach)",
+      "app/interest.php interest_confirm() (status=confirmed, confirmed_at)",
+      "app/interest.php interest_send_confirmed_mail()",
+      "app/interest.php interest_unsubscribe_id() (status=unsubscribed)",
+      "app/interest.php interest_block_id() (Sperrvermerk blocked_at, Klartextangaben ausser E-Mail werden dabei entfernt laut schema.sql-Kommentar Zeile 956)",
+      "app/interest.php interest_invite_id() (invited_at, Betaeinladung vorgemerkt)",
+      "app/interest.php interest_optional_update() (freiwillige Angaben nach Bestaetigung: beta_interest, invoices_per_month, has_stripe, has_api_access)"
+    ],
+    "gelesen_durch": [
+      "app/interest.php (Vormerkungsformular, Verwaltung), admin-Bereich"
+    ],
+    "loeschung": "kein DELETE gefunden; Sperrvermerk (blocked_at) entfernt laut Kommentar Klartextangaben ausser E-Mail, statt die Zeile zu loeschen",
+    "geld_zeit_extern": "Betraege: keine; Zeit: consent_at, mail_window_at, mail_pending_since, token_expires_at, created_at, last_mail_at, confirmed_at, unsubscribed_at, notified_at, invited_at DATETIME (alle UTC laut Kommentar); externe IDs: activated_org_id (spaeterer Firmenbezug nach tatsaechlicher Aktivierung)",
+    "migrationen": [
+      "020_interest_registrations.sql (CREATE TABLE)",
+      "021_mail_pending.sql (mail_pending, mail_pending_since)",
+      "022_mail_pending_backfill.sql (reine Datenmigration, keine Schemaaenderung)"
+    ],
+    "besonderheiten": "UNIQUE (provider_code, email). token_hash ist der SHA-256-Hash des Bestaetigungslinks (7 Tage gueltig, nach Bestaetigung geloescht laut Kommentar), manage_token_hash ein getrennter Hash fuer Abmeldung/freiwillige Angaben. Laut CLAUDE.md keine IP-Speicherung.",
+    "spalten_erlaeuterung": {
+      "purpose": "Zweck der Einwilligung, Standard launch_info (Start- und Entwicklungsinformationen, Betaeinladung laut Kommentar Zeile 945)",
+      "consent_text": "Fassung des Einwilligungstextes (INTEREST_CONSENT_VERSION laut CLAUDE.md), der zugestimmt wurde",
+      "mail_count/mail_window_at": "Bestaetigungsmails im laufenden 24-Stunden-Fenster, Missbrauchsschutz gegen Mailflut",
+      "mail_pending": "Bestaetigungsmail steht aus (Migration 021), wird durch Wartung nachgesendet, sobald mail.enabled gesetzt ist",
+      "blocked_at": "Sperrvermerk: kein Versand mehr, Klartextangaben ausser E-Mail entfernt"
+    }
+  },
+  "legal_documents": {
+    "zweck": "Versionierte Rechtsdokumente mit Zustimmungsnachweis (z. B. Auftragsverarbeitungsvertrag nach Art. 28 DSGVO, Verschwiegenheitsvereinbarung nach § 203 StGB), Migration 023.",
+    "modul": "Recht und Vertraege",
+    "mandant": "keine (plattformweit, ein Dokument gilt fuer alle oder eine Teilmenge von Firmen laut required_for)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/legal.php legal_document_create()"
+    ],
+    "veraendert_durch": [
+      "app/legal.php legal_document_publish() (published_at, retired_at; setzt zugleich die vorherige veroeffentlichte Fassung desselben code auf retired_at)"
+    ],
+    "gelesen_durch": [
+      "rechtliches.php, app/legal_drafts.php, app/legal.php (Pruefung, welche Fassung ein Kunde akzeptieren muss)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: published_at, retired_at, created_at/updated_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "023_legal_documents.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "UNIQUE (code, version). Laut Kommentar (Zeile 986) werden nur Fassungen mit published_at Kunden angezeigt und koennen akzeptiert werden. body_md ist eingeschraenktes Markdown (Ueberschriften, Absaetze, Listen laut Kommentar).",
+    "spalten_erlaeuterung": {
+      "required_for": "all = jede Firma, secrecy = nur Firmen mit Verschwiegenheitspflicht (organizations.professional_secrecy), none = reine Information (schema.sql-Kommentar Zeile 986)"
+    }
+  },
+  "legal_acceptances": {
+    "zweck": "Zustimmungsnachweis je Firma und Fassung eines Rechtsdokuments (wer, wann, auf welchem Weg), Migration 023.",
+    "modul": "Recht und Vertraege",
+    "mandant": "organization_id",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/legal.php legal_accept()"
+    ],
+    "veraendert_durch": [],
+    "gelesen_durch": [
+      "app/legal.php, rechtliches.php (Pruefung, ob eine Fassung bereits akzeptiert wurde)"
+    ],
+    "loeschung": "nicht gefunden",
+    "geld_zeit_extern": "Betraege: keine; Zeit: accepted_at DATETIME; externe IDs: keine",
+    "migrationen": [
+      "023_legal_documents.sql (CREATE TABLE)"
+    ],
+    "besonderheiten": "UNIQUE (organization_id, document_id) verhindert doppelte Zustimmung zur selben Fassung. user_email bleibt laut Kommentar (Zeile 1001) auch nach Loeschung des Benutzers lesbar (kein Fremdschluessel auf users, nur informativer user_id-Verweis ohne FOREIGN-KEY-Constraint im Schema). Keine IP-Speicherung laut Kommentar zu Migration 023.",
+    "spalten_erlaeuterung": {
+      "method": "registration | backend | admin (Weg der Zustimmung: bei Registrierung, im Kundenbackend, durch Administrator)"
+    }
+  }
+}

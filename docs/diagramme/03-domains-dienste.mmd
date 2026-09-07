@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph DNS[Domains]
+    d1[smart-einzug.de]
+    d2[app.smart-einzug.de]
+    d3[admin.smart-einzug.de]
+    d4[api.smart-einzug.de]
+    d5[status.smart-einzug.de]
+    d6[lexoffice-einzug.de]
+    d7[lexware-einzug.de]
+  end
+  d1 --> IW[IONOS Webhosting<br/>websites/smart-einzug.de]
+  d6 --> IW2[IONOS Webhosting<br/>websites/lexoffice-einzug.de]
+  d7 --> IW3[IONOS Webhosting<br/>websites/lexware-einzug.de]
+  d2 --> TR[Traefik auf dem VPS]
+  d3 --> TR
+  d4 --> TR
+  d5 --> TR
+  TR --> C[Caddy im Stack]
+  C -- "Kundenanwendung, php-fpm" --> P1[php-ionos/*.php]
+  C -- "Adminbereich, Host-Trennung in PHP" --> P2[admin*.php]
+  C -- "nur Webhooks, health.php, track.php" --> P3[stripe-webhook.php,<br/>billing-webhook.php]
+  C -- "statisch, status.json aus shared/status" --> P4[status/ im Release]

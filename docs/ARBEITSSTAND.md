@@ -6,11 +6,14 @@ Git-Historie belegbar sind, tragen den Vermerk „unsicher“.
 
 ## 1. Aktueller Auftrag
 
-Laufende Session (Auftrag III und Folgepakete): Betrieb und Deployment auf dem Hostinger-VPS absichern, Adminbereich und
-Statusseite vervollständigen, Abrechnung scharf schalten, sevdesk-Vorankündigung mit Vormerkung, Dokumentation.
-Verbindliche Vorgaben des Betreibers: keine produktiven Serveraktionen durch die Session; jeder Push auf den Branch löst
-den GitHub-Workflow und damit ein Produktionsdeployment aus. Für den Dokumentationsschritt vom 07.09.2026 gilt
-ausdrücklich: kein Push, kein Deployment.
+Masterprompt-Ergänzung „Vollständiges Dokumentationssystem“ (07.09.2026): drei dauerhaft gepflegte Dokumentationen im Adminbereich
+(Versionen & Dokumentation), PDF im CI der Müller Holding AG, Zugriffsschutz je Klassifizierung, Historie, Kundenhandbuch in der
+Kundenanwendung, Diagramme als Mermaid-Quellen, Prüfungen im Workflow, Dokumentationspflicht in CLAUDE.md. Stand: Erstfassungen
+(Revision r1) aller drei Dokumente erzeugt und ausgeliefert; fachliche Prüfung durch Geschäftsführung, Screenshots für das
+Kundenhandbuch, DNS-Nachweis und Wiederherstellungstest offen (siehe `docs/entwickler/abdeckung-und-offene-punkte.md`).
+Arbeitsteilung seit 07.09.2026: dieser Chat arbeitet nur im Backend (`php-ionos/`, `deploy/`, `tools/`, `docs/`); `websites/`
+bearbeitet ein anderer Chat (DETM-Leadseiten als Patch übergeben). Frühere Aufträge (Mail, Rechtsdokumente, Buchhaltungssystem-
+Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 ## 2. Verbindliche Entscheidungen
 
@@ -35,6 +38,7 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.32 | Dokumentationssystem: drei Dokumentationen (Unternehmen, Entwickler/Betrieb, Kunden) aus docs/, Generator mit CI-PDF (Logo je Seite, Deckblatt, Abschlussblatt, TOC, Querformat), HTML mit Suche, Kapitel-PDFs, Manifest Schema 2, Zugriffsstufen (`app/docs.php`, `docs.technical_readers`), `handbuch.php`, Archiv in `shared/docs-archive` (deploy.sh), 14 Mermaid-Schaubilder, Datenwörterbuch-Generator, Datenbankkapitel mit Kompendium-Prüfung, Dokumentationspflicht in CLAUDE.md | siehe git log | docs-build-check, Sichtprüfung PDF |
 | 4.31 | Buchhaltungssystem je Firma: Anzeige, Vorauswahl bei Registrierung, Wechsel in Einstellungen mit Vier-Wochen-Sperre, Trennung der alten Verbindung, Audit (Migration 024) | siehe git log | invoice-source-check 42/0 |
 | 4.30 | Rechtsdokumente (AVV, Verschwiegenheit § 203 StGB) mit Zustimmungsnachweis, Registrierung, Dashboard, Adminverwaltung, Entwurfstexte mit Datenanlage aus Codeinventur; Protokoll 20 Zeilen/Export/90 Tage | siehe git log | legal-check 56/0 |
 | 4.28 | `restart-workers.sh` mit Deploy-Sperre (`.deploy.lock`), kein Zusammentreffen mit Deployments mehr | siehe git log | bash -n, interest-check |
@@ -144,6 +148,12 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
    Entscheidung zu Testkonto und Kombitarif für Mandanten mit zwei Buchhaltungen (zwei Firmenaccounts, Multiaccount).
 1e. Offen zum Systemwechsel: Adminaktion zum Aufheben der Vier-Wochen-Sperre (derzeit nur per Datenbank), Verbindungsseite für
    sevdesk nach Freigabe des Adapters.
+1f. **Betreiber:** `docs.technical_readers` in `shared/config.php` mit der eigenen Adresse füllen (sonst ist die Entwicklerdokumentation
+   im Adminbereich für niemanden abrufbar), danach `restart-workers.sh`. Prüfen: Adminbereich, System, Versionen & Dokumentation.
+1g. **Betreiber:** DNS-Nachweis `dig +short app.smart-einzug.de` (erwartet 72.61.80.67), Altinstanz `sepa.muellerhv.de` und IONOS-Cronjob
+   abschalten; Ergebnis in `docs/entwickler/hosts.md` und `docs/vps/08-hostinger-coolify.md` nachtragen (Nachweisstufe).
+1h. **Geschäftsführung:** Vorschläge aus `docs/entwickler/datenbank.md` (Prüfung gegen das MariaDB-Kompendium) entscheiden; keine
+   Datenbankänderung ohne Freigabe.
 1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
 1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
    E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll

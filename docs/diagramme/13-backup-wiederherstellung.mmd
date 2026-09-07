@@ -1,0 +1,20 @@
+flowchart TB
+  subgraph Q[Zu sichernde Bestandteile]
+    DB[(Coolify-MariaDB<br/>alle Anwendungsdaten)]
+    CFG[shared/config.php<br/>Geheimnisse]
+    STO[shared/storage<br/>Mandatsdateien, Avatare, Logs]
+    REL[releases/sha<br/>Code, aus Git wiederherstellbar]
+  end
+  DB -- "Coolify-Backup (Zeitplan in Coolify)" --> OBJ[(Hetzner Object Storage<br/>laut Doku, Verschlüsselung nicht im Repo belegt)]
+  DB -- "lokale Kopie" --> LOC[/data/coolify/backups<br/>metrics liest backup-status.json/]
+  CFG -. "manuell sichern, nicht im Backup-Job belegt" .-> OP[Betreiber]
+  STO -. "Sicherung nicht im Repo belegt: offen" .-> OP
+  subgraph R[Wiederherstellung, Reihenfolge]
+    R1[1 VPS und Coolify einrichten<br/>docs/vps/02, 08]
+    R2[2 MariaDB aus Backup einspielen<br/>scripts/db-import.sh]
+    R3[3 shared/config.php und storage zurückspielen]
+    R4[4 Deployment über GitHub-Workflow]
+    R5[5 healthcheck.php, mail-check.php, Statusseite prüfen]
+  end
+  R1 --> R2 --> R3 --> R4 --> R5
+  N[Wiederherstellungstest: im Repository nicht dokumentiert, offen]

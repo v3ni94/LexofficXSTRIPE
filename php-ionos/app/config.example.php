@@ -203,6 +203,12 @@ return [
     //   werden ohne Detailabruf übersprungen (false = altes Verhalten, jede Rechnung einzeln).
     // contact_refresh_hours: Kontaktdaten bekannter Kunden höchstens so oft neu laden (0 = immer).
     // Systemmonitoring (Adminbereich System, Auftrag II Abschnitt 7). Alle Werte optional.
+    // Dokumentationssystem (Adminbereich, Versionen & Dokumentation). Entwickler- und Betriebsdokumentation
+    // (streng vertraulich) sehen nur Plattformadministratoren, deren Adresse hier steht; leer = niemand.
+    'docs' => [
+        'technical_readers' => [],            // z. B. ['admin@example.de']
+        'archive_dir' => '',                  // leer = <Ordner der config.php>/docs-archive (deploy.sh legt dort Staende ab)
+    ],
     'monitoring' => [
         'cron_interval_seconds' => 300,       // Sollintervall des externen Cron-Aufrufs (cron-job.org)
         'collect_interval_seconds' => 240,    // Mindestabstand der Dienstprüfungen (laufen im Cron)

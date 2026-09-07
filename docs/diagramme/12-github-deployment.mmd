@@ -1,0 +1,20 @@
+sequenceDiagram
+  autonumber
+  participant GH as GitHub Actions
+  participant VPS as VPS (deploy-runner.sh)
+  participant DS as deploy.sh
+  participant DC as Docker Compose
+  GH->>VPS: ssh mkdir releases/sha (Wiederholung bei Netzfehler, vps-ssh-retry.sh)
+  GH->>VPS: rsync php-ionos, deploy/vps, status (3x)
+  GH->>VPS: .release-complete schreiben
+  GH->>VPS: vps-trigger.sh: Runner starten (Sperre .deploy.lock, setsid)
+  VPS->>DS: deploy.sh sha (Status .deploy-status.json running)
+  DS->>DS: Nachweis .release-complete prüfen
+  DS->>DC: redis.conf geändert? Redis gezielt aktualisieren und prüfen
+  DS->>DC: Candidate-Prüfung: run --rm healthcheck --db --redis --expect-env
+  DS->>DC: Migration isoliert: run --rm migrate.php
+  DS->>DC: up -d (RELEASE_SHA), Container mit alter Stop-Konfiguration vorher gezielt stoppen
+  DS->>DS: healthy warten, Release-Bindung per docker inspect, current-Symlink, php-fpm SIGUSR2
+  DS->>DS: Health über Caddy, Bereinigung alter Releases (5 behalten, Legacy markieren)
+  DS-->>VPS: Status success oder failed
+  GH->>VPS: vps-wait-status.sh pollt Status (nur Endstatus nach JOB_STARTED_AT)

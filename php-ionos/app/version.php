@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.31';
+const APP_VERSION = '4.32';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.32', 'date' => '07.09.2026', 'title' => 'Dokumentationssystem: drei Dokumentationen im Adminbereich, PDF im CI, Kundenhandbuch',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Adminbereich System, Reiter „Versionen & Dokumentation“: drei Dokumente (Unternehmens- und Verkaufsdokumentation, Entwickler- und Betriebsdokumentation, Benutzerhandbuch) mit Zielgruppe, Vertraulichkeit, Softwarestand, Dokumentrevision, Prüfdatum und Status; Lesen mit Inhaltsverzeichnis, Kapitelnavigation und Suche, Gesamt-PDF und Kapitel-PDFs; historische Fassungen aus dem Serverarchiv; Versionshistorie zeigt den zugehörigen Dokumentationsstand.'],
+            ['type' => 'Neu', 'text' => 'Zugriffsschutz je Dokument: Entwickler- und Betriebsdokumentation nur für in docs.technical_readers eingetragene Plattformadministratoren (Standard: verweigern), Unternehmensdokumentation für Plattformadministratoren, Benutzerhandbuch für angemeldete Kunden über handbuch.php (Link im Hilfe-Center). Jeder Abruf wird protokolliert; auch Suchindex, Schaubilder und Archiv unterliegen der Prüfung.'],
+            ['type' => 'Neu', 'text' => 'Inhalte aus dem geprüften Projektstand: Architektur mit Nachweisstufen, Server-Datenblätter, Repository, Datenwörterbuch aller 45 Tabellen (aus dem Schema erzeugt), Datenbankkapitel mit Prüfung gegen das MariaDB-Kompendium, Geschäftslogik bis auf Implementierungsebene, Schnittstellen und Webhooks, Jobverzeichnis, E-Mail-System, Sicherheit und Geheimnisverwaltung, Einrichtung und Wiederherstellung, Fehlerhandbuch, Tests und Nachverfolgbarkeit, Abdeckungsübersicht mit offenen Punkten; 14 Schaubilder als versionierte Mermaid-Quellen.'],
+            ['type' => 'Geändert', 'text' => 'PDF-Erzeugung im CI der Müller Holding AG: Deckblatt mit Logo, Klassifizierung, Softwarestand und Revision, klickbares Inhaltsverzeichnis, Logo auf jeder Seite, Fußband mit Pflichtangaben, Querformatseiten für breite Tabellen und Schaubilder, Abschlussblatt. Dokumentationsprüfung im GitHub-Workflow; Deployment archiviert jeden Stand unter shared/docs-archive. Dokumentationspflicht in den Projektregeln verankert.'],
+         ]],
         ['version' => '4.31', 'date' => '07.09.2026', 'title' => 'Buchhaltungssystem je Firma: Anzeige, Vorauswahl und Wechsel mit Vier-Wochen-Sperre',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Jede Firma sieht genau ihr Buchhaltungssystem (Lexware Office oder sevdesk), nie beide nebeneinander. Bei der Registrierung wird es vorgewählt (sevdesk erst nach Freigabe). In den Einstellungen können Inhaber und Administratoren mit 2FA-Code wechseln; danach gilt eine Sperre von vier Wochen, damit nicht mit einem Abonnement zwei Buchhaltungen abwechselnd bedient werden. Das Abonnement bleibt beim Wechsel unverändert.'],

@@ -35,8 +35,9 @@ $canEdit = monitor_can_edit($ctx);
 $available = monitor_available();
 
 $tabs = ['uebersicht' => 'Übersicht', 'dienste' => 'Dienste', 'aktivitaet' => 'Aktivität', 'jobs' => 'Jobs', 'server' => 'Server',
-         'verfuegbarkeit' => 'Verfügbarkeit', 'stoerungen' => 'Störungen und Wartung', 'versionen' => 'Versionen', 'dokumentation' => 'Dokumentation'];
+         'verfuegbarkeit' => 'Verfügbarkeit', 'stoerungen' => 'Störungen und Wartung', 'versionen' => 'Versionen & Dokumentation'];
 $tabParam = is_string($_GET['tab'] ?? null) ? (string)$_GET['tab'] : '';
+if ($tabParam === 'dokumentation') { $tabParam = 'versionen'; } // alter Reiter, Links bleiben gueltig
 $tab = isset($tabs[$tabParam]) ? $tabParam : 'uebersicht';
 $windows = monitor_windows();
 $wParam = is_string($_GET['w'] ?? null) ? (string)$_GET['w'] : '';
@@ -987,7 +988,13 @@ $winFrom = $now - $d * 86400;
 <?php endif; ?>
 <?php endif; ?>
 
-<?php if ($tab === 'versionen'): ?>
+<?php if ($tab === 'versionen'): require_once __DIR__ . '/app/docs.php';
+    // Dokumentationsstand je Softwareversion: aktueller Build plus Archiv
+    $docsRevByVersion = [];
+    $mCur = docs_manifest();
+    if (is_array($mCur)) { $docsRevByVersion[(string)$mCur['version']] = implode(', ', array_map(static fn($d) => (string)$d['code'] . ' ' . (string)$d['revision'], (array)$mCur['documents'])); }
+    foreach (docs_archive_list() as $ar) { $docsRevByVersion[$ar['version']] = $docsRevByVersion[$ar['version']] ?? implode(', ', array_map(static fn($d) => (string)$d['code'] . ' ' . (string)$d['revision'], $ar['documents'])); }
+?>
 <div class="card">
     <h2>Anwendungsversion</h2>
     <p><strong><?= e(product_name()) ?> <?= e(APP_VERSION) ?></strong><?= ($verBi = app_build_info()) ? ' · Build ' . e($verBi) : ' · Build nicht hinterlegt (app/build.txt wird vom Deployment geschrieben)' ?></p>
@@ -996,7 +1003,7 @@ $winFrom = $now - $d * 86400;
     <h2>Änderungsverlauf</h2>
     <?php foreach (app_changelog() as $rel): ?>
     <div class="mon-incident">
-        <h3 class="mon-h3">Version <?= e($rel['version']) ?> · <?= e($rel['date']) ?> · <?= e($rel['title']) ?></h3>
+        <h3 class="mon-h3">Version <?= e($rel['version']) ?> · <?= e($rel['date']) ?> · <?= e($rel['title']) ?><?php if (isset($docsRevByVersion[$rel['version']])): ?> <span class="hint">· Dokumentation: <?= e($docsRevByVersion[$rel['version']]) ?></span><?php endif; ?></h3>
         <ul class="mon-updates">
             <?php foreach ($rel['entries'] as $entry): ?>
             <li><?= admin_changelog_badge($entry['type']) ?> <?= e($entry['text']) ?></li>
@@ -1007,55 +1014,74 @@ $winFrom = $now - $d * 86400;
 </div>
 <?php endif; ?>
 
-<?php if ($tab === 'dokumentation'): ?>
-<div class="card">
-    <h2>Technische Dokumentation</h2>
-    <?php
-    $docsManifestPath = __DIR__ . '/app/docs-build/manifest.json';
-    $docsManifest = is_file($docsManifestPath) ? json_decode((string)@file_get_contents($docsManifestPath), true) : null;
-    ?>
+<?php if ($tab === 'versionen'): require_once __DIR__ . '/app/docs.php';
+    $docsManifest = docs_manifest(); $docsArchive = docs_archive_list(); $docsReaders = docs_technical_readers();
+    $docsVersionMismatch = is_array($docsManifest) && (string)($docsManifest['version'] ?? '') !== APP_VERSION;
+    $docsLabels = ['technical' => 'streng vertraulich, nur technische Leser', 'admin' => 'intern, Plattformadministratoren', 'customer' => 'kundenbezogen, freigegeben für angemeldete Kunden'];
+?>
+<div class="card" id="dokumentation">
+    <h2>Dokumentation</h2>
     <?php if (!is_array($docsManifest)): ?>
-        <p class="hint">Noch nicht erzeugt (tools/build-docs.py, wird beim Deployment ausgeführt).</p>
+        <p class="hint">Noch nicht erzeugt. Die Dokumentation entsteht im GitHub-Workflow (Job test, <code>tools/build-docs.py</code>) und wird mit dem Release ausgeliefert. Erzeugungsstatus und Neustart: Workflow-Lauf in GitHub Actions prüfen beziehungsweise erneut starten (Re-run); die Anwendung erzeugt keine PDFs zur Laufzeit.</p>
     <?php else: ?>
-        <dl class="kv">
-            <dt>Version</dt><dd><?= e((string)($docsManifest['version'] ?? '-')) ?></dd>
-            <dt>Erzeugt</dt><dd><?= e((string)($docsManifest['generated_at'] ?? '-')) ?> (UTC)</dd>
-            <dt>Commit</dt><dd><?= e((string)($docsManifest['commit'] ?? 'unbekannt')) ?></dd>
-        </dl>
-        <div class="table-wrap"><table>
-            <thead><tr><th>Datei</th><th>Dokument</th><th>Art</th><th>Größe</th><th>Download</th></tr></thead>
-            <tbody>
-            <?php if (empty($docsManifest['files'])): ?><tr><td colspan="5" class="hint">Keine Dateien im Manifest.</td></tr><?php endif; ?>
-            <?php foreach ((array)($docsManifest['files'] ?? []) as $df): ?>
-                <?php $dfTitle = trim((string)($df['title'] ?? '')); ?>
-                <tr>
-                    <td><?= e((string)($df['name'] ?? '-')) ?></td>
-                    <td><?= $dfTitle !== '' ? e($dfTitle) : '<span class="hint">erzeugte Dokumentation</span>' ?></td>
-                    <td><?= e(strtoupper((string)($df['kind'] ?? '-'))) ?></td>
-                    <td><?= isset($df['bytes']) ? monitor_bytes((int)$df['bytes']) : '-' ?></td>
-                    <td><a href="admin-doc.php?f=<?= e(rawurlencode((string)($df['name'] ?? ''))) ?>">Öffnen</a></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody></table></div>
-        <p class="hint">Zeilen mit Angabe unter „Dokument“ sind unveränderte Originalunterlagen (Anlagen aus
-        <code>docs/anlagen/</code>); die übrigen Dateien erzeugt <code>tools/build-docs.py</code> bei jedem
-        Deployment aus den Markdown-Quellen. Jeder Abruf wird im Audit protokolliert.</p>
+        <?php if ($docsVersionMismatch): ?>
+            <div class="flash flash-warn"><strong>Dokumentationsstand passt nicht zur laufenden Version.</strong> Manifest Version <?= e((string)$docsManifest['version']) ?>, Anwendung <?= e(APP_VERSION) ?>. Die Dokumentation gilt als veraltet, bis ein Deployment mit neuem Build erfolgt.</div>
+        <?php endif; ?>
+        <?php if (($docsManifest['status'] ?? '') !== 'complete'): ?>
+            <div class="flash flash-warn"><strong>Erzeugung unvollständig:</strong> <?= e(implode(', ', (array)($docsManifest['missing'] ?? []))) ?>. Letzter vollständiger Stand: siehe Archiv unten.</div>
+        <?php endif; ?>
+        <p class="hint">Softwarestand <?= e((string)$docsManifest['version']) ?> · Commit <?= e((string)$docsManifest['commit']) ?> · erzeugt <?= e((string)$docsManifest['generated_at']) ?> UTC · Schrift <?= e((string)($docsManifest['font'] ?? '')) ?> · Erzeugungsstatus <?= e((string)($docsManifest['status'] ?? '')) ?>.
+        <?php if (!$docsReaders): ?><strong>Hinweis:</strong> <code>docs.technical_readers</code> ist nicht konfiguriert; die Entwickler- und Betriebsdokumentation ist damit für niemanden abrufbar (Standard: verweigern). Adressen in <code>shared/config.php</code> eintragen, danach <code>restart-workers.sh</code>.<?php endif; ?></p>
+        <div class="doc-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+        <?php foreach ((array)$docsManifest['documents'] as $d): $allowed = docs_can_access($ctx, (string)$d['access']); ?>
+            <div class="card" style="margin:0">
+                <h3 style="margin-top:0"><?= e((string)$d['title']) ?></h3>
+                <dl class="legal-data">
+                    <dt>Zielgruppe</dt><dd><?= e((string)$d['audience']) ?></dd>
+                    <dt>Vertraulichkeit</dt><dd><?= e((string)$d['classification']) ?> (<?= e($docsLabels[$d['access']] ?? (string)$d['access']) ?>)</dd>
+                    <dt>Softwarestand</dt><dd>Version <?= e((string)$docsManifest['version']) ?>, Commit <?= e((string)$docsManifest['commit']) ?></dd>
+                    <dt>Dokumentrevision</dt><dd><?= e((string)$d['revision']) ?> vom <?= e((string)$d['revision_date']) ?><?= !empty($d['revision_summary']) ? ': ' . e((string)$d['revision_summary']) : '' ?></dd>
+                    <dt>Prüfdatum</dt><dd><?= e((string)$docsManifest['generated_at']) ?> UTC (Erzeugung), fachliche Prüfung siehe Revisionsvermerk</dd>
+                    <dt>Status</dt><dd><?= $docsVersionMismatch ? '<span class="badge badge-danger">veraltet</span>' : '<span class="badge badge-success">aktuell, veröffentlicht mit dem Release</span>' ?></dd>
+                    <dt>Umfang</dt><dd><?= count((array)$d['chapters']) ?> Kapitel, PDF <?= monitor_bytes((int)($d['pdf_bytes'] ?? 0)) ?></dd>
+                </dl>
+                <?php if ($allowed): ?>
+                    <p><a class="btn btn-primary" href="admin-doc.php/<?= e((string)$d['html']) ?>" target="_blank" rel="noopener">Lesen (Inhaltsverzeichnis, Navigation, Suche)</a>
+                       <a class="btn" href="admin-doc.php?f=<?= e(rawurlencode((string)$d['pdf'])) ?>">Gesamt-PDF</a></p>
+                    <details><summary>Kapitel als PDF (<?= count((array)$d['chapters']) ?>)</summary><ol>
+                    <?php foreach ((array)$d['chapters'] as $ch): ?><li><a href="admin-doc.php?f=<?= e(rawurlencode((string)$ch['pdf'])) ?>"><?= e((string)$ch['title']) ?></a> <span class="hint"><?= e((string)($ch['source'] ?? '')) ?></span></li><?php endforeach; ?>
+                    </ol></details>
+                <?php else: ?>
+                    <p class="hint">Keine Leseberechtigung für dieses Dokument (<?= e((string)$d['access']) ?>).</p>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+        </div>
+        <h3>Anlagen und Schaubilder</h3>
+        <ul>
+        <?php foreach ((array)$docsManifest['files'] as $df): if (!empty($df['doc']) || !str_ends_with((string)$df['name'], '.pdf')) { continue; } ?>
+            <li><a href="admin-doc.php?f=<?= e(rawurlencode((string)$df['name'])) ?>"><?= e((string)($df['title'] ?: $df['name'])) ?></a> (<?= monitor_bytes((int)$df['bytes']) ?>)</li>
+        <?php endforeach; ?>
+            <li>Schaubilder (SVG und PNG) liegen unter <code>diagramme/</code> und sind in den Dokumenten eingebettet; Quellen: <code>docs/diagramme/*.mmd</code>.</li>
+        </ul>
+        <p class="hint">Jeder Abruf wird im Audit protokolliert (<code>admin_doc_download</code>). Kunden erhalten das Benutzerhandbuch in der Kundenanwendung unter <code>handbuch.php</code>. Regeln, Erzeugung und Rechte: Entwicklerdokumentation, Kapitel Dokumentationssystem.</p>
     <?php endif; ?>
 </div>
-<div class="card">
-    <h2>Markdown-Dokumente im Repository</h2>
-    <p class="hint">Nur als Pfadangabe (im Repository unter docs/, nicht mit ausgeliefert und über den Webserver nicht erreichbar).</p>
-    <?php
-    $docsDir = dirname(APP_ROOT) . '/docs';
-    $mdFiles = is_dir($docsDir) ? array_map('basename', glob($docsDir . '/*.md') ?: []) : [];
-    sort($mdFiles);
-    ?>
-    <?php if (!$mdFiles): ?>
-        <p class="hint">Verzeichnis docs/ liegt außerhalb des ausgelieferten Codes und ist von hier aus nicht einsehbar.</p>
+<div class="card" id="dokumentation-archiv">
+    <h2>Historische Fassungen</h2>
+    <?php if (!$docsArchive): ?>
+        <p class="hint">Kein Archiv vorhanden. Das Deployment legt ab Version 4.32 jeden ausgelieferten Dokumentationsstand unter <code>shared/docs-archive/&lt;Version&gt;_&lt;Commit&gt;/</code> ab.</p>
     <?php else: ?>
-        <ul>
-            <?php foreach ($mdFiles as $mdF): ?><li><code>docs/<?= e($mdF) ?></code></li><?php endforeach; ?>
-        </ul>
+        <div class="table-wrap"><table><thead><tr><th>Stand</th><th>Version</th><th>Commit</th><th>Erzeugt (UTC)</th><th>Dokumente (Revision)</th><th>Abruf</th></tr></thead><tbody>
+        <?php foreach ($docsArchive as $ar): ?>
+            <tr><td><?= e($ar['id']) ?></td><td><?= e($ar['version']) ?></td><td><?= e($ar['commit']) ?></td><td><?= e($ar['generated_at']) ?></td>
+                <td><?= e(implode(', ', array_map(static fn($d) => (string)$d['code'] . ' ' . (string)$d['revision'], $ar['documents']))) ?></td>
+                <td><?php foreach ($ar['documents'] as $d): if (!docs_can_access($ctx, (string)$d['access'])) { continue; } ?>
+                    <a href="admin-doc.php?archiv=<?= e(rawurlencode($ar['id'])) ?>&amp;f=<?= e(rawurlencode((string)$d['pdf'])) ?>"><?= e((string)$d['code']) ?>.pdf</a>
+                <?php endforeach; ?></td></tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+        <p class="hint">Änderungsübersicht je Fassung: Revisionsvermerk im Manifest (Feld revision_summary) und Änderungsverlauf oben. Zurückgezogene Fassungen werden nicht gelöscht, sondern im Manifest gekennzeichnet.</p>
     <?php endif; ?>
 </div>
 <?php endif; ?>

@@ -1,0 +1,19 @@
+flowchart TB
+  S[Stripe sendet Ereignis] --> E[api-Host: stripe-webhook.php]
+  E --> Z{Firma zuordnen<br/>metadata.tenant_id oder<br/>gespeicherte PaymentIntent-/Charge-ID}
+  Z -- unbekannt --> A200a[HTTP 200, ignoriert, protokolliert]
+  Z -- gefunden --> SIG{Signatur mit Webhook-Secret<br/>der Firma gültig?}
+  SIG -- nein --> A200b[HTTP 200, verworfen, Audit]
+  SIG -- ja --> D{Ereignis bereits verarbeitet?<br/>webhook_events}
+  D -- ja --> A200c[HTTP 200, keine Doppelverarbeitung]
+  D -- nein --> T{Typ}
+  T -- payment_intent.processing / succeeded / payment_failed --> PC[payment_collections.stripe_status,<br/>invoices.collection_status, Charge- und Mandatsdaten nachladen]
+  T -- charge.dispute.created --> DI[Status disputed, Rechnung failed, Audit]
+  T -- charge.refunded / refund.updated --> RF[collection_apply_refund: refunded_cents, requires_review]
+  T -- checkout.session.completed mode=setup --> MG[mandate_request_grant: digitales Mandat, maskierte IBAN]
+  T -- sonstige --> IG[ignoriert]
+  PC --> OK[HTTP 200]
+  DI --> OK
+  RF --> OK
+  MG --> OK
+  IG --> OK

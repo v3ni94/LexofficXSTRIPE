@@ -720,6 +720,21 @@ deploy_step "bereinigung"
 # wuerde aber einen der fuenf aufbewahrten Plaetze belegen und damit die Rollbacktiefe verringern.
 # Ausgenommen sind das aktuelle und das vorherige Release sowie Verzeichnisse der letzten Stunde
 # (dort koennte gerade ein paralleler Lauf uebertragen).
+# Dokumentationsstand archivieren (Historie unabhaengig von GitHub-Artefakten): Kopie von app/docs-build nach
+# shared/docs-archive/<Version>_<sha>/, nur wenn ein Manifest vorliegt; die letzten 20 Staende bleiben erhalten.
+if [[ -f "$RELEASE_DIR/app/docs-build/manifest.json" ]]; then
+    DOCS_VERSION="$(sed -n "s/.*\"version\": *\"\([^\"]*\)\".*/\1/p" "$RELEASE_DIR/app/docs-build/manifest.json" | head -n1)"
+    DOCS_ARCHIVE="$BASE/shared/docs-archive/${DOCS_VERSION:-unbekannt}_${SHA:0:12}"
+    if [[ ! -d "$DOCS_ARCHIVE" ]]; then
+        install -d -m 750 "$BASE/shared/docs-archive"
+        cp -a "$RELEASE_DIR/app/docs-build" "$DOCS_ARCHIVE.tmp" && mv "$DOCS_ARCHIVE.tmp" "$DOCS_ARCHIVE" \
+            && echo "Dokumentationsstand archiviert: $DOCS_ARCHIVE" || echo "::warning:: Dokumentationsstand konnte nicht archiviert werden."
+        ls -1dt "$BASE"/shared/docs-archive/*/ 2>/dev/null | tail -n +21 | xargs -r rm -rf
+    fi
+else
+    echo "Hinweis: Release ohne Dokumentationsbuild (app/docs-build/manifest.json fehlt), kein Archiv."
+fi
+
 echo "Entferne Reste abgebrochener Laeufe (Releases ohne Vollstaendigkeitsnachweis) ..."
 while IFS= read -r rest; do
     [[ -n "$rest" ]] || continue

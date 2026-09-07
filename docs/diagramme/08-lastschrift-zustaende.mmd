@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> scheduled: Einzug anlegen (Sofort mit Karenzzeit, Sammel oder terminiert)
+  scheduled --> cancelled: Storno durch Firma oder Not-Stopp mit Storno
+  scheduled --> submitting: fällig, Einreichfenster 23:00 bis 06:00, Not-Stopp aus
+  submitting --> processing: Stripe PaymentIntent angelegt (Restbetrag zuvor geprüft)
+  submitting --> unklar: keine eindeutige Antwort von Stripe
+  unklar --> processing: Klärung findet PaymentIntent (attempt_key)
+  unklar --> scheduled: Klärung findet keinen Auftrag, Rückstellung
+  processing --> succeeded: Webhook payment_intent.succeeded
+  processing --> failed: Webhook payment_intent.payment_failed
+  succeeded --> disputed: Webhook charge.dispute.created (Rücklastschrift)
+  succeeded --> refunded: Webhook charge.refunded, vollständig erstattet (Teilerstattung bleibt succeeded mit refunded_cents)
+  succeeded --> [*]
+  failed --> [*]
+  disputed --> [*]
+  refunded --> [*]
+  cancelled --> [*]
