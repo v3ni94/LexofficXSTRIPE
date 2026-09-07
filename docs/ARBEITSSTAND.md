@@ -32,8 +32,8 @@ ausdrücklich: kein Push, kein Deployment.
 |---|---|---|---|
 | 4.11 bis 4.16 | Statusdatei, Worker-Signalmodell, Docker-CLI-Probe, Billing-Werkzeuge, Betriebsdoku im Admin, Scheduler-Waisen, verlinkte Kennzahlen, Statusseite | bis bdd42e0 | ja, produktiv aktiv (Deploy 22 s, alle Container healthy laut Serverausgabe) |
 | 4.17 | Deployjob robust gegen SSH-Netzaussetzer: `vps-ssh-retry.sh`, `vps-trigger.sh` (triggered/rejected/unclear/unreachable), Frischeprüfung des Endstatus (`JOB_STARTED_AT`), `.release-complete`-Nachweis in `deploy.sh`, Bereinigung unvollständiger Releases, Fristen je Schritt, Doku | 54caa37 | ja (Workflow-Lauf dadurch ausgelöst, Ergebnis nicht einsehbar: GitHub-API in der Session gesperrt) |
-| 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | **nein** (lokal) |
-| 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | lokal | **nein** (lokal; Push = Produktionsdeploy mit Migration 020, Freigabe nötig) |
+| 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
+| 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026 (Produktionsdeployment mit Migration 020 ausgelöst; Ergebnis des Workflow-Laufs aus der Session nicht einsehbar) |
 
 Betroffene Dateien 4.17: `.github/workflows/deploy.yml`, `.github/scripts/vps-ssh-retry.sh`, `.github/scripts/vps-trigger.sh`,
 `.github/scripts/vps-wait-status.sh`, `deploy/vps/scripts/deploy.sh`, `deploy/vps/scripts/rollback.sh`, `tools/github-ssh-retry-check.sh`,
@@ -93,10 +93,9 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 
-1. Erledigt: Review-Befunde eingearbeitet, Tests grün, lokal committet.
-2. Freigabe des Betreibers für den Push von 4.18 und 4.19 einholen (löst Produktionsdeployment mit Migration 020 aus).
-   Vor dem Push: `mail.enabled` in Produktion prüfen, sonst werden Vormerkungen ohne Bestätigung direkt als bestätigt
-   gespeichert (bewusstes Verhalten in `interest_register()`).
+1. Erledigt: 4.18 und 4.19 gepusht. Zu prüfen: Workflow-Lauf grün, Migration 020 eingespielt (`php bin/migrate.php --status`),
+   `mail.enabled` in `shared/config.php` gesetzt (sonst nimmt `vormerken.php` keine Vormerkung an und antwortet 503),
+   Formular auf smart-einzug.de/integrationen/sevdesk/ einmal mit eigener Adresse durchspielen.
 3. Statusseite prüfen: `curl -sS https://status.smart-einzug.de/status.json | head -c 200` nach etwa vier Minuten
    (Monitoring alle 240 s), Restdateien entfernen, `config.php` im php-Container mit `php -l` prüfen.
 4. DETM-Leadseiten: blockiert bis Impressumsdaten und Entscheidung zum Provisionsnachweis vorliegen.
