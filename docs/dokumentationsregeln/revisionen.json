@@ -5,9 +5,9 @@
     "summary": "Erstfassung aus dem geprüften Projektstand (Version 4.32)."
   },
   "entwickler": {
-    "revision": "r3",
+    "revision": "r4",
     "date": "07.09.2026",
-    "summary": "Zustimmungsnachweis (consent_records), Migration 026 Indizes, automatischer Deploy-Neustart, Dokumentationsrechte, Host-Trennung."
+    "summary": "Deploy-Workflow: fester Pfad der Zustandsdatei, Regel zu Kontexten auf Job-Ebene (Lauf #69)."
   },
   "kunden": {
     "revision": "r2",

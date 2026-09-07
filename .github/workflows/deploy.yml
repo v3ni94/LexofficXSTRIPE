@@ -518,7 +518,9 @@ jobs:
       cancel-in-progress: false
     env:
       # Zustand des letzten ssh-/rsync-Schritts (attempts, exit_code, connect_failed), geschrieben von vps-ssh-retry.sh.
-      VPS_RETRY_STATE_FILE: ${{ runner.temp }}/vps-retry-state
+      # Fester Pfad wie die SSH-Dateien darunter: der Kontext "runner" steht in der Job-Umgebung nicht zur
+      # Verfuegung (Lauf #69, 4.34: "Unrecognized named-value: 'runner'", der Workflow startete gar nicht).
+      VPS_RETRY_STATE_FILE: /home/runner/vps-retry-state
       VPS_HOST: ${{ secrets.VPS_HOST }}
       VPS_SSH_USER: ${{ secrets.VPS_SSH_USER }}
       VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}

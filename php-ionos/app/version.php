@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.34';
+const APP_VERSION = '4.35';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.35', 'date' => '07.09.2026', 'title' => 'Workflow-Datei des Deployments wieder gültig',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Der Workflow 4.34 startete gar nicht (Lauf #69, „Unrecognized named-value: runner“): Die Zustandsdatei des automatischen zweiten Anlaufs wurde in der Job-Umgebung über runner.temp benannt, ein Kontext, den GitHub dort nicht kennt. Die Datei liegt jetzt unter einem festen Pfad im Runner-Heimatverzeichnis wie die SSH-Dateien desselben Jobs. Das Deployment von 4.34 (Migrationen 025 und 026) holt dieser Lauf nach.'],
+         ]],
         ['version' => '4.34', 'date' => '07.09.2026', 'title' => 'Zustimmungsnachweis AGB und Datenschutz, Reiterleiste, Dokumentationsrechte, Indizes, automatischer Deploy-Neustart',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Jede Registrierung speichert die Zustimmung zu AGB und Datenschutzerklärung mit Fassung, Zeitpunkt (UTC), Person und Weg (Migration 025). Firmen sehen die Nachweise unter Rechtliches, Benutzer unter Sicherheit; die Vorregistrierung zeigt Fassung und Zeitpunkt ihrer Einwilligung auf der Bestätigungsseite.'],

@@ -713,7 +713,12 @@ Server, `connect_failed=true` in der Zustandsdatei von `vps-ssh-retry.sh`), star
 einmal neu (`gh workflow run deploy.yml -f auto_retry=1`, Berechtigung `actions: write` nur in diesem Job). Ein neuer Runner
 erhält eine andere Adresse; das deckt gesperrte Runner-Adressen und kurze Netzstörungen ab. Aus einem automatisch gestarteten
 Lauf heraus gibt es keinen weiteren Anlauf, und fachliche Fehler lösen nie einen Neustart aus. Bleibt auch der zweite Lauf ohne
-Verbindung, gelten die Prüfschritte oben.
+Verbindung, gelten die Prüfschritte oben. Die Zustandsdatei liegt unter dem festen Pfad `/home/runner/vps-retry-state`
+(Umgebungsvariable `VPS_RETRY_STATE_FILE` des Jobs). Der Kontext `runner` (etwa `runner.temp`) ist in der Umgebung auf
+Job-Ebene nicht verfügbar; die Fassung 4.34 verwendete ihn dort, und GitHub lehnte die gesamte Workflow-Datei ab (Lauf #69,
+„Invalid workflow file: Unrecognized named-value: 'runner'“), sodass weder Test- noch Deploy-Job liefen. Behoben in 4.35.
+Regel: Ausdrücke in `env:` auf Job-Ebene nur mit `github`, `needs`, `vars`, `secrets`, `inputs`; alles, was den Runner
+betrifft (`runner.*`, `steps.*`), gehört in die Umgebung eines Schritts oder wird im Schritt über `$RUNNER_TEMP` gelesen.
 
 **Was ausdrücklich nicht die Lösung ist:** Die Wartefrist des Pollings zu erhöhen. Sie betrifft die Dauer
 des Deployments, nicht die Erreichbarkeit; ein unerreichbarer Server wird durch längeres Warten nicht
