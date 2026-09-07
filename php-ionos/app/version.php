@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.32';
+const APP_VERSION = '4.33';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.33', 'date' => '07.09.2026', 'title' => 'Adminseite Rechtsdokumente auf dem Adminhost erreichbar',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'admin-legal.php (Rechtsdokumente) war auf dem Adminhost nicht erreichbar (404), weil die Host-Trennung eine feste Liste erlaubter Adminseiten führte. Jetzt gilt jede Seite admin.php oder admin-*.php als Adminseite: nur auf dem Adminhost, im Wartungsmodus weiter erreichbar, auf dem App-Host 404.'],
+         ]],
         ['version' => '4.32', 'date' => '07.09.2026', 'title' => 'Dokumentationssystem: drei Dokumentationen im Adminbereich, PDF im CI, Kundenhandbuch',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Adminbereich System, Reiter „Versionen & Dokumentation“: drei Dokumente (Unternehmens- und Verkaufsdokumentation, Entwickler- und Betriebsdokumentation, Benutzerhandbuch) mit Zielgruppe, Vertraulichkeit, Softwarestand, Dokumentrevision, Prüfdatum und Status; Lesen mit Inhaltsverzeichnis, Kapitelnavigation und Suche, Gesamt-PDF und Kapitel-PDFs; historische Fassungen aus dem Serverarchiv; Versionshistorie zeigt den zugehörigen Dokumentationsstand.'],

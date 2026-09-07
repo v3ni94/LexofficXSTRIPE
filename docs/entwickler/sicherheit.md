@@ -227,9 +227,11 @@ Jede Abfrage auf mandantenbezogene Tabellen filtert zusätzlich zum fachlichen S
 
 ## Host-Trennung app/admin/api
 
-- **PHP-seitig:** `enforce_host_rules()` (`app/bootstrap.php:214-250`), siehe
+- **PHP-seitig:** `enforce_host_rules()` (`app/bootstrap.php`), siehe
   `docs/entwickler/schnittstellen.md`, Abschnitt a) für die vollständige Allowlist und
-  Ausnahmeliste.
+  Ausnahmeliste. Seit 4.33 gilt jede Seite `admin.php` und `admin-*.php` als Adminseite (`is_admin_script()`): nur auf dem
+  Adminhost erreichbar, auf dem App-Host 404, im Wartungsmodus weiter erreichbar. Vorher war die Liste fest verdrahtet;
+  `admin-legal.php` (4.30) fehlte darin und lieferte auf dem Adminhost 404 (Befund des Betreibers am 07.09.2026).
 - **Webserver-seitig (VPS):** `deploy/vps/Caddyfile` bildet dieselbe Trennung zusätzlich auf
   Ebene des Reverse Proxys ab, der API-Host (`{$DOMAIN_API}`) liefert ausschließlich
   `/stripe-webhook.php`, `/billing-webhook.php`, `/health.php`, `/track.php` aus, jede andere Anfrage

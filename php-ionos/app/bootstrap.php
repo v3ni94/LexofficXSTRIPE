@@ -232,8 +232,8 @@ function enforce_host_rules(): void
     $onAdminHost = $host !== '' && $host === $adminHost && $adminHost !== $appHost;
 
     if ($onAdminHost) {
-        $adminAllowed = ['admin.php', 'admin-support.php', 'admin-system.php', 'admin-system-data.php', 'admin-doc.php', 'login.php', 'twofa-verify.php', 'twofa-setup.php', 'logout.php',
-            'security.php', 'forgot-password.php', 'reset-password.php'];
+        // Alle Adminseiten heissen admin*.php (admin.php, admin-system.php, admin-legal.php, ...); dazu Anmeldung und Sicherheit.
+        $adminAllowed = ['login.php', 'twofa-verify.php', 'twofa-setup.php', 'logout.php', 'security.php', 'forgot-password.php', 'reset-password.php'];
         // Keine Ausnahme für /assets/ anhand der REQUEST_URI: statische Dateien erreichen PHP nie (liefert der
         // Webserver direkt aus), und ein Präfixvergleich auf die rohe URI wäre mit /assets/../seite.php umgehbar.
         if ($script === 'index.php' || $script === 'dashboard.php') {
@@ -241,12 +241,18 @@ function enforce_host_rules(): void
             header('Location: /admin.php', true, 302);
             exit;
         }
-        if (!in_array($script, $adminAllowed, true)) {
+        if (!is_admin_script($script) && !in_array($script, $adminAllowed, true)) {
             host_not_found();
         }
-    } elseif (in_array($script, ['admin.php', 'admin-support.php', 'admin-system.php', 'admin-system-data.php', 'admin-doc.php'], true)) {
+    } elseif (is_admin_script($script)) {
         host_not_found();
     }
+}
+
+/** Adminseite? Alle Seiten des Adminbereichs heissen admin.php oder admin-<name>.php (nur auf dem Adminhost erreichbar). */
+function is_admin_script(string $script): bool
+{
+    return $script === 'admin.php' || (str_starts_with($script, 'admin-') && str_ends_with($script, '.php'));
 }
 
 /** PDO-Verbindung (Singleton) */
@@ -305,7 +311,7 @@ if (PHP_SAPI !== 'cli' && maintenance_active()) {
     // cron.php und track.php erhalten im Wartungsmodus bewusst 503: während des Cutovers darf nichts mehr in die
     // alte Datenbank schreiben; Stripe wiederholt Ereignisse, nach dem Cutover fehlgeschlagene Ereignisse im
     // Stripe-Dashboard erneut senden (siehe docs/vps/07-cutover-checkliste.md). Das Fenster kurz halten.
-    if (!in_array($script, ['health.php', 'migrate.php', 'admin.php', 'admin-system.php', 'admin-system-data.php', 'login.php', 'twofa-verify.php', 'logout.php'], true)) {
+    if (!is_admin_script($script) && !in_array($script, ['health.php', 'migrate.php', 'login.php', 'twofa-verify.php', 'logout.php'], true)) {
         http_response_code(503);
         header('Retry-After: 300');
         header('Content-Type: text/html; charset=utf-8');

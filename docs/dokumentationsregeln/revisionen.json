@@ -1,5 +1,17 @@
 {
-  "unternehmen": {"revision": "r1", "date": "07.09.2026", "summary": "Erstfassung aus dem geprüften Projektstand (Version 4.32)."},
-  "entwickler": {"revision": "r1", "date": "07.09.2026", "summary": "Erstfassung: Architektur, Hosts, Repository, Datenwörterbuch, Geschäftslogik, Schnittstellen, Jobs, E-Mail, Sicherheit, Einrichtung, Fehlerhandbuch, Tests, Betriebskapitel, Abdeckung."},
-  "kunden": {"revision": "r1", "date": "07.09.2026", "summary": "Erstfassung des Benutzerhandbuchs aus den Oberflächen der Anwendung (Version 4.32); Screenshots offen."}
+  "unternehmen": {
+    "revision": "r1",
+    "date": "07.09.2026",
+    "summary": "Erstfassung aus dem geprüften Projektstand (Version 4.32)."
+  },
+  "entwickler": {
+    "revision": "r2",
+    "date": "07.09.2026",
+    "summary": "Host-Trennung: Adminseiten per Muster admin-*.php (4.33)."
+  },
+  "kunden": {
+    "revision": "r1",
+    "date": "07.09.2026",
+    "summary": "Erstfassung des Benutzerhandbuchs aus den Oberflächen der Anwendung (Version 4.32); Screenshots offen."
+  }
 }
