@@ -100,20 +100,14 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 - Widerspruch: Der Masterplan verlangt eine Tarifaussage zu sevdesk (Buchhaltung Pro nach offizieller Hilfe); die
   frühere Regel „keine Aussagen zu sevdesk-Tarifen“ wurde deshalb auf genau diese belegte Formulierung geändert (CLAUDE.md).
 
-- **Produktion: `mail.enabled` steht auf `false`**, Stand `bin/mail-check.php` vom 07.09.2026, 21:11 Uhr auf Release 4.24: SMTP ist
-  vollständig konfiguriert (smtp.ionos.de:587, TLS, Nutzer und Passwort gesetzt, Absender kontakt@smart-einzug.de), es fehlt
-  allein der Schalter. Bis dahin versendet die Anwendung nichts; seit 4.22 werden Vormerkungen und Registrierungen mit
-  Wartemarke gespeichert und nach dem Einschalten von der Wartung nachgesendet (Migrationen 021 und 022 sind angewandt).
-  Zusätzlich fehlerhaft: `mail.reply_to` lautet `kontakt@smart-einzug` (ohne `.de`), Antworten der Empfänger gingen ins
-  Leere; vor dem Einschalten in `shared/config.php` korrigieren. `mail-check.php` warnt seit 4.25 bei ungültigen Adressen.
+- **Mailversand aktiv seit 07.09.2026, 23:00 Uhr:** `mail.enabled` true, `reply_to` und `smtp.user` auf
+  `kontakt@smart-einzug.de` korrigiert (beiden fehlte `.de`), Testmails über smtp.ionos.de erfolgreich übergeben. Ankunft
+  im Postfach und Nachsendung der wartenden Vormerkung (stündliche Wartung) noch vom Betreiber zu bestätigen.
 - **Vorfall 07.09.2026, 21:36 Uhr:** Nach `sed -i` auf `shared/config.php` (mail.enabled true, reply_to korrigiert) und
   `restart-workers.sh` (alte Fassung) meldete `mail-check.php` im Container weiter `false` und die alte Antwortadresse.
   Ursache: Einzeldatei-Bind-Mount bindet den Inode, `sed -i` schreibt einen neuen; `docker compose restart` erzeugt die
   Container nicht neu. Behoben in 4.26 (Skript erzeugt neu, Inode-Vergleich, php-fpm-Reload). Betreiber muss nach dem
   Deployment von 4.26 das Skript erneut ausführen; bis dahin ist der Mailversand trotz geänderter Datei nicht aktiv.
-- **Mailversand 07.09.2026, 22:57 Uhr:** Konfiguration wird jetzt korrekt gelesen (Inodes gleich, `mail.enabled` true,
-  `reply_to` korrigiert). IONOS lehnt die Anmeldung ab (`535 Authentication credentials invalid`): `smtp.user` lautet
-  `kontakt@smart-einzug` ohne `.de` (Zeile 83 der `shared/config.php`); Korrektur durch den Betreiber offen, danach ggf. Passwort.
 - GitHub-Lauf #58 (4.22) scheiterte wie #51 im ersten SSH-Schritt (vier Versuche, Server nie erreicht); Läufe 4.23 und
   4.24 waren grün, 4.24 (c38f7a2) ist seit 07.09.2026, 16:47 UTC aktiv. Auf dem Server ausgeschlossen: fail2ban (nie eine
   Sperre) und ufw (22/tcp ALLOW). Offen: Hostinger-Firewall im hPanel, zeitweilige Netzstörung. Auffällig: Der
@@ -131,11 +125,8 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 
-1. **Betreiber:** Mailversand einschalten: in `shared/config.php` `mail.reply_to` auf `kontakt@smart-einzug.de` korrigieren
-   und `mail.enabled` auf `true` setzen, dann `bash /opt/smarteinzug/deploy/scripts/restart-workers.sh` und
-   `php bin/mail-check.php --send=...` im php-Container (vorher `export RELEASE_SHA=...`, siehe `docs/mail-einrichtung.md`).
-   Die wartenden Bestätigungs- und Willkommensmails sendet die Wartung danach innerhalb einer Stunde nach. Anschließend
-   Registrierung und Vorregistrierung mit eigener Adresse durchspielen.
+1. **Betreiber:** Ankunft der Testmail prüfen, nach etwa einer Stunde die nachgesendete Bestätigungsmail der eigenen Vormerkung
+   (Button „Vormerkung bestätigen“, danach Bestätigt-Mail mit Abmeldelink) und die Statusseite (Komponente E-Mail) kontrollieren.
 1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
 1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
    E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll
