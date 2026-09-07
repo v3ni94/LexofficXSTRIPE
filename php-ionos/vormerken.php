@@ -1,18 +1,22 @@
 <?php
 /**
- * Vormerkung für eine angekündigte Integration (zuerst sevdesk), Eingang für das Formular auf
- * smart-einzug.de/integrationen/sevdesk/ (POST) und für die Links aus der Bestätigungs-E-Mail (GET).
+ * Vormerkung für eine angekündigte Integration (zuerst sevdesk). Eingang für das Formular auf
+ * smart-einzug.de/integrationen/sevdesk/ und für die Links aus der Bestätigungs-E-Mail.
  *
- *   POST email, company (optional), provider, consent, src, website (Honeypot)  -> Bestätigungsmail
- *   GET  ?token=...                    -> Vormerkung bestätigen (Double-Opt-in)
- *   GET  ?token=...&aktion=abmelden    -> Abmelden
+ *   POST provider, email, company?, consent, src, website (Honeypot)   -> Bestätigungsmail (neutrale Antwort)
+ *   GET  ?token=...                    -> Seite "Vormerkung bestätigen" mit Button (noch keine Aktion)
+ *   GET  ?token=...&aktion=abmelden    -> Seite "Abmelden" mit Button
+ *   POST token, aktion=bestaetigen|abmelden -> Aktion ausführen
  *
- * Kein CSRF-Token: Das Formular liegt auf der statischen Produktwebsite (anderer Host), ein Sitzungstoken
- * ist dort nicht verfügbar. Schutz stattdessen: Origin/Referer muss zu einer erlaubten Herkunftsdomain
- * (signup_domains) oder zur Anwendung selbst gehören, Honeypot-Feld, Wiederversand-Abstand je Adresse und
- * globale Obergrenze je Minute (app/interest.php). Die einzige Wirkung eines Aufrufs ist eine
- * Bestätigungs-E-Mail an die eingegebene Adresse; gespeichert wird erst dauerhaft, was bestätigt wurde.
- * Es werden keine IP-Adressen gespeichert.
+ * Der Link aus der E-Mail führt bewusst nur auf eine Seite mit Button: Linkvorschauen und Sicherheitsscanner
+ * rufen Links per GET auf und dürfen weder bestätigen noch abmelden.
+ *
+ * Kein Sitzungs-CSRF-Token: Das Formular liegt auf der statischen Produktwebsite (anderer Host). Die
+ * Herkunftsprüfung (interest_origin_allowed) schützt nur gegen browsergestützte Einbettung fremder Seiten;
+ * gegen Skripte wirken Honeypot, Wiederversand-Abstand, Tagesgrenze je Adresse und die globale Grenze je
+ * Minute (app/interest.php). Die einzige Wirkung eines Aufrufs ist eine Bestätigungs-E-Mail an die eingegebene
+ * Adresse. Es werden keine IP-Adressen gespeichert. Für Bestätigung und Abmeldung ist der Token selbst das
+ * Geheimnis (64 Hexzeichen, nur als SHA-256 gespeichert).
  */
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/layout.php';
@@ -20,27 +24,17 @@ require_once __DIR__ . '/app/interest.php';
 
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex, nofollow');
+header('Referrer-Policy: no-referrer');
 
-/** Öffentliche Seite des Anbieters für Rücklinks. */
 function vormerken_public_path(string $provider): string
 {
     return $provider === 'sevdesk' ? '/integrationen/sevdesk/' : '/integrationen/';
 }
 
-/** Host aus Origin oder Referer; leer, wenn beides fehlt. */
-function vormerken_source_host(): string
+/** @param array<int, string> $paragraphs */
+function vormerken_page(string $title, array $paragraphs, string $backPath, ?string $backLabel = null, ?array $button = null, int $status = 200): void
 {
-    foreach (['HTTP_ORIGIN', 'HTTP_REFERER'] as $h) {
-        $v = (string)($_SERVER[$h] ?? '');
-        if ($v !== '') {
-            return strtolower((string)parse_url($v, PHP_URL_HOST));
-        }
-    }
-    return '';
-}
-
-function vormerken_page(string $title, array $paragraphs, string $backPath, ?string $backLabel = null): void
-{
+    http_response_code($status);
     layout_header($title);
     ?>
 <div class="auth-wrap">
@@ -49,6 +43,13 @@ function vormerken_page(string $title, array $paragraphs, string $backPath, ?str
         <?php foreach ($paragraphs as $p): ?>
             <p class="auth-sub"><?= e($p) ?></p>
         <?php endforeach; ?>
+        <?php if ($button): ?>
+        <form method="post" action="vormerken.php">
+            <input type="hidden" name="token" value="<?= e($button['token']) ?>">
+            <input type="hidden" name="aktion" value="<?= e($button['aktion']) ?>">
+            <button type="submit" class="btn btn-primary"><?= e($button['label']) ?></button>
+        </form>
+        <?php endif; ?>
         <p class="auth-links"><a href="<?= e(marketing_url($backPath)) ?>"><?= e($backLabel ?? 'Zurück zur Produktseite') ?></a></p>
     </div>
 </div>
@@ -58,68 +59,97 @@ function vormerken_page(string $title, array $paragraphs, string $backPath, ?str
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
+$aktion = (string)($_GET['aktion'] ?? $_POST['aktion'] ?? '');
 
-if ($method === 'GET') {
-    $token = trim((string)($_GET['token'] ?? ''));
-    if ($token === '') {
-        redirect(marketing_url('/integrationen/'));
-    }
+// --- Links aus der E-Mail: GET zeigt nur die Seite mit Button, POST führt aus ---------------------------
+if ($token !== '') {
     $row = interest_by_token($token);
     $back = vormerken_public_path((string)($row['provider_code'] ?? ''));
-    if (($_GET['aktion'] ?? '') === 'abmelden') {
-        if (interest_unsubscribe($token) === 'unsubscribed') {
-            vormerken_page('Abmeldung erfolgt', [
-                'Ihre Vormerkung wurde beendet. Sie erhalten zu dieser Integration keine Nachricht mehr.',
-                'Sie können sich jederzeit über die Produktseite erneut vormerken.',
-            ], $back);
+    if (!$row) {
+        vormerken_page('Link ungültig oder abgelaufen', [
+            'Der Link ist ungültig, älter als 7 Tage oder wurde bereits verwendet.',
+            'Bitte tragen Sie sich auf der Produktseite erneut ein; Sie erhalten dann einen neuen Link.',
+        ], $back, 'Erneut vormerken', null, 410);
+    }
+    if ($method === 'POST' && $aktion === 'abmelden') {
+        interest_unsubscribe($token);
+        vormerken_page('Abmeldung erfolgt', [
+            'Ihre Vormerkung wurde beendet. Sie erhalten zu dieser Integration keine Nachricht mehr; Ihre Angaben werden nach 30 Tagen gelöscht.',
+            'Sie können sich jederzeit über die Produktseite erneut vormerken.',
+        ], $back);
+    }
+    if ($method === 'POST' && $aktion === 'bestaetigen') {
+        $ergebnis = interest_confirm($token);
+        if ($ergebnis === 'invalid') {
+            vormerken_page('Bestätigung nicht möglich', [
+                'Diese Vormerkung wurde abgemeldet oder der Link ist nicht mehr gültig.',
+                'Bitte tragen Sie sich auf der Produktseite erneut ein.',
+            ], $back, 'Erneut vormerken', null, 410);
         }
-        vormerken_page('Link ungültig', [
-            'Dieser Abmeldelink ist ungültig oder wurde bereits verwendet.',
-        ], $back);
-    }
-    $ergebnis = interest_confirm($token);
-    if ($ergebnis === 'confirmed' || $ergebnis === 'already') {
         vormerken_page('Vormerkung bestätigt', [
-            'Vielen Dank. Ihre Vormerkung ist wirksam; wir informieren Sie per E-Mail, sobald die Integration verfügbar ist.',
-            'Die Vormerkung ist kostenlos und unverbindlich. Über den Link in der Bestätigungs-E-Mail können Sie sich jederzeit abmelden.',
+            'Vielen Dank. Ihre Vormerkung ist wirksam; wir informieren Sie per E-Mail, sobald die Integration verfügbar ist oder sich der geplante Starttermin wesentlich ändert.',
+            'Die Vormerkung ist kostenlos und unverbindlich. Über den Abmeldelink in der Bestätigungs-E-Mail können Sie sie jederzeit beenden.',
         ], $back);
     }
-    vormerken_page('Link ungültig oder abgelaufen', [
-        'Der Bestätigungslink ist ungültig oder älter als 7 Tage.',
-        'Bitte tragen Sie sich auf der Produktseite erneut ein; Sie erhalten dann einen neuen Link.',
-    ], $back, 'Erneut vormerken');
+    if ($aktion === 'abmelden') {
+        vormerken_page('Vormerkung abmelden', [
+            'Möchten Sie die Vormerkung für die Adresse ' . $row['email'] . ' beenden? Sie erhalten dann keine Nachricht zum Start.',
+        ], $back, 'Abbrechen', ['token' => $token, 'aktion' => 'abmelden', 'label' => 'Jetzt abmelden']);
+    }
+    if ($row['status'] === 'confirmed') {
+        vormerken_page('Vormerkung bereits bestätigt', [
+            'Die Adresse ' . $row['email'] . ' ist bereits vorgemerkt. Es ist nichts weiter zu tun.',
+        ], $back);
+    }
+    if ($row['status'] === 'unsubscribed') {
+        vormerken_page('Vormerkung abgemeldet', [
+            'Diese Vormerkung wurde abgemeldet. Wenn Sie erneut informiert werden möchten, tragen Sie sich bitte auf der Produktseite neu ein.',
+        ], $back, 'Erneut vormerken');
+    }
+    vormerken_page('Vormerkung bestätigen', [
+        'Bitte bestätigen Sie, dass Sie mit der Adresse ' . $row['email'] . ' über den Start der Integration informiert werden möchten.',
+    ], $back, 'Abbrechen', ['token' => $token, 'aktion' => 'bestaetigen', 'label' => 'Vormerkung bestätigen']);
 }
 
+if ($method === 'GET') {
+    redirect(marketing_url('/integrationen/'));
+}
 if ($method !== 'POST') {
     http_response_code(405);
     header('Allow: GET, POST');
     exit('Method Not Allowed');
 }
 
-// Herkunft prüfen: erlaubte Marketingdomains oder die Anwendung selbst. Fehlen Origin und Referer
-// (Datenschutz-Erweiterungen), gilt die Anfrage nicht als abgelehnt; dann greifen Honeypot und Grenzen.
-$allowedHosts = array_map('strtolower', (array)config('signup_domains', []));
+// --- Formular der Produktseite ------------------------------------------------------------------------
+$signupDomains = array_map('strtolower', (array)config('signup_domains', []));
+$allowedHosts = $signupDomains;
 $appHost = base_url_host(app_base_url());
 if ($appHost !== '') {
     $allowedHosts[] = $appHost;
 }
-$srcHost = vormerken_source_host();
-$srcHostBare = preg_replace('/^www\./', '', $srcHost);
-if ($srcHost !== '' && !in_array($srcHost, $allowedHosts, true) && !in_array($srcHostBare, $allowedHosts, true)) {
-    http_response_code(403);
+if (!interest_origin_allowed($_SERVER['HTTP_ORIGIN'] ?? null, $_SERVER['HTTP_REFERER'] ?? null, $allowedHosts)) {
     vormerken_page('Anfrage nicht angenommen', [
         'Die Anfrage kam nicht von einer bekannten Seite. Bitte nutzen Sie das Formular auf der Produktseite.',
-    ], '/integrationen/');
+    ], '/integrationen/', null, null, 403);
 }
 
 $provider = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($_POST['provider'] ?? '')));
 $back = vormerken_public_path($provider);
 $src = strtolower(preg_replace('/^www\./', '', trim((string)($_POST['src'] ?? ''))));
-if (!in_array($src, array_map('strtolower', (array)config('signup_domains', [])), true)) {
-    $src = $srcHostBare !== '' ? $srcHostBare : null;
+if (!in_array($src, $signupDomains, true)) {
+    $originHost = strtolower(preg_replace('/^www\./', '', (string)parse_url((string)($_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? ''), PHP_URL_HOST)));
+    $src = in_array($originHost, $signupDomains, true) ? $originHost : null;
 }
 
-$r = interest_register($_POST, $src);
+try {
+    $r = interest_register($_POST, $src);
+} catch (Throwable $e) {
+    error_log('vormerken: ' . get_class($e));
+    vormerken_page('Vormerkung derzeit nicht möglich', [
+        'Die Anfrage konnte gerade nicht verarbeitet werden. Bitte versuchen Sie es in einigen Minuten erneut.',
+    ], $back, 'Zurück zum Formular', null, 503);
+}
 if (!$r['ok']) {
     $texte = [
         'email'    => 'Bitte geben Sie eine gültige E-Mail-Adresse an.',
@@ -129,27 +159,16 @@ if (!$r['ok']) {
         'busy'     => 'Zurzeit gehen sehr viele Anfragen ein. Bitte versuchen Sie es in wenigen Minuten erneut.',
         'honeypot' => 'Die Anfrage konnte nicht verarbeitet werden.',
     ];
-    http_response_code($r['error'] === 'busy' ? 429 : 422);
-    vormerken_page('Vormerkung nicht möglich', [$texte[$r['error']] ?? 'Die Anfrage konnte nicht verarbeitet werden.'], $back, 'Zurück zum Formular');
+    vormerken_page('Vormerkung nicht möglich', [$texte[$r['error']] ?? 'Die Anfrage konnte nicht verarbeitet werden.'], $back, 'Zurück zum Formular', null, $r['error'] === 'busy' ? 429 : 422);
 }
-
-switch ($r['state']) {
-    case 'confirmed':
-        vormerken_page('Vormerkung eingetragen', [
-            'Vielen Dank. Wir informieren Sie per E-Mail, sobald die Integration verfügbar ist.',
-            'Die Vormerkung ist kostenlos und unverbindlich.',
-        ], $back);
-        // kein break nötig, vormerken_page beendet
-    case 'mail_failed':
-        http_response_code(503);
-        vormerken_page('E-Mail konnte nicht gesendet werden', [
-            'Ihre Angaben sind eingetragen, die Bestätigungs-E-Mail konnte aber gerade nicht versendet werden.',
-            'Bitte versuchen Sie es in einigen Minuten erneut; ohne bestätigte E-Mail-Adresse wird die Vormerkung nicht wirksam.',
-        ], $back, 'Zurück zum Formular');
-    default:
-        // mail_sent und already: bewusst dieselbe Antwort, damit hinterlegte Adressen nicht ermittelbar sind.
-        vormerken_page('Bitte E-Mail bestätigen', [
-            'Vielen Dank. Wenn diese Adresse noch nicht bestätigt ist, erhalten Sie in Kürze eine E-Mail mit einem Bestätigungslink.',
-            'Erst mit dem Klick auf diesen Link ist die Vormerkung wirksam. Der Link ist 7 Tage gültig. Prüfen Sie bei Bedarf auch den Spam-Ordner.',
-        ], $back);
+if ($r['state'] === 'mail_failed') {
+    vormerken_page('E-Mail konnte nicht gesendet werden', [
+        'Die Bestätigungs-E-Mail konnte gerade nicht versendet werden. Ohne bestätigte E-Mail-Adresse wird keine Vormerkung wirksam.',
+        'Bitte versuchen Sie es in etwa zehn Minuten erneut.',
+    ], $back, 'Zurück zum Formular', null, 503);
 }
+// mail_sent und already: bewusst dieselbe Antwort, damit hinterlegte Adressen nicht ermittelbar sind.
+vormerken_page('Bitte E-Mail bestätigen', [
+    'Vielen Dank. Wenn diese Adresse noch nicht bestätigt ist, erhalten Sie in Kürze eine E-Mail mit einem Bestätigungslink.',
+    'Erst mit der Bestätigung ist die Vormerkung wirksam. Der Link ist 7 Tage gültig. Prüfen Sie bei Bedarf auch den Spam-Ordner.',
+], $back);

@@ -3,6 +3,10 @@
 Betreiber: Müller Holding AG. Produkt: Lexware-Einzug, SEPA-Lastschriften für Rechnungen aus Lexware Office über Stripe.
 Struktur: `php-ionos/` (PHP 8, MariaDB, ohne Composer; läuft auf IONOS Webhosting und vorbereitet für den Hostinger VPS KVM 8 mit Coolify in Docker), `php-ionos/bin/` (CLI: worker, scheduler, migrate, healthcheck, host-metrics), `deploy/vps/` (Docker-Stack hinter dem Coolify-Proxy, Caddy intern, Skripte für den VPS), `websites/*` (statisches HTML je Domain, `status.smart-einzug.de` für die Statusseite), `tools/` (QA-Skripte, `build-docs.py` für die technische Dokumentation), `docs/` (Fachdokumentation, `docs/vps/` Einrichtung und Betrieb).
 
+## Fortsetzung der Arbeit
+
+- Vor jeder Fortsetzung `docs/ARBEITSSTAND.md` lesen (aktueller Auftrag, Entscheidungen, Stand je Version, Testergebnisse, bekannte Fehler, nächste Schritte) und nach jedem Arbeitspaket aktualisieren. Keine Zugangsdaten darin.
+
 ## Arbeitsweise und Wirtschaftlichkeit (verbindlich)
 
 - Kosten bewusst steuern. Bei Multi-Agent-Workflows Modell und Denkaufwand je Arbeitspaket wählen, nicht alles mit dem teuersten Modell:

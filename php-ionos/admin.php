@@ -149,7 +149,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'plan' => $plan['code'], 'billing_exempt' => !empty($_POST['billing_exempt']),
             ]);
             flash_set('success', 'Tarif der Firma ' . $org['name'] . ' auf ' . $plan['name'] . ' gesetzt.');
-
+        } elseif ($action === 'interest_unsubscribe' || $action === 'interest_delete') {
+            // Widerruf oder Löschverlangen per Nachricht (Datenschutzerklärung 3a); Zweitbestätigung per 2FA-Code.
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            $iid = (string)($_POST['interest_id'] ?? '');
+            if (!preg_match('/^[0-9a-f-]{36}$/', $iid)) {
+                throw new RuntimeException('Ungültige Kennung.');
+            }
+            $done = $action === 'interest_delete' ? interest_delete_id($iid) : interest_unsubscribe_id($iid);
+            if (!$done) {
+                throw new RuntimeException('Eintrag nicht gefunden oder bereits abgemeldet.');
+            }
+            audit_log(null, $ctx, $action === 'interest_delete' ? 'interest_deleted' : 'interest_unsubscribed', 'interest_registration', $iid, ['reason' => 'admin']);
+            flash_set('success', $action === 'interest_delete' ? 'Vormerkung gelöscht.' : 'Vormerkung abgemeldet.');
         }
     } catch (Throwable $e) {
         flash_set('error', 'Fehler: ' . $e->getMessage());
@@ -426,7 +438,7 @@ layout_header('Administration', $ctx);
         </div>
         <div class="table-wrap">
             <table class="table-sm">
-                <thead><tr><th>E-Mail</th><th>Firma</th><th>Herkunft</th><th>Integration</th><th>Status</th><th>Eingetragen</th><th>Bestätigt</th></tr></thead>
+                <thead><tr><th>E-Mail</th><th>Firma</th><th>Herkunft</th><th>Integration</th><th>Status</th><th>Eingetragen</th><th>Bestätigt</th><th>Aktion</th></tr></thead>
                 <tbody>
                 <?php foreach ($interestRecent as $r): ?>
                     <tr>
@@ -437,15 +449,27 @@ layout_header('Administration', $ctx);
                         <td><?= e(['pending' => 'unbestätigt', 'confirmed' => 'bestätigt', 'unsubscribed' => 'abgemeldet'][$r['status']] ?? $r['status']) ?></td>
                         <td><?= format_datetime($r['created_at']) ?></td>
                         <td><?= format_datetime($r['confirmed_at']) ?></td>
+                        <td>
+                            <form method="post" class="inline-form">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="interest_id" value="<?= e($r['id']) ?>">
+                                <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 110px; padding: 5px 8px; font-size: 13px;">
+                                <?php if ($r['status'] !== 'unsubscribed'): ?>
+                                <button type="submit" name="action" value="interest_unsubscribe" class="btn btn-sm btn-secondary">Abmelden</button>
+                                <?php endif; ?>
+                                <button type="submit" name="action" value="interest_delete" class="btn btn-sm btn-secondary">Löschen</button>
+                            </form>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     <?php endif; ?>
-    <p class="hint">Double-Opt-in: Nur bestätigte Adressen dürfen zum Start angeschrieben werden. Unbestätigte Einträge verfallen nach 7 Tagen
-        von selbst (Link ungültig), abgemeldete bleiben als Nachweis der Abmeldung stehen und werden nicht mehr verwendet. Es gibt keine
-        IP-Adressen und keine Preiszusage; eine Vormerkung ist die Bitte um eine Nachricht zum Start.</p>
+    <p class="hint">Double-Opt-in: Nur bestätigte Adressen dürfen zum Start angeschrieben werden. „Unbestätigt“ umfasst auch nicht zugestellte
+        Mails. Löschfristen (Wartung): unbestätigt 30 Tage nach Eintragung, abgemeldet 30 Tage nach Abmeldung, bestätigt 30 Tage nach der
+        Startnachricht. Widerruf oder Löschverlangen per Nachricht werden hier mit „Abmelden“ bzw. „Löschen“ ausgeführt (2FA-Code, Audit).
+        Zeiten in Ortszeit. Es gibt keine IP-Adressen und keine Preiszusage; eine Vormerkung ist die Bitte um eine Nachricht zum Start.</p>
 </div>
 
 <div class="card" id="support">

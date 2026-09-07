@@ -28,6 +28,8 @@ $out('mail_an', (string)($payload['to'] ?? ''));
 preg_match('~vormerken\.php\?token=([a-f0-9]{64})~', (string)($payload['text'] ?? ''), $m);
 $token = $m[1] ?? '';
 $out('token_im_text', $token !== '' ? 1 : 0);
+$out('abmeldelink_in_mail', str_contains((string)($payload['text'] ?? ''), 'token=' . $token . '&aktion=abmelden') ? 1 : 0);
+$out('consent_at', $row['consent_at'] ? 1 : 0); $out('last_mail_at', $row['last_mail_at'] ? 1 : 0); $out('mail_count', (int)$row['mail_count']);
 $out('token_nicht_gespeichert', ($token !== '' && !str_contains(json_encode($row), $token)) ? 1 : 0);
 $out('token_hash_passt', ($token !== '' && hash('sha256', $token) === $row['token_hash']) ? 1 : 0);
 
@@ -36,6 +38,24 @@ $r2 = interest_register($base, 'smart-einzug.de');
 $out('wdh_state', (string)$r2['state']);
 $out('wdh_zeilen', (int)$pdo->query("SELECT COUNT(*) FROM interest_registrations")->fetchColumn());
 $out('wdh_mails', (int)$pdo->query("SELECT COUNT(*) FROM jobs WHERE type='mail'")->fetchColumn());
+
+// Tagesgrenze: nach Ablauf der 10-Minuten-Sperre hoechstens 3 Mails in 24 Stunden
+for ($i = 0; $i < 4; $i++) {
+    $pdo->exec("UPDATE interest_registrations SET last_mail_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 11 MINUTE)");
+    interest_register($base, null);
+}
+$out('tagesgrenze_mails', (int)$pdo->query("SELECT COUNT(*) FROM jobs WHERE type='mail'")->fetchColumn());
+$out('tagesgrenze_zaehler', (int)$pdo->query("SELECT mail_count FROM interest_registrations")->fetchColumn());
+// Der letzte Token gilt (neuer Token je Versand)
+$hashAktuell = (string)$pdo->query("SELECT token_hash FROM interest_registrations")->fetchColumn();
+$gefunden = '';
+foreach ($pdo->query("SELECT payload FROM jobs WHERE type='mail'")->fetchAll(PDO::FETCH_COLUMN) as $pl) {
+    if (preg_match('~vormerken\.php\?token=([a-f0-9]{64})~', (string)(json_decode((string)$pl, true)['text'] ?? ''), $mm) && hash('sha256', $mm[1]) === $hashAktuell) {
+        $gefunden = $mm[1];
+    }
+}
+$out('token_erneuert', ($gefunden !== '' && $gefunden !== $token) ? 1 : 0);
+$token = $gefunden !== '' ? $gefunden : $token;
 
 // Ungueltige Eingaben
 $out('err_email', (string)interest_register(['provider'=>'sevdesk','email'=>'kein-mail','consent'=>'1'])['error']);
@@ -59,13 +79,27 @@ $out('nach_bestaetigung_mails', (int)$pdo->query("SELECT COUNT(*) FROM jobs WHER
 // Abmelden
 $out('unsub', interest_unsubscribe($token));
 $out('status_abgemeldet', $pdo->query("SELECT status FROM interest_registrations")->fetchColumn());
+$out('confirm_nach_abmeldung', interest_confirm($token));
+// Wartung: abgemeldet nach 30 Tagen loeschen
+$out('cleanup_abgemeldet_frueh', interest_cleanup());
+$pdo->exec("UPDATE interest_registrations SET unsubscribed_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 31 DAY)");
+$out('cleanup_abgemeldet_spaet', interest_cleanup());
 // Abgelaufener Link
-$pdo->exec("UPDATE interest_registrations SET status='pending', token_expires_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY)");
+$pdo->prepare("INSERT INTO interest_registrations (id, provider_code, email, status, consent_text, token_hash, token_expires_at, created_at) VALUES (?, 'sevdesk', 'alt@x.test', 'pending', 'v', ?, DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY), DATE_SUB(UTC_TIMESTAMP(), INTERVAL 8 DAY))")->execute([uuid4(), hash('sha256', $token)]);
 $out('confirm_abgelaufen', interest_confirm($token));
-// Wartung: erst 23 Tage nach Ablauf loeschen
-$out('cleanup_frueh', interest_cleanup());
-$pdo->exec("UPDATE interest_registrations SET token_expires_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 24 DAY)");
-$out('cleanup_spaet', interest_cleanup());
+$out('cleanup_pending_frueh', interest_cleanup());
+$pdo->exec("UPDATE interest_registrations SET created_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 31 DAY)");
+$out('cleanup_pending_spaet', interest_cleanup());
+// Bestaetigt + benachrichtigt: 30 Tage nach Startnachricht loeschen
+$pdo->prepare("INSERT INTO interest_registrations (id, provider_code, email, status, consent_text, confirmed_at, notified_at, created_at) VALUES (?, 'sevdesk', 'fertig@x.test', 'confirmed', 'v', UTC_TIMESTAMP(), DATE_SUB(UTC_TIMESTAMP(), INTERVAL 31 DAY), UTC_TIMESTAMP())")->execute([uuid4()]);
+$out('cleanup_benachrichtigt', interest_cleanup());
+// Herkunftspruefung ohne Datenbank
+$erl = ['smart-einzug.de', 'lexware-einzug.de', 'app.smart-einzug.de'];
+$out('origin_ok', interest_origin_allowed('https://www.smart-einzug.de', null, $erl) ? 1 : 0);
+$out('origin_fremd', interest_origin_allowed('https://boese.example', 'https://smart-einzug.de/x', $erl) ? 1 : 0);
+$out('origin_referer', interest_origin_allowed(null, 'https://lexware-einzug.de/seite/', $erl) ? 1 : 0);
+$out('origin_leer', interest_origin_allowed(null, null, $erl) ? 1 : 0);
+$out('origin_null', interest_origin_allowed('null', null, $erl) ? 1 : 0);
 // Statistik + Obergrenze je Minute
 for ($i = 0; $i < INTEREST_MAX_PER_MINUTE; $i++) {
     $pdo->prepare("INSERT INTO interest_registrations (id, provider_code, email, status, consent_text, created_at) VALUES (?, 'sevdesk', ?, 'pending', 'v', UTC_TIMESTAMP())")->execute([uuid4(), "m$i@x.test"]);

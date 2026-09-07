@@ -60,6 +60,7 @@ CHAPTERS = [
     ('status-page.md', None),
     ('sync-performance.md', None),
     ('integrations.md', None),
+    ('einwilligungen.md', None),
 ]
 
 

@@ -937,6 +937,9 @@ CREATE TABLE IF NOT EXISTS interest_registrations (
     source_domain    VARCHAR(100) NULL,
     status           VARCHAR(20)  NOT NULL DEFAULT 'pending', -- pending | confirmed | unsubscribed
     consent_text     VARCHAR(80)  NOT NULL,
+    consent_at       DATETIME     NULL,           -- Zeitpunkt der letzten Einwilligung (Absenden des Formulars, UTC)
+    mail_count       SMALLINT UNSIGNED NOT NULL DEFAULT 0, -- Bestaetigungsmails im laufenden 24-Stunden-Fenster
+    mail_window_at   DATETIME     NULL,           -- Beginn dieses Fensters (UTC)
     token_hash       CHAR(64)     NULL,
     token_expires_at DATETIME     NULL,
     created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -947,5 +950,6 @@ CREATE TABLE IF NOT EXISTS interest_registrations (
     UNIQUE KEY uq_interest_provider_email (provider_code, email),
     KEY ix_interest_status (provider_code, status, created_at),
     KEY ix_interest_token (token_hash),
+    KEY ix_interest_created (created_at),
     CONSTRAINT fk_interest_provider FOREIGN KEY (provider_code) REFERENCES integration_providers (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -68,6 +68,8 @@ try { support_sessions_expire(); } catch (Throwable $e) { /* Tabelle fehlt bis M
 require_once __DIR__ . '/app/auth.php';
 try { registration_requests_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 015 */ }
 try { devices_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 016 */ }
+require_once __DIR__ . '/app/interest.php';
+try { interest_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 020 */ }
 
 // Fällige vorgemerkte und terminierte Einzüge: nur im Einreichfenster, höchstens die
 // Hälfte des Zeitbudgets je Lauf; der Rest folgt beim nächsten Lauf (alle 5 Minuten).
