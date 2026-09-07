@@ -4,7 +4,7 @@ Stand: 07.09.2026. Dieser Ordner bündelt die Arbeitsergebnisse zum Masterprompt
 
 | Dokument | Inhalt | Status |
 |---|---|---|
-| `url-inventar.md`, `url-inventar.json` | URL-Inventar aller Marketingseiten, erzeugt von `tools/seo-inventory.py` (Title, H1, Canonical, Indexierung, Sitemap, Verlinkung, Preise, Prüfwörter) | erzeugt, bei jeder Änderung neu ausführen |
+| `url-inventar.md`, `url-inventar.json` | URL-Inventar der drei Marketingdomains, erzeugt von `tools/seo-inventory.py` (Title, H1, Canonical, Indexierung, Sitemap, Verlinkung, Preise, Prüfwörter) | erzeugt, bei jeder Änderung neu ausführen |
 | `01-bestandsaufnahme.md` | Bestandsaufnahme: Domainrollen, technische Prüfung, Leserperspektive, Datenlücken | in Arbeit |
 | `02-faktenregister.md` | Faktenregister: belegte Tatsachen über die Software mit Quelle, Status (bestätigt, geplant, ungeklärt, veraltet) und zulässiger Formulierung | in Arbeit |
 | `03-aussagenpruefung.md` | Abgleich der Werbeaussagen je Domain mit Verdikt, Korrektur und Verifikation | in Arbeit |

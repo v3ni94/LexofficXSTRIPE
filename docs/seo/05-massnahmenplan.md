@@ -11,12 +11,11 @@ Status je Maßnahme: **empfohlen** (Vorschlag), **freigegeben** (Entscheidung li
 - Risiko: Interessenten erfahren den Preis erst im Buchungsprozess; Absprungrate dort beobachten (Trichter im Adminbereich, Ereignisse registration_started und subscription_active).
 - Rückfall: Preisbausteine sind in Git erhalten (Stand abd5d26) und lassen sich wiederherstellen; Abschnitt D der Preisprüfung wird dann angepasst.
 
-## M2 Vierte Inhaltsdomain lastschrift-einfach.de
+## M2 lastschrift-einfach.de (geklärt am 07.09.2026)
 
-- Befund: `docs/seo-url-map.csv` führt die Domain als 301-Alias, tatsächlich liegt eine eigene Inhaltsseite mit acht indexierbaren Seiten (Grundlagen, Mandat, Ablauf, Rücklastschrift, Glossar, Für wen) unter der Marke „Lastschrift einfach“ vor, ohne SmartEinzug-Logo, Organisation Müller Holding AG im Markup. Sie wird mit deployt.
-- Optionen: (1) als Wissensangebot für Zahlungspflichtige behalten und klar als Angebot der Müller Holding AG mit Bezug zu SmartEinzug kennzeichnen; (2) Inhalte nach `smart-einzug.de/wissen/` verlagern und die Domain per 301 auf die jeweiligen Zielseiten leiten; (3) wie dokumentiert zum reinen Alias machen (Inhalte entfallen).
-- Empfehlung: Option 1 nur, wenn die Domain messbar Besucher bringt; sonst Option 2, weil der Masterprompt Wissensinhalte auf der Hauptdomain bündelt. Ohne Search-Console-Daten keine Entscheidung. Bis dahin: keine Änderung, Domain in der Keyword-Map führen.
-- Risiko bei Verlagerung: Verlust vorhandener Rankings, falls welche bestehen; Rückfall über Beibehaltung der alten Dateien und Aufhebung der Weiterleitung.
+- Auskunft des Betreibers: Die Domain ist nur eine Weiterleitung auf smart-abrechnen.de. Sie gehört nicht zum SEO-Geltungsbereich dieses Pakets und wird in Inventar und Keyword-Map nicht mehr geführt.
+- Befund im Repository: Der Ordner `websites/lastschrift-einfach.de` enthält eine vollständige Inhaltsseite (acht indexierbare Seiten) und wird vom Job `deploy-webhosting` mit hochgeladen; `docs/seo-url-map.csv` nennt als Ziel smart-einzug.de. Beides passt nicht zur tatsächlichen Nutzung.
+- Empfehlung (Umsetzung durch das Backend-Team, weil `deploy.yml` betroffen ist): Ordner aus dem Upload nehmen oder auf eine `.htaccess` mit 301 auf smart-abrechnen.de reduzieren, Domain aus `tools/site-qa.py`, `tools/asset-version.py`, `tools/build-sitemaps.py`, `tools/sync-chrome.py` und `signup_domains` entfernen. Bis dahin unschädlich, solange die Weiterleitung beim Hoster greift.
 
 ## M3 Rolle der Leadseiten und die Entscheidung DETM Management Consulting FZCO
 

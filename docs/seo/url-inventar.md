@@ -86,20 +86,3 @@ Erzeugt von `tools/seo-inventory.py` aus dem Repository. Indexierung bei Google 
 | ratgeber/sepa-lastschrift-fristen-vorlaufzeiten.html | ratgeber | Fristen und Vorlaufzeiten bei der SEPA-Basislastschrift | ja | ja | 3 | 755 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
 | ratgeber/vorabankuendigung-sepa-lastschrift.html | ratgeber | Vorabankündigung bei der SEPA-Lastschrift | ja | ja | 3 | 241 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
 | sicherheit.html | produktseite | Sicherheit bei SmartEinzug | ja | ja | 25 | 271 |  |  | BreadcrumbList, ListItem |
-
-## lastschrift-einfach.de
-
-10 HTML-Dateien, 9 technisch indexierbar, 9 in der Sitemap.
-
-| Pfad | Typ | H1 | Index | Sitemap | Eingehend | Wörter | Preise | Daten | JSON-LD |
-|---|---|---|---|---|---|---|---|---|---|
-| 404.html | fehlerseite | Seite nicht gefunden | noindex | nein | 0 | 35 |  |  |  |
-| ablauf/index.html | wissen | Ablauf einer SEPA-Lastschrift: Von der Rechnung zum Zahlungseingang | ja | ja | 10 | 629 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
-| datenschutz/index.html | rechtliches_kontakt | Datenschutzerklärung | ja | ja | 10 | 499 |  |  | BreadcrumbList, ListItem |
-| fuer-wen/index.html | wissen | Für wen sich SEPA-Lastschrift lohnt und wann eher nicht | ja | ja | 2 | 572 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
-| glossar/index.html | wissen | Glossar: 20 Begriffe rund um die SEPA-Lastschrift | ja | ja | 10 | 671 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
-| grundlagen/index.html | wissen | SEPA-Basislastschrift: Grundlagen für Unternehmen | ja | ja | 10 | 604 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
-| impressum/index.html | rechtliches_kontakt | Impressum | ja | ja | 10 | 203 |  |  | BreadcrumbList, ListItem |
-| index.html | startseite | SEPA-Lastschrift einfach erklärt | ja | ja | 10 | 599 |  |  | Organization, PostalAddress, WebSite |
-| mandat/index.html | wissen | Das SEPA-Mandat: Pflichtangaben und Aufbewahrung | ja | ja | 10 | 632 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
-| ruecklastschrift/index.html | wissen | Rücklastschrift bei der SEPA-Lastschrift: Gründe und Fristen | ja | ja | 10 | 624 |  |  | Article, BreadcrumbList, ListItem, Organization, WebPage |
