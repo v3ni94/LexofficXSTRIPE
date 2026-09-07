@@ -20,13 +20,18 @@
 # vorhandenes Release.
 #
 # Ablauf: Sperre -> deploy/vps aus dem Release uebernehmen -> Zustand vorhandener Container protokollieren
-# -> Image ggf. neu bauen -> Candidate isoliert pruefen (eigener Container, neuer Code, DB+Redis
-# erreichbar, laufende Anwendung unberuehrt) -> Migrationen isoliert mit dem neuen Code einspielen (noch
-# VOR dem Cutover; schlaegt einer der beiden Schritte fehl, wurde nichts an den laufenden Containern
-# veraendert, kein Rollback noetig) -> Cutover ("docker compose up -d", jetzt sicher: Schema bereits
-# migriert) -> auf "healthy" warten -> current-Symlink umstellen (Buchfuehrung) -> php-fpm neu laden ->
-# Worker/Scheduler kontrolliert neu starten -> Health-Check -> bei Fehler automatisches Rollback auf das
-# vorherige Release (Code UND Symlink). Alte Releases werden auf die letzten 5 begrenzt.
+# -> Image ggf. neu bauen -> Redis-Infrastruktur ausschliesslich anfassen, wenn sich redis.conf
+# gegenueber dem laufenden Release geaendert hat (vorab validieren, NUR den redis-Dienst gezielt neu
+# erzeugen, auf healthy warten, Zugriff aus einem ANDEREN Container ueber das interne Netz pruefen;
+# schlaegt das fehl, wird ausschliesslich Redis auf die vorherige Konfiguration zurueckgesetzt und das
+# Deployment bricht ab, BEVOR die Candidate-Pruefung ueberhaupt beginnt) -> Candidate isoliert pruefen
+# (eigener Container, neuer Code, DB+Redis erreichbar, laufende Anwendung unberuehrt) -> Migrationen
+# isoliert mit dem neuen Code einspielen (noch VOR dem Cutover; schlaegt einer der beiden Schritte fehl,
+# wurde nichts an den laufenden Containern veraendert, kein Rollback noetig) -> Cutover ("docker compose
+# up -d", jetzt sicher: Schema bereits migriert) -> auf "healthy" warten -> current-Symlink umstellen
+# (Buchfuehrung) -> php-fpm neu laden -> Worker/Scheduler kontrolliert neu starten -> Health-Check -> bei
+# Fehler automatisches Rollback auf das vorherige Release (Code UND Symlink). Alte Releases werden auf
+# die letzten 5 begrenzt.
 #
 # Pfade und Release-Bindung: Die Container binden /opt/smarteinzug/releases nur lesend ein, ihr
 # working_dir (siehe docker-compose.yml) ist aber NICHT der mutable Symlink "current", sondern der
@@ -199,6 +204,165 @@ if [[ "$NEEDS_BUILD" -eq 1 ]]; then
     echo "$PHP_IMAGE_HASH" > "$PHP_IMAGE_HASH_FILE"
 else
     echo "deploy/vps/php unveraendert, verwende bestehendes Image."
+fi
+
+# --- Redis-Infrastruktur: nur anfassen, wenn sich redis.conf gegenueber dem laufenden Release ---------
+# tatsaechlich geaendert hat (Bootstrap-Problem, siehe Version 4.8 -> 4.9): Die Candidate-Pruefung
+# kommuniziert ueber die REGULAERE, bereits laufende Redis-Ressource; solange deren redis.conf noch der
+# ALTEN Fassung entspricht, kann eine redis.conf-Korrektur (z.B. protected-mode) sich nicht selbst
+# deployen. redis.conf ist per Bind-Mount eingebunden: "docker compose up -d" erkennt eine reine
+# Inhaltsaenderung der Datei NICHT von selbst (die Dienstdefinition - Image, Mount-Quelle, Umgebung -
+# bleibt gleich); ein Vergleich der tatsaechlichen Dateiinhalte plus ein gezieltes "--force-recreate
+# redis" sind deshalb erforderlich, bevor die Candidate-Pruefung ueberhaupt beginnt.
+REDIS_CONF_REL="deploy/vps/redis/redis.conf"
+REDIS_CONF_CHANGED=1
+if [[ -n "$PREV_SHA" && -f "$RELEASES_DIR/$PREV_SHA/$REDIS_CONF_REL" ]] \
+    && cmp -s "$RELEASES_DIR/$PREV_SHA/$REDIS_CONF_REL" "$RELEASE_DIR/$REDIS_CONF_REL"; then
+    REDIS_CONF_CHANGED=0
+fi
+
+# Sicherheitsvoraussetzung fuer "protected-mode no" (siehe redis.conf, Kopfkommentar): kein
+# veroeffentlichter Host-Port, ausschliesslich im internen Netz smarteinzug_internal, kein Traefik-Label
+# (also nie ueber den Coolify-Proxy erreichbar). Wird bei JEDEM Deployment geprueft, nicht nur bei einer
+# Aenderung an redis.conf, da diese Eigenschaften aus den Compose-Dateien stammen, nicht aus redis.conf.
+redis_isolation_ok() {
+    local cfg
+    cfg="$("${COMPOSE[@]}" config redis --format json 2>/dev/null)" || {
+        echo "::error:: Konnte die aufgeloeste Redis-Konfiguration nicht lesen (docker compose config redis)."
+        return 1
+    }
+    if echo "$cfg" | jq -e '.services.redis.ports // [] | length > 0' >/dev/null 2>&1; then
+        echo "::error:: redis-Dienst hat einen veroeffentlichten Host-Port. Mit 'protected-mode no' waere Redis dann ohne jeden Schutz von aussen erreichbar."
+        return 1
+    fi
+    local nets
+    nets="$(echo "$cfg" | jq -r '.services.redis.networks | keys[]' 2>/dev/null | sort | tr '\n' ',')"
+    if [[ "$nets" != "smarteinzug_internal," ]]; then
+        echo "::error:: redis-Dienst haengt an unerwarteten Netzen ($nets), erwartet ausschliesslich smarteinzug_internal (kein coolify-Netz)."
+        return 1
+    fi
+    if echo "$cfg" | jq -e '(.services.redis.labels // {}) | keys[] | select(startswith("traefik."))' >/dev/null 2>&1; then
+        echo "::error:: redis-Dienst traegt Traefik-Labels und waere damit ueber den Coolify-Proxy erreichbar."
+        return 1
+    fi
+    return 0
+}
+
+# Wartet, bis der redis-Dienst (und nur dieser) healthy ist; Rueckgabe 1 bei Zeitueberschreitung.
+redis_wait_healthy() {
+    # REDIS_WAIT_HEALTHY_SECONDS: nur fuer Regressionstests (tools/redis-deploy-check.sh) ohne echten
+    # Docker-Daemon relevant, um den Zeitueberschreitungs-Pfad in wenigen Sekunden statt 90s zu pruefen;
+    # im echten Betrieb bleibt es bei 90s (Vorgabewert).
+    local deadline=$((SECONDS + ${REDIS_WAIT_HEALTHY_SECONDS:-90})) unhealthy
+    while true; do
+        unhealthy="$("${COMPOSE[@]}" ps redis --format '{{.Name}} {{.Health}}' 2>/dev/null | awk '$2!="" && $2!="healthy"{print $1"="$2}')"
+        if [[ -z "$unhealthy" ]]; then
+            return 0
+        fi
+        if (( SECONDS > deadline )); then
+            echo "::error:: Zeitueberschreitung beim Warten auf gesundes Redis: $unhealthy"
+            "${COMPOSE[@]}" logs redis --tail=80 || true
+            return 1
+        fi
+        sleep 3
+    done
+}
+
+# Netzwerkbasierter Redis-Test AUS EINEM ANDEREN CONTAINER ueber das interne Docker-Netz - ausdruecklich
+# NICHT "docker exec redis redis-cli ping": Dieser Befehl laeuft ueber Redis' EIGENE Loopback-Adresse und
+# haette genau das urspruengliche protected-mode-Problem verborgen (siehe Version 4.8). $1: RELEASE_SHA,
+# dessen Code fuer den Testcontainer verwendet wird - nach Moeglichkeit der BEKANNT GUTE, bereits laufende
+# alte Code, damit ein Fehlschlag hier eindeutig der Redis-Infrastruktur zuzuordnen ist und nicht einer
+# Regression im neuen Anwendungscode.
+redis_network_probe() {
+    local probe_sha="$1" rc
+    set +e
+    RELEASE_SHA="$probe_sha" "${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --redis
+    rc=$?
+    set -e
+    return "$rc"
+}
+
+# Stellt AUSSCHLIESSLICH deploy/vps/redis/ aus dem vorherigen Release wieder her (nicht den gesamten
+# deploy/vps-Baum: das laufende deploy.sh/rollback.sh dieses Releases soll fuer die Fehlerausgabe/den
+# Abbruch unten unveraendert nutzbar bleiben). Rueckgabe 1, wenn kein vorheriges Release bekannt ist.
+restore_redis_conf_from_prev() {
+    if [[ -z "$PREV_SHA" || ! -d "$RELEASES_DIR/$PREV_SHA/deploy/vps/redis" ]]; then
+        return 1
+    fi
+    rsync -a --delete "$RELEASES_DIR/$PREV_SHA/deploy/vps/redis/" "$DEPLOY_DIR/redis/"
+}
+
+if ! redis_isolation_ok; then
+    deploy_fail_report "redis-isolationspruefung" "" ""
+    echo "::error:: Redis verletzt die Netzwerk-Isolationsvorgaben (siehe oben). Abbruch vor jeder Aenderung."
+    exit 1
+fi
+
+if [[ "$REDIS_CONF_CHANGED" -eq 0 ]]; then
+    echo "redis.conf unveraendert gegenueber dem laufenden Release (${PREV_SHA:-keins}), Redis wird nicht angefasst."
+else
+    echo "redis.conf hat sich gegenueber dem laufenden Release geaendert (oder es gibt kein vorheriges Release)."
+    echo "Aktualisiere ausschliesslich den Redis-Dienst kontrolliert, VOR der Candidate-Pruefung ..."
+
+    echo "Validiere die neue redis.conf vorab in einem eigenstaendigen Wegwerfcontainer (kein Compose-Projekt, kein Netz) ..."
+    REDIS_IMAGE="$("${COMPOSE[@]}" config --images redis 2>/dev/null | head -n1)"
+    set +e
+    VALIDATE_OUT="$(timeout -k 1 3 docker run --rm --entrypoint redis-server \
+        -v "$DEPLOY_DIR/redis/redis.conf:/redis.conf:ro" "$REDIS_IMAGE" /redis.conf --port 16399 2>&1)"
+    VALIDATE_RC=$?
+    set -e
+    # "timeout" beendet einen erfolgreich GESTARTETEN (also gueltigen) Redis-Server nach 3s zwangsweise
+    # (Exit-Code 124/137/143 je nach Signalweiterleitung durch Docker); ein SOFORTIGER Fehlschlag mit
+    # einer erkennbaren Parse-/Fatal-Meldung zeigt dagegen eine ungueltige Konfiguration an.
+    REDIS_UPDATE_FAILED=0
+    if [[ "$VALIDATE_RC" -eq 1 ]] && echo "$VALIDATE_OUT" | grep -qiE "Fatal error|Bad directive|can.t open|Errors trying to open|FATAL CONFIG"; then
+        echo "::error:: Neue redis.conf ist ungueltig: $VALIDATE_OUT"
+        REDIS_UPDATE_FAILED=1
+    fi
+
+    if [[ "$REDIS_UPDATE_FAILED" -eq 0 ]]; then
+        echo "Aktualisiere ausschliesslich den Redis-Dienst (force-recreate, --no-deps: keine anderen Dienste betroffen) ..."
+        set +e
+        "${COMPOSE[@]}" up -d --no-deps --force-recreate redis
+        RECREATE_RC=$?
+        set -e
+        if [[ "$RECREATE_RC" -ne 0 ]]; then
+            echo "::error:: 'docker compose up -d --no-deps --force-recreate redis' schlug fehl (Exitcode $RECREATE_RC)."
+            REDIS_UPDATE_FAILED=1
+        elif ! redis_wait_healthy; then
+            REDIS_UPDATE_FAILED=1
+        else
+            echo "Redis mit der neuen Konfiguration ist healthy. Pruefe den Zugriff aus einem ANDEREN Container ueber das interne Netz (nicht per docker exec/Loopback) ..."
+            PROBE_SHA="${PREV_SHA:-$SHA}"
+            if ! redis_network_probe "$PROBE_SHA"; then
+                echo "::error:: Redis ist zwar 'healthy', aber ueber das interne Docker-Netz aus einem anderen Container NICHT erreichbar (genau der Fehler, den 'docker exec redis redis-cli ping' verborgen haette)."
+                REDIS_UPDATE_FAILED=1
+            else
+                echo "Netzwerkbasierter Redis-Test aus einem anderen Container erfolgreich."
+            fi
+        fi
+    fi
+
+    if [[ "$REDIS_UPDATE_FAILED" -eq 1 ]]; then
+        deploy_fail_report "redis-infrastruktur-aktualisierung" "docker compose up -d --no-deps --force-recreate redis" ""
+        echo "Setze die Redis-Infrastruktur auf das vorherige Release zurueck ..."
+        if restore_redis_conf_from_prev; then
+            set +e
+            "${COMPOSE[@]}" up -d --no-deps --force-recreate redis
+            RESTORE_RC=$?
+            set -e
+            if [[ "$RESTORE_RC" -eq 0 ]] && redis_wait_healthy && redis_network_probe "${PREV_SHA:-$SHA}"; then
+                echo "Redis erfolgreich auf die vorherige Konfiguration zurueckgesetzt, der alte Anwendungscode erreicht Redis wieder."
+            else
+                echo "::error:: Auch die Wiederherstellung der vorherigen Redis-Konfiguration schlug fehl. Manuelle Pruefung auf dem Server erforderlich (docker compose logs redis)."
+            fi
+        else
+            echo "::error:: Kein vorheriges Release fuer eine Redis-Wiederherstellung bekannt (Ersteinrichtung?). Manuelle Pruefung erforderlich."
+        fi
+        echo "::error:: Redis-Infrastrukturaenderung fehlgeschlagen. Deployment abgebrochen VOR der Candidate-Pruefung: keine Migration, kein Cutover. Die laufende Anwendung (ausser Redis) wurde nicht veraendert."
+        exit 1
+    fi
 fi
 
 # --- Candidate pruefen und Migrationen einspielen, OHNE die laufende Anwendung anzufassen -----------

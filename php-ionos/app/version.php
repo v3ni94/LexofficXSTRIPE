@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.8';
+const APP_VERSION = '4.9';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.9', 'date' => '07.09.2026', 'title' => 'Redis-Infrastruktur deploybar machen (Bootstrap-Problem behoben)',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Der Redis-protected-mode-Fix (Version 4.8) konnte sich nicht selbst deployen: Die Candidate-Prüfung kommuniziert mit dem bereits laufenden redis-Dienst, der aber wegen des Bind-Mounts von redis.conf nicht automatisch neu erzeugt wird, nur weil sich der Dateiinhalt geändert hat. Der Candidate mit neuem Code prüfte deshalb weiterhin gegen den alten, unveränderten Redis-Container. deploy.sh stellt jetzt vor der Candidate-Prüfung fest, ob sich redis.conf gegenüber dem laufenden Release geändert hat: unverändert bleibt Redis unberührt; geändert wird ausschließlich der redis-Dienst vorab validiert, gezielt neu erzeugt (kein anderer Dienst betroffen), auf healthy geprüft und die Erreichbarkeit aus einem ANDEREN Container über das interne Netz bestätigt (nicht per "docker exec redis redis-cli ping", das genau das protected-mode-Problem verborgen hatte) - erst danach beginnt die eigentliche Candidate-Prüfung.'],
+            ['type' => 'Neu', 'text' => 'Schlägt die Redis-Aktualisierung fehl (ungültige Konfiguration, Recreate schlägt fehl, nicht healthy, oder healthy aber über das Netz blockiert), wird ausschließlich die Redis-Infrastruktur auf die vorherige Konfiguration zurückgesetzt und deren Erreichbarkeit erneut bestätigt; das Deployment bricht danach ab, ohne Migration und ohne Cutover, die übrige laufende Anwendung bleibt unverändert.'],
+            ['type' => 'Neu', 'text' => 'Vor jeder Redis-Änderung wird zusätzlich geprüft, dass Redis keinen veröffentlichten Host-Port hat, ausschließlich am internen Netz smarteinzug_internal hängt (nicht am öffentlichen Coolify-Netz) und keine Traefik-Labels trägt - Voraussetzung dafür, dass protected-mode no vertretbar bleibt; verletzt eine dieser Bedingungen, bricht das Deployment ab, bevor irgendetwas an Redis geändert wird.'],
+            ['type' => 'Neu', 'text' => 'Regressionstest tools/redis-deploy-check.sh (kein Docker-Daemon nötig): simuliert /opt/smarteinzug mit einem steuerbaren Fake-"docker", gegen den die tatsächliche deploy.sh unverändert läuft; bestätigt u. a. kein Recreate bei unveränderter redis.conf, kontrollierte Aktualisierung vor der Candidate-Prüfung bei geänderter redis.conf, Abbruch mit bestätigtem Rollback bei über das Netz blockiertem Redis, Erkennung einer ungültigen Konfiguration bereits in der Vorab-Validierung, Abbruch bei verletzten Netzwerk-Isolationsvorgaben, Idempotenz bei Wiederholung. tools/staging-isolation-check.py bestätigt zusätzlich die Redis-Netzwerk-Isolation in Produktion und Staging.'],
+         ]],
         ['version' => '4.8', 'date' => '07.09.2026', 'title' => 'Tatsächliche Ursache des Redis-Fehlschlags: protected mode',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Candidate-Prüfung meldete weiterhin einen Redis-Fehlschlag ("redis: auth" bzw. zuvor "redis: other"), obwohl config.php korrekt kein Passwort und redis.conf kein requirepass enthielt und "docker exec smarteinzug-redis-1 redis-cli ping" PONG lieferte. Tatsächliche, durch einen echten temporären Redis-Server bestätigte Ursache: redis.conf setzte protected-mode yes ohne Passwort; in dieser Kombination lehnt Redis jeden Befehl (nicht die TCP-Verbindung) eines NICHT über Loopback verbindenden Clients ab, also jeden Zugriff aus einem anderen Container. "docker exec ... redis-cli ping" lief dagegen selbst über Loopback und täuschte deshalb Gesundheit vor, die für keinen anderen Container galt. redis.conf setzt jetzt protected-mode no (sicher, da Redis ohnehin nur im internen, nicht öffentlich erreichbaren Docker-Netz erreichbar ist).'],

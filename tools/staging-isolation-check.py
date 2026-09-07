@@ -27,6 +27,12 @@ Konfiguration, nicht nur den Rohtext der YAML-Dateien):
   7. deploy.sh uebergibt --expect-env=$DEPLOY_ENV an die isolierte Candidate-Pruefung, rollback.sh
      prueft --expect-env=$DEPLOY_ENV vor jedem Rollback.
   8. app/config.example.php dokumentiert das Feld 'environment'.
+  9. redis hat in BEIDEN Umgebungen keinen veroeffentlichten Host-Port, haengt ausschliesslich am
+     internen Netz smarteinzug_internal (insbesondere NICHT am oeffentlichen Coolify-Netz) und traegt
+     keine Traefik-Labels (waere sonst ueber den Coolify-Proxy erreichbar) - Voraussetzung dafuer, dass
+     "protected-mode no" in redis.conf vertretbar ist (siehe redis.conf, Kopfkommentar, und
+     docs/vps/06-betrieb.md, Abschnitt "Redis protected mode"). Belegt zugleich, dass Produktion und
+     Staging getrennte Redis-Ressourcen verwenden (unterschiedliche Netz-Laufzeitnamen, siehe Punkt 3).
 
 Aufruf: python3 tools/staging-isolation-check.py     Exit 0 = in Ordnung, 1 = Fehler
 """
@@ -167,6 +173,27 @@ def main() -> int:
         fail("app/config.example.php dokumentiert das Feld 'environment' nicht.")
     else:
         print("app/config.example.php dokumentiert 'environment'.")
+
+    # 9. redis: kein Host-Port, ausschliesslich smarteinzug_internal, keine Traefik-Labels - jeweils in
+    # BEIDEN Umgebungen. Voraussetzung fuer "protected-mode no" (siehe redis.conf) und zugleich ein
+    # weiterer Beleg, dass Produktion und Staging getrennte Redis-Ressourcen verwenden.
+    for env_name, cfg in (("Produktion", prod), ("Staging", staging)):
+        redis_service = ((cfg.get("services") or {}).get("redis")) or {}
+        ports = redis_service.get("ports") or []
+        if ports:
+            fail(f"redis hat in {env_name} einen veroeffentlichten Host-Port ({ports}). Mit "
+                 f"'protected-mode no' waere Redis dann ohne jeden Schutz von aussen erreichbar.")
+        nets = set((redis_service.get("networks") or {}).keys())
+        if nets != {"smarteinzug_internal"}:
+            fail(f"redis haengt in {env_name} an unerwarteten Netzen ({sorted(nets)}), erwartet "
+                 f"ausschliesslich {{'smarteinzug_internal'}} (insbesondere nicht am Coolify-Netz).")
+        redis_labels = redis_service.get("labels") or {}
+        redis_traefik = traefik_names(redis_labels)
+        if redis_traefik:
+            fail(f"redis traegt in {env_name} Traefik-Labels ({sorted(redis_traefik)}) und waere damit "
+                 f"ueber den Coolify-Proxy erreichbar.")
+        if not ports and nets == {"smarteinzug_internal"} and not redis_traefik:
+            print(f"redis in {env_name}: kein Host-Port, ausschliesslich smarteinzug_internal, keine Traefik-Labels.")
 
     print()
     if errors:

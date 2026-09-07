@@ -26,7 +26,8 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 | `scripts/maintenance.sh` | Wartungsmodus (`app/storage/maintenance.flag`) ein-/ausschalten |
 | `backup/restore-test.sh` | Wiederherstellungstest eines Coolify-Dumps in einer temporaeren Datenbank (Client-Container im Coolify-Netz); `backup.sh`/`Dockerfile` nur Ausweichloesung ohne Coolify, nicht im Stack |
 | `tools/compose-check.py` (liegt unter `tools/`, nicht unter diesem Ordner, gehoert aber zur Pruefung dieses Ordners) | Prueft die Compose-Dateien und `php/Dockerfile` ohne laufenden Docker-Daemon: jeder Dienst aus dem PHP-Image hat einen eigenen, zum Prozess passenden Healthcheck, kein Healthcheck enthaelt ein unescaptes "$", Variablen haben einen Vorgabewert oder stehen in `.env.example`, Candidate-Pruefung vor Migration vor Cutover |
-| `tools/staging-isolation-check.py` (liegt unter `tools/`) | Prueft anhand von `docker compose ... config` (kein Docker-Daemon noetig), dass Produktion und Staging eigene Projekt-/Volume-/Netz-/Traefik-Namen erhalten und der `--expect-env`-Schutz vorhanden ist |
+| `tools/staging-isolation-check.py` (liegt unter `tools/`) | Prueft anhand von `docker compose ... config` (kein Docker-Daemon noetig), dass Produktion und Staging eigene Projekt-/Volume-/Netz-/Traefik-Namen erhalten, redis in beiden Umgebungen keinen Host-Port/kein Coolify-Netz/keine Traefik-Labels hat und der `--expect-env`-Schutz vorhanden ist |
+| `tools/redis-deploy-check.sh` (liegt unter `tools/`) | Simuliert `/opt/smarteinzug` mit einem Fake-"docker" und fuehrt die tatsaechliche `deploy.sh` aus: prueft die kontrollierte Aktualisierung/das Rollback der Redis-Infrastruktur VOR der Candidate-Pruefung (kein Docker-Daemon noetig, aber `jq` erforderlich, siehe `scripts/setup-vps.sh`) |
 
 ## Start
 
@@ -313,6 +314,7 @@ python3 tools/compose-check.py
 bash tools/deploy-runner-check.sh
 php tools/healthcheck-redis-check.php
 python3 tools/staging-isolation-check.py
+bash tools/redis-deploy-check.sh
 ```
 
 `tools/deploy-runner-check.sh` prueft `deploy-runner.sh` gegen ein simuliertes `/opt/smarteinzug` in
@@ -331,4 +333,21 @@ ist Alpine/musl-basiert, siehe `docs/vps/06-betrieb.md`, Abschnitt "Candidate-Pr
 `redis: other`") sowie `bin/healthcheck.php --redis` gegen einen tatsaechlich nicht aufloesbaren
 Hostnamen und einen tatsaechlich geschlossenen Port (echte Netzwerkebene, kein Mock): Beide Faelle
 muessen eine eindeutige Kategorie liefern (z. B. `dns`, `connection_refused`), nie mehr `other` oder
-`nicht erreichbar`.
+`nicht erreichbar`; ausserdem startet dieser Test testweise einen echten, temporaeren Redis-Server
+(protected-mode yes/no) und bestaetigt die Kategorie `redis_protected_mode` sowie, dass `redis.conf`
+tatsaechlich `protected-mode no` enthaelt (siehe `docs/vps/06-betrieb.md`, Abschnitt "Redis'
+eigener protected mode").
+
+`bash tools/redis-deploy-check.sh` prueft den Redis-Infrastruktur-Teil von `deploy.sh` (siehe
+`docs/vps/06-betrieb.md`, Abschnitt "Der Fix konnte sich nicht selbst deployen"): simuliert
+`/opt/smarteinzug` in einem temporaeren Ordner und ersetzt "docker" durch einen steuerbaren Fake,
+gegen den die tatsaechliche `deploy.sh` (unveraendert, nur `BASE` umgeschrieben) laeuft. Bestaetigt
+u. a.: unveraenderte `redis.conf` fuehrt zu keinem Recreate; eine geaenderte `redis.conf` wird
+AUSSCHLIESSLICH ueber den `redis`-Dienst (kein anderer Dienst) aktualisiert, BEVOR die
+Candidate-Pruefung beginnt; erst ein erfolgreicher Netzwerktest aus einem ANDEREN Container (nicht
+per `docker exec`) erlaubt der Candidate-Pruefung zu folgen; ein trotz "healthy" ueber das Netz
+blockierter Redis-Dienst fuehrt zu einem bestaetigten Rollback der Redis-Infrastruktur (nicht des
+gesamten Releases) und einem Abbruch OHNE Migration/Cutover; eine ungueltige neue `redis.conf` wird
+bereits in der Vorab-Validierung erkannt, bevor der laufende Dienst angefasst wird; eine Verletzung
+der Netzwerk-Isolationsvorgaben (Host-Port, Coolify-Netz, Traefik-Labels) bricht vor jeder Aenderung
+ab; eine Wiederholung bleibt idempotent.

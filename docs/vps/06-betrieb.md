@@ -290,6 +290,60 @@ funktioniert hat, ohne dass dies bislang bemerkt wurde.
   bestätigt sowohl die neue Diagnosekategorie als auch, dass `protected-mode no` den Zugriff tatsächlich
   ermöglicht; zusätzlich eine statische Prüfung, dass `redis.conf` `protected-mode no` enthält.
 
+### Nachtrag (Version 4.9): Der Fix konnte sich nicht selbst deployen (Bootstrap-Problem)
+
+**Symptom:** Der erste produktive Deployment-Versuch von Version 4.8 (`redis.conf` auf
+`protected-mode no`) scheiterte selbst wieder in der Candidate-Prüfung mit „UNGESUND: redis: auth“,
+obwohl `docker exec smarteinzug-redis-1 redis-cli CONFIG GET protected-mode` bestätigte, dass der
+laufende Redis-Container weiterhin `protected-mode yes` meldete, und `redis-cli ping` (Loopback)
+weiterhin `PONG` lieferte. Der produktive Stack blieb dabei vollständig `healthy`, der Deploy scheiterte
+VOR dem Cutover.
+
+**Ursache:** Ein Bootstrap-/Reihenfolgeproblem, kein erneuter Diagnosefehler. Die Candidate-Prüfung
+kommuniziert mit dem bereits laufenden `redis`-Dienst – der wird aber, weil `redis.conf` per Bind-Mount
+eingebunden ist, von `docker compose up -d` NICHT automatisch neu erzeugt, nur weil sich der
+Dateiinhalt geändert hat (die Dienstdefinition selbst – Image, Mount-Quelle, Umgebung – bleibt
+gleich; Compose erkennt reine Inhaltsänderungen einer bind-gemounteten Datei nicht von selbst). Der
+Candidate mit dem NEUEN Code prüfte also weiterhin gegen den ALTEN, alten Redis-Container mit der alten
+Konfiguration. Ein Fix an `redis.conf` konnte sich damit strukturell nicht selbst deployen: Erst ein
+manuell auf dem Server ausgeführter, gezielter Neustart des `redis`-Dienstes hätte ihn wirksam werden
+lassen.
+
+**Behoben (Version 4.9):** `deploy.sh` stellt jetzt VOR der Candidate-Prüfung fest, ob sich
+`deploy/vps/redis/redis.conf` inhaltlich gegenüber dem laufenden Release geändert hat (Byte-Vergleich
+der beiden Release-Ordner, nicht Compose's eigene, für Bind-Mounts unzureichende Änderungserkennung):
+
+- **Unverändert:** Redis wird nicht angefasst, es geht direkt mit der gewohnten Candidate-Prüfung
+  weiter.
+- **Geändert:** Die neue Konfiguration wird zuerst in einem eigenständigen Wegwerfcontainer (kein
+  Compose-Projekt, kein Netz) vorab validiert; erst danach wird **ausschließlich** der `redis`-Dienst
+  gezielt neu erzeugt (`docker compose up -d --no-deps --force-recreate redis`, betrifft nachweislich
+  keinen anderen Dienst), auf `healthy` gewartet und die Erreichbarkeit **aus einem anderen Container
+  über das interne Docker-Netz** geprüft (`bin/healthcheck.php --redis` in einem eigenen, per
+  `docker compose run --rm --no-deps` gestarteten Container – ausdrücklich NICHT
+  `docker exec redis redis-cli ping`, das genau das protected-mode-Problem verborgen hatte). Erst wenn
+  dieser netzwerkbasierte Test erfolgreich ist, beginnt die eigentliche Candidate-Prüfung.
+- **Schlägt einer dieser Schritte fehl** (ungültige Konfiguration, Recreate schlägt fehl, Redis wird
+  nicht healthy, oder Redis ist zwar healthy aber über das Netz weiterhin nicht erreichbar): Die
+  Redis-Infrastruktur (nicht das gesamte Release) wird gezielt zurückgesetzt – `deploy/vps/redis/`
+  wird aus dem vorherigen Release wiederhergestellt, der `redis`-Dienst erneut gezielt neu erzeugt, auf
+  `healthy` gewartet und die Erreichbarkeit erneut über das interne Netz bestätigt. Das Deployment
+  bricht danach ab: **keine Migration, kein Cutover**, die übrige laufende Anwendung bleibt unverändert.
+- Vor jeder Redis-Änderung wird zusätzlich geprüft, dass Redis keinen veröffentlichten Host-Port hat,
+  ausschließlich am internen Netz `smarteinzug_internal` hängt (nicht am öffentlichen Coolify-Netz) und
+  keine Traefik-Labels trägt – Voraussetzung dafür, dass `protected-mode no` vertretbar bleibt; verletzt
+  eine dieser Bedingungen, bricht das Deployment ab, bevor irgendetwas an Redis geändert wird.
+- Regressionstest `tools/redis-deploy-check.sh` (neu, kein Docker-Daemon nötig: simuliertes
+  `/opt/smarteinzug`, `deploy.sh` läuft unverändert gegen einen steuerbaren Fake-„docker“, dessen
+  Netzwerktest-Antwort vom tatsächlichen Inhalt der jeweils aktiven `redis.conf` abhängt): bestätigt u. a.
+  unveränderte `redis.conf` → kein Recreate; geänderte `redis.conf` mit erfolgreichem Netzwerktest →
+  Candidate/Migration/Cutover laufen durch; `healthy`, aber über das Netz blockiert → Abbruch mit
+  bestätigtem Rollback der Redis-Infrastruktur, keine Migration, kein Cutover; ungültige neue `redis.conf`
+  → schon die Vorab-Validierung bricht ab, der laufende Redis-Dienst bleibt unberührt; verletzte
+  Netzwerk-Isolationsvorgaben → Abbruch vor jeder Änderung; eine Wiederholung bleibt idempotent.
+  `tools/staging-isolation-check.py` bestätigt zusätzlich, dass Redis in Produktion UND Staging jeweils
+  keinen Host-Port hat, ausschließlich am internen Netz hängt und keine Traefik-Labels trägt.
+
 ## Staging- und Produktionsisolation
 
 Eine Prüfung auf dem produktiven VPS (`docker compose config`, ohne einen tatsächlichen Staging-Start)
