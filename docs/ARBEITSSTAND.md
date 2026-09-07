@@ -138,6 +138,8 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
    Rechtsdokumente), Anlage 3 mit Hostinganbieter (Firma, Anschrift, Serverstandort) und Sicherungsspeicher füllen, dann als
    Fassung veröffentlichen (2FA). Entscheidung: Firmen ohne AVV-Zustimmung nach Übergangsfrist sperren? (nicht umgesetzt).
    Ablauf: `docs/rechtsdokumente.md`.
+1d. **Geschäftsführung:** Konzeptpapier Produkt 2 (`docs/anlagen/MHAG_Konzept_Produkt2-sevdesk-x-Stripe_2026-09-07.pdf`) prüfen:
+   Entscheidung zu Testkonto und Kombitarif für Mandanten mit zwei Buchhaltungen (zwei Firmenaccounts, Multiaccount).
 1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
 1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
    E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll

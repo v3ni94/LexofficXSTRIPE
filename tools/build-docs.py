@@ -73,6 +73,8 @@ CHAPTERS = [
 ATTACHMENTS = [
     ('anlagen/MHAG-SE-OPS-20260907_Betrieb-und-VPS-Migration_v1.0.pdf',
      'Betrieb, Architektur und VPS-Migration (Originalfassung, MHAG-SE-OPS-20260907, v1.0)'),
+    ('anlagen/MHAG_Konzept_Produkt2-sevdesk-x-Stripe_2026-09-07.pdf',
+     'Konzeptpapier Produkt 2: sevdesk × Stripe auf derselben Plattform (07.09.2026)'),
 ]
 
 # ===================================================================================================
