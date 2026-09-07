@@ -66,7 +66,7 @@ OUT="$(run nachtfenster)"
 echo "6) Statisch: das Fenster wird nur beim Einreichen von Einzuegen geprueft"
 STELLEN="$(grep -rn "collections_window_open(" "$ROOT/php-ionos/app" "$ROOT/php-ionos"/*.php 2>/dev/null \
     | grep -v "function collections_window_open" | grep -v "docs-build" | wc -l)"
-UNERWARTET="$(grep -rln "collections_window_open(" "$ROOT/php-ionos/app" 2>/dev/null \
+UNERWARTET="$(grep -rln "collections_window_open(" "$ROOT/php-ionos/app" 2>/dev/null | grep -v "docs-build" \
     | grep -vE "collections\.php$" | tr '\n' ' ')"
 [[ -z "$UNERWARTET" ]] && ok "Fensterpruefung nur in app/collections.php ($STELLEN Verwendungen), nicht in jobs.php/sync_state.php" \
     || bad "Fensterpruefung auch in: $UNERWARTET"
@@ -102,13 +102,18 @@ MV="$ROOT/php-ionos/app/monitor_view.php"; AS="$ROOT/php-ionos/admin-system.php"
 for ANKER in 'id="aktive-jobs"' 'id="wartend"' 'id="laufende"'; do
     grep -q "$ANKER" "$AS" && ok "Zielabschnitt vorhanden: $ANKER" || bad "Zielabschnitt fehlt: $ANKER"
 done
-for AKTION in job_release sync_enqueue; do
-    if grep -q "action === '$AKTION'" "$AS" && sed -n "/action === '$AKTION'/,/elseif/p" "$AS" | grep -q require_recent_totp; then
-        ok "Aktion $AKTION verlangt einen 2FA-Code"
-    else
-        bad "Aktion $AKTION fehlt oder ohne 2FA-Pruefung"
-    fi
-done
+# Zweitbestaetigung seit 4.36 nur fuer Geldfluss (Vorstand 07.09.2026): job_release verlangt den 2FA-Code nur bei
+# geldbewegenden Jobtypen (queue_type_is_money), sync_enqueue (nur Jobtyp sync_run) gar nicht. Vollstaendige Regel: tools/totp-policy-check.php.
+if grep -q "action === 'job_release'" "$AS" && sed -n "/action === 'job_release'/,/elseif/p" "$AS" | grep -q "queue_type_is_money" && sed -n "/action === 'job_release'/,/elseif/p" "$AS" | grep -q require_recent_totp; then
+    ok "Aktion job_release verlangt den 2FA-Code nur bei geldbewegenden Jobtypen"
+else
+    bad "Aktion job_release fehlt oder ohne typabhaengige 2FA-Pruefung"
+fi
+if grep -q "action === 'sync_enqueue'" "$AS" && ! sed -n "/action === 'sync_enqueue'/,/elseif/p" "$AS" | grep -q require_recent_totp; then
+    ok "Aktion sync_enqueue ohne 2FA-Code (nur Jobtyp sync_run, kein Geldfluss)"
+else
+    bad "Aktion sync_enqueue fehlt oder verlangt noch einen 2FA-Code"
+fi
 grep -q 'name="action" value="job_release"' "$AS" && grep -q 'csrf_field()' "$AS" && ok "Formulare mit CSRF-Feld vorhanden" || bad "Formular oder CSRF-Feld fehlt"
 
 echo

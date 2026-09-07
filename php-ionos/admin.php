@@ -99,15 +99,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     try {
         if ($action === 'platform_pause') {
-            // Zweitbestätigung: aktueller 2FA-Code des Administrators
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             $pause = ($_POST['pause'] ?? '') === '1';
+            if (!$pause) {
+                // Not-Stopp AUFHEBEN gibt den Geldfluss wieder frei: Zweitbestätigung per 2FA-Code. Das Aktivieren
+                // bleibt bewusst ohne Hürde, damit im Notfall keine Sekunde verloren geht (wie notstopp.php je Firma).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            }
             platform_setting_set('collections_paused', $pause ? '1' : '0');
             audit_log(null, $ctx, $pause ? 'collections_paused' : 'collections_resumed', 'platform', 'collections_paused', ['scope' => 'platform']);
             flash_set('success', $pause ? 'Plattformweiter Not-Stopp aktiv: keine neuen Einzüge für alle Firmen.' : 'Plattformweiter Not-Stopp aufgehoben.');
         } elseif ($action === 'plan_update') {
-            // Zweitbestätigung: aktueller 2FA-Code des Administrators (Preise und Limits sind geldrelevant)
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            // Tarifpflege ohne Zweitbestätigung (Vorstand 07.09.2026: "nicht für Unwichtiges wie Tarife ändern");
+            // CSRF, Superadmin-Pflicht und Audit bleiben. Abgerechnet wird ohnehin der Stripe-Preis.
             $code = (string)($_POST['plan_code'] ?? '');
             $stmt = $pdo->prepare('SELECT * FROM plans WHERE code = ?');
             $stmt->execute([$code]);
@@ -138,8 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 : 'Tarif ' . $code . ': keine Änderungen.');
 
         } elseif ($action === 'org_plan') {
-            // Zweitbestätigung: aktueller 2FA-Code des Administrators
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            // Tarifzuordnung einer Firma ohne Zweitbestätigung (seit 4.36); Audit bleibt.
             $orgId = $_POST['org_id'] ?? '';
             $stmt = $pdo->prepare('SELECT * FROM organizations WHERE id = ?');
             $stmt->execute([$orgId]);
@@ -164,8 +166,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             flash_set('success', 'Tarif der Firma ' . $org['name'] . ' auf ' . $plan['name'] . ' gesetzt.');
         } elseif ($action === 'interest_unsubscribe' || $action === 'interest_delete') {
-            // Widerruf oder Löschverlangen per Nachricht (Datenschutzerklärung 3a); Zweitbestätigung per 2FA-Code.
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            // Widerruf oder Löschverlangen per Nachricht (Datenschutzerklärung 3a); kein Geldfluss, keine Zweitbestätigung
+            // (seit 4.36), Audit bleibt. Löschen ist endgültig: Bestätigungsdialog im Formular.
             $iid = (string)($_POST['interest_id'] ?? '');
             if (!preg_match('/^[0-9a-f-]{36}$/', $iid)) {
                 throw new RuntimeException('Ungültige Kennung.');
@@ -177,7 +179,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log(null, $ctx, $action === 'interest_delete' ? 'interest_deleted' : 'interest_unsubscribed', 'interest_registration', $iid, ['reason' => 'admin']);
             flash_set('success', $action === 'interest_delete' ? 'Vormerkung gelöscht.' : 'Vormerkung abgemeldet.');
         } elseif ($action === 'interest_block' || $action === 'interest_invite') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             $iid = (string)($_POST['interest_id'] ?? '');
             if (!preg_match('/^[0-9a-f-]{36}$/', $iid)) {
                 throw new RuntimeException('Ungültige Kennung.');
@@ -371,10 +372,10 @@ layout_header('Administration', $ctx);
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="platform_pause">
         <input type="hidden" name="pause" value="<?= $paused ? '0' : '1' ?>">
-        <input type="text" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 190px;">
+        <?php if ($paused): ?><input type="text" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 190px;"><?php endif; ?>
         <button type="submit" class="btn <?= $paused ? 'btn-secondary' : 'btn-danger' ?>"><?= $paused ? 'Not-Stopp aufheben' : 'Not-Stopp aktivieren' ?></button>
     </form>
-    <p class="hint">Zweitbestätigung: Aktivieren und Aufheben erfordern den aktuellen Code aus Ihrer Authenticator-App.</p>
+    <p class="hint">Aktivieren geht ohne Hürde. Das Aufheben gibt den Geldfluss wieder frei und verlangt den aktuellen Code aus Ihrer Authenticator-App.</p>
 </div>
 
 <div class="card" id="tarife">
@@ -382,10 +383,10 @@ layout_header('Administration', $ctx);
     <p class="hint">Name, Preis (netto je Periode), Limits und Sichtbarkeit lassen sich hier direkt ändern. Leere Limits bedeuten
         unbegrenzt. Der angezeigte Preis muss zum hinterlegten Stripe-Preis passen, abgerechnet wird der Stripe-Preis.
         Bestandskunden behalten ihren Tarifcode, geänderte Preise und Limits gelten für sie ab der nächsten Periode
-        bzw. sofort bei den Limits. Jede Änderung erfordert den aktuellen 2FA-Code und wird protokolliert.</p>
+        bzw. sofort bei den Limits. Jede Änderung wird protokolliert.</p>
     <div class="table-wrap">
         <table class="plan-table">
-            <thead><tr><th>Code</th><th>Name</th><th>Preis netto (EUR)</th><th>Periode (Tage)</th><th>Einzüge/Periode</th><th>Benutzer</th><th>Sortierung</th><th>Aktiv</th><th>Öffentlich</th><th>Stripe-Preis-ID</th><th>2FA-Code</th><th></th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Preis netto (EUR)</th><th>Periode (Tage)</th><th>Einzüge/Periode</th><th>Benutzer</th><th>Sortierung</th><th>Aktiv</th><th>Öffentlich</th><th>Stripe-Preis-ID</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($plans as $p): ?>
                 <tr>
@@ -403,7 +404,6 @@ layout_header('Administration', $ctx);
                     <td><input type="checkbox" name="active" value="1" <?= (int)$p['active'] ? 'checked' : '' ?>></td>
                     <td><input type="checkbox" name="public_visible" value="1" <?= (int)$p['public_visible'] ? 'checked' : '' ?>></td>
                     <td><input type="text" name="stripe_price_id" value="<?= e($p['stripe_price_id'] ?? '') ?>" placeholder="price_..." class="plan-input" style="max-width: 220px;"></td>
-                    <td><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" required class="plan-input" style="max-width: 130px;"></td>
                     <td><button type="submit" class="btn btn-sm btn-secondary">Speichern</button></td>
                     </form>
                 </tr>
@@ -442,7 +442,6 @@ layout_header('Administration', $ctx);
                                 <?php endforeach; ?>
                             </select>
                             <label class="inline-check"><input type="checkbox" name="billing_exempt" value="1" <?= (int)$o['billing_exempt'] ? 'checked' : '' ?>> befreit</label>
-                            <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 150px; padding: 5px 8px; font-size: 13px;">
                             <button type="submit" class="btn btn-sm btn-secondary">OK</button>
                         </form>
                     </td>
@@ -510,10 +509,9 @@ layout_header('Administration', $ctx);
                         <td><?= format_datetime($r['confirmed_at']) ?></td>
                         <td class="hint"><?= (int)$r['beta_interest'] ? 'Interesse' : '' ?><?= $r['invited_at'] ? '<br>eingeladen ' . e(format_date($r['invited_at'])) : '' ?></td>
                         <td>
-                            <form method="post" class="inline-form">
+                            <form method="post" class="inline-form" onsubmit="return (event.submitter && event.submitter.value === 'interest_delete') ? confirm('Vormerkung endgültig löschen? Das lässt sich nicht rückgängig machen.') : true;">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="interest_id" value="<?= e($r['id']) ?>">
-                                <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 100px; padding: 5px 8px; font-size: 13px;">
                                 <?php if ($r['status'] === 'confirmed' && !$blocked && !$r['invited_at']): ?>
                                 <button type="submit" name="action" value="interest_invite" class="btn btn-sm btn-secondary">Beta einladen</button>
                                 <?php endif; ?>

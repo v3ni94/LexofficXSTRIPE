@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.35';
+const APP_VERSION = '4.36';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.36', 'date' => '07.09.2026', 'title' => 'Zweitbestätigung per 2FA-Code nur noch für Wichtiges, Rechtsdokumente mobil',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Beschluss des Vorstands vom 07.09.2026: Der aktuelle 2FA-Code wird nur noch für Anmeldung, Wechsel in Kundenaccounts, Wartung aktivieren (Firma pausieren, Meldung veröffentlichen), Not-Stopp aufheben, Geldfluss (Einreichung erzwingen, Stripe-Import, Eingriffe in geldbewegende Jobs) und Kontosicherheit (Passwort, Inhaberwechsel, Buchhaltungssystem) verlangt. Der plattformweite Not-Stopp lässt sich wie der je Firma ohne Hürde aktivieren.'],
+            ['type' => 'Geändert', 'text' => 'Ohne Codeeingabe, aber weiterhin mit CSRF-Schutz, Berechtigungsprüfung und Protokoll: Tarife bearbeiten und zuweisen, Vormerkungen abmelden, sperren, einladen und löschen (Löschen mit Bestätigungsdialog), Statusdaten übertragen, Testnachricht, Synchronisation einreihen, Warteschlangen-Flag je Firma, Synchronisation fortsetzen, Meldung zurückziehen, Entwürfe der Rechtsdokumente anlegen, übernehmen und löschen. Jobaktionen zeigen das Codefeld nur bei geldbewegenden Jobtypen. Regel in der Entwicklerdokumentation, Prüfung tools/totp-policy-check.php.'],
+            ['type' => 'Behoben', 'text' => 'Mobilprüfung (18 Seiten bei 390 px): Nur die Adminseite Rechtsdokumente ließ sich seitlich scrollen; ihre Tabellen liegen jetzt wie alle anderen in einem scrollbaren Rahmen. Die Fußzeile zeigt keine leeren Kommas mehr, wenn die Betreiberanschrift in der Konfiguration fehlt. Übrige Seiten ohne Befund.'],
+         ]],
         ['version' => '4.35', 'date' => '07.09.2026', 'title' => 'Workflow-Datei des Deployments wieder gültig',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Der Workflow 4.34 startete gar nicht (Lauf #69, „Unrecognized named-value: runner“): Die Zustandsdatei des automatischen zweiten Anlaufs wurde in der Job-Umgebung über runner.temp benannt, ein Kontext, den GitHub dort nicht kennt. Die Datei liegt jetzt unter einem festen Pfad im Runner-Heimatverzeichnis wie die SSH-Dateien desselben Jobs. Das Deployment von 4.34 (Migrationen 025 und 026) holt dieser Lauf nach.'],

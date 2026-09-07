@@ -764,7 +764,8 @@ der sie stammt:
 | Offene Störungen/Wartungen | Störungen und Wartungen | Meldungen samt Verlauf und Veröffentlichung |
 
 Der Abschnitt „Wartende Aufgaben“ nennt je Job die einreichende Person (fehlt sie, war es der Scheduler),
-den Zeitpunkt, den nächsten Versuch und die Versuchszahl. Aktionen (je mit 2FA-Code):
+den Zeitpunkt, den nächsten Versuch und die Versuchszahl. Aktionen (2FA-Code seit 4.36 nur bei geldbewegenden
+Jobtypen `collections_due` und `unclear_attempts`, `queue_type_is_money()`; bei allen anderen Typen ohne Code, immer mit Audit):
 
 - **Jetzt ausführen** setzt einen wartenden oder auf Wiederholung stehenden Job auf sofort fällig.
 - **Abbrechen** beendet einen wartenden Job.

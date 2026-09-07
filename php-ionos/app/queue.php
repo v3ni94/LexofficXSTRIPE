@@ -151,6 +151,22 @@ function queue_push(string $type, array $payload = [], array $opts = []): array
     return ['id' => $id, 'created' => true];
 }
 
+/**
+ * Jobtypen, die Geld bewegen (Einreichung von Lastschriften, Klärung unklarer Versuche). Eingriffe in solche
+ * Jobs über den Adminbereich (erneut versuchen, abbrechen, schließen, Reservierung freigeben) verlangen eine
+ * Zweitbestätigung per 2FA-Code; alle anderen Jobtypen (Synchronisation, Mail, Monitoring, Wartung) nicht
+ * (Vorgabe des Vorstands vom 07.09.2026: Zweitbestätigung nur für Login, Support-Modus, Wartung aktivieren,
+ * Not-Stopp aufheben und Geldfluss). Nicht mit WORKER_NO_FORCED_ABORT_TYPES verwechseln: dort geht es um die
+ * Notbremse des Workers, hier um die Freigabe durch einen Menschen.
+ */
+const QUEUE_MONEY_TYPES = ['collections_due', 'unclear_attempts'];
+
+/** Bewegt dieser Jobtyp Geld (Zweitbestätigung für Admin-Eingriffe erforderlich)? */
+function queue_type_is_money(?string $type): bool
+{
+    return in_array((string)$type, QUEUE_MONEY_TYPES, true);
+}
+
 /** Job laden (ohne Mandantenfilter, nur für Worker und Plattformadministration). */
 function queue_get(string $id): ?array
 {

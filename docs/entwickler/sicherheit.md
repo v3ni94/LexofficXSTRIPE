@@ -66,6 +66,28 @@ nur Bezeichner und Ablageorte.
   (`(int)$ctx['totp_enabled']`, `app/auth.php:280`), ein Superadmin-Konto ohne eingerichtete 2FA hat
   keinen Zugriff auf den Adminbereich.
 
+### Geltungsbereich der Zweitbestätigung (Beschluss des Vorstands vom 07.09.2026, umgesetzt in 4.36)
+
+Zweitbestätigung nur für Wichtiges: Anmeldung, Wechsel in Kundenaccounts, Wartung **aktivieren**, Not-Stopp **aufheben**,
+Geldfluss sowie Kontosicherheit. Alles andere läuft mit Anmeldung, Berechtigungsprüfung, CSRF-Schutz und Audit, aber ohne
+Codeeingabe. Die Regel ist statisch abgesichert (`php tools/totp-policy-check.php`, 73 Prüfungen: Zweige, Formularfelder,
+Geldfluss-Jobtypen) und wird bei jeder neuen Aktion dort ergänzt.
+
+| Kategorie | Aktion (Datei) | Zweitbestätigung |
+|---|---|---|
+| Anmeldung | `login.php` (eigener Mechanismus, `auth_login_2fa()`) | ja |
+| Kundenaccount | `support_start` (`admin-support.php`) | ja, zusätzlich Begründung |
+| Wartung aktivieren | `org_sync_pause` (`admin-system.php`); `incident_publish` (Störungs- oder Wartungsmeldung veröffentlichen) | ja; Fortsetzen (`org_sync_resume`) und Zurückziehen (`incident_unpublish`) nein |
+| Not-Stopp aufheben | `resume` (`notstopp.php`); `platform_pause` mit `pause=0` (`admin.php`) | ja; Aktivieren beider Not-Stopps bewusst ohne Hürde |
+| Geldfluss | `process_due_now` (`collections.php`), `apply` (`stripe-import.php`), Jobaktionen `job_retry_now`/`job_cancel`/`job_close`/`job_release` für `collections_due` und `unclear_attempts` (`QUEUE_MONEY_TYPES`, `queue_type_is_money()`) | ja; dieselben Jobaktionen für `sync_run`, `mail`, `alerts`, `mandate_reminders`, `monitor_collect`, `maintenance` nein |
+| Kontosicherheit | `change_password` (`security.php`), `transfer_ownership` (`team.php`, zusätzlich Passwort), `switch_invoice_source` (`settings.php`, Projektregel) | ja |
+| Rechtsdokumente | `publish`/`retire` (`admin-legal.php`, Außenwirkung für alle Firmen) | ja; `import_draft`, `create`, `delete` (nur unveröffentlichte Fassungen) nein |
+| Entfallen seit 4.36 | `plan_update`, `org_plan`, `interest_unsubscribe`/`interest_delete`/`interest_block`/`interest_invite` (`admin.php`); `publish_now`, `test_mail`, `sync_enqueue`, `org_queue_flag_on`/`off` (`admin-system.php`) | nein (Audit unverändert; endgültiges Löschen einer Vormerkung mit Bestätigungsdialog) |
+
+Bewusst offen gelassen (Empfehlung „behalten“, vom Vorstand nicht ausdrücklich genannt): `change_password` und
+`transfer_ownership` als Kontosicherheit, `switch_invoice_source` wegen der Projektregel in `CLAUDE.md`. Wer eine dieser
+Stellen ändert, passt zuerst `tools/totp-policy-check.php` an.
+
 ## Gerätevertrauen (90 Tage)
 
 Umgesetzt in `app/devices.php` (Migration 016, `devices_available()` Zeilen 138-150 prüft die

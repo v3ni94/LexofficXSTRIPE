@@ -1,13 +1,13 @@
 {
   "unternehmen": {
-    "revision": "r1",
+    "revision": "r2",
     "date": "07.09.2026",
-    "summary": "Erstfassung aus dem geprüften Projektstand (Version 4.32)."
+    "summary": "Funktionsübersicht: Zweitbestätigung nur für Wichtiges (4.36), Störungsmeldungen und Rechtsdokumente."
   },
   "entwickler": {
-    "revision": "r4",
+    "revision": "r5",
     "date": "07.09.2026",
-    "summary": "Deploy-Workflow: fester Pfad der Zustandsdatei, Regel zu Kontexten auf Job-Ebene (Lauf #69)."
+    "summary": "Geltungsbereich der Zweitbestätigung (2FA) nach Vorstandsbeschluss, QUEUE_MONEY_TYPES, Schnittstellenübersicht, Jobaktionen im Betrieb."
   },
   "kunden": {
     "revision": "r2",

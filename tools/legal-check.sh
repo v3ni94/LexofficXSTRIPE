@@ -19,6 +19,8 @@ grep -q "legal_accept(\$ctx" "$ROOT/php-ionos/rechtliches.php" && grep -q "can_m
 grep -q "accept_avv" "$ROOT/php-ionos/register.php" && grep -q "legal_active_documents()\['avv'\]" "$ROOT/php-ionos/register.php" && ok "Registrierung: AVV-Checkbox nur bei veroeffentlichter Fassung" || bad "register.php"
 grep -q "'registration'" "$ROOT/php-ionos/register.php" && ok "Registrierung schreibt Nachweis (Weg registration)" || bad "Nachweis Registrierung"
 grep -q "require_superadmin" "$ROOT/php-ionos/admin-legal.php" && grep -q "require_recent_totp" "$ROOT/php-ionos/admin-legal.php" && ok "Adminseite: Superadmin und 2FA" || bad "admin-legal.php Schutz"
+sed -n "/action === 'publish' || \$action === 'retire'/,/elseif/p" "$ROOT/php-ionos/admin-legal.php" | grep -q require_recent_totp && ok "Veroeffentlichen und Zurueckziehen verlangen den 2FA-Code" || bad "publish/retire ohne 2FA"
+! sed -n "/action === 'import_draft'/,/elseif/p" "$ROOT/php-ionos/admin-legal.php" | grep -q require_recent_totp && ok "Vorlage uebernehmen ohne 2FA-Code (Entwurf ohne Aussenwirkung, seit 4.36)" || bad "import_draft verlangt noch 2FA"
 grep -q "\[Platzhalter" "$ROOT/php-ionos/app/legal.php" && ok "Veroeffentlichung mit Platzhaltern gesperrt" || bad "Platzhalter-Sperre"
 ! grep -q "REMOTE_ADDR\|client_ip(" "$ROOT/php-ionos/app/legal.php" && ok "keine IP-Speicherung im Nachweis" || bad "IP im Nachweis"
 grep -q "legal_pending_for_org" "$ROOT/php-ionos/dashboard.php" && ok "Dashboard-Hinweis auf offene Pflichtdokumente" || bad "Dashboard"

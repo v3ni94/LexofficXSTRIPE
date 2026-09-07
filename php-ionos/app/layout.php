@@ -192,8 +192,8 @@ function layout_footer(?array $ctx = null): void
     </div>
     <?php endif; ?>
     <div class="footer-inner footer-legal">
-        <span><?= e($product) ?> ist ein Dienst der <?= e($op['name'] ?? 'Müller Holding AG') ?>,
-            <?= e($op['street'] ?? '') ?>, <?= e($op['zip_city'] ?? '') ?>.
+        <?php $opAddr = implode(', ', array_filter([trim((string)($op['street'] ?? '')), trim((string)($op['zip_city'] ?? ''))], static fn(string $v): bool => $v !== '')); ?>
+        <span><?= e($product) ?> ist ein Dienst der <?= e($op['name'] ?? 'Müller Holding AG') ?><?= $opAddr !== '' ? ', ' . e($opAddr) : '' ?>.
             <a href="impressum.php">Impressum</a>
             <?php if (($su = rtrim(trim((string)config('status_page_url', '')), '/')) !== ''): ?> · <a href="<?= e($su) ?>/" rel="noopener">Systemstatus</a><?php endif; ?>
             <?php if ($mk !== ''): ?>

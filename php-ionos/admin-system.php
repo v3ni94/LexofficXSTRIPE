@@ -68,7 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Verlauf ergänzt.');
             $back = 'admin-system.php?tab=stoerungen#inc-' . (string)($_POST['incident_id'] ?? '');
         } elseif ($action === 'incident_publish' || $action === 'incident_unpublish') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            if ($action === 'incident_publish') {
+                // Veröffentlichen einer Störungs- oder Wartungsmeldung ("Wartung aktivieren") mit Zweitbestätigung;
+                // Zurückziehen ohne (Vorstand 07.09.2026, Zweitbestätigung nur für Wichtiges).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            }
             monitor_incident_publish($ctx, (string)($_POST['incident_id'] ?? ''), $action === 'incident_publish');
             if ($cfg['publish']) {
                 status_publish(monitor_public_snapshot());
@@ -76,12 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', $action === 'incident_publish' ? 'Meldung veröffentlicht.' : 'Meldung zurückgezogen.');
             $back = 'admin-system.php?tab=stoerungen';
         } elseif ($action === 'publish_now') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Überträgt bereits öffentliche Kennzahlen; keine Zweitbestätigung (seit 4.36), CSRF und Audit bleiben.
             $r = status_publish(monitor_public_snapshot());
             audit_log(null, $ctx, 'status_published_manual', 'monitor', null, $r);
             flash_set('success', 'Statusdaten übertragen: ' . ($r ? http_build_query($r, '', ', ') : 'kein Ziel konfiguriert'));
         } elseif ($action === 'test_mail') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Diagnosefunktion ohne Wirkung auf Kunden oder Geld; keine Zweitbestätigung (seit 4.36).
             if ($cfg['test_mail_to'] === '') {
                 throw new RuntimeException('Keine Testadresse konfiguriert (monitoring.test_mail_to).');
             }
@@ -91,11 +95,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log(null, $ctx, 'monitor_test_mail', 'monitor', null, ['accepted' => $ok]);
             flash_set($ok ? 'success' : 'error', $ok ? 'Testnachricht an den Versandweg übergeben (Annahme, kein Zustellnachweis).' : 'Der Versandweg hat die Testnachricht nicht angenommen.');
         } elseif ($action === 'job_retry_now' || $action === 'job_cancel' || $action === 'job_close') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             if (!queue_available()) {
                 throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
             }
             $jobId = (string)($_POST['job_id'] ?? '');
+            $jobRow = queue_get($jobId);
+            if ($jobRow === null) {
+                throw new RuntimeException('Job nicht gefunden.');
+            }
+            if (queue_type_is_money($jobRow['type'] ?? null)) {
+                // Eingriff in einen geldbewegenden Job (Einreichung, Klärung): Zweitbestätigung (Geldfluss).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            }
             if ($action === 'job_retry_now') {
                 $r = queue_retry_now($jobId, $ctx);
                 flash_set($r['ok'] ? 'success' : 'error', $r['message']);
@@ -110,16 +121,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'job_release') {
             // Reservierung eines Jobs freigeben, dessen Worker sich nicht mehr meldet: zurueck in die
             // Warteschlange OHNE Fehlversuch. Nur bei abgelaufenem Heartbeat zulaessig (siehe queue.php).
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             if (!queue_available()) {
                 throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
+            }
+            $jobRow = queue_get((string)($_POST['job_id'] ?? ''));
+            if ($jobRow === null) {
+                throw new RuntimeException('Job nicht gefunden.');
+            }
+            if (queue_type_is_money($jobRow['type'] ?? null)) {
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             }
             $r = queue_release_one((string)($_POST['job_id'] ?? ''), $ctx);
             flash_set($r['ok'] ? 'success' : 'error', $r['message']);
             $back = 'admin-system.php?tab=jobs#wartend';
         } elseif ($action === 'sync_enqueue') {
             // Offenen Synchronisationslauf fortsetzen: Job einreihen (dedupe_key verhindert Doppeleintraege).
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Nur Jobtyp sync_run (Lesevorgang gegenüber Lexware Office, kein Geldfluss): keine Zweitbestätigung (seit 4.36).
             if (!queue_available()) {
                 throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
             }
@@ -138,9 +155,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', $r['created'] ? 'Fortsetzung der Synchronisation eingereiht.' : 'Für diese Firma ist bereits ein Synchronisationsjob aktiv.');
             $back = 'admin-system.php?tab=jobs#wartend';
         } elseif ($action === 'org_sync_pause' || $action === 'org_sync_resume') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             $orgId = (string)($_POST['org_id'] ?? '');
             $pause = $action === 'org_sync_pause';
+            if ($pause) {
+                // Wartungsmodus einer Firma aktivieren: Zweitbestätigung ("Wartung nur mit 2FA aktivieren");
+                // Fortsetzen ohne (Vorstand 07.09.2026).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            }
             $reason = trim((string)($_POST['reason'] ?? ''));
             if ($pause && $reason === '') {
                 throw new RuntimeException('Bitte einen Grund für die Wartung angeben.');
@@ -156,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', $pause ? 'Synchronisation für diese Firma pausiert.' : 'Synchronisation für diese Firma wieder freigegeben.');
             $back = 'admin-system.php?tab=jobs';
         } elseif ($action === 'org_queue_flag_on' || $action === 'org_queue_flag_off') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Technische Betriebskonfiguration ohne Geldfluss; keine Zweitbestätigung (seit 4.36), Audit in tenant_feature_set().
             $orgId = (string)($_POST['org_id'] ?? '');
             $chk = db()->prepare('SELECT id FROM organizations WHERE id = ? AND deleted_at IS NULL');
             $chk->execute([$orgId]);
@@ -359,7 +380,6 @@ echo layout_subnav($subnavItems, $tab, 'Systembereiche'); ?>
     </dl>
     <?php if ($canEdit && $cfg['test_mail_to'] !== ''): ?>
     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="test_mail">
-        <label for="tm_code">2FA-Code</label> <input type="text" id="tm_code" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code">
         <button type="submit" class="btn btn-secondary">Testnachricht senden</button></form>
     <?php endif; ?>
 </div>
@@ -548,11 +568,12 @@ $queueGlobalOn = feature_enabled('queue');
                 <td class="hint"><?= e((string)($j['last_error'] ?: '-')) ?></td>
                 <td>
                     <?php if ($canEdit): ?>
+                    <?php $money = queue_type_is_money($j['type'] ?? null); ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_retry_now"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Jetzt ausführen</button></form>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_cancel"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Abbrechen</button></form>
                     <?php else: ?><span class="hint">Nur mit Bearbeitungsrecht</span><?php endif; ?>
                 </td>
@@ -580,7 +601,7 @@ $queueGlobalOn = feature_enabled('queue');
                 <td>
                     <?php if ($canEdit): ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_release"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if (queue_type_is_money($j['type'] ?? null)): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Reservierung freigeben</button></form>
                     <?php else: ?><span class="hint">Nur mit Bearbeitungsrecht</span><?php endif; ?>
                 </td>
@@ -608,7 +629,6 @@ $queueGlobalOn = feature_enabled('queue');
                 <td>
                     <?php if ($canEdit && $r['job'] === null && (int)($r['sync_paused'] ?? 0) !== 1): ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="sync_enqueue"><input type="hidden" name="org_id" value="<?= e((string)$r['tenant_id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
                         <button type="submit" class="btn btn-sm btn-secondary">Fortsetzung einreihen</button></form>
                     <?php elseif ($r['job'] !== null): ?><span class="hint">Job wartet bereits</span>
                     <?php elseif (!$canEdit): ?><span class="hint">Nur mit Bearbeitungsrecht</span>
@@ -652,14 +672,15 @@ $queueGlobalOn = feature_enabled('queue');
                 <td><?= e(mon_local($j['finished_at'])) ?></td>
                 <td>
                     <?php if ($canEdit): ?>
+                    <?php $money = queue_type_is_money($j['type'] ?? null); ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_retry_now"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Erneut versuchen</button></form>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_cancel"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Abbrechen</button></form>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_close"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-danger">Dauerhaft schließen</button></form>
                     <?php else: ?>
                         <span class="hint">Nur mit Bearbeitungsrecht (monitoring.editors)</span>
@@ -687,7 +708,6 @@ $queueGlobalOn = feature_enabled('queue');
                         <span class="hint">Nur mit Bearbeitungsrecht</span>
                     <?php elseif ($oPaused): ?>
                         <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="org_sync_resume"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
-                            <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
                             <button type="submit" class="btn btn-sm">Fortsetzen</button></form>
                     <?php else: ?>
                         <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="org_sync_pause"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
@@ -718,7 +738,6 @@ $queueGlobalOn = feature_enabled('queue');
                         <span class="hint">Durch globales Flag festgelegt</span>
                     <?php else: ?>
                         <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="<?= $tenantOn ? 'org_queue_flag_off' : 'org_queue_flag_on' ?>"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
-                            <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
                             <button type="submit" class="btn btn-sm <?= $tenantOn ? 'btn-secondary' : '' ?>"><?= $tenantOn ? 'Deaktivieren' : 'Aktivieren' ?></button></form>
                     <?php endif; ?>
                 </td>
@@ -942,7 +961,7 @@ $winFrom = $now - $d * 86400;
                 <label>Interne Notiz <input type="text" name="internal_note" maxlength="2000"></label>
                 <button type="submit" class="btn btn-sm btn-secondary">Verlauf ergänzen</button></form>
             <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="<?= (int)$inc['published'] ? 'incident_unpublish' : 'incident_publish' ?>"><input type="hidden" name="incident_id" value="<?= e($inc['id']) ?>">
-                <label>2FA-Code <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code"></label>
+                <?php if (!(int)$inc['published']): ?><label>2FA-Code <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code"></label><?php endif; ?>
                 <button type="submit" class="btn btn-sm <?= (int)$inc['published'] ? 'btn-secondary' : '' ?>"><?= (int)$inc['published'] ? 'Zurückziehen' : 'Veröffentlichen' ?></button></form>
         </div>
         <?php endif; ?>
@@ -979,7 +998,6 @@ $winFrom = $now - $d * 86400;
         <dt>Öffentliche Seite</dt><dd><?= $cfg['status_page_url'] !== '' ? '<a href="' . e($cfg['status_page_url']) . '" target="_blank" rel="noopener">' . e($cfg['status_page_url']) . '</a>' : 'Nicht konfiguriert (status_page_url)' ?></dd>
     </dl>
     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="publish_now">
-        <label>2FA-Code <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code"></label>
         <button type="submit" class="btn btn-secondary">Snapshot jetzt übertragen</button></form>
 </div>
 <?php endif; ?>
