@@ -12,6 +12,11 @@
  *   php bin/healthcheck.php --workers=lexware,stripe   je Pool mindestens ein lebender Worker (DB)
  *   php bin/healthcheck.php --scheduler     Scheduler-Heartbeat in der DB jünger als 120 s
  *   php bin/healthcheck.php --queue         Warteschlange lesbar, keine Jobs mit abgelaufenem Heartbeat > 10
+ *   php bin/healthcheck.php --expect-env=prod|staging   Konfiguration (config('environment')) passt zum
+ *                                           erwarteten Server (Schutz gegen einen versehentlichen
+ *                                           Staging-Deploy gegen die Produktionskonfiguration); ein
+ *                                           Staging-Aufruf VERLANGT das Feld, ein Produktions-Aufruf
+ *                                           bleibt ohne das Feld rueckwaertskompatibel unauffaellig
  *   php bin/healthcheck.php --all           db, redis, workers (alle Pools), scheduler, queue
  * Exit 0 = gesund, 1 = ungesund. Gibt nur Kurztexte aus, keine Geheimnisse.
  */
@@ -62,6 +67,39 @@ if ($all || isset($opts['redis'])) {
             }
         }
         return $lastReason;
+    });
+}
+if (isset($opts['expect-env'])) {
+    $check('environment', function () use ($opts) {
+        $want = (string)$opts['expect-env'];
+        if (!in_array($want, ['prod', 'staging'], true)) {
+            return 'unbekannter Wert fuer --expect-env: ' . $want . ' (erlaubt: prod, staging)';
+        }
+        $configured = config('environment');
+        if ($want === 'staging') {
+            // Staging VERLANGT das Feld: Fehlt es, liesse sich ein versehentlicher Staging-Deploy gegen
+            // die Produktionskonfiguration (z.B. bei irrtuemlicher Co-Lokation auf demselben Host, siehe
+            // docs/vps/06-betrieb.md, Abschnitt "Staging- und Produktionsisolation") nicht erkennen.
+            if ($configured !== 'staging') {
+                return $configured === null
+                    ? 'Konfiguration hat kein Feld "environment" => "staging" (siehe app/config.example.php)'
+                    : 'Konfiguration meldet Umgebung "' . $configured . '", erwartet "staging"';
+            }
+            // Zusaetzliche Absicherung gegen echte Abbuchungen: Die Plattform-Abrechnung (Abo-Einzug der
+            // Müller Holding AG) darf in Staging niemals mit einem Live-Schluessel des Stripe-Kontos laufen.
+            $billing = (array)config('billing', []);
+            $key = (string)($billing['stripe_secret_key'] ?? '');
+            if (($billing['enabled'] ?? false) && str_starts_with($key, 'sk_live_')) {
+                return 'billing.enabled ist gesetzt und billing.stripe_secret_key sieht wie ein Live-Schluessel aus (sk_live_...); in Staging nur einen Test-Schluessel (sk_test_...) verwenden';
+            }
+            return true;
+        }
+        // $want === 'prod': ohne das Feld bleibt eine bestehende Installation rueckwaertskompatibel
+        // unauffaellig; nur ein expliziter Widerspruch (Konfiguration meldet "staging") schlaegt fehl.
+        if ($configured !== null && $configured !== 'prod') {
+            return 'Konfiguration meldet Umgebung "' . $configured . '", erwartet "prod"';
+        }
+        return true;
     });
 }
 if (isset($opts['heartbeat'])) {

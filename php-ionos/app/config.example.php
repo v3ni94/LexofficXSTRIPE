@@ -15,6 +15,17 @@ if (get_included_files()[0] === __FILE__) {
 }
 
 return [
+    // --- Umgebungskennzeichen (nur fuer den Hostinger-VPS-Stack relevant, IONOS-Webhosting kann dies
+    // weglassen) ---
+    // 'prod' oder 'staging', muss zum DEPLOY_ENV aus deploy/.env auf demselben Server passen. Schuetzt
+    // vor einem versehentlichen Staging-Deploy gegen die Produktionskonfiguration (z.B. wenn Staging aus
+    // Versehen auf demselben Host wie Produktion eingerichtet wuerde und dabei dieselbe config.php
+    // traefe): Die isolierte Candidate-Pruefung (deploy.sh, bin/healthcheck.php --expect-env) bricht das
+    // Deployment ab, wenn 'environment' hier nicht zu DEPLOY_ENV passt. Fehlt dieses Feld, gilt die
+    // Konfiguration fuer einen Produktions-Deploy weiterhin als unauffaellig (Rueckwaertskompatibel);
+    // ein Staging-Deploy VERLANGT dagegen zwingend 'environment' => 'staging', sonst bricht er ab.
+    'environment' => 'prod',
+
     // --- MariaDB ---
     // IONOS Webhosting: Zugangsdaten aus dem IONOS Kundenbereich (Hosting > Datenbanken).
     // Hostinger-VPS: Die Datenbank ist eine private Coolify-Ressource. host = Containername der Coolify-MariaDB

@@ -15,6 +15,25 @@ services:
   caddy:
     mem_limit: 256m
     cpus: "0.50"
+    # Traefik (Coolify-Proxy): Entrypoints "http"/"https" und Certresolver "letsencrypt" entsprechen der
+    # Standardkonfiguration von Coolify (/data/coolify/proxy/docker-compose.yml auf dem Server pruefen).
+    # Router-/Middleware-/Dienstnamen "smarteinzug-*" sind ausschliesslich Produktion vorbehalten; Staging
+    # verwendet eigene Namen "smarteinzug-staging-*" (docker-compose.staging.yml), damit auf demselben
+    # Traefik-Proxy niemals zwei Dienste denselben Router beanspruchen koennen.
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${COOLIFY_NETWORK:-coolify}
+      traefik.http.routers.smarteinzug-http.rule: Host(`${DOMAIN_APP}`) || Host(`${DOMAIN_ADMIN}`) || Host(`${DOMAIN_API}`) || Host(`${DOMAIN_STATUS}`)
+      traefik.http.routers.smarteinzug-http.entrypoints: http
+      traefik.http.routers.smarteinzug-http.middlewares: smarteinzug-redirect
+      traefik.http.middlewares.smarteinzug-redirect.redirectscheme.scheme: https
+      traefik.http.middlewares.smarteinzug-redirect.redirectscheme.permanent: "true"
+      traefik.http.routers.smarteinzug-https.rule: Host(`${DOMAIN_APP}`) || Host(`${DOMAIN_ADMIN}`) || Host(`${DOMAIN_API}`) || Host(`${DOMAIN_STATUS}`)
+      traefik.http.routers.smarteinzug-https.entrypoints: https
+      traefik.http.routers.smarteinzug-https.tls: "true"
+      traefik.http.routers.smarteinzug-https.tls.certresolver: letsencrypt
+      traefik.http.routers.smarteinzug-https.service: smarteinzug
+      traefik.http.services.smarteinzug.loadbalancer.server.port: "80"
 
   php:
     mem_limit: 1536m

@@ -467,14 +467,55 @@ Container).
 ## 25. Staging-Umgebung einrichten (empfohlen vor jeder größeren Änderung)
 
 **Zweck:** Änderungen an Docker-Stack, Migrationen und Deployment risikofrei testen.
-**Vorgehen:** Empfehlung: eigener, kleinerer VPS mit eigener `.env` (nur `DOMAIN_STAGING` gesetzt),
-`docker-compose.staging.yml` und `Caddyfile.staging` statt der Produktionsdateien (siehe
-`deploy/vps/README.md`, Abschnitt „Start“). Keine produktiven Kundendaten auf Staging verwenden.
+
+**Empfohlene und sichere Vorgehensweise (erstmalige Einrichtung):**
+
+1. **Eigener Server.** Staging auf einem eigenen, physisch getrennten (kleineren) VPS einrichten, nicht
+   auf dem Produktions-VPS. Das ist weiterhin die primäre Absicherung: Läuft Staging nie auf demselben
+   Host, kann es die produktiven Bind-Mounts (`/opt/smarteinzug/shared/config.php`,
+   `shared/storage`, `shared/sessions`) schon durch die Servertrennung selbst nicht erreichen.
+2. **Eigene Coolify-Ressourcen.** Auf diesem Staging-Server eine eigene, leere Coolify-MariaDB-Instanz
+   und die übliche Coolify-Proxy-Einrichtung anlegen (siehe Kapitel 1–24 dieser Anleitung, für Staging
+   wiederholt). Niemals einen Datenbank-Dump aus Produktion einspielen, der laufenden Vertrags-/
+   Zahlungsdaten enthält; Staging beginnt mit einem leeren Schema (`sql/schema.sql`) und eigenen
+   Testfirmen.
+3. **Eigene `.env`.** `deploy/vps/.env.example` nach `/opt/smarteinzug/deploy/.env` kopieren,
+   `DEPLOY_ENV=staging` setzen, nur `DOMAIN_STAGING` füllen (die vier Produktionsdomains leer lassen),
+   eigenen `COOLIFY_NETWORK`-Namen prüfen, falls abweichend.
+4. **Eigene `config.php` MIT Umgebungskennzeichen.** `app/config.example.php` nach
+   `/opt/smarteinzug/shared/config.php` kopieren und ausfüllen. **Zwingend erforderlich:**
+   `'environment' => 'staging'` setzen (Standard in der Vorlage ist `'prod'`). Ohne dieses Feld bricht
+   die Candidate-Prüfung jedes Staging-Deployments ab (siehe unten, Punkt „Automatischer Schutz“) –
+   das ist beabsichtigt und kein Fehler, sondern die eingebaute Absicherung gegen genau den Fall, dass
+   hier versehentlich eine produktive `config.php` kopiert wurde. `billing.enabled` auf Staging nur mit
+   einem Stripe-**Test**-Schlüssel (`sk_test_...`) aktivieren, niemals mit dem Live-Schlüssel der
+   Müller Holding AG. Für die Firmen-eigenen Stripe-/Lexware-Zugangsdaten (verschlüsselt je Firma in
+   der Datenbank, siehe `docs/`) gilt dasselbe: Auf Staging ausschließlich Sandbox-/Test-Zugangsdaten
+   eigens angelegter Testfirmen hinterlegen, nie produktive Zugangsdaten einer echten Firma.
+5. **Start.** `docker-compose.staging.yml` und `Caddyfile.staging` verwenden (siehe
+   `deploy/vps/README.md`, Abschnitt „Start“); niemals `docker-compose.prod.yml`. Der eigene
+   Compose-Projektname (`name: smarteinzug-staging`, bereits in `docker-compose.staging.yml`
+   hinterlegt) sorgt automatisch für eigene Container-, Netz- und Volume-Namen, die eigenen
+   Traefik-Router-/Middleware-/Dienstnamen (`smarteinzug-staging-*`) dafür, dass Staging sich auch auf
+   einem eventuell doch gemeinsam genutzten Coolify-Proxy nicht mit Produktion überschreibt.
+
+**Automatischer Schutz (zusätzlich zur Servertrennung, siehe `docs/vps/06-betrieb.md`, Abschnitt
+„Staging- und Produktionsisolation“):** Jede isolierte Candidate-Prüfung eines Staging-Deployments
+(`deploy.sh`) und jeder Staging-Rollback (`rollback.sh`) ruft
+`bin/healthcheck.php --expect-env=staging` auf und bricht ab, wenn `config('environment')` nicht
+`'staging'` ist oder `billing.stripe_secret_key` wie ein Live-Schlüssel aussieht. `docker compose
+config` mit `-f docker-compose.staging.yml` verwendet außerdem zwingend einen eigenen
+Compose-Projektnamen und eigene Traefik-Namen (per `python3 tools/staging-isolation-check.py`
+regressionsgeprüft).
+
 **Erwartetes Ergebnis:** `staging.smart-einzug.de` erreichbar, eigene, leere oder mit Testdaten
 gefüllte Datenbank.
-**Prüfkommando:** `curl -s https://staging.smart-einzug.de/health.php`.
+**Prüfkommando:** `curl -s https://staging.smart-einzug.de/health.php`; zusätzlich
+`python3 tools/staging-isolation-check.py` vor dem ersten Start auf dem neuen Server ausführen.
 **Mögliche Fehler:** Staging und Produktion teilen sich versehentlich dieselbe Datenbank oder
-denselben `app_secret` (unbedingt vermeiden, getrennte `.env`/`config.php` verwenden).
+denselben `app_secret` (unbedingt vermeiden, getrennte `.env`/`config.php` verwenden); fehlendes
+`'environment' => 'staging'` in `config.php` (Candidate-Prüfung bricht ab, siehe oben – `config.php`
+korrigieren, kein produktiver Schaden entstanden).
 
 ## 26. Feature-Flag Queue schrittweise aktivieren
 

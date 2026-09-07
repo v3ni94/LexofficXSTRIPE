@@ -7,6 +7,17 @@
 # dieselbe Datenbank wie Produktion. Nur EIN
 # Lexware-Worker (worker-lexware-2 ist ueber ein Profil abgeschaltet), engere Ressourcenlimits und
 # kleinere Speichergrenzen fuer MariaDB und Redis; Log-Rotation wie in Produktion.
+#
+# Isolation von Produktion (siehe docs/vps/06-betrieb.md, Abschnitt "Staging- und
+# Produktionsisolation"): Der eigene Projektname "smarteinzug-staging" unten sorgt dafuer, dass JEDE
+# von Compose verwaltete Ressource (Container, Netz "smarteinzug_internal", Volumes "caddy_data"/
+# "caddy_config") automatisch mit dem Prefix "smarteinzug-staging_" versehen wird und damit selbst bei
+# versehentlichem Aufruf auf demselben Host niemals gleichnamige Produktionsressourcen trifft oder
+# ueberschreibt. Aus demselben Grund tragen die Traefik-Labels unten eigene Router-/Middleware-/
+# Dienstnamen ("smarteinzug-staging-*" statt "smarteinzug-*"): Traefik kennt keine Projektnamen, zwei
+# Container mit identischen Routernamen auf demselben Coolify-Proxy wuerden sich sonst gegenseitig
+# ueberschreiben, unabhaengig vom Compose-Projekt.
+name: smarteinzug-staging
 
 services:
   caddy:
@@ -25,17 +36,22 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: ${COOLIFY_NETWORK:-coolify}
-      traefik.http.routers.smarteinzug-http.rule: Host(`${DOMAIN_STAGING}`)
-      traefik.http.routers.smarteinzug-http.entrypoints: http
-      traefik.http.routers.smarteinzug-http.middlewares: smarteinzug-redirect
-      traefik.http.middlewares.smarteinzug-redirect.redirectscheme.scheme: https
-      traefik.http.middlewares.smarteinzug-redirect.redirectscheme.permanent: "true"
-      traefik.http.routers.smarteinzug-https.rule: Host(`${DOMAIN_STAGING}`)
-      traefik.http.routers.smarteinzug-https.entrypoints: https
-      traefik.http.routers.smarteinzug-https.tls: "true"
-      traefik.http.routers.smarteinzug-https.tls.certresolver: letsencrypt
-      traefik.http.routers.smarteinzug-https.service: smarteinzug
-      traefik.http.services.smarteinzug.loadbalancer.server.port: "80"
+      # Eigene Router-/Middleware-/Dienstnamen "smarteinzug-staging-*": Traefik kennt keine
+      # Compose-Projektnamen, nur die Labels selbst. Wuerden hier dieselben Namen wie in
+      # docker-compose.prod.yml verwendet, wuerde der zuletzt gestartete Container (Produktion oder
+      # Staging) den Router des jeweils anderen ueberschreiben, sobald beide am selben Traefik-Proxy
+      # (Coolify-Netz) haengen.
+      traefik.http.routers.smarteinzug-staging-http.rule: Host(`${DOMAIN_STAGING}`)
+      traefik.http.routers.smarteinzug-staging-http.entrypoints: http
+      traefik.http.routers.smarteinzug-staging-http.middlewares: smarteinzug-staging-redirect
+      traefik.http.middlewares.smarteinzug-staging-redirect.redirectscheme.scheme: https
+      traefik.http.middlewares.smarteinzug-staging-redirect.redirectscheme.permanent: "true"
+      traefik.http.routers.smarteinzug-staging-https.rule: Host(`${DOMAIN_STAGING}`)
+      traefik.http.routers.smarteinzug-staging-https.entrypoints: https
+      traefik.http.routers.smarteinzug-staging-https.tls: "true"
+      traefik.http.routers.smarteinzug-staging-https.tls.certresolver: letsencrypt
+      traefik.http.routers.smarteinzug-staging-https.service: smarteinzug-staging
+      traefik.http.services.smarteinzug-staging.loadbalancer.server.port: "80"
 
   php:
     mem_limit: 256m

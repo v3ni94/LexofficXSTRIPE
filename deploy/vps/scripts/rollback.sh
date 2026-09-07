@@ -111,6 +111,14 @@ fi
 export RELEASE_SHA="$TARGET"
 printf 'RELEASE_SHA=%s\n' "$TARGET" > "$DEPLOY_DIR/.release.env"
 
+# Schutz gegen einen versehentlichen Staging-Rollback gegen die Produktionskonfiguration (dieselbe
+# Absicherung wie in deploy.sh, siehe dort "Candidate pruefen"; hier ueber den bereits laufenden
+# Container, da ein Rollback keinen eigenen Candidate-Container verwendet).
+if ! "${COMPOSE[@]}" exec -T php php bin/healthcheck.php --expect-env="$DEPLOY_ENV" 2>&1; then
+    echo "::error:: Umgebungspruefung fehlgeschlagen (config('environment') passt nicht zu DEPLOY_ENV=$DEPLOY_ENV). Kein Rollback."
+    exit 1
+fi
+
 # Vertraeglichkeit mit dem Datenbankschema pruefen: Alle eingespielten Migrationen muessen im
 # Zielrelease vorhanden sein, sonst wuerde aelterer Code auf ein neueres Schema treffen.
 APPLIED="$("${COMPOSE[@]}" exec -T php php bin/migrate.php --status 2>/dev/null | awk '$2=="applied"{print $1}' || true)"

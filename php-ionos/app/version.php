@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.6';
+const APP_VERSION = '4.7';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.7', 'date' => '07.09.2026', 'title' => 'Staging- und Produktionsisolation im VPS-Stack',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Eine Prüfung auf dem produktiven VPS (nur docker compose config, kein Start) ergab, dass Staging und Produktion denselben Compose-Projektnamen erbten und dadurch dieselben Container-, Netz- und Volume-Namen erhalten hätten (z. B. "smarteinzug_smarteinzug_internal", "smarteinzug_caddy_data"); zusätzlich verwendeten beide Umgebungen identische Traefik-Router-/Middleware-/Dienstnamen. docker-compose.staging.yml setzt jetzt einen eigenen Projektnamen ("smarteinzug-staging") und eigene Traefik-Namen ("smarteinzug-staging-*"); die Traefik-Labels von Produktion stehen dafür nicht mehr in der gemeinsamen docker-compose.yml, sondern ausschließlich in docker-compose.prod.yml.'],
+            ['type' => 'Neu', 'text' => 'Zusätzliches technisches Sicherheitsnetz gegen einen versehentlichen Staging-Deploy oder -Rollback gegen die Produktionskonfiguration: shared/config.php erhält ein Feld "environment" (prod/staging, siehe app/config.example.php); die isolierte Candidate-Prüfung jedes Deployments und jeder Rollback rufen bin/healthcheck.php --expect-env=$DEPLOY_ENV auf und brechen ab, bevor Migrationen oder ein Cutover stattfinden, wenn die Konfiguration nicht zur erwarteten Umgebung passt (ein Staging-Aufruf verlangt das Feld zwingend). Zusätzlich prüft dieser Schritt, dass die Plattform-Abrechnung in Staging keinen Live-Stripe-Schlüssel verwendet.'],
+            ['type' => 'Geändert', 'text' => 'Die primäre Absicherung bleibt die Servertrennung (Staging auf einem eigenen, physisch getrennten VPS mit eigener Coolify-MariaDB, niemals auf dem Produktions-VPS); die sichere Vorgehensweise zur Ersteinrichtung ist in docs/vps/02-einrichtung-vps.md, Kapitel 25, dokumentiert.'],
+            ['type' => 'Neu', 'text' => 'Regressionstest tools/staging-isolation-check.py (kein Docker-Daemon nötig, nur docker compose ... config): bestätigt getrennte Projekt-/Volume-/Netz-/Traefik-Namen zwischen Produktion und Staging sowie das Vorhandensein des --expect-env-Schutzes in bin/healthcheck.php, deploy.sh und rollback.sh.'],
+         ]],
         ['version' => '4.6', 'date' => '07.09.2026', 'title' => 'Verwertbare Fehlerdiagnose der Candidate-Prüfung',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Der erste produktive Einsatz der neuen Candidate-Prüfung (Version 4.5) scheiterte mit der unbrauchbaren Meldung "redis: other": Der Fehlertext eines fehlgeschlagenen Redis-Zugriffs im Alpine/musl-basierten PHP-Image wich von der bisher erkannten glibc-Formulierung ab und wurde nicht erkannt. bin/healthcheck.php --redis erkennt jetzt zusätzliche Fehlerklassen (DNS, Verbindung abgelehnt, Authentifizierung, vom Server beendete Verbindung) und versucht bei einem Fehlschlag bis zu dreimal mit kurzer Pause erneut, um eine rein transiente Störung beim Netzwerkaufbau eines frisch erzeugten Containers abzufedern.'],

@@ -213,15 +213,20 @@ fi
 # Migration gegen ein durch einen abgebrochenen Container-Recreate halb hergestelltes Release liefe:
 # Schlaegt einer der beiden Schritte fehl, wurde an den laufenden Containern noch NICHTS veraendert, ein
 # Rollback ist dann nicht noetig (die alte Version laeuft unveraendert weiter).
+# --expect-env=$DEPLOY_ENV: Die Candidate-Konfiguration muss zum hier laufenden Deployment passen (siehe
+# app/config.example.php, Feld "environment"). Schuetzt vor einem versehentlichen Staging-Deploy gegen
+# die Produktionskonfiguration, falls Staging jemals auf demselben Host wie Produktion mit derselben
+# config.php eingerichtet wuerde (siehe docs/vps/06-betrieb.md, Abschnitt "Staging- und
+# Produktionsisolation").
 echo "Pruefe den Candidaten isoliert (eigener Container, ohne die laufende Anwendung zu beruehren) ..."
-CANDIDATE_CMD='docker compose run --rm --no-deps -T php php bin/healthcheck.php --db --redis'
+CANDIDATE_CMD="docker compose run --rm --no-deps -T php php bin/healthcheck.php --db --redis --expect-env=$DEPLOY_ENV"
 set +e
-"${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --db --redis
+"${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --db --redis --expect-env="$DEPLOY_ENV"
 CANDIDATE_RC=$?
 set -e
 if [[ "$CANDIDATE_RC" -ne 0 ]]; then
     deploy_fail_report "candidate-pruefung" "$CANDIDATE_CMD" "$CANDIDATE_RC"
-    echo "::error:: Candidate-Pruefung fehlgeschlagen (Datenbank oder Redis mit dem neuen Code nicht erreichbar; genaue Ursache siehe UNGESUND-Zeile oben, z.B. dns/connection_refused/connection/timeout/auth)."
+    echo "::error:: Candidate-Pruefung fehlgeschlagen (Datenbank/Redis mit dem neuen Code nicht erreichbar oder falsche Umgebung in der Konfiguration; genaue Ursache siehe UNGESUND-Zeile oben, z.B. dns/connection_refused/connection/timeout/auth/environment)."
     echo "Die laufenden Container wurden NICHT veraendert, kein Rollback noetig."
     exit 1
 fi

@@ -237,6 +237,64 @@ Verbindungsversuch unternahm.
   Candidate-Prüfung, Migration, Cutover einhält und beide isolierten Schritte ausschließlich über
   `docker compose run --rm --no-deps` laufen).
 
+## Staging- und Produktionsisolation
+
+Eine Prüfung auf dem produktiven VPS (`docker compose config`, ohne einen tatsächlichen Staging-Start)
+ergab, dass Staging und Produktion denselben Compose-Projektnamen erbten (`name: smarteinzug` nur in
+der Basis-Datei gesetzt) und dadurch dieselben Container-, Netz- und Volume-Namen erhalten hätten
+(z. B. `smarteinzug_smarteinzug_internal`, `smarteinzug_caddy_data`); ein versehentlicher
+`docker compose up -d` für Staging auf demselben Host hätte diese produktiven Ressourcen neu erzeugen
+oder überschreiben können. Zusätzlich verwendeten beide Umgebungen identische Traefik-Router-,
+Middleware- und Dienstnamen (nur der Wert der Host()-Regel unterschied sich) – auf demselben
+Coolify-Proxy hätte der zuletzt gestartete Container (Produktion oder Staging) den Router des jeweils
+anderen überschrieben, unabhängig vom Compose-Projektnamen (Traefik kennt keine Compose-Projekte).
+
+**Behoben:**
+
+- `docker-compose.staging.yml` setzt jetzt einen eigenen Projektnamen (`name: smarteinzug-staging`).
+  Compose leitet daraus automatisch eigene Namen für jede verwaltete Ressource ab: Container
+  (`smarteinzug-staging-caddy-1` statt `smarteinzug-caddy-1` usw.), das interne Netz
+  (`smarteinzug-staging_smarteinzug_internal`) und die Volumes (`smarteinzug-staging_caddy_data`,
+  `smarteinzug-staging_caddy_config`). Das externe Coolify-Netz (`coolify`) bleibt bewusst geteilt
+  (beide Umgebungen brauchen den Coolify-Proxy), ist aber `external: true` und wird von keiner
+  Umgebung verwaltet oder verändert.
+- Die Traefik-Labels des `caddy`-Dienstes stehen nicht mehr in der gemeinsamen `docker-compose.yml`,
+  sondern ausschließlich in `docker-compose.prod.yml` (Namen `smarteinzug-*`, unverändert) bzw.
+  `docker-compose.staging.yml` (umbenannt auf `smarteinzug-staging-*`). Keine der beiden Umgebungen
+  kann dadurch mehr die Router-Definition der anderen überschreiben, selbst wenn beide zufällig am
+  selben Coolify-Proxy hängen.
+- **Besonders kritisch: Datenbank.** Die Compose-Ebene kann eine externe Coolify-MariaDB-Ressource
+  nicht technisch von einer anderen unterscheiden (der Containername steht in `shared/config.php`,
+  einer Host-Datei außerhalb des Git-Releases). Die primäre Absicherung bleibt deshalb organisatorisch:
+  Staging läuft auf einem eigenen, physisch getrennten Server mit eigener Coolify-MariaDB und eigener
+  `shared/config.php` (siehe `docs/vps/02-einrichtung-vps.md`, Kapitel 25). Als zusätzliches,
+  technisches Sicherheitsnetz prüft die ohnehin schon isolierte Candidate-Prüfung jedes Deployments
+  (siehe oben) und jeder Rollback zusätzlich `bin/healthcheck.php --expect-env=$DEPLOY_ENV`: Ein
+  Staging-Deploy VERLANGT dafür zwingend `'environment' => 'staging'` in `config.php` (siehe
+  `app/config.example.php`) und bricht sonst ab – auch wenn Staging versehentlich dieselbe `config.php`
+  wie Produktion einbinden würde (z. B. bei irrtümlicher Co-Lokation auf demselben Host), fiele das
+  hier auf, bevor Migrationen oder ein Cutover stattfinden. Ein Produktions-Deploy bleibt ohne dieses
+  Feld rückwärtskompatibel unauffällig (bestehende Installationen müssen `config.php` nicht sofort
+  ändern); nur ein expliziter Widerspruch (Konfiguration meldet „staging“) lässt einen
+  Produktions-Deploy ebenfalls fehlschlagen.
+- **Worker-Sicherheit.** Da ein Staging-Deploy mit fehlender oder falscher Umgebungskennzeichnung
+  bereits in der Candidate-Prüfung abbricht, kann Staging strukturell nicht unbemerkt gegen die
+  produktive Datenbank laufen – und dort liegen die verschlüsselten, produktiven
+  Stripe-/Lexware-Zugangsdaten der Firmen. Ergänzend prüft `--expect-env=staging`, dass die
+  Plattform-Abrechnung (`billing.stripe_secret_key`, das Stripe-Konto der Müller Holding AG für das
+  Abo selbst) in Staging keinen Live-Schlüssel (`sk_live_...`) verwendet.
+- Regressionstest `tools/staging-isolation-check.py` (kein Docker-Daemon nötig, nur
+  `docker compose ... config`): prüft anhand der tatsächlich aufgelösten Konfiguration, dass
+  Projektname, Volume-Namen und Netzname von Produktion und Staging sich unterscheiden, dass sich die
+  Traefik-Router-/Middleware-/Dienstnamen NICHT überschneiden, dass die Host()-Regeln nicht die Domain
+  der jeweils anderen Umgebung enthalten, und dass `bin/healthcheck.php`, `deploy.sh` und
+  `rollback.sh` den `--expect-env`-Schutz tatsächlich verwenden.
+
+**Was das NICHT ersetzt:** Ein physisch getrennter Server für Staging bleibt die empfohlene und
+sicherste Vorgehensweise (siehe `docs/vps/02-einrichtung-vps.md`, Kapitel 25). Die hier beschriebenen
+Maßnahmen sind zusätzliche, technisch erzwungene Sicherheitsnetze für den Fall menschlicher Fehler
+(falsche `.env`, falsche `config.php`, versehentliche Co-Lokation), kein Ersatz für die Servertrennung.
+
 ## Worker skalieren und neu starten
 
 ```bash

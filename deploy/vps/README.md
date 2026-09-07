@@ -12,7 +12,7 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 |---|---|
 | `docker-compose.yml` | Basisdienste (Caddy, php, scheduler, Worker-Pools, metrics, redis); KEINE eigene MariaDB und KEIN Backup-Container: beides uebernimmt Coolify |
 | `docker-compose.prod.yml` | Override Produktion: Ressourcenlimits, zweiter Lexware-Worker (`worker-lexware-2`) |
-| `docker-compose.staging.yml` | Override Staging: kleinere Ressourcenlimits, eigene Caddyfile, nur ein Lexware-Worker |
+| `docker-compose.staging.yml` | Override Staging: eigener Compose-Projektname (`smarteinzug-staging`, eigene Container-/Netz-/Volume-Namen), eigene Traefik-Namen (`smarteinzug-staging-*`), kleinere Ressourcenlimits, eigene Caddyfile, nur ein Lexware-Worker |
 | `Caddyfile` / `Caddyfile.staging` | Reverse Proxy, ersetzt `php-ionos/.htaccess` vollstaendig |
 | `php/Dockerfile`, `php/php.ini`, `php/www.conf` | gemeinsames PHP-Image fuer Web, Scheduler, alle Worker |
 | `redis/redis.conf` | Redis-Konfiguration (kein persistenter Datenbestand) |
@@ -25,7 +25,8 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 | `scripts/db-verify.php` | Tabellen, Zeilenzahlen, CHECKSUM TABLE als JSON (Alt/Neu-Abgleich) |
 | `scripts/maintenance.sh` | Wartungsmodus (`app/storage/maintenance.flag`) ein-/ausschalten |
 | `backup/restore-test.sh` | Wiederherstellungstest eines Coolify-Dumps in einer temporaeren Datenbank (Client-Container im Coolify-Netz); `backup.sh`/`Dockerfile` nur Ausweichloesung ohne Coolify, nicht im Stack |
-| `tools/compose-check.py` (liegt unter `tools/`, nicht unter diesem Ordner, gehoert aber zur Pruefung dieses Ordners) | Prueft die Compose-Dateien und `php/Dockerfile` ohne laufenden Docker-Daemon: jeder Dienst aus dem PHP-Image hat einen eigenen, zum Prozess passenden Healthcheck, kein Healthcheck enthaelt ein unescaptes "$", Variablen haben einen Vorgabewert oder stehen in `.env.example` |
+| `tools/compose-check.py` (liegt unter `tools/`, nicht unter diesem Ordner, gehoert aber zur Pruefung dieses Ordners) | Prueft die Compose-Dateien und `php/Dockerfile` ohne laufenden Docker-Daemon: jeder Dienst aus dem PHP-Image hat einen eigenen, zum Prozess passenden Healthcheck, kein Healthcheck enthaelt ein unescaptes "$", Variablen haben einen Vorgabewert oder stehen in `.env.example`, Candidate-Pruefung vor Migration vor Cutover |
+| `tools/staging-isolation-check.py` (liegt unter `tools/`) | Prueft anhand von `docker compose ... config` (kein Docker-Daemon noetig), dass Produktion und Staging eigene Projekt-/Volume-/Netz-/Traefik-Namen erhalten und der `--expect-env`-Schutz vorhanden ist |
 
 ## Start
 
@@ -45,7 +46,10 @@ Staging entsprechend mit `docker-compose.staging.yml` und einer eigenen `.env` (
 eigene Datenbank, nur `DOMAIN_STAGING` gesetzt). Voraussetzung fuer beide Faelle: `/opt/smarteinzug`
 ist bereits eingerichtet (`scripts/setup-vps.sh`), `/opt/smarteinzug/shared/config.php` enthaelt eine
 vollstaendige Konfiguration (Vorlage `php-ionos/app/config.example.php`) und `/opt/smarteinzug/releases/current`
-zeigt bereits auf ein Release (legt `scripts/deploy.sh` bei der Erstinstallation selbst an).
+zeigt bereits auf ein Release (legt `scripts/deploy.sh` bei der Erstinstallation selbst an). Fuer
+Staging ist in dieser `config.php` zwingend `'environment' => 'staging'` zu setzen (siehe unten,
+Abschnitt "Staging- und Produktionsisolation", sowie `docs/vps/02-einrichtung-vps.md`, Kapitel 25 fuer
+die vollstaendige, sichere Vorgehensweise bei der Ersteinrichtung).
 
 Regulaere Deployments laufen ueber `scripts/deploy-runner.sh <git-sha>` (haelt die Sperre, entkoppelt
 den mehrminuetigen Vorgang von der SSH-Sitzung des GitHub-Workflows, siehe Abschnitt "Deployment: Ablauf
@@ -102,6 +106,25 @@ Netzwerkverbindung waehrend einer laufenden Abfrage seltener zum Abbruch fuehrt.
 die Entkopplung durch `deploy-runner.sh`: Selbst mit Keepalive kann eine SSH-Verbindung abbrechen (Runner-
 Neustart, Netzwerkstoerung); die Korrektheit haengt deshalb bewusst nicht davon ab, dass eine einzelne
 SSH-Verbindung die gesamte Deploymentdauer uebersteht.
+
+## Staging- und Produktionsisolation
+
+Kurzfassung (Details und die vollstaendige, sichere Vorgehensweise zur Ersteinrichtung: siehe
+`docs/vps/06-betrieb.md`, Abschnitt "Staging- und Produktionsisolation", und
+`docs/vps/02-einrichtung-vps.md`, Kapitel 25):
+
+- `docker-compose.staging.yml` setzt einen eigenen Compose-Projektnamen (`name: smarteinzug-staging`):
+  eigene Container-, Netz- und Volume-Namen, unabhaengig von Produktion.
+- Die Traefik-Labels des `caddy`-Dienstes stehen ausschliesslich in `docker-compose.prod.yml`
+  (Namen `smarteinzug-*`) bzw. `docker-compose.staging.yml` (`smarteinzug-staging-*`), nie in der
+  gemeinsamen `docker-compose.yml`.
+- Jede Candidate-Pruefung (`deploy.sh`) und jeder Rollback (`rollback.sh`) ruft zusaetzlich
+  `bin/healthcheck.php --expect-env=$DEPLOY_ENV` auf: Ein Staging-Deploy VERLANGT dafuer
+  `'environment' => 'staging'` in `shared/config.php` (siehe `php-ionos/app/config.example.php`) und
+  bricht sonst ab, bevor irgendetwas an laufenden Containern oder der Datenbank veraendert wird.
+- Die primaere Absicherung bleibt trotzdem die Servertrennung: Staging auf einem eigenen, physisch
+  getrennten VPS mit eigener Coolify-MariaDB betreiben, niemals auf dem Produktions-VPS.
+- Regressionstest: `python3 tools/staging-isolation-check.py` (kein Docker-Daemon noetig).
 
 ## Betrieb
 
@@ -289,6 +312,7 @@ php -l deploy/vps/scripts/db-verify.php
 python3 tools/compose-check.py
 bash tools/deploy-runner-check.sh
 php tools/healthcheck-redis-check.php
+python3 tools/staging-isolation-check.py
 ```
 
 `tools/deploy-runner-check.sh` prueft `deploy-runner.sh` gegen ein simuliertes `/opt/smarteinzug` in
