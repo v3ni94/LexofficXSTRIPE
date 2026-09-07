@@ -1,12 +1,14 @@
 # GitHub-Deployment: Secrets, Variablen, Einrichtung, Test, Rollback
 
-Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
-`docs/auftrag-iii-abschluss.md`). Bezieht sich auf `.github/workflows/deploy.yml`, Job
-`deploy-vps` (der bestehende Job `deploy-webhosting` ist unverändert, siehe `docs/migrations.md`).
+Stand: 07.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`, zuletzt ausfallsicheres VPS-Deployment, Version 4.5). Bezieht sich
+auf `.github/workflows/deploy.yml`, Job `deploy-vps` (der bestehende Job `deploy-webhosting` ist
+unverändert, siehe `docs/migrations.md`).
 
 **Einziger Deploymentweg für den VPS:** Dieser GitHub-Workflow (SSH und rsync nach
-`/opt/smarteinzug/releases/<git-sha>/`, danach `deploy/vps/scripts/deploy.sh <git-sha>` aus dem
-neuen Release) bleibt der einzige Weg, mit dem Code auf den Hostinger-VPS gelangt. Auf dem VPS ist
+`/opt/smarteinzug/releases/<git-sha>/`, danach serverseitig `deploy/vps/scripts/deploy-runner.sh
+<git-sha>`, der wiederum `deploy.sh` aus dem neuen Release ausführt, siehe Abschnitt „Ablauf des
+Jobs deploy-vps“ unten) bleibt der einzige Weg, mit dem Code auf den Hostinger-VPS gelangt. Auf dem VPS ist
 zusätzlich Coolify installiert; dort wird für SmartEinzug ausdrücklich KEINE Anwendung/Ressource
 angelegt und KEIN Coolify-Autodeploy eingerichtet. Ein Ziel, ein Deploymentweg: Coolify dient
 ausschließlich als Proxy (siehe `docs/vps/01-architektur.md`) und als Serverübersicht (zusätzlich
@@ -31,6 +33,37 @@ Beide Jobs laufen zudem in getrennten Nebenläufigkeitsgruppen (`production-sftp
 `deploy-webhosting`, `production-vps` für `deploy-vps`), sodass ein wartender oder fehlgeschlagener
 Lauf des einen Jobs den anderen nicht verzögert. `deploy-vps` läuft weiterhin nur, wenn die
 Variable `VPS_DEPLOY_ENABLED` auf `true` steht.
+
+## Ablauf des Jobs deploy-vps: zwei Schritte statt eines langen SSH-Kanals
+
+Nach der Übertragung von Anwendung, Deploy-Skripten und Statusseite per rsync besteht das
+eigentliche Deployment aus zwei Schritten, nicht mehr aus einem einzigen, über die gesamte
+Deploymentdauer offenen SSH-Aufruf von `deploy.sh`:
+
+1. **„Deployment auf dem VPS auslösen“** (Timeout 2 Minuten): ruft
+   `deploy/vps/scripts/deploy-runner.sh <git-sha>` auf. Das Skript entkoppelt das eigentliche
+   Deployment serverseitig per `setsid` von dieser SSH-Sitzung und kehrt innerhalb weniger Sekunden
+   zurück. Ausgabe „TRIGGERED“ (Exit-Code 0): dieser Lauf ist für den ausgelösten Git-SHA
+   zuständig. Ausgabe „REJECTED“ (Exit-Code 3): es lief bereits ein Deployment oder Rollback, dieser
+   Lauf hat nichts neu ausgelöst, sondern wartet im nächsten Schritt auf dessen Abschluss.
+2. **„Auf Abschluss des Deployments warten“** (Timeout 15 Minuten, interne Deadline 12 Minuten):
+   fragt wiederholt, alle 10 Sekunden, über kurze, unabhängige SSH-Verbindungen
+   `deploy/vps/scripts/deploy-status.sh` ab (JSON, ausgewertet mit `jq`), bis die Phase `success`
+   oder `failed` erreicht ist. Bei `success` und einem selbst ausgelösten Lauf wird zusätzlich
+   geprüft, dass der abgeschlossene SHA tatsächlich dem erwarteten entspricht.
+
+Der gesamte Job `deploy-vps` hat ein Timeout von 25 Minuten. Hintergrund dieser Aufteilung: Ein
+direkter, minutenlanger `ssh ... deploy.sh <sha>`-Aufruf brach einmal durch einen kurzen
+SSH-Verbindungsabbruch mitten im Container-Neustart ab („client_loop: send disconnect: Broken
+pipe“); seitdem hängt die Korrektheit des Deployments nicht mehr davon ab, dass eine einzelne
+SSH-Verbindung die gesamte Dauer übersteht (Einzelheiten:
+`deploy/vps/scripts/deploy-runner.sh`, `docs/vps/06-betrieb.md`, Abschnitt „Deployment: Ablauf und
+Ausfallsicherheit“).
+
+Zusätzlich setzt der Workflow für alle SSH-/rsync-Aufrufe dieses Jobs einheitlich SSH-Keepalive
+(`ServerAliveInterval=30`, `ServerAliveCountMax=10`, `TCPKeepAlive=yes`), damit eine kurzzeitig
+instabile Netzwerkverbindung seltener zum Abbruch führt. Das ersetzt die serverseitige Entkopplung
+nicht, sondern ergänzt sie: Auch mit Keepalive kann eine einzelne SSH-Verbindung abbrechen.
 
 ## Secrets und Variablen im Überblick
 
@@ -144,9 +177,9 @@ wird (Bedingung in `deploy.yml`: `vars.VPS_DEPLOY_ENABLED == 'true'`). Danach:
    (`workflow_dispatch`) auf dem gewünschten Branch auslösen.
 3. Ablauf beobachten: Job „changes“ (bei `workflow_dispatch` gilt alles als geändert), Job „test“
    (PHP-Lint, gegebenenfalls Website-QA, Dokumentation, zusätzlich `python3 tools/compose-check.py`,
-   siehe unten), Job „deploy-vps“ (rsync von `php-ionos/`,
-   `deploy/vps/` und der Statusseite, Ausführung von `deploy/vps/scripts/deploy.sh <git-sha>` aus dem neuen Release auf dem Server,
-   Health-Check).
+   siehe unten), Job „deploy-vps“ (rsync von `php-ionos/`, `deploy/vps/` und der Statusseite, danach
+   die zwei Schritte „Deployment auf dem VPS auslösen“ und „Auf Abschluss des Deployments warten“,
+   siehe Abschnitt „Ablauf des Jobs deploy-vps“ oben, Health-Check).
 4. Bei `VPS_HEALTH_STRICT=false` (empfohlen, solange DNS noch nicht auf den VPS zeigt) endet der
    Job auch bei fehlgeschlagenem externen Health-Check mit einer Warnung, nicht mit einem Abbruch;
    der eigentliche Deploy-Erfolg zeigt sich am Exit-Code von `deploy.sh` auf dem Server.
@@ -158,7 +191,9 @@ den VPS gelangt, so wie es beim ersten Deployment mit dem Dienst `metrics` der F
 `docs/vps/06-betrieb.md`, Abschnitt „Healthchecks der Container“). Ein Fehler dieses Skripts lässt
 den Job „test“ und damit den gesamten Workflow-Lauf fehlschlagen, bevor ein Deployment überhaupt
 versucht wird.
-5. Ergebnis prüfen: `ssh -i ~/.ssh/smarteinzug_vps_admin deploy@HIER-VPS-IP "readlink -f /opt/smarteinzug/releases/current"` zeigt den neuen Git-SHA; `docker compose ... ps` zeigt neu gestartete Container.
+5. Ergebnis prüfen: `ssh -i ~/.ssh/smarteinzug_vps_admin deploy@HIER-VPS-IP "readlink -f /opt/smarteinzug/releases/current"` zeigt den neuen Git-SHA; `docker compose ... ps` zeigt neu gestartete Container; zusätzlich
+   `ssh -i ~/.ssh/smarteinzug_vps_admin deploy@HIER-VPS-IP "bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 50"`
+   zeigt Phase, SHA und die letzten Protokollzeilen des serverseitigen Deploy-Runners.
 6. Erst nach einem erfolgreichen Testlauf `VPS_HEALTH_STRICT` auf `true` setzen (siehe
    `docs/vps/02-einrichtung-vps.md`, Schritt 18 ff.).
 
@@ -170,6 +205,8 @@ versucht wird.
 | „Host key verification failed“ | `VPS_SSH_KNOWN_HOSTS` fehlt, falsch oder Server-Schlüssel hat sich geändert | Host-Key neu holen (siehe oben, aus vertrauenswürdiger Sitzung), Fingerabdruck erneut prüfen, Secret aktualisieren |
 | Job „deploy-vps“ läuft gar nicht | `VPS_DEPLOY_ENABLED` nicht `true`, oder weder `app` noch `vps` als geändert erkannt | Variable prüfen; bei gezieltem Test `workflow_dispatch` verwenden (gilt als „alles geändert“) |
 | „deploy.sh: Release-Ordner fehlt“ | rsync-Schritt vor `deploy.sh` fehlgeschlagen oder `GITHUB_SHA` weicht ab | Log des Schritts „Anwendung per rsync übertragen“ prüfen |
+| „REJECTED“ im Schritt „Deployment auf dem VPS auslösen“ | Es lief bereits ein Deployment oder Rollback auf dem Server (Sperre `deploy/.deploy.lock` belegt), kein Fehler dieses Laufs | Nächster Schritt wartet automatisch auf den Abschluss des laufenden Vorgangs; Status manuell mit `deploy-status.sh` prüfen |
+| Zeitüberschreitung im Schritt „Auf Abschluss des Deployments warten“ | Deployment auf dem Server läuft ungewöhnlich lange oder die Statusdatei ist nicht erreichbar | `bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 80` direkt auf dem Server ausführen |
 | Health-Check „HTTP 000“ oder Timeout | DNS zeigt noch nicht auf den VPS, oder Firewall/Caddy blockiert | bei aktivem Cutover: DNS prüfen (`docs/vps/05-dns-ssl.md`); vor dem Cutover: `VPS_HEALTH_STRICT=false` lassen |
 | „Health-Check-Antwort enthält kein "php":true“ | `health.php` liefert unerwarteten Inhalt (Anwendungsfehler, falsche Konfiguration) | `docker compose logs php`, `bin/healthcheck.php --all` direkt auf dem Server |
 

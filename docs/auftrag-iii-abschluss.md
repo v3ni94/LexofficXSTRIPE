@@ -460,6 +460,95 @@ vollständig, das ist der Zielzustand. Auf dem VPS laufen Migrationen ausschlie�
 | Wert von `WEBHOSTING_MIGRATE_URL` produktiv gesetzt | zu prüfen (auf GitHub-Repository-Ebene zu prüfen) |
 | `WEBHOSTING_APP_DEPLOY` auf `false` nach Abschluss des Umzugs | offen, erst nach vollständigem Cutover |
 
+## Nachtrag: ausfallsicheres VPS-Deployment (Version 4.5)
+
+Stand: 07.09.2026. Während des laufenden Betriebs des GitHub-Workflows auf dem Hostinger-VPS ist
+ein Deployment einmal an einem kurzen SSH-Verbindungsabbruch gescheitert. Dieser Nachtrag beschreibt
+Fehlerbild, Ursache und die drei zusammenhängenden Lösungsbausteine, die diese Fehlerklasse
+strukturell ausschließen.
+
+### Fehlerbild
+
+Der GitHub-Workflow rief den mehrminütigen `deploy.sh` bisher über einen einzigen, während der
+gesamten Deploymentdauer (Image-Build, `docker compose up`, Migration) offenen SSH-Kanal auf.
+Dieser Kanal brach einmal kurz ab, Meldung „client_loop: send disconnect: Broken pipe“. Der
+entfernte `deploy.sh`-Prozess hing am selben Kanal und starb dadurch mitten im Container-Neustart;
+mehrere Container blieben im Zustand `created` (nie gestartet) hängen, während andere weiterliefen.
+
+### Ursache
+
+Nicht die bestehende Reihenfolge im Deployment war die Ursache (der Symlink `current` war zu diesem
+Zeitpunkt noch nicht umgestellt und die Migration noch nicht erreicht, das entsprach der damals
+bereits vorgesehenen, sicheren Abfolge). Die eigentliche Ursache lag darin, dass diese Logik gar
+nicht zu Ende laufen konnte: Der SSH-Kanal selbst gab dem entfernten Prozess das Signal zum
+Absturz, bevor die bestehende Schutzlogik (Warten auf gesunde Container, automatisches Rollback bei
+einem Fehler) überhaupt greifen konnte.
+
+### Lösungsbaustein A: serverseitige Entkopplung von der SSH-Sitzung
+
+Der GitHub-Workflow ruft nicht mehr direkt `deploy.sh` über einen langen SSH-Kanal auf, sondern
+`deploy/vps/scripts/deploy-runner.sh`. Dieses Skript prüft nicht blockierend, ob bereits ein
+Deployment oder Rollback läuft (dieselbe Sperrdatei wie `deploy.sh`/`rollback.sh`); läuft bereits
+eines, wird nichts gestartet (kein doppeltes Deployment durch einen GitHub-Retry oder einen zweiten
+Workflow-Lauf). Andernfalls startet es sich per `setsid` selbst in einer neuen, von der SSH-Sitzung
+unabhängigen Sitzung neu und vererbt dabei den bereits gehaltenen Sperr-Dateideskriptor. Ein
+Abbruch der SSH-Verbindung sendet danach kein SIGHUP mehr an den laufenden Deploy-Prozess. Der
+Workflow fragt den Fortschritt anschließend über wiederholte, kurze, unabhängige SSH-Verbindungen
+ab (`deploy-status.sh`); jede einzelne Abfrage darf abbrechen, ohne das laufende Deployment zu
+gefährden. Ergänzend setzt der Workflow für alle SSH-/rsync-Aufrufe dieses Jobs SSH-Keepalive
+(`ServerAliveInterval=30`, `ServerAliveCountMax=10`, `TCPKeepAlive=yes`); das verringert die
+Wahrscheinlichkeit eines Abbruchs, ersetzt aber nicht die Entkopplung, da die Korrektheit nicht von
+einer einzelnen durchgehenden SSH-Verbindung abhängen darf.
+
+### Lösungsbaustein B: Release-Bindung über RELEASE_SHA statt mutable Symlink
+
+`working_dir` aller PHP-Container und Caddys Dokumentenstamm waren bisher an den Symlink
+`releases/current` gebunden, der erst nach dem Hochfahren der Container umgestellt wurde. Das barg
+ein eigenständiges architektonisches Risiko: Ein frisch erzeugter Container mit neuer
+Compose-Konfiguration (zum Beispiel einem neuen Healthcheck-Modus) konnte über den noch nicht
+umgestellten Symlink auf älteren Anwendungscode treffen, der diesen Modus noch nicht unterstützte.
+`working_dir` ist jetzt an die Umgebungsvariable `RELEASE_SHA` gebunden, ausschließlich als
+Pflichtwert (`${RELEASE_SHA:?...}`, kein Vorgabewert), die `deploy.sh`/`rollback.sh` vor jedem
+`docker compose`-Aufruf exportieren. Damit gehören Compose-Konfiguration, Image und Anwendungscode
+bei jedem Containerstart garantiert zum selben Release. Der Symlink `releases/current` bleibt
+bestehen, ist aber nur noch Buchführung für Menschen und Werkzeuge.
+
+### Lösungsbaustein C: Candidate prüfen, dann migrieren, dann erst Cutover
+
+Migrationen laufen jetzt nicht mehr gegen die bereits neu erzeugten Live-Container, sondern vorher,
+in einem zusätzlichen, isolierten Container (`docker compose run --rm --no-deps`), der die
+laufenden Container nicht berührt: Image bauen (falls nötig) → Candidate isoliert prüfen (mit dem
+neuen Code, laufende Anwendung unberührt) → Migrationen isoliert mit dem neuen Code einspielen →
+erst danach der eigentliche Cutover (`docker compose up -d`, jetzt sicher, weil das Schema bereits
+migriert ist) → auf gesunde Container warten → Symlink umstellen → Health-Check → bei einem Fehler
+ab dem Cutover automatisches Rollback. Schlagen Candidate-Prüfung oder Migration fehl, wurde an den
+laufenden Containern nichts verändert, ein Rollback ist dann nicht nötig. Ein abgebrochener
+vorheriger Lauf, der Container im Zustand `created` hinterlassen hat, wird von `docker compose up
+-d` beim nächsten Versuch von selbst aufgelöst (idempotent).
+
+### Neue Regressionstests
+
+- `tools/compose-check.py`: geprüft wird zusätzlich, dass `RELEASE_SHA` ausschließlich als
+  Pflichtwert referenziert wird, dass keine Compose-Datei einen Dienst `mariadb` oder `backup`
+  definiert, und dass `/opt/smarteinzug/releases/current` nirgends mehr als tatsächlicher
+  Laufzeitpfad (`working_dir`, `root`, Bind-Mount-Ziel) vorkommt.
+- `tools/deploy-runner-check.sh`: simuliert `/opt/smarteinzug` in einem temporären Ordner (kein
+  Docker, kein echter Server nötig) und prüft: erfolgreicher Lauf, fehlgeschlagener Lauf, ein
+  paralleler zweiter Versuch wird abgelehnt, ein simulierter SSH-Abbruch (hartes Beenden des
+  auslösenden Prozesses) stoppt den bereits entkoppelten Hintergrundlauf nicht, ein erneuter Lauf
+  nach Abschluss ist wieder möglich (idempotent), es werden keine Geheimnisse protokolliert.
+
+### Statusstufen
+
+| Baustein | Stand |
+|---|---|
+| `deploy/vps/scripts/deploy-runner.sh` und `deploy-status.sh` (serverseitige Entkopplung, Sperre, Status-/Protokolldatei) | umgesetzt (im Repository) |
+| `docker-compose.yml`/`Caddyfile`/`Caddyfile.staging`: `RELEASE_SHA` als Pflichtwert für `working_dir` und Dokumentenstamm | umgesetzt (im Repository) |
+| `deploy.sh`: Candidate-Prüfung und Migration isoliert vor dem Cutover, `rollback.sh`: `RELEASE_SHA` und `SMARTEINZUG_LOCK_HELD` | umgesetzt (im Repository) |
+| `.github/workflows/deploy.yml`: zwei Schritte (Auslösen, Warten), SSH-Keepalive, Timeout des Jobs 25 Minuten | umgesetzt (im Repository) |
+| `tools/compose-check.py` (Prüfpunkte 7 bis 9) und `tools/deploy-runner-check.sh` | umgesetzt und offline (ohne Docker-Daemon beziehungsweise mit simulierter Umgebung) verifiziert |
+| Vollständiger Lauf mit echtem Docker-Daemon und einem tatsächlichen SSH-Abbruch während eines echten Deployments auf dem produktiven oder einem Staging-VPS | **nicht getestet.** Ein echter Server mit laufendem Docker-Daemon stand für diesen Nachtrag nicht zur Verfügung; die Prüfung beschränkte sich auf die simulierte, isolierte Testumgebung von `tools/deploy-runner-check.sh`. Vor dem eigentlichen Cutover mindestens ein Testdeployment auf Staging oder mit einem unkritischen Push durchführen (siehe `docs/vps/07-cutover-checkliste.md`, Abschnitt „Deployment“) |
+
 ## Verbleibende Risiken
 
 - Ein VPS ohne Hochverfügbarkeit: Ausfall bedeutet Nichtverfügbarkeit bis zur Wiederherstellung aus Backup (bewusst, Auftrag Abschnitt 97).

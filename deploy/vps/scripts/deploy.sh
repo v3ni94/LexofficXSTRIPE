@@ -4,8 +4,14 @@
 #
 #   bash /opt/smarteinzug/releases/<git-sha>/deploy/vps/scripts/deploy.sh <git-sha>
 #
-# Der GitHub-Workflow ruft genau diese Kopie aus dem NEUEN Release auf, damit Aenderungen an diesem
-# Skript sofort wirken; anschliessend liegt dieselbe Fassung auch unter
+# Der GitHub-Workflow ruft dieses Skript NICHT direkt auf, sondern ueber deploy-runner.sh, der es
+# serverseitig von der SSH-Sitzung des Workflows entkoppelt (siehe deploy-runner.sh, Begruendung:
+# ein mehrminuetiger Vorgang darf nicht durch einen kurzen SSH-Abbruch abgebrochen werden). Fuer
+# manuelle Eingriffe auf dem Server bleibt der direkte Aufruf dieses Skripts unveraendert moeglich
+# und weiterhin durch eine eigene Sperre abgesichert (siehe SMARTEINZUG_LOCK_HELD unten).
+#
+# Der GitHub-Workflow ruft dabei genau die Kopie aus dem NEUEN Release auf, damit Aenderungen an
+# diesem Skript sofort wirken; anschliessend liegt dieselbe Fassung auch unter
 # /opt/smarteinzug/deploy/scripts/deploy.sh (Handbetrieb).
 #
 # Voraussetzung: /opt/smarteinzug/releases/<git-sha>/ existiert bereits vollstaendig (Inhalt von
@@ -13,16 +19,31 @@
 # deploy/vps/ (dieser Ordner). Dieses Skript selbst holt keinen Code, es aktiviert nur ein
 # vorhandenes Release.
 #
-# Ablauf: Sperre -> deploy/vps aus dem Release uebernehmen -> Image ggf. neu bauen -> Container
-# hochfahren -> auf "healthy" warten -> current-Symlink umstellen -> Migrationen mit dem neuen Code
-# einspielen (bei Fehler Symlink zurueck, kein Reload) -> php-fpm neu laden -> Worker/Scheduler
-# kontrolliert neu starten -> Health-Check -> bei Fehler automatisches Rollback auf das vorherige
-# Release. Alte Releases werden auf die letzten 5 begrenzt.
+# Ablauf: Sperre -> deploy/vps aus dem Release uebernehmen -> Zustand vorhandener Container protokollieren
+# -> Image ggf. neu bauen -> Candidate isoliert pruefen (eigener Container, neuer Code, DB+Redis
+# erreichbar, laufende Anwendung unberuehrt) -> Migrationen isoliert mit dem neuen Code einspielen (noch
+# VOR dem Cutover; schlaegt einer der beiden Schritte fehl, wurde nichts an den laufenden Containern
+# veraendert, kein Rollback noetig) -> Cutover ("docker compose up -d", jetzt sicher: Schema bereits
+# migriert) -> auf "healthy" warten -> current-Symlink umstellen (Buchfuehrung) -> php-fpm neu laden ->
+# Worker/Scheduler kontrolliert neu starten -> Health-Check -> bei Fehler automatisches Rollback auf das
+# vorherige Release (Code UND Symlink). Alte Releases werden auf die letzten 5 begrenzt.
 #
-# Pfade: Die Container binden /opt/smarteinzug/releases nur lesend ein und arbeiten mit dem Pfad
-# /opt/smarteinzug/releases/current. Dieser Symlink zeigt auf /opt/smarteinzug/releases/<git-sha>,
-# also in denselben Mount, und wird im Container bei jedem Dateizugriff neu aufgeloest; deshalb genuegt
-# nach dem Umstellen ein Reload von php-fpm (kein Neustart der Container).
+# Pfade und Release-Bindung: Die Container binden /opt/smarteinzug/releases nur lesend ein, ihr
+# working_dir (siehe docker-compose.yml) ist aber NICHT der mutable Symlink "current", sondern der
+# konkrete Pfad /opt/smarteinzug/releases/${RELEASE_SHA}, exportiert von diesem Skript VOR jedem
+# "docker compose"-Aufruf. Damit gehoeren Compose-Konfiguration (inklusive Healthchecks), Image und
+# Anwendungscode bei JEDEM Containerstart garantiert zum selben Release: Ein Container kann nicht mit
+# neuer Compose-Konfiguration (z.B. einem neuen Healthcheck-Modus) starten, waehrend sein working_dir
+# noch auf aelteren Code zeigt (das war vor dieser Aenderung ein reales Risiko, wenn "current" waehrend
+# eines "docker compose up" noch auf das VORHERIGE Release zeigte). Der Symlink "current" bleibt fuer
+# Menschen und Werkzeuge (Doku, readlink, db-import.sh) als Buchfuehrung ueber das zuletzt aktivierte,
+# erfolgreich gesundgeprüfte Release bestehen, ist fuer die Korrektheit der Container aber nicht mehr
+# erforderlich.
+#
+# Sperre: Standardmaessig oeffnet dieses Skript die Sperrdatei selbst (Dateideskriptor 9). Wird es von
+# deploy-runner.sh aufgerufen, haelt DIESER die Sperre bereits (SMARTEINZUG_LOCK_HELD=1 gesetzt); dieses
+# Skript versucht dann NICHT, dieselbe Sperre ein zweites Mal zu erwerben (wuerde sonst immer
+# fehlschlagen, da eine Datei-Sperre nicht doppelt vom selben Prozessbaum gehalten werden kann).
 set -euo pipefail
 
 BASE=/opt/smarteinzug
@@ -53,10 +74,14 @@ echo "[$(date -u +%FT%TZ)] Deployment $SHA gestartet."
 
 install -d -m 750 "$DEPLOY_DIR"
 LOCK_FILE="$DEPLOY_DIR/.deploy.lock"
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
-    echo "::error:: Es laeuft bereits ein Deployment oder Rollback (Sperre $LOCK_FILE belegt)."
-    exit 1
+if [[ "${SMARTEINZUG_LOCK_HELD:-0}" == "1" ]]; then
+    echo "Sperre wird bereits vom aufrufenden Prozess gehalten (deploy-runner.sh), kein erneuter Erwerb."
+else
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+        echo "::error:: Es laeuft bereits ein Deployment oder Rollback (Sperre $LOCK_FILE belegt)."
+        exit 1
+    fi
 fi
 
 if [[ ! -d "$RELEASE_DIR" ]]; then
@@ -99,14 +124,19 @@ if [[ -L "$CURRENT_LINK" ]]; then
 fi
 
 run_rollback() {
-    # Die Sperre freigeben, sonst kann rollback.sh sie nicht erhalten (dieselbe Sperrdatei).
-    flock -u 9 || true
-    exec 9>&-
+    if [[ "${SMARTEINZUG_LOCK_HELD:-0}" != "1" ]]; then
+        # Eigene Sperre freigeben, sonst kann rollback.sh sie nicht erhalten (dieselbe Sperrdatei).
+        flock -u 9 || true
+        exec 9>&-
+    fi
+    # Laeuft dieses Skript unter deploy-runner.sh (SMARTEINZUG_LOCK_HELD=1), haelt DER die Sperre
+    # weiterhin (ueber die gesamte Laufzeit inklusive eines etwaigen Rollbacks); rollback.sh wird dann
+    # angewiesen, selbst KEINE eigene Sperre zu erwerben, statt an der bereits gehaltenen zu scheitern.
     if [[ -z "$PREV_SHA" || ! -d "$RELEASES_DIR/$PREV_SHA" ]]; then
         echo "::error:: Kein vorheriges Release bekannt, automatisches Rollback nicht moeglich. Manuelle Pruefung erforderlich."
         return 1
     fi
-    bash "$ROLLBACK_SH" "$PREV_SHA"
+    SMARTEINZUG_LOCK_HELD="${SMARTEINZUG_LOCK_HELD:-0}" bash "$ROLLBACK_SH" "$PREV_SHA"
 }
 
 # Ob das Image neu gebaut werden muss, wird ueber eine Pruefsumme des gesamten deploy/vps/php/-Ordners
@@ -133,12 +163,25 @@ if [[ "$DEPLOY_ENV" == "staging" ]]; then
 fi
 echo "Umgebung: $DEPLOY_ENV"
 
-# Erstinstallation: Ohne current-Symlink koennen die Container nicht starten (Arbeitsverzeichnis).
-# Es gibt dann auch nichts, worauf zurueckgerollt werden koennte.
-if [[ ! -L "$CURRENT_LINK" ]]; then
-    echo "Kein aktives Release vorhanden (Erstinstallation), setze current auf $SHA vor dem Start der Container."
-    set_current "$SHA"
-fi
+# RELEASE_SHA bindet jeden Container-Start an dieses konkrete Release (working_dir in docker-compose.yml
+# lautet /opt/smarteinzug/releases/${RELEASE_SHA}, nicht an den mutable Symlink "current"): Damit
+# gehoeren Compose-Konfiguration, Healthchecks und Anwendungscode bei jedem "docker compose"-Aufruf
+# untenstehend garantiert zusammen. export wirkt fuer den Rest DIESES Skripts (auch fuer restart/exec).
+export RELEASE_SHA="$SHA"
+# Zusaetzlich als Datei ablegen: rein informativ fuer manuelle Eingriffe auf dem Server (z.B.
+# "set -a; source .release.env; set +a" vor einem Hand-Aufruf von "docker compose logs"); enthaelt
+# keine Geheimnisse, nur den Git-SHA.
+printf 'RELEASE_SHA=%s\n' "$SHA" > "$DEPLOY_DIR/.release.env"
+
+# Zustand VOR dem Start protokollieren: hilft, einen von einem frueheren abgebrochenen Deployment
+# halb erzeugten Stand (Container im Zustand "created", nie gestartet) sichtbar zu machen. "docker
+# compose up -d" ist idempotent und bringt einen solchen Stand von selbst in Ordnung (es erzeugt oder
+# startet nur, was von der Zieldefinition abweicht); dieses Protokoll dient der Nachvollziehbarkeit,
+# nicht der Korrektheit. Ausschliesslich Ressourcen des Compose-Projekts "smarteinzug" (siehe "name:"
+# am Kopf von docker-compose.yml); Coolify-Proxy und Coolify-MariaDB gehoeren zu anderen Projekten und
+# werden von "docker compose" hier nie angefasst.
+echo "Zustand vor dem Start (Projekt smarteinzug):"
+"${COMPOSE[@]}" ps -a --format '{{.Name}}\t{{.State}}\t{{.Health}}' 2>/dev/null || echo "  (noch keine Container vorhanden)"
 
 if [[ "$NEEDS_BUILD" -eq 1 ]]; then
     echo "deploy/vps/php hat sich geaendert, baue Image neu ..."
@@ -148,8 +191,39 @@ else
     echo "deploy/vps/php unveraendert, verwende bestehendes Image."
 fi
 
-echo "Starte/aktualisiere Container ..."
+# --- Candidate pruefen und Migrationen einspielen, OHNE die laufende Anwendung anzufassen -----------
+# "docker compose run --rm --no-deps" startet einen ZUSAETZLICHEN, eigenstaendigen Container aus
+# demselben Image und derselben Konfiguration (working_dir also bereits /opt/smarteinzug/releases/$SHA),
+# aber unter einem eigenen Namen, ohne die bereits laufenden Container "php"/"scheduler"/"worker-*" zu
+# beruehren. Caddy leitet Anfragen weiterhin an den bisherigen "php"-Dienst weiter, der unveraendert mit
+# dem ALTEN Code laeuft, waehrend hier mit dem NEUEN Code geprueft und migriert wird. Erst wenn beides
+# erfolgreich war, wird unten der eigentliche Cutover ("up -d") ausgefuehrt. Das garantiert die
+# Reihenfolge "Candidate technisch geprueft -> Migration -> Cutover" ohne ein Zeitfenster, in dem der neue
+# Code live Anfragen gegen ein noch unmigriertes Schema beantwortet, UND ohne ein Zeitfenster, in dem eine
+# Migration gegen ein durch einen abgebrochenen Container-Recreate halb hergestelltes Release liefe:
+# Schlaegt einer der beiden Schritte fehl, wurde an den laufenden Containern noch NICHTS veraendert, ein
+# Rollback ist dann nicht noetig (die alte Version laeuft unveraendert weiter).
+echo "Pruefe den Candidaten isoliert (eigener Container, ohne die laufende Anwendung zu beruehren) ..."
+if ! "${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --db --redis; then
+    echo "::error:: Candidate-Pruefung fehlgeschlagen (Datenbank oder Redis mit dem neuen Code nicht erreichbar)."
+    echo "Die laufenden Container wurden NICHT veraendert, kein Rollback noetig."
+    exit 1
+fi
+
+echo "Spiele Datenbankmigrationen isoliert mit dem neuen Code ein (noch VOR dem Cutover) ..."
+if ! "${COMPOSE[@]}" run --rm --no-deps -T php php bin/migrate.php; then
+    echo "::error:: Migration fehlgeschlagen. Die laufenden Container wurden NICHT veraendert (kein Rollback noetig);"
+    echo "die alte Version laeuft mit dem alten Datenbankstand unveraendert weiter. Serverprotokoll pruefen,"
+    echo "siehe docs/migrations.md. Keine automatische Wiederholung."
+    exit 1
+fi
+
+# --- Cutover: laufende Container auf das geprüfte, bereits migrierte Release umstellen ---------------
+echo "Migrationen abgeschlossen. Aktiviere Release $SHA (Cutover: Container werden neu erzeugt) ..."
 "${COMPOSE[@]}" up -d --remove-orphans
+
+echo "Zustand nach dem Start:"
+"${COMPOSE[@]}" ps -a --format '{{.Name}}\t{{.State}}\t{{.Health}}' 2>/dev/null || true
 
 echo "Warte auf gesunde Container (bis zu 180 Sekunden) ..."
 DEADLINE=$((SECONDS + 180))
@@ -168,24 +242,12 @@ while true; do
     sleep 5
 done
 
-# Reihenfolge: zuerst den Symlink umstellen, dann die Migration mit dem NEUEN Code ausfuehren (der
-# php-Container arbeitet unter /opt/smarteinzug/releases/current; ein CLI-Aufruf liest die Dateien
-# frisch, waehrend php-fpm wegen opcache.validate_timestamps=0 bis zum Reload weiter den alten Code
-# ausliefert). Schlaegt die Migration fehl, wird der Symlink zurueckgestellt und nichts neu geladen:
-# Webanwendung und Worker laufen unveraendert mit dem alten Code weiter, die Datenbank bleibt im
-# Zustand vor der fehlgeschlagenen Migration (Runner markiert sie als failed, keine automatische
-# Wiederholung, siehe docs/migrations.md).
-echo "Aktiviere Release $SHA (Symlink $CURRENT_LINK) ..."
+# Symlink "current" erst NACH dem gesunden Cutover umstellen (reine Buchfuehrung fuer Menschen und
+# Werkzeuge wie readlink/db-import.sh, siehe Kopfkommentar; fuer die Korrektheit der Container ohne
+# Bedeutung, da deren working_dir bereits ueber RELEASE_SHA an dieses Release gebunden ist). Solange
+# dieser Schritt nicht erreicht ist, zeigt "current" weiterhin auf das zuletzt bekannte GUTE Release.
+echo "Aktiviere Release $SHA (Symlink $CURRENT_LINK, Buchfuehrung) ..."
 set_current "$SHA"
-
-echo "Spiele Datenbankmigrationen ein (php-CLI im php-Container mit dem neuen Code, nie oeffentlich erreichbar) ..."
-if ! "${COMPOSE[@]}" exec -T php php bin/migrate.php; then
-    echo "::error:: Migration fehlgeschlagen. Symlink wird zurueckgestellt, kein Reload; Webanwendung laeuft mit dem alten Code weiter."
-    if [[ -n "$PREV_SHA" && -d "$RELEASES_DIR/$PREV_SHA" ]]; then
-        set_current "$PREV_SHA"
-    fi
-    exit 1
-fi
 
 echo "$(date -u +%FT%TZ) deploy $SHA" >> "$DEPLOY_DIR/.release_history"
 [[ -n "$PREV_SHA" ]] && echo "$PREV_SHA" > "$DEPLOY_DIR/.previous_sha"

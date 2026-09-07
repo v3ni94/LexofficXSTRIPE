@@ -57,7 +57,7 @@ http://{$DOMAIN_STAGING}:80 {
 
 	encode gzip zstd
 
-	root * /opt/smarteinzug/releases/current
+	root * /opt/smarteinzug/releases/{$RELEASE_SHA}
 	php_fastcgi php:9000
 	file_server {
 		hide .*

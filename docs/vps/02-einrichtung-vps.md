@@ -1,7 +1,8 @@
 # Einrichtung des VPS: Schritt für Schritt
 
-Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
-`docs/auftrag-iii-abschluss.md`). Richtet sich an Administratoren ohne tiefe Linux-Erfahrung. Jeder
+Stand: 07.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`, zuletzt ausfallsicheres VPS-Deployment, Version 4.5). Richtet sich
+an Administratoren ohne tiefe Linux-Erfahrung. Jeder
 Schritt nennt Zweck, Befehle, das erwartete Ergebnis, ein Prüfkommando und mögliche Fehler. Schritte
 der Reihe nach abarbeiten, jeden Schritt erst abschließen, wenn die Prüfung bestanden ist.
 
@@ -260,7 +261,11 @@ falschen Ordner an, `ls /opt/smarteinzug/releases` prüfen).
 **Zweck:** Ab jetzt automatisch statt manuell deployen.
 **Vorgehen:** vollständige Anleitung in `docs/vps/03-github-deployment.md` (Secrets `VPS_HOST`,
 `VPS_SSH_USER`, `VPS_SSH_PORT`, `VPS_SSH_PRIVATE_KEY`, `VPS_SSH_KNOWN_HOSTS`; Variablen
-`VPS_DEPLOY_ENABLED`, `VPS_DEPLOY_PATH`, `VPS_APP_DOMAIN`, `VPS_HEALTH_STRICT`).
+`VPS_DEPLOY_ENABLED`, `VPS_DEPLOY_PATH`, `VPS_APP_DOMAIN`, `VPS_HEALTH_STRICT`). Ab jetzt ruft der
+Workflow serverseitig `deploy/vps/scripts/deploy-runner.sh` auf, das das eigentliche Deployment
+(`deploy.sh`) von der SSH-Sitzung des Workflows entkoppelt (siehe `docs/vps/06-betrieb.md`,
+Abschnitt „Deployment: Ablauf und Ausfallsicherheit“); der direkte, manuelle Aufruf von `deploy.sh`
+auf dem Server bleibt daneben für gezielte Eingriffe möglich, dann mit eigener Sperre.
 **Erwartetes Ergebnis:** Ein manuell ausgelöster Workflow-Lauf (`workflow_dispatch`) erreicht den
 Job „deploy-vps“ und schlägt frühestens beim Health-Check fehl (weil DNS noch nicht umgestellt
 ist, siehe Schritt 16).
@@ -274,6 +279,10 @@ ist, siehe Schritt 16).
 ```bash
 cd /opt/smarteinzug/deploy
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env pull
+# RELEASE_SHA bindet working_dir aller PHP-Container und Caddys Dokumentenstamm an dieses konkrete
+# Release (Pflichtwert, kein Vorgabewert); bei einem manuellen Aufruf vorher setzen, siehe
+# deploy/vps/README.md, Abschnitt „Start“:
+export RELEASE_SHA=erstinstallation
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d
 ```
 **Erwartetes Ergebnis:** Alle Dienste aus `docker-compose.yml`/`docker-compose.prod.yml` starten
@@ -485,6 +494,8 @@ verarbeiten die Jobs, Dead-Letter-Liste bleibt leer.
 eines großen Nachhol-Abgleichs vieler Firmen).
 **Befehle:**
 ```bash
+# RELEASE_SHA muss gesetzt sein (siehe Schritt 13); in einer neuen Sitzung zunächst ermitteln:
+export RELEASE_SHA="$(basename "$(readlink -f /opt/smarteinzug/releases/current)")"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --scale worker-mail=2
 ```
 **Erwartetes Ergebnis:** Zwei Container des Dienstes `worker-mail` laufen gleichzeitig, beide

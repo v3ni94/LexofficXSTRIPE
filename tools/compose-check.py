@@ -17,6 +17,16 @@ Geprueft wird:
   5. Jede Variable in den Compose-Dateien ist entweder in .env.example vorhanden, hat einen
      Vorgabewert (${VAR:-...}) oder ist als $$ literal escaped.
   6. Die von healthcheck.php unterstuetzten Schalter existieren tatsaechlich (Abgleich mit dem PHP-Code).
+  7. RELEASE_SHA (working_dir aller PHP-Container, Caddys Dokumentenstamm) ist ausschliesslich als
+     PFLICHTWERT (${RELEASE_SHA:?...}) referenziert, nie mit einem Vorgabewert (${RELEASE_SHA:-...}).
+     Ein Vorgabewert waere eine Regression zurueck auf einen impliziten, moeglicherweise falschen
+     Stand (z.B. den mutable Symlink "current") und wuerde genau die Garantie aufheben, dass Container,
+     Healthcheck und Code immer zum selben Release gehoeren (siehe deploy.sh, Abschnitt Release-Bindung).
+  8. Keine Compose-Datei definiert einen Dienst "mariadb" oder "backup": Die Datenbank ist eine externe
+     Coolify-Ressource, die Sicherung uebernimmt Coolify (siehe docker-compose.yml, Kopfkommentar).
+  9. Kein "docker-compose*.yml" verwendet ausserhalb eines Kommentars noch den Pfad
+     "/opt/smarteinzug/releases/current" als working_dir, root oder Bind-Mount-Ziel (Regression zurueck
+     auf den mutable Symlink); der Symlink darf weiterhin als Buchfuehrung in Kommentaren erwaehnt werden.
 
 Aufruf:  python3 tools/compose-check.py        Exit 0 = in Ordnung, 1 = Fehler
 """
@@ -151,6 +161,41 @@ def check_variables(path: pathlib.Path, known: set[str]) -> None:
             i += 1
 
 
+def check_release_sha_required(path: pathlib.Path) -> None:
+    """RELEASE_SHA darf nirgends einen Vorgabewert haben (waere eine Regression, siehe Docstring)."""
+    for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = strip_comment(raw)
+        for m in re.finditer(r"\$\{RELEASE_SHA([^}]*)\}", line):
+            inner = m.group(1)
+            if inner.startswith(":?") or inner == "":
+                continue
+            fail(f"{path.name}:{lineno}: RELEASE_SHA hat einen Vorgabewert ('${{RELEASE_SHA{inner}}}') statt "
+                 f"eines Pflichtwerts (${{RELEASE_SHA:?...}}). Ein Vorgabewert wuerde bei fehlender Variable "
+                 f"still auf einen falschen Stand zurueckfallen, statt den Aufruf klar abzulehnen.")
+        # $RELEASE_SHA ohne geschweifte Klammern wird bereits von check_variables() als Fehler gemeldet.
+
+
+def check_no_removed_services(path: pathlib.Path) -> None:
+    """Die Datenbank und die Sicherung sind externe Coolify-Ressourcen, kein Dienst in diesem Stack."""
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    for forbidden in ("mariadb", "backup"):
+        if forbidden in (data.get("services") or {}):
+            fail(f"{path.name}: Dienst '{forbidden}' ist definiert. Die Datenbank ist eine externe "
+                 f"Coolify-Ressource, die Sicherung uebernimmt Coolify; ein eigener Dienst hierfuer waere "
+                 f"eine doppelte, unkontrolliert parallele Ressource (siehe docker-compose.yml, Kopfkommentar).")
+
+
+def check_no_mutable_current_path(path: pathlib.Path) -> None:
+    """working_dir/root/Bind-Mount-Ziele duerfen nicht mehr auf den mutable Symlink "current" zeigen."""
+    for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = strip_comment(raw)
+        if "/opt/smarteinzug/releases/current" in line:
+            fail(f"{path.name}:{lineno}: Verweist noch auf '/opt/smarteinzug/releases/current' (mutable "
+                 f"Symlink). working_dir und Bind-Mount-Ziele muessen ueber ${{RELEASE_SHA:?...}} an ein "
+                 f"konkretes Release gebunden sein, sonst kann ein Container mit neuer Compose-Konfiguration "
+                 f"(z.B. einem neuen Healthcheck) auf aelteren Code treffen.")
+
+
 def main() -> int:
     dockerfile = (VPS / "php" / "Dockerfile").read_text(encoding="utf-8")
     if not re.search(r"^HEALTHCHECK\s+NONE\s*$", dockerfile, re.M):
@@ -167,6 +212,9 @@ def main() -> int:
     for path in compose_files:
         check_services(path)
         check_variables(path, known)
+        check_release_sha_required(path)
+        check_no_removed_services(path)
+        check_no_mutable_current_path(path)
 
     healthcheck_php = (ROOT / "php-ionos" / "bin" / "healthcheck.php").read_text(encoding="utf-8")
     for _, flag in COMMAND_TO_FLAG + [("", DEFAULT_FLAG)]:

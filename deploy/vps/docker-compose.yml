@@ -22,8 +22,14 @@
 #    bleibt ein Netz ohne Aussenverbindung fuer Caddy<->php und Redis.
 #  - KEIN eigener Backup-Container: die Datenbanksicherung uebernimmt Coolify. Der Metrik-Sammler liest
 #    nur die lokale Kopie der Coolify-Backups (COOLIFY_BACKUP_DIR, read-only) fuer die Anzeige im Admin.
-#  - Der Code des aktiven Release liegt unter /opt/smarteinzug/releases/current (Symlink innerhalb
-#    des Release-Ordners, siehe scripts/deploy.sh) und wird nur LESEND in die Container eingebunden.
+#  - Der Code des aktiven Release wird nur LESEND eingebunden. working_dir zeigt NICHT auf einen
+#    mutable Symlink ("current"), sondern direkt auf /opt/smarteinzug/releases/${RELEASE_SHA} (die
+#    Variable exportieren deploy.sh/rollback.sh vor jedem "docker compose"-Aufruf auf das jeweils
+#    gemeinte Release). Damit gehoeren Compose-Konfiguration (inklusive Healthchecks), Image und
+#    Anwendungscode bei jedem Containerstart garantiert zum selben Release; ein Container kann nicht
+#    mit neuer Konfiguration (z.B. einem neuen Healthcheck-Modus) auf aelteren Code treffen. Der
+#    Symlink /opt/smarteinzug/releases/current bleibt als Buchfuehrung fuer Menschen und Werkzeuge
+#    bestehen (siehe deploy.sh), hat fuer die Container selbst aber keine Bedeutung mehr.
 #    config.php und storage/ liegen ausserhalb der Releases unter /opt/smarteinzug/shared/ und werden
 #    gesondert eingebunden. Der Container sieht NICHT das gesamte /opt/smarteinzug (dort liegen
 #    deploy/.env, Backups und Logs, die kein Anwendungscontainer lesen darf).
@@ -49,11 +55,13 @@ x-php-build: &php-build
 # eigenen Code nicht veraendern. shared/storage ist beschreibbar (Mandate, Avatare, Logs,
 # maintenance.flag, backup-status.json), shared/sessions traegt die PHP-Sitzungen aller Container.
 x-code-mounts: &code-mounts
-  # Der Ordner /opt/smarteinzug/releases wird nur lesend eingebunden. Der Symlink
-  # /opt/smarteinzug/releases/current zeigt auf /opt/smarteinzug/releases/<git-sha> und wird IM
-  # Container bei jedem Dateizugriff aufgeloest (Ziel liegt innerhalb desselben Mounts); ein
-  # Release-Wechsel auf dem Host wirkt deshalb ohne Container-Neustart (nur php-fpm-Reload). Ein
-  # direkter Bind des Symlinks wuerde beim Containerstart fest auf das damalige Release aufgeloest.
+  # Der GESAMTE Ordner /opt/smarteinzug/releases wird nur lesend eingebunden (alle vorgehaltenen
+  # Releases, siehe deploy.sh: die letzten 5 bleiben erhalten); working_dir (siehe x-php-common unten)
+  # zeigt aber gezielt auf den Unterordner des konkret gemeinten Release (${RELEASE_SHA}), NICHT auf
+  # den Symlink "current". Ein Release-Wechsel erfordert deshalb bewusst einen Container-Neustart
+  # (durch die geaenderte Umgebungsvariable RELEASE_SHA erkennt Compose das als Konfigurationsaenderung
+  # und erzeugt die Container neu); es reicht kein reiner php-fpm-Reload mehr, dafuer gibt es aber auch
+  # keinen Zeitraum mehr, in dem Compose-Konfiguration und tatsaechlicher Code auseinanderlaufen koennen.
   - type: bind
     source: /opt/smarteinzug/releases
     target: /opt/smarteinzug/releases
@@ -76,7 +84,12 @@ x-php-common: &php-common
   user: "${APP_UID:-33}:${APP_GID:-33}"
   # coolify: Datenbank (Coolify-MariaDB) und Internet; smarteinzug_internal: Caddy und Redis.
   networks: [coolify, smarteinzug_internal]
-  working_dir: /opt/smarteinzug/releases/current
+  # NICHT "/opt/smarteinzug/releases/current" (mutable Symlink): working_dir bindet den Container direkt
+  # an ein konkretes Release, exportiert von deploy.sh/rollback.sh vor jedem Compose-Aufruf. Ohne Wert
+  # bricht "docker compose" mit einer klaren Fehlermeldung ab (":?"), statt still auf irgendeinen
+  # Vorgabewert zurueckzufallen - ein Ruecksprung auf "current" waere genau der Fehler, den diese
+  # Bindung verhindern soll (siehe x-code-mounts oben).
+  working_dir: /opt/smarteinzug/releases/${RELEASE_SHA:?RELEASE_SHA muss vor jedem Compose-Aufruf gesetzt sein (deploy.sh/rollback.sh exportieren ihn automatisch; fuer manuelle Aufrufe siehe README.md, Abschnitt Start)}
   environment: &php-common-env
     TZ: ${TZ:-Europe/Berlin}
     # Konfiguration und Speicher liegen ausserhalb der Releases (siehe app/bootstrap.php, storage_dir()).
@@ -133,6 +146,10 @@ services:
       DOMAIN_ADMIN: ${DOMAIN_ADMIN}
       DOMAIN_API: ${DOMAIN_API}
       DOMAIN_STATUS: ${DOMAIN_STATUS}
+      # Caddy verwendet {$RELEASE_SHA} in der Caddyfile (Caddy-eigene Umgebungsvariablen-Syntax, nicht
+      # zu verwechseln mit Docker Compose's ${...}) als Dokumentenstamm; dieselbe Bindung wie bei den
+      # PHP-Containern, damit Caddy IMMER denselben Code ausliefert, den php-fpm ausfuehrt.
+      RELEASE_SHA: ${RELEASE_SHA:?RELEASE_SHA muss vor jedem Compose-Aufruf gesetzt sein}
     labels:
       # Traefik (Coolify-Proxy): Entrypoints "http"/"https" und Certresolver "letsencrypt" entsprechen der
       # Standardkonfiguration von Coolify (/data/coolify/proxy/docker-compose.yml auf dem Server pruefen).
@@ -153,8 +170,8 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-      # Nur die Releases (Dokumentenstamm /opt/smarteinzug/releases/current, Symlink wird im Container
-      # aufgeloest; die Statusseite liegt im Release unter status/); kein Zugriff auf shared/, deploy/,
+      # Nur die Releases (Dokumentenstamm ist das durch RELEASE_SHA gebundene Release, siehe Caddyfile;
+      # die Statusseite liegt im selben Release unter status/); kein Zugriff auf shared/, deploy/,
       # backups/, logs/.
       - /opt/smarteinzug/releases:/opt/smarteinzug/releases:ro
     depends_on:
@@ -234,7 +251,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-    working_dir: /opt/smarteinzug/releases/current
+    # Wie bei php/scheduler/worker (x-php-common): working_dir bindet an das konkrete Release, nicht an
+    # den mutable Symlink "current".
+    working_dir: /opt/smarteinzug/releases/${RELEASE_SHA:?RELEASE_SHA muss vor jedem Compose-Aufruf gesetzt sein}
     volumes:
       - type: bind
         source: /opt/smarteinzug/releases

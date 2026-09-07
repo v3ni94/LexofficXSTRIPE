@@ -11,6 +11,16 @@
 # (siehe docs/migrations.md), ein Rollback wechselt also nur den Anwendungscode. Sind in der
 # Datenbank Migrationen eingespielt, die das Zielrelease nicht kennt, bricht dieses Skript ab; nur mit
 # FORCE_ROLLBACK=1 (bewusste Entscheidung nach Pruefung) wird trotzdem zurueckgerollt.
+#
+# Sperre: Wie deploy.sh oeffnet dieses Skript standardmaessig selbst die Sperrdatei (Dateideskriptor 9).
+# Wird es von deploy.sh aus einem automatischen Rollback heraus aufgerufen, das seinerseits von
+# deploy-runner.sh gestartet wurde, haelt deploy-runner.sh die Sperre bereits ueber die gesamte Laufzeit
+# (SMARTEINZUG_LOCK_HELD=1); dieses Skript versucht dann NICHT, dieselbe Sperre ein zweites Mal zu
+# erwerben (wuerde sonst fehlschlagen, weil sie vom selben Prozessbaum bereits gehalten wird).
+#
+# Release-Bindung: Wie deploy.sh exportiert dieses Skript RELEASE_SHA (hier: das ZIELrelease des
+# Rollbacks) vor jedem "docker compose"-Aufruf; docker-compose.yml bindet working_dir aller
+# PHP-Container darueber an den konkreten Freigabepfad, nie an den mutable Symlink "current".
 set -euo pipefail
 
 BASE=/opt/smarteinzug
@@ -55,10 +65,14 @@ fi
 
 install -d -m 750 "$DEPLOY_DIR"
 LOCK_FILE="$DEPLOY_DIR/.deploy.lock"
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
-    echo "::error:: Es laeuft bereits ein Deployment oder Rollback (Sperre $LOCK_FILE belegt)."
-    exit 1
+if [[ "${SMARTEINZUG_LOCK_HELD:-0}" == "1" ]]; then
+    echo "Sperre wird bereits vom aufrufenden Prozess gehalten (deploy.sh/deploy-runner.sh), kein erneuter Erwerb."
+else
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+        echo "::error:: Es laeuft bereits ein Deployment oder Rollback (Sperre $LOCK_FILE belegt)."
+        exit 1
+    fi
 fi
 
 envval() {
@@ -89,6 +103,13 @@ COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-f
 if [[ "$DEPLOY_ENV" == "staging" ]]; then
     COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env)
 fi
+
+# RELEASE_SHA bindet working_dir aller PHP-Container (siehe docker-compose.yml); noetig, damit
+# "docker compose" ueberhaupt interpolieren kann, auch fuer den folgenden Status-Aufruf gegen den noch
+# laufenden (alten) Container, dessen working_dir davon unberuehrt bleibt (bei "exec" bereits erzeugte
+# Container werden nicht neu erzeugt). Fuer den spaeteren "up -d" ist es der tatsaechliche Zielwert.
+export RELEASE_SHA="$TARGET"
+printf 'RELEASE_SHA=%s\n' "$TARGET" > "$DEPLOY_DIR/.release.env"
 
 # Vertraeglichkeit mit dem Datenbankschema pruefen: Alle eingespielten Migrationen muessen im
 # Zielrelease vorhanden sein, sonst wuerde aelterer Code auf ein neueres Schema treffen.

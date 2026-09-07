@@ -1,7 +1,8 @@
 # VPS-Architektur
 
-Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
-`docs/auftrag-iii-abschluss.md`). Betreiber: Müller Holding AG. Diese Datei beschreibt das
+Stand: 07.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`, zuletzt ausfallsicheres VPS-Deployment, Version 4.5). Betreiber:
+Müller Holding AG. Diese Datei beschreibt das
 Zielbild der Infrastruktur, nachdem die Anwendung SmartEinzug (php-ionos) zusätzlich zum
 bestehenden IONOS-Webhosting auf einem eigenen VPS betrieben wird. Der Umzug ist optional und
 schrittweise: das Webhosting bleibt nutzbar, solange nicht ausdrücklich umgestellt wird (siehe
@@ -75,7 +76,7 @@ im Netz `coolify` haben damit einen Weg ins Internet (Lexware Office, Stripe, Ma
 | Sicherungen | Tägliche Datenbanksicherung mit externem Ziel (Hetzner Object Storage), Restore getestet; kein eigener Backup-Dienst im Stack | VPS, durch Coolify eingerichtet und produktiv (vom Betreiber bestätigt); der Metrik-Sammler liest nur die lokale Kopie der Coolify-Sicherungen (`COOLIFY_BACKUP_DIR`, lesend) für die Anzeige im Adminbereich |
 | Host-Metriken | Liest CPU, Speicher, Platte, Load des VPS-Hosts, schreibt sie als Monitoring-Ereignisse | VPS, Container `metrics` (`bin/host-metrics.php`) |
 | Marketingseiten | Statische HTML-Seiten beider Domains | IONOS-Webhosting, unverändert |
-| Statusseite | Statische Seite `status.smart-einzug.de`, liest `status.json` | VPS, von Caddy read-only unter `/opt/smarteinzug/releases/current/status` ausgeliefert, oder Webhosting (siehe `docs/status-page.md`) |
+| Statusseite | Statische Seite `status.smart-einzug.de`, liest `status.json` | VPS, von Caddy read-only unter `/opt/smarteinzug/releases/${RELEASE_SHA}/status` ausgeliefert (an das jeweils aktive Release gebunden, nicht an den Symlink `current`, siehe Abschnitt „Pfade in den Containern“), oder Webhosting (siehe `docs/status-page.md`) |
 
 ## Hosts und Zuständigkeit
 
@@ -123,13 +124,13 @@ Caddy-Konfiguration (erlaubte Pfade je Host), nicht durch getrennte Installation
 
 | Daten | Ort | Hinweis |
 |---|---|---|
-| Anwendungscode | `/opt/smarteinzug/releases/<git-sha>/`, `current` zeigt per Symlink auf das aktive Release | read-only in den Containern eingebunden |
+| Anwendungscode | `/opt/smarteinzug/releases/<git-sha>/`; `working_dir` der Container ist an die Umgebungsvariable `RELEASE_SHA` gebunden (Pflichtwert), der Symlink `current` bleibt nur noch Buchführung für Menschen und Werkzeuge | read-only in den Containern eingebunden |
 | Konfiguration (`app/config.php`) | `/opt/smarteinzug/shared/config.php`, read-only in die Container eingebunden | liegt außerhalb jedes Release, wird nie überschrieben |
 | Anwendungsdaten (Mandate, Avatare, Logs, `maintenance.flag`) | `/opt/smarteinzug/shared/storage`, beschreibbar eingebunden | gemeinsam für alle Container, daher wirkt der Wartungsmodus sofort überall |
 | Datenbank | Persistenter Speicher der Coolify-MariaDB-Ressource (von Coolify verwaltetes Volume, nicht Teil des SmartEinzug-Stacks) | nur intern erreichbar, kein veröffentlichter Port, produktiv eingerichtet |
 | Sitzungen | eigenes Volume für `/var/lib/php/sessions` | überlebt einen Container-Neustart |
 | Sicherungen | Coolify-eigene Ablage plus externer Hetzner-Object-Storage-Bucket; lokale Kopie zusätzlich unter dem in `COOLIFY_BACKUP_DIR` genannten Hostpfad (Standard `/data/coolify/backups`, auf dem Server zu prüfen), von `metrics` nur lesend eingebunden | tägliche Sicherung und Restore laut Betreiber getestet; kein eigener Dump-Container im Stack |
-| Statusseite | `/opt/smarteinzug/releases/current/status`, read-only in Caddy eingebunden (Dokumentenstamm `/opt/smarteinzug/releases/current/status`) | nicht Teil des Anwendungs-Release |
+| Statusseite | `/opt/smarteinzug/releases/<git-sha>/status`, read-only in Caddy eingebunden (Dokumentenstamm über `{$RELEASE_SHA}` an das jeweils aktive Release gebunden) | nicht Teil des Anwendungs-Release |
 
 ## MariaDB: nur intern
 
@@ -279,6 +280,25 @@ Weitere technische Grenzen und offene Punkte der Infrastruktur: `deploy/vps/READ
 
 ## Pfade in den Containern
 
-Alle PHP-Container und Caddy binden nur das Verzeichnis `/opt/smarteinzug/releases` lesend ein und arbeiten mit dem Pfad `/opt/smarteinzug/releases/current`. Der Symlink `current` zeigt auf `/opt/smarteinzug/releases/<git-sha>`, also in denselben Mount, und wird im Container bei jedem Dateizugriff neu aufgelöst; ein Release-Wechsel wirkt deshalb ohne Container-Neustart, es genügt der Reload von php-fpm. Ein direkter Bind des Symlinks würde beim Containerstart fest auf das damalige Release aufgelöst. Die Ordner `deploy/` (mit `.env`), `backups/` und `logs/` sind für keinen Anwendungscontainer sichtbar; der Metrik-Sammler sieht nur `/proc` des Hosts lesend, nicht dessen Wurzeldateisystem.
+Alle PHP-Container und Caddy binden nur das Verzeichnis `/opt/smarteinzug/releases` lesend ein.
+`working_dir` der PHP-Container und Caddys Dokumentenstamm arbeiten aber NICHT mit dem mutable
+Symlink `/opt/smarteinzug/releases/current`, sondern direkt mit dem konkreten Pfad
+`/opt/smarteinzug/releases/${RELEASE_SHA}` (Caddy-eigene Schreibweise `{$RELEASE_SHA}` in der
+Caddyfile); die Umgebungsvariable ist in `docker-compose.yml` als Pflichtwert (`${RELEASE_SHA:?...}`)
+hinterlegt und wird von `deploy.sh`/`rollback.sh` vor jedem `docker compose`-Aufruf auf das jeweils
+gemeinte Release gesetzt. Damit gehören Compose-Konfiguration (einschließlich Healthchecks), Image
+und Anwendungscode bei jedem Containerstart garantiert zum selben Release; ein Container kann nicht
+mehr mit neuer Compose-Konfiguration auf älteren, über einen noch nicht umgestellten Symlink
+erreichten Code treffen. Ein Release-Wechsel erfordert deshalb bewusst einen Container-Neustart
+(die geänderte Umgebungsvariable `RELEASE_SHA` gilt Compose als Konfigurationsänderung); es genügt
+kein reiner php-fpm-Reload mehr für den Code-Wechsel selbst, dafür entfällt das Zeitfenster, in dem
+Compose-Konfiguration und tatsächlicher Code auseinanderlaufen konnten. Der Symlink
+`/opt/smarteinzug/releases/current` bleibt bestehen und wird von `deploy.sh` nach einem
+erfolgreichen, gesundgeprüften Cutover umgestellt, dient aber nur noch als Buchführung für Menschen
+und Werkzeuge (`readlink`, `scripts/db-import.sh`), für die Korrektheit der Container hat er keine
+Bedeutung mehr (Einzelheiten: `docs/vps/06-betrieb.md`, Abschnitt „Deployment: Ablauf und
+Ausfallsicherheit“). Die Ordner `deploy/` (mit `.env`), `backups/` und `logs/` sind für keinen
+Anwendungscontainer sichtbar; der Metrik-Sammler sieht nur `/proc` des Hosts lesend, nicht dessen
+Wurzeldateisystem.
 
 Konfiguration und Speicher liegen außerhalb der Releases: `SMARTEINZUG_CONFIG=/opt/smarteinzug/shared/config.php` (Umgebungsvariable, gelesen in `app/bootstrap.php`) und `storage_dir` in der config.php auf `/opt/smarteinzug/shared/storage` (Mandate, Avatare, Logs, `maintenance.flag`). Nur dieses Verzeichnis und `/opt/smarteinzug/shared/sessions` (PHP-Sitzungen, gemeinsam für alle Container) sind schreibbar eingebunden.

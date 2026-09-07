@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.4';
+const APP_VERSION = '4.5';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.5', 'date' => '07.09.2026', 'title' => 'Ausfallsicheres VPS-Deployment, Release-Bindung ohne Symlink',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Ein VPS-Deployment brach ab, wenn die SSH-Verbindung des GitHub-Workflows waehrend des mehrminuetigen Container-Neustarts kurz abriss ("client_loop: send disconnect: Broken pipe"); Container blieben im Zustand "created" haengen. Das Deployment laeuft jetzt serverseitig entkoppelt (deploy/vps/scripts/deploy-runner.sh, setsid) und uebersteht einen SSH-Abbruch; der Workflow fragt den Fortschritt ueber kurze, unabhaengige Verbindungen ab.'],
+            ['type' => 'Geändert', 'text' => 'working_dir aller Container und Caddys Dokumentenstamm sind jetzt an die Umgebungsvariable RELEASE_SHA gebunden (Pflichtwert), nicht mehr an den mutable Symlink "releases/current". Damit gehoeren Compose-Konfiguration, Healthchecks und Anwendungscode bei jedem Containerstart garantiert zum selben Release.'],
+            ['type' => 'Geändert', 'text' => 'Datenbankmigrationen laufen jetzt in einem isolierten, zusaetzlichen Container mit dem neuen Code, BEVOR die laufenden Container angefasst werden (Candidate-Pruefung, dann Migration, dann Cutover). Schlagen Candidate-Pruefung oder Migration fehl, bleiben die laufenden Container unveraendert, ein Rollback ist dann nicht noetig.'],
+            ['type' => 'Neu', 'text' => 'Regressionstests tools/compose-check.py (Release-Bindung als Pflichtwert, keine Datenbank-/Backup-Dienste im Stack) und tools/deploy-runner-check.sh (uebersteht simulierten SSH-Abbruch, lehnt parallele Deployments ab, idempotent).'],
+         ]],
         ['version' => '4.4', 'date' => '06.09.2026', 'title' => 'Healthcheck des Metrik-Sammlers',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Der Container des Metrik-Sammlers galt auf dem VPS dauerhaft als ungesund und brach das Deployment ab, weil er den Healthcheck der Worker erbte, aber keinen Worker-Heartbeat schreibt. Er hat jetzt einen eigenen Healthcheck (bin/healthcheck.php --metrics: Prozessprüfung und eigenes Lebenszeichen der Sammelschleife).'],

@@ -499,7 +499,7 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/setup-lexsepa-monorepo-v5ZcZ') &&
       (needs.changes.outputs.app == 'true' || needs.changes.outputs.vps == 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     concurrency:
       group: production-vps
       cancel-in-progress: false
@@ -547,7 +547,14 @@ jobs:
 
           # Host-Key-Pruefung bleibt zwingend aktiv. Kein StrictHostKeyChecking=no,
           # kein /dev/null als Known-Hosts-Datei.
-          echo "SSH_OPTS=-i $SSH_KEY_FILE -p $VPS_SSH_PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15" >> "$GITHUB_ENV"
+          # Keepalive einmal zentral hier gesetzt: gilt fuer JEDEN ssh/scp/rsync-Aufruf dieses Jobs, der
+          # $SSH_OPTS verwendet (keine Duplizierung je Schritt). ServerAliveInterval/-CountMax sorgen
+          # dafuer, dass eine kurzzeitig gestoerte Verbindung eher ueberlebt, BEVOR sie als tot gilt;
+          # das ersetzt aber NICHT die serverseitige Entkopplung des Deployments selbst (siehe
+          # deploy/vps/scripts/deploy-runner.sh und README.md, Abschnitt "Deployment: Ablauf und
+          # Ausfallsicherheit") - auch mit Keepalive kann eine einzelne SSH-Verbindung abbrechen
+          # (Runner-Neustart, Netzwerkstoerung), und die Korrektheit darf davon nicht abhaengen.
+          echo "SSH_OPTS=-i $SSH_KEY_FILE -p $VPS_SSH_PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes" >> "$GITHUB_ENV"
 
       - name: Zielverzeichnis auf dem VPS anlegen
         shell: bash
@@ -594,15 +601,102 @@ jobs:
             -e "ssh $SSH_OPTS" \
             websites/status.smart-einzug.de/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/status/"
 
-      - name: Deployment auf dem VPS ausfuehren
-        id: vps_deploy
-        timeout-minutes: 12
+      # Zwei Schritte statt eines einzigen, ueber die gesamte Deploymentdauer offenen SSH-Kanals:
+      #
+      # Hintergrund (behobene Stoerung "client_loop: send disconnect: Broken pipe"): Ein direkter
+      # "ssh ... deploy.sh <sha>" haelt EINE SSH-Verbindung ueber mehrere Minuten (Image-Build,
+      # Container-Neustart, Migration) offen. Bricht sie kurz ab, stirbt der entfernte Prozess mitten im
+      # Vorgang - Container blieben im Zustand "created" haengen, der Symlink "current" war noch nicht
+      # umgestellt und die Migration noch nicht erreicht. Seitdem loest der erste Schritt das Deployment
+      # nur AUS (deploy-runner.sh entkoppelt es serverseitig per "setsid" von dieser SSH-Sitzung und
+      # kehrt innerhalb weniger Sekunden zurueck); der zweite Schritt fragt den Fortschritt ueber kurze,
+      # WIEDERHOLTE, unabhaengige SSH-Verbindungen ab. Einzelheiten: deploy/vps/scripts/deploy-runner.sh,
+      # README.md ("Deployment: Ablauf und Ausfallsicherheit").
+      - name: Deployment auf dem VPS ausloesen
+        id: vps_deploy_trigger
+        timeout-minutes: 2
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # shellcheck disable=SC2086
-          ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
-            "bash '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps/scripts/deploy.sh' '$GITHUB_SHA'"
+          OUT="$(ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
+            "bash '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps/scripts/deploy-runner.sh' '$GITHUB_SHA'" 2>&1)"
+          RC=$?
+          echo "$OUT"
+          if [[ $RC -eq 0 && "$OUT" == TRIGGERED* ]]; then
+            echo "Deployment ausgeloest, dieser Lauf ist fuer $GITHUB_SHA zustaendig."
+            echo "expect_sha=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ $RC -eq 3 || "$OUT" == REJECTED* ]]; then
+            echo "::warning::Es lief bereits ein Deployment oder Rollback (Sperre belegt); dieser Lauf hat"
+            echo "::warning::nichts NEU ausgeloest, sondern wartet im naechsten Schritt auf dessen Abschluss."
+            echo "expect_sha=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Weder eindeutig ausgeloest noch eindeutig abgelehnt (z.B. die SSH-Verbindung dieses Schritts
+          # selbst brach ab, moeglicherweise NACHDEM deploy-runner.sh die Sperre bereits erworben und den
+          # Hintergrundlauf gestartet hatte). Genau diese Unsicherheit soll ein kurzer SSH-Abbruch nicht
+          # mehr in einen falschen Fehlschlag verwandeln: Statt hier sofort abzubrechen, prueft der naechste
+          # Schritt den tatsaechlichen Stand auf dem Server. Wurde nichts ausgeloest, laeuft die Abfrage
+          # dort kontrolliert in die Zeitueberschreitung.
+          echo "::warning::Ergebnis des Ausloesens unklar (Exit-Code $RC, Ausgabe: ${OUT:-leer}). Pruefe den"
+          echo "::warning::tatsaechlichen Stand auf dem Server im naechsten Schritt, statt hier vorschnell"
+          echo "::warning::abzubrechen (ein Verbindungsabbruch an dieser Stelle soll kein falscher Fehlschlag sein)."
+          echo "expect_sha=false" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Auf Abschluss des Deployments warten
+        id: vps_deploy
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set -uo pipefail
+          DEADLINE=$((SECONDS + 12 * 60))
+          STATUS=""
+          while (( SECONDS < DEADLINE )); do
+            # shellcheck disable=SC2086
+            STATUS="$(ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
+              "bash '$VPS_DEPLOY_PATH/deploy/scripts/deploy-status.sh'" 2>/dev/null)"
+            # Eine einzelne fehlgeschlagene Abfrage (z.B. kurzer Verbindungsabbruch) beendet das Warten
+            # NICHT: der naechste Versuch nach der Wartezeit unten prueft erneut. Das laufende
+            # Deployment auf dem Server ist davon vollstaendig unabhaengig (siehe deploy-runner.sh).
+            PHASE="$(printf '%s' "$STATUS" | jq -r '.phase // empty' 2>/dev/null || true)"
+            SHA_SEEN="$(printf '%s' "$STATUS" | jq -r '.sha // empty' 2>/dev/null || true)"
+            case "$PHASE" in
+              success)
+                echo "Deployment abgeschlossen (Status: success, sha=$SHA_SEEN)."
+                break
+                ;;
+              failed)
+                echo "::error::Deployment fehlgeschlagen. Status: $STATUS"
+                # shellcheck disable=SC2086
+                ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
+                  "bash '$VPS_DEPLOY_PATH/deploy/scripts/deploy-status.sh' --tail 80" 2>/dev/null || true
+                exit 1
+                ;;
+              running) : ;;
+              *) : ;;  # Statusdatei kurzzeitig nicht lesbar/noch nicht vorhanden: einfach weiter warten
+            esac
+            sleep 10
+          done
+          if [[ "$(printf '%s' "$STATUS" | jq -r '.phase // empty' 2>/dev/null)" != "success" ]]; then
+            echo "::error::Zeitueberschreitung beim Warten auf den Abschluss des Deployments. Letzter Status: $STATUS"
+            exit 1
+          fi
+          if [[ "${{ steps.vps_deploy_trigger.outputs.expect_sha }}" == "true" ]]; then
+            SHA_SEEN="$(printf '%s' "$STATUS" | jq -r '.sha // empty' 2>/dev/null)"
+            if [[ "$SHA_SEEN" != "$GITHUB_SHA" ]]; then
+              echo "::error::Der erfolgreich abgeschlossene Deploy betraf sha=$SHA_SEEN, nicht $GITHUB_SHA."
+              echo "Dieser Lauf hatte selbst ausgeloest, das Ergebnis gehoert aber zu einem anderen Release."
+              echo "Bitte diesen Workflow-Lauf erneut ausfuehren (workflow_dispatch oder erneuter Push)."
+              exit 1
+            fi
+          else
+            echo "::notice::Dieser Lauf hat selbst kein Deployment ausgeloest (Sperre war belegt), sondern nur"
+            echo "::notice::auf ein bereits laufendes gewartet. Bitte pruefen, ob sha=$GITHUB_SHA tatsaechlich"
+            echo "::notice::aktiviert wurde (Reiter Server/Versionen im Adminbereich, oder erneut ausloesen)."
+          fi
 
       - name: Health-Check von aussen
         id: health

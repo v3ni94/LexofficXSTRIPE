@@ -76,7 +76,7 @@ http://{$DOMAIN_APP}:80 {
 	# Entspricht AddOutputFilterByType DEFLATE ... (mod_deflate) der .htaccess.
 	encode gzip zstd
 
-	root * /opt/smarteinzug/releases/current
+	root * /opt/smarteinzug/releases/{$RELEASE_SHA}
 	# DirectoryIndex index.php: php_fastcgi versucht automatisch {path} und {path}/index.php.
 	php_fastcgi php:9000
 	file_server {
@@ -95,7 +95,7 @@ http://{$DOMAIN_ADMIN}:80 {
 
 	encode gzip zstd
 
-	root * /opt/smarteinzug/releases/current
+	root * /opt/smarteinzug/releases/{$RELEASE_SHA}
 	php_fastcgi php:9000
 	file_server {
 		hide .*
@@ -109,7 +109,7 @@ http://{$DOMAIN_API}:80 {
 
 	encode gzip zstd
 
-	root * /opt/smarteinzug/releases/current
+	root * /opt/smarteinzug/releases/{$RELEASE_SHA}
 
 	@allowed_endpoints path /stripe-webhook.php /billing-webhook.php /health.php /track.php
 	handle @allowed_endpoints {
@@ -124,9 +124,9 @@ http://{$DOMAIN_API}:80 {
 # --- Statusseite (statisch, kein PHP) -------------------------------------------------------------
 # Entspricht websites/status.smart-einzug.de/.htaccess.
 http://{$DOMAIN_STATUS}:80 {
-	# Der Workflow legt die Statusseite je Release unter releases/<sha>/status/ ab; ueber den current-Symlink
-	# wird damit immer der Stand des aktiven Release ausgeliefert.
-	root * /opt/smarteinzug/releases/current/status
+	# Der Workflow legt die Statusseite je Release unter releases/<sha>/status/ ab; {$RELEASE_SHA}
+	# bindet diesen Host an dasselbe Release wie die PHP-Container (siehe docker-compose.yml).
+	root * /opt/smarteinzug/releases/{$RELEASE_SHA}/status
 	encode gzip zstd
 
 	header {

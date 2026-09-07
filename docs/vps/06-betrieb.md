@@ -1,7 +1,8 @@
 # Betrieb
 
-Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
-`docs/auftrag-iii-abschluss.md`). Laufender Betrieb des VPS-Stacks nach abgeschlossener
+Stand: 07.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`, zuletzt ausfallsicheres VPS-Deployment, Version 4.5). Laufender
+Betrieb des VPS-Stacks nach abgeschlossener
 Einrichtung (`docs/vps/02-einrichtung-vps.md`, tatsächlicher Weg: `docs/vps/08-hostinger-coolify.md`).
 Alle Befehle im Verzeichnis `/opt/smarteinzug/deploy` ausführen, sofern nicht anders angegeben.
 Auf dem Server läuft neben diesem Stack auch Coolify selbst (Proxy und Serverübersicht, siehe
@@ -99,6 +100,102 @@ läuft nicht als PID 1“ oder „letzter Durchlauf vor ... s“) und hilft, zwi
 Prozess und einer zu kurzen Wartezeit nach dem Start zu unterscheiden. Ein dauerhaft ungesunder
 `metrics`-Container bricht ein Deployment ab, da `deploy.sh` auf den gesunden Zustand aller
 Container mit Healthcheck wartet.
+
+## Deployment: Ablauf und Ausfallsicherheit
+
+Reguläre Deployments laufen ausschließlich über den GitHub-Workflow
+(`.github/workflows/deploy.yml`, Job `deploy-vps`, siehe `docs/vps/03-github-deployment.md`). Der
+Workflow ruft per SSH zunächst `deploy/vps/scripts/deploy-runner.sh <git-sha>` auf dem Server auf
+und fragt den Fortschritt danach über `deploy/vps/scripts/deploy-status.sh` ab. Der direkte Aufruf
+von `deploy.sh` bleibt für die Ersteinrichtung und für gezielte manuelle Eingriffe möglich, dann mit
+eigener Sperre (siehe `deploy/vps/README.md`, Abschnitt „Start“).
+
+### Serverseitige Entkopplung von der SSH-Sitzung
+
+`deploy-runner.sh` prüft zunächst nicht blockierend, ob bereits ein Deployment oder Rollback läuft
+(dieselbe Sperrdatei `deploy/.deploy.lock` wie `deploy.sh`/`rollback.sh`). Läuft bereits eines, wird
+nichts gestartet, die Ausgabe lautet „REJECTED“ mit Exit-Code 3, kein doppeltes Deployment durch
+einen GitHub-Retry oder einen zweiten Workflow-Lauf. Andernfalls startet sich das Skript per
+`setsid` selbst in einer neuen, von der SSH-Sitzung unabhängigen Sitzung neu; der bereits gehaltene
+Sperr-Dateideskriptor wird an den neuen Prozess vererbt, es entsteht also keine Race Condition
+zwischen Prüfung und Übernahme der Sperre. Ein Abbruch der SSH-Verbindung sendet danach kein SIGHUP
+mehr an den laufenden Deploy-Prozess. Der im Vordergrund laufende Teil, den die SSH-Sitzung sieht,
+kehrt innerhalb weniger Sekunden mit „TRIGGERED“ zurück; der eigentliche Vorgang (Image-Build,
+Candidate-Prüfung, Migration, Cutover) läuft danach im Hintergrund weiter und ruft `deploy.sh` mit
+`SMARTEINZUG_LOCK_HELD=1` auf, sodass `deploy.sh` nicht versucht, dieselbe Sperre ein zweites Mal zu
+erwerben.
+
+Der GitHub-Workflow fragt den Fortschritt danach über wiederholte, kurze, unabhängige
+SSH-Verbindungen ab (`deploy-status.sh`, alle 10 Sekunden, interne Deadline 12 Minuten, siehe
+`docs/vps/03-github-deployment.md`); jede einzelne Abfrage darf abbrechen, ohne das laufende
+Deployment zu gefährden.
+
+### Statusdatei
+
+`deploy-runner.sh` schreibt eine PID-Datei, ein eigenes Protokoll unter `logs/` und eine
+JSON-Statusdatei (`deploy/.deploy-status.json`) mit den Feldern `phase` (`running`, `success`,
+`failed`), `sha`, `pid`, `started_at`, `updated_at`, `exit_code`, `log_file` und `message`. Die
+Datei enthält keine Geheimnisse. Manueller Statusabruf auf dem Server, mit Protokollauszug:
+
+```bash
+bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 50
+```
+
+### Release-Bindung ohne mutable Symlink
+
+`working_dir` aller PHP-Container und Caddys Dokumentenstamm sind an die Umgebungsvariable
+`RELEASE_SHA` gebunden (Pflichtwert, `${RELEASE_SHA:?...}` in `docker-compose.yml`), nicht mehr an
+den Symlink `releases/current`. `deploy.sh`/`rollback.sh` exportieren die Variable vor jedem
+`docker compose`-Aufruf auf das jeweils gemeinte Release. Damit gehören Compose-Konfiguration
+(einschließlich Healthchecks), Image und Anwendungscode bei jedem Containerstart garantiert zum
+selben Release; zuvor bestand das Risiko, dass ein frisch erzeugter Container mit neuer
+Compose-Konfiguration über den noch nicht umgestellten Symlink auf älteren Anwendungscode traf. Der
+Symlink `releases/current` bleibt bestehen, dient aber nur noch als Buchführung für Menschen und
+Werkzeuge (`readlink`, `scripts/db-import.sh`); für die Korrektheit der Container hat er keine
+Bedeutung mehr.
+
+### Migrationsreihenfolge: Candidate prüfen, dann migrieren, dann erst Cutover
+
+`deploy.sh` prüft den neuen Code und spielt Migrationen jetzt VOR dem Cutover in einem
+zusätzlichen, isolierten Container ein (`docker compose run --rm --no-deps`), der die laufenden
+Container `php`/`scheduler`/`worker-*` nicht berührt:
+
+Image bauen (falls nötig) → Candidate isoliert prüfen (`bin/healthcheck.php --db --redis` mit dem
+neuen Code, laufende Anwendung unberührt) → Migrationen isoliert mit dem neuen Code einspielen →
+erst danach der eigentliche Cutover (`docker compose up -d`) → auf gesunde Container warten →
+`current`-Symlink umstellen (Buchführung) → php-fpm neu laden → Worker/Scheduler kontrolliert neu
+starten → Health-Check → bei einem Fehler ab dem Cutover automatisches Rollback.
+
+Schlagen Candidate-Prüfung oder Migration fehl, wurde an den laufenden Containern nichts verändert;
+ein Rollback ist dann nicht nötig, die alte Version läuft mit dem alten Code und dem alten
+Datenbankstand unverändert weiter. Ein abgebrochener vorheriger Lauf, der Container im Zustand
+`created` hinterlassen hat, wird von `docker compose up -d` beim nächsten Versuch von selbst
+aufgelöst (idempotent); `deploy.sh` protokolliert den Containerzustand vor und nach diesem Schritt.
+Ausschließlich Ressourcen des Compose-Projekts `smarteinzug` werden dabei angefasst, niemals der
+Coolify-Proxy oder die Coolify-MariaDB.
+
+`rollback.sh` exportiert ebenfalls `RELEASE_SHA` (auf das Zielrelease des Rollbacks) und
+unterstützt `SMARTEINZUG_LOCK_HELD=1`, damit ein automatischer Rollback aus `deploy.sh` heraus (das
+seinerseits von `deploy-runner.sh` mit gehaltener Sperre aufgerufen wurde) nicht an der bereits
+gehaltenen Sperre scheitert.
+
+### Störung: Deployment nach SSH-Abbruch
+
+**Symptom früher:** Die SSH-Verbindung des GitHub-Workflows brach während des mehrminütigen
+Vorgangs (Image-Build, Container-Neustart, Migration) einmal kurz ab („client_loop: send
+disconnect: Broken pipe“). Der entfernte `deploy.sh`-Prozess hing am selben SSH-Kanal und starb
+mitten im Container-Neustart; mehrere Container blieben im Zustand `created` (nie gestartet)
+hängen, während andere weiterliefen.
+
+**Heutiges Verhalten:** Das Deployment läuft serverseitig entkoppelt weiter (siehe oben), ein
+SSH-Abbruch beendet den laufenden Deploy-Prozess nicht mehr. Der Fortschritt lässt sich jederzeit
+über `deploy-status.sh` abrufen, auf dem Server oder über den nächsten Workflow-Lauf.
+
+**Was der Betreiber nicht mehr manuell tun muss:** Container von Hand auf den Zustand `created`
+prüfen und einzeln nachstarten, den Deployment-Fortschritt aus Protokollen rekonstruieren, oder nach
+einem Verbindungsabbruch ein neues Deployment auf Verdacht auslösen und dabei riskieren, ein noch
+laufendes doppelt zu starten. Ein zweiter Auslöseversuch, während ein Deployment noch läuft, wird
+jetzt von `deploy-runner.sh` selbst abgelehnt („REJECTED“, siehe oben).
 
 ## Worker skalieren und neu starten
 

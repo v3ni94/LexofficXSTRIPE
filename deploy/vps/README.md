@@ -18,6 +18,8 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 | `redis/redis.conf` | Redis-Konfiguration (kein persistenter Datenbestand) |
 | `.env.example` | Vorlage fuer `.env` (Domains, Coolify-Netz, Containername der Coolify-MariaDB, Backup-Pfad, UID/GID, Worker-Speicher) |
 | `scripts/setup-vps.sh` | Einmalige Grundeinrichtung eines frischen VPS |
+| `scripts/deploy-runner.sh` | Serverseitiger Einstiegspunkt fuer den GitHub-Workflow: Sperre, Entkopplung von der SSH-Sitzung (`setsid`), Status-/Protokolldatei, ruft danach `deploy.sh` auf |
+| `scripts/deploy-status.sh` | Aktuellen Deployment-Status (JSON) und optional die letzten Protokollzeilen ausgeben |
 | `scripts/deploy.sh` / `scripts/rollback.sh` | Aktivieren bzw. Zuruecknehmen eines Release |
 | `scripts/db-import.sh` | Dump mit Pruefsumme per docker exec in die Coolify-MariaDB einspielen (kein Port noetig) |
 | `scripts/db-verify.php` | Tabellen, Zeilenzahlen, CHECKSUM TABLE als JSON (Alt/Neu-Abgleich) |
@@ -30,8 +32,12 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 ```bash
 cd /opt/smarteinzug/deploy      # oder dieser Ordner beim ersten manuellen Einrichten
 cp .env.example .env
-# .env mit echten Werten fuellen (Passwoerter, Domains, PROXY_NETWORK, APP_UID/APP_GID, ...)
+# .env mit echten Werten fuellen (Passwoerter, Domains, COOLIFY_NETWORK, APP_UID/APP_GID, ...)
 
+# RELEASE_SHA steht bewusst NICHT in .env: working_dir aller PHP-Container und der Caddy-Dokumentenstamm
+# haengen davon ab (siehe docker-compose.yml), deploy.sh/rollback.sh exportieren die Variable automatisch
+# vor jedem Aufruf. Fuer einen manuellen "docker compose"-Befehl vorher setzen, z.B.:
+export RELEASE_SHA="$(basename "$(readlink -f /opt/smarteinzug/releases/current)")"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d
 ```
 
@@ -41,9 +47,61 @@ ist bereits eingerichtet (`scripts/setup-vps.sh`), `/opt/smarteinzug/shared/conf
 vollstaendige Konfiguration (Vorlage `php-ionos/app/config.example.php`) und `/opt/smarteinzug/releases/current`
 zeigt bereits auf ein Release (legt `scripts/deploy.sh` bei der Erstinstallation selbst an).
 
-Regulaere Deployments laufen ueber `scripts/deploy.sh <git-sha>`, ausgeloest durch den
-GitHub-Workflow (VPS-Job per SSH). Der Aufruf von `docker compose ... up -d` von Hand ist nur fuer
-die Ersteinrichtung und fuer gezielte Eingriffe gedacht.
+Regulaere Deployments laufen ueber `scripts/deploy-runner.sh <git-sha>` (haelt die Sperre, entkoppelt
+den mehrminuetigen Vorgang von der SSH-Sitzung des GitHub-Workflows, siehe Abschnitt "Deployment: Ablauf
+und Ausfallsicherheit" unten), ausgeloest durch den GitHub-Workflow (VPS-Job per SSH). Der direkte Aufruf
+von `scripts/deploy.sh <git-sha>` oder von Hand `docker compose ... up -d` ist nur fuer die
+Ersteinrichtung und fuer gezielte Eingriffe gedacht (dann ohne den Runner, mit eigener Sperre).
+
+## Deployment: Ablauf und Ausfallsicherheit
+
+Hintergrund (behobene Stoerung): Ein direkter, lang laufender `ssh ... deploy.sh <sha>`-Aufruf aus dem
+GitHub-Workflow wurde einmal durch einen kurzen SSH-Verbindungsabbruch mitten im `docker compose up`
+beendet ("client_loop: send disconnect: Broken pipe"). Der entfernte Prozess erhielt dadurch ein Signal
+und starb, WAEHREND neue Container erzeugt wurden - der Symlink `current` war zu diesem Zeitpunkt noch
+nicht umgestellt und die Migration noch nicht erreicht (die bestehende Reihenfolge war also nicht die
+Ursache), aber mehrere Container blieben im Zustand `created` (nie gestartet) haengen, waehrend andere
+weiterliefen. Seitdem laeuft das eigentliche Deployment serverseitig entkoppelt von der SSH-Sitzung:
+
+1. GitHub Actions ruft **`scripts/deploy-runner.sh <git-sha>`** auf. Das Skript prueft nicht-blockierend
+   die Sperre (`deploy/.deploy.lock`, dieselbe wie bei `deploy.sh`/`rollback.sh`); laeuft bereits ein
+   Deployment oder Rollback, wird NICHTS gestartet ("REJECTED", Exit-Code 3, kein Doppel-Deploy durch
+   einen GitHub-Retry oder einen zweiten Workflow-Lauf). Andernfalls startet es sich selbst per `setsid`
+   in einer neuen, von der SSH-Sitzung unabhaengigen Sitzung neu (kein SIGHUP mehr bei einem
+   Verbindungsabbruch), vererbt dabei den bereits gehaltenen Sperr-Deskriptor und kehrt selbst sofort
+   zurueck ("TRIGGERED"). PID-Datei, Statusdatei (`deploy/.deploy-status.json`, JSON: `phase`, `sha`,
+   `pid`, Zeitstempel, `exit_code`, Protokolldateiname, kurze Meldung - keine Geheimnisse) und ein
+   eigenes Protokoll unter `logs/` machen den Vorgang jederzeit nachvollziehbar.
+2. GitHub Actions fragt danach wiederholt ueber KURZE, unabhaengige SSH-Verbindungen
+   **`scripts/deploy-status.sh`** ab, bis die Phase `success` oder `failed` erreicht ist. Jede einzelne
+   Abfrage darf abbrechen, ohne das laufende Deployment zu gefaehrden; nach einem eigenen Abbruch fragt
+   der naechste Workflow-Lauf denselben Status erneut ab, statt blind einen zweiten Deploy zu starten.
+3. Innerhalb dieser Huelle laeuft `deploy.sh` inhaltlich wie zuvor, mit einer wichtigen Ergaenderung:
+   working_dir aller Container ist ueber `RELEASE_SHA` an das konkrete Release gebunden (nicht an den
+   mutable Symlink `current`, siehe "Architekturentscheidungen"), und Candidate-Pruefung sowie Migration
+   laufen ueber `docker compose run --rm --no-deps` in einem ZUSAETZLICHEN, isolierten Container, BEVOR
+   die eigentlichen Live-Container ("php", "scheduler", "worker-*") ueberhaupt angefasst werden:
+   Image bauen (falls noetig) -> Candidate isoliert pruefen (`bin/healthcheck.php --db --redis` mit dem
+   NEUEN Code, laufende Anwendung unberuehrt) -> Migrationen isoliert mit dem neuen Code einspielen (noch
+   VOR dem Cutover) -> **Cutover** (`docker compose up -d`, jetzt sicher: Schema bereits migriert, Code
+   und Healthchecks garantiert aus demselben Release) -> auf gesunde Container warten -> `current`
+   umstellen (Buchfuehrung) -> Health-Check -> automatisches Rollback bei einem Fehler ab dem Cutover.
+   Schlagen Candidate-Pruefung oder Migration fehl, wurde an den laufenden Containern noch NICHTS
+   veraendert; ein Rollback ist dann nicht noetig, die alte Version laeuft unveraendert weiter.
+4. Ein abgebrochener vorheriger Lauf, der Container im Zustand `created` hinterlassen hat, wird von
+   `docker compose up -d` beim naechsten Versuch von selbst aufgeloest (idempotent: es wird nur erzeugt
+   oder gestartet, was von der Zieldefinition abweicht); `deploy.sh` protokolliert den Zustand vor und
+   nach diesem Schritt zur Nachvollziehbarkeit. Ausschliesslich Ressourcen des Compose-Projekts
+   `smarteinzug` (siehe `name:` am Kopf von `docker-compose.yml`) werden dabei angefasst; Coolify-Proxy
+   und Coolify-MariaDB gehoeren zu anderen Projekten und werden nie beruehrt.
+5. Manuelle Statusabfrage auf dem Server: `bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 50`.
+
+SSH-Keepalive: Der GitHub-Workflow setzt fuer alle SSH-/rsync-Verbindungen einheitlich
+`ServerAliveInterval=30 ServerAliveCountMax=10 TCPKeepAlive=yes`, damit eine kurzzeitig instabile
+Netzwerkverbindung waehrend einer laufenden Abfrage seltener zum Abbruch fuehrt. Das ersetzt aber NICHT
+die Entkopplung durch `deploy-runner.sh`: Selbst mit Keepalive kann eine SSH-Verbindung abbrechen (Runner-
+Neustart, Netzwerkstoerung); die Korrektheit haengt deshalb bewusst nicht davon ab, dass eine einzelne
+SSH-Verbindung die gesamte Deploymentdauer uebersteht.
 
 ## Betrieb
 
@@ -120,10 +178,14 @@ wertet X-Forwarded-Proto und X-Forwarded-For dann von rechts aus.
 ## Architekturentscheidungen, die dieser Ordner voraussetzt
 
 - Code liegt pro Release unter `/opt/smarteinzug/releases/<git-sha>/` (Inhalt von `php-ionos/`,
-  inklusive dieses `deploy/vps`-Ordners); `/opt/smarteinzug/releases/current` ist ein Symlink auf
-  das aktive Release. Container binden `/opt/smarteinzug/releases` nur LESEND ein (der Symlink zeigt
-  in denselben Mount und wird im Container aufgeloest); `deploy/`, `backups/` und `logs/` sind fuer
-  keinen Anwendungscontainer sichtbar.
+  inklusive dieses `deploy/vps`-Ordners). Container binden `/opt/smarteinzug/releases` nur LESEND ein
+  (alle vorgehaltenen Releases), ihr `working_dir` zeigt aber gezielt auf
+  `/opt/smarteinzug/releases/${RELEASE_SHA}` (Umgebungsvariable, von `deploy.sh`/`rollback.sh` vor jedem
+  Compose-Aufruf gesetzt) - NICHT auf einen mutable Symlink. Damit gehoeren Compose-Konfiguration
+  (Healthchecks eingeschlossen), Image und Code bei jedem Containerstart garantiert zum selben Release.
+  `/opt/smarteinzug/releases/current` bleibt als Symlink bestehen, ist aber reine Buchfuehrung fuer
+  Menschen und Werkzeuge (z.B. `readlink -f`, `scripts/db-import.sh`); `deploy/`, `backups/` und `logs/`
+  sind fuer keinen Anwendungscontainer sichtbar.
 - `app/config.php` und `app/storage` liegen ausserhalb jedes Release unter
   `/opt/smarteinzug/shared/` und werden separat eingebunden (config.php read-only, storage
   beschreibbar).
@@ -133,8 +195,8 @@ wertet X-Forwarded-Proto und X-Forwarded-For dann von rechts aus.
 - Scheduler und Worker haben `stop_grace_period: 660s`; `deploy.sh` und `rollback.sh` starten sie mit
   `restart -t 660`, damit ein laufender Sync-Abschnitt (bis 600 s) sauber beendet wird.
 - Die statische Statusseite (`websites/status.smart-einzug.de`) wird vom GitHub-Workflow je Release
-  unter `releases/<git-sha>/status/` abgelegt; Caddy liefert `releases/current/status` aus. Sie
-  gehoert damit zum Release und wechselt mit ihm (auch beim Rollback).
+  unter `releases/<git-sha>/status/` abgelegt; Caddy liefert `releases/${RELEASE_SHA}/status` aus (siehe
+  Caddyfile, `{$RELEASE_SHA}`). Sie gehoert damit zum Release und wechselt mit ihm (auch beim Rollback).
 
 Der Metrik-Sammler liest die lokale Kopie der Coolify-Backups (`COOLIFY_BACKUP_DIR`, read-only) und schreibt
 Zeitpunkt und Groesse der neuesten Sicherung als `backup-status.json` in den gemeinsamen Speicher
@@ -212,6 +274,10 @@ funktional ueber `health.php`).
 ## Pruefungen, die dieser Ordner ohne laufenden Docker-Daemon besteht
 
 ```bash
+# RELEASE_SHA ist jetzt ein Pflichtwert (":?" in docker-compose.yml); ein beliebiger Platzhalter
+# genuegt fuer die reine Konfigurationspruefung.
+export RELEASE_SHA=pruefung
+
 docker compose -f deploy/vps/docker-compose.yml -f deploy/vps/docker-compose.prod.yml \
     --env-file deploy/vps/.env.example config > /dev/null
 
@@ -221,4 +287,12 @@ docker compose -f deploy/vps/docker-compose.yml -f deploy/vps/docker-compose.sta
 bash -n deploy/vps/scripts/*.sh deploy/vps/backup/*.sh
 php -l deploy/vps/scripts/db-verify.php
 python3 tools/compose-check.py
+bash tools/deploy-runner-check.sh
 ```
+
+`tools/deploy-runner-check.sh` prueft `deploy-runner.sh` gegen ein simuliertes `/opt/smarteinzug` in
+einem temporaeren Ordner (kein echter Server, kein Docker noetig): Sperre wird bei einem parallelen
+zweiten Versuch abgelehnt (kein Doppel-Deploy), ein simulierter SSH-Abbruch (SIGHUP/Beenden des
+ausloesenden Vordergrundprozesses) stoppt den bereits per `setsid` entkoppelten Hintergrundlauf NICHT,
+Erfolg und Fehlschlag landen korrekt in der Statusdatei, und ein erneuter Lauf nach Abschluss ist
+wieder moeglich (idempotent).

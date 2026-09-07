@@ -1,7 +1,8 @@
 # Cutover-Checkliste
 
-Stand: 06.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
-`docs/auftrag-iii-abschluss.md`). Abzuarbeiten für jeden Produktions-Cutover einer oder mehrerer
+Stand: 07.09.2026 (Auftrag III), ergänzt für den Hostinger-VPS (Nachtrag, siehe
+`docs/auftrag-iii-abschluss.md`, zuletzt ausfallsicheres VPS-Deployment, Version 4.5). Abzuarbeiten
+für jeden Produktions-Cutover einer oder mehrerer
 Firmen vom IONOS-Webhosting auf den Hostinger-VPS. Jeden Punkt tatsächlich prüfen, nicht nur
 abhaken; bei einem gescheiterten Punkt den Cutover anhalten und die Ursache klären, bevor der
 nächste Phasenschritt beginnt. Zum Stand dieses Nachtrags wurde noch nichts produktiv
@@ -104,6 +105,16 @@ eingerichtet und kein DNS-Eintrag geändert (siehe `docs/vps/08-hostinger-coolif
 
 - [ ] `bin/migrate.php --status` zeigt ausschließlich `success`.
 - [ ] Kein Eintrag `failed` oder `unknown` in `schema_migrations`.
+
+### Deployment
+
+- [ ] Vor dem eigentlichen Cutover-Tag ist mindestens ein Testdeployment (Staging oder ein
+      unkritischer Push) tatsächlich durchgelaufen und hat dabei die Reihenfolge Candidate prüfen,
+      dann migrieren, dann erst Cutover sowie die serverseitige Entkopplung
+      (`deploy/vps/scripts/deploy-runner.sh`) durchlaufen (siehe `docs/vps/06-betrieb.md`, Abschnitt
+      „Deployment: Ablauf und Ausfallsicherheit“).
+- [ ] SSH-Keepalive (`ServerAliveInterval`/`ServerAliveCountMax`/`TCPKeepAlive`) ist bereits fester
+      Bestandteil des Workflows (`.github/workflows/deploy.yml`); keine weitere Handlung nötig.
 
 ### Deployment-Variablen (Webhosting)
 
