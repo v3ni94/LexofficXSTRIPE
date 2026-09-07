@@ -4,9 +4,10 @@
  *
  * Erzeugt wird die Dokumentation ausschliesslich durch tools/build-docs.py (GitHub-Workflow), nie zur Laufzeit.
  * Zugriffsstufen je Datei (manifest.json, Feld access):
- *   technical  Entwickler- und Betriebsdokumentation (streng vertraulich): nur Plattformadministratoren, deren
- *              E-Mail-Adresse in config docs.technical_readers steht. Leere Liste = niemand (Standard: verweigern).
- *   admin      Unternehmensdokumentation, Anlagen, Diagramme: alle Plattformadministratoren mit 2FA.
+ *   technical  Entwickler- und Betriebsdokumentation (streng vertraulich): Plattformadministratoren (users.is_superadmin,
+ *              2FA aktiv). Zusaetzlich duerfen Adressen aus config docs.technical_readers lesen, sobald sie ueber die
+ *              Plattformrollen (4.34) Adminzugang ohne Superadmin-Recht haben; Mitarbeiter- und Supportrollen sehen sie nie.
+ *   admin      Unternehmensdokumentation, Anlagen, Diagramme: Plattformadministratoren mit 2FA; nicht fuer Mitarbeiter/Support.
  *   customer   Benutzerhandbuch: angemeldete Benutzer der Kundenanwendung (handbuch.php) und Plattformadministratoren.
  * Historische Fassungen liegen unter shared/docs-archive/<id>/ (von deploy.sh abgelegt) mit eigenem Manifest.
  */
@@ -59,7 +60,7 @@ function docs_can_access(array $ctx, string $access): bool
     $isSuper = (int)($ctx['is_superadmin'] ?? 0) === 1 && (int)($ctx['totp_enabled'] ?? 0) === 1;
     switch ($access) {
         case 'technical':
-            return $isSuper && in_array(mb_strtolower((string)($ctx['email'] ?? '')), docs_technical_readers(), true);
+            return $isSuper || (!empty($ctx['platform_admin']) && in_array(mb_strtolower((string)($ctx['email'] ?? '')), docs_technical_readers(), true));
         case 'admin':
             return $isSuper;
         case 'customer':

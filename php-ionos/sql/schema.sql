@@ -145,7 +145,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY ix_audit_tenant_time (tenant_id, created_at),
     KEY ix_audit_user_time (user_id, created_at),
-    KEY ix_audit_action (action)
+    KEY ix_audit_action (action),
+    KEY ix_audit_created (created_at)                                 -- Migration 026 (audit_cleanup)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS organization_members (
@@ -568,6 +569,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     updated_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_invoice_tenant_lexoffice (tenant_id, lexoffice_invoice_id),
     KEY ix_invoice_customer (customer_id),
+    KEY ix_invoice_tenant_status (tenant_id, lexoffice_status),       -- Migration 026
     CONSTRAINT fk_invoice_org      FOREIGN KEY (tenant_id)   REFERENCES organizations (id) ON DELETE CASCADE,
     CONSTRAINT fk_invoice_customer FOREIGN KEY (customer_id) REFERENCES customers (id)     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -598,6 +600,7 @@ CREATE TABLE IF NOT EXISTS payment_collections (
     KEY ix_collection_tenant (tenant_id),
     KEY ix_collection_pi (stripe_payment_intent_id),
     KEY ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date),
+    KEY ix_collection_tenant_status (tenant_id, stripe_status),      -- Migration 026
     CONSTRAINT fk_collection_org     FOREIGN KEY (tenant_id)        REFERENCES organizations (id)  ON DELETE CASCADE,
     CONSTRAINT fk_collection_invoice FOREIGN KEY (invoice_id)       REFERENCES invoices (id)       ON DELETE CASCADE,
     CONSTRAINT fk_collection_mandate FOREIGN KEY (mandate_id)       REFERENCES sepa_mandates (id),
@@ -1006,3 +1009,20 @@ CREATE TABLE IF NOT EXISTS legal_acceptances (
     KEY ix_legal_acc_doc (document_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------------
+-- Zustimmungsnachweis AGB/Datenschutz (Migration 025)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS consent_records (
+    id              CHAR(36)     NOT NULL PRIMARY KEY,
+    user_id         CHAR(36)     NULL,
+    organization_id CHAR(36)     NULL,
+    user_email      VARCHAR(255) NOT NULL,
+    subject         VARCHAR(40)  NOT NULL,               -- agb | datenschutz | ...
+    version         VARCHAR(60)  NOT NULL,               -- Fassung, archiviert in docs/einwilligungen.md
+    method          VARCHAR(20)  NOT NULL DEFAULT 'registration', -- registration | backend | import
+    source_url      VARCHAR(255) NULL,                   -- Seite, deren Text akzeptiert wurde
+    accepted_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY ix_consent_user (user_id, accepted_at),
+    KEY ix_consent_org (organization_id, accepted_at),
+    KEY ix_consent_subject (subject, version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -285,9 +285,7 @@ layout_header('Administration', $ctx);
     </div>
 <?php endif; ?>
 <p class="page-sub">Plattform <?= e(product_name()) ?> · Betreiber <?= e((string)(config('operator')['name'] ?? 'Müller Holding AG')) ?></p>
-<nav class="admin-subnav" aria-label="Adminbereiche">
-    <a href="#kennzahlen">Kennzahlen</a> · <a href="#diagramme">Diagramme</a> · <a href="#notstopp">Not-Stopp</a> · <a href="#tarife">Tarife</a> · <a href="#firmen">Firmen</a> · <a href="admin-support.php">Support</a> · <a href="admin-system.php" title="Technische Betriebsübersicht">System</a> · <a href="admin-legal.php">Rechtsdokumente</a>
-</nav>
+<?= layout_subnav(['uebersicht' => ['label' => 'Übersicht', 'href' => 'admin.php'], 'kennzahlen' => ['label' => 'Kennzahlen', 'href' => '#kennzahlen'], 'diagramme' => ['label' => 'Diagramme', 'href' => '#diagramme'], 'notstopp' => ['label' => 'Not-Stopp', 'href' => '#notstopp'], 'tarife' => ['label' => 'Tarife', 'href' => '#tarife'], 'firmen' => ['label' => 'Firmen', 'href' => '#firmen'], 'support' => ['label' => 'Support', 'href' => 'admin-support.php', 'ext' => true], 'system' => ['label' => 'System', 'href' => 'admin-system.php', 'ext' => true], 'legal' => ['label' => 'Rechtsdokumente', 'href' => 'admin-legal.php', 'ext' => true]], 'uebersicht', 'Adminbereiche') ?>
 
 <?php if ($platformAlerts): ?>
 <div class="flash flash-warn">

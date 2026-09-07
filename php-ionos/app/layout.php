@@ -216,6 +216,25 @@ function layout_footer(?array $ctx = null): void
     <?php
 }
 
+/**
+ * Untermenü als Reiterleiste. $items: ['schluessel' => ['label' => ..., 'href' => ..., 'ext' => bool]] oder ['label' => href];
+ * $active: Schlüssel des aktiven Reiters. Reiter ohne Schlüsselgleichheit werden als Links dargestellt (ext = weiterführend).
+ */
+function layout_subnav(array $items, ?string $active = null, string $aria = 'Unterbereiche'): string
+{
+    $out = '<nav class="subnav" aria-label="' . e($aria) . '">';
+    foreach ($items as $key => $item) {
+        if (!is_array($item)) {
+            $item = ['label' => (string)$key, 'href' => (string)$item];
+            $key = (string)$key;
+        }
+        $isActive = $active !== null && (string)$key === $active;
+        $cls = trim(($isActive ? 'active' : '') . (!empty($item['ext']) ? ' subnav-ext' : ''));
+        $out .= '<a href="' . e((string)$item['href']) . '"' . ($cls !== '' ? ' class="' . $cls . '"' : '') . ($isActive ? ' aria-current="page"' : '') . '>' . e((string)$item['label']) . '</a>';
+    }
+    return $out . '</nav>';
+}
+
 function role_label(string $role): string
 {
     return match ($role) {

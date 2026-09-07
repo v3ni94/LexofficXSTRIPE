@@ -129,19 +129,22 @@ if ($tokenA !== '') {
             // der Abmeldelink der ersten E-Mail bleibt gueltig. Freiwillige Angaben brauchen einen frischen Token und
             // entfallen hier.
             vormerken_page('Ihre Vormerkung ist bestätigt', [
+                'Ihre Einwilligung: Fassung ' . (string)$row['consent_text'] . ' vom ' . date('d.m.Y, H:i', interest_ts((string)($row['consent_at'] ?? $row['created_at']))) . ' Uhr (UTC), bestätigt am ' . date('d.m.Y, H:i') . ' Uhr.',
                 'Wir informieren Sie über die sevdesk-Anbindung und den geplanten Start. Derzeit müssen Sie noch kein sevdesk- oder Stripe-Konto verbinden.',
                 'Eine Bestätigung per E-Mail folgt, sobald der Versand verfügbar ist. Der Abmeldelink aus Ihrer ersten E-Mail bleibt gültig; es entsteht kein Abonnement und keine Zahlungspflicht.',
             ], $back, 'Zur Produktseite');
         }
         // Freiwillige Angaben laufen über den frischen Token B aus interest_confirm (nur als Hash gespeichert).
         vormerken_page('Ihre Vormerkung ist bestätigt', [
+            'Ihre Einwilligung: Fassung ' . (string)$row['consent_text'] . ' vom ' . date('d.m.Y, H:i', interest_ts((string)($row['consent_at'] ?? $row['created_at']))) . ' Uhr (UTC), bestätigt am ' . date('d.m.Y, H:i') . ' Uhr.',
             'Wir informieren Sie über die sevdesk-Anbindung und den geplanten Start. Derzeit müssen Sie noch kein sevdesk- oder Stripe-Konto verbinden. Eine Bestätigung mit Abmeldelink ist an Ihre Adresse unterwegs.',
             'Es entsteht kein Abonnement und keine Zahlungspflicht. Abmelden können Sie sich jederzeit über den Link in jeder E-Mail.',
             'Wenn Sie möchten, helfen uns die folgenden freiwilligen Angaben bei der Planung. Sie können diesen Schritt auch überspringen.',
         ], $back, 'Zur Produktseite', vormerken_angaben_form($manage));
     }
+    $einwilligung = 'Ihre Einwilligung: Fassung ' . (string)$row['consent_text'] . ' vom ' . date('d.m.Y, H:i', interest_ts((string)($row['consent_at'] ?? $row['created_at']))) . ' Uhr (UTC).';
     if ($row['status'] === 'confirmed') {
-        vormerken_page('Vormerkung bereits bestätigt', ['Die Adresse ' . $row['email'] . ' ist bereits vorgemerkt. Es ist nichts weiter zu tun.'], $back);
+        vormerken_page('Vormerkung bereits bestätigt', ['Die Adresse ' . $row['email'] . ' ist bereits vorgemerkt. Es ist nichts weiter zu tun.', $einwilligung], $back);
     }
     vormerken_page('Vormerkung bestätigen', [
         'Bitte bestätigen Sie, dass Sie mit der Adresse ' . $row['email'] . ' über Entwicklungsstand und Start der sevdesk-Anbindung informiert werden möchten.',

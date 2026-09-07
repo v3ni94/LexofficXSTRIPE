@@ -203,10 +203,11 @@ return [
     //   werden ohne Detailabruf übersprungen (false = altes Verhalten, jede Rechnung einzeln).
     // contact_refresh_hours: Kontaktdaten bekannter Kunden höchstens so oft neu laden (0 = immer).
     // Systemmonitoring (Adminbereich System, Auftrag II Abschnitt 7). Alle Werte optional.
-    // Dokumentationssystem (Adminbereich, Versionen & Dokumentation). Entwickler- und Betriebsdokumentation
-    // (streng vertraulich) sehen nur Plattformadministratoren, deren Adresse hier steht; leer = niemand.
+    // Dokumentationssystem (Adminbereich, Versionen & Dokumentation). Entwickler-/Betriebs- und Unternehmensdokumentation
+    // sehen Plattformadministratoren (is_superadmin, 2FA); Mitarbeiter- und Supportrollen nie. technical_readers erlaubt
+    // zusaetzlich einzelnen Plattformadminrollen ohne Superadmin-Recht den Zugriff auf die Entwicklerdokumentation.
     'docs' => [
-        'technical_readers' => [],            // z. B. ['admin@example.de']
+        'technical_readers' => [],            // optional, z. B. ['technik@example.de']
         'archive_dir' => '',                  // leer = <Ordner der config.php>/docs-archive (deploy.sh legt dort Staende ab)
     ],
     'monitoring' => [

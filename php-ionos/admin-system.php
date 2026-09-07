@@ -213,11 +213,8 @@ layout_header('System', $ctx);
     <?php if ($cfg['status_page_url'] !== ''): ?><a class="btn btn-secondary" href="<?= e($cfg['status_page_url']) ?>" target="_blank" rel="noopener">Öffentliche Statusseite</a><?php endif; ?>
 </div>
 
-<nav class="admin-subnav" aria-label="Systembereiche">
-    <?php foreach ($tabs as $k => $label): ?>
-        <a href="admin-system.php?tab=<?= e($k) ?>&amp;w=<?= e($w) ?>&amp;d=<?= $d ?>"<?= $k === $tab ? ' class="active" aria-current="page"' : '' ?>><?= e($label) ?></a><?= array_key_last($tabs) === $k ? '' : ' · ' ?>
-    <?php endforeach; ?>
-</nav>
+<?php $subnavItems = []; foreach ($tabs as $k => $label) { $subnavItems[$k] = ['label' => $label, 'href' => 'admin-system.php?tab=' . $k . '&w=' . $w . '&d=' . $d]; }
+echo layout_subnav($subnavItems, $tab, 'Systembereiche'); ?>
 
 <?php if ($tab === 'uebersicht' || $tab === 'aktivitaet'): ?>
 <div class="mon-windows">Zeitfenster:
@@ -1030,29 +1027,31 @@ $winFrom = $now - $d * 86400;
         <?php if (($docsManifest['status'] ?? '') !== 'complete'): ?>
             <div class="flash flash-warn"><strong>Erzeugung unvollständig:</strong> <?= e(implode(', ', (array)($docsManifest['missing'] ?? []))) ?>. Letzter vollständiger Stand: siehe Archiv unten.</div>
         <?php endif; ?>
-        <p class="hint">Softwarestand <?= e((string)$docsManifest['version']) ?> · Commit <?= e((string)$docsManifest['commit']) ?> · erzeugt <?= e((string)$docsManifest['generated_at']) ?> UTC · Schrift <?= e((string)($docsManifest['font'] ?? '')) ?> · Erzeugungsstatus <?= e((string)($docsManifest['status'] ?? '')) ?>.
-        <?php if (!$docsReaders): ?><strong>Hinweis:</strong> <code>docs.technical_readers</code> ist nicht konfiguriert; die Entwickler- und Betriebsdokumentation ist damit für niemanden abrufbar (Standard: verweigern). Adressen in <code>shared/config.php</code> eintragen, danach <code>restart-workers.sh</code>.<?php endif; ?></p>
-        <div class="doc-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+        <p class="hint">Softwarestand <?= e((string)$docsManifest['version']) ?> · Commit <?= e((string)$docsManifest['commit']) ?> · erzeugt <?= e(str_replace('T', ' ', substr((string)$docsManifest['generated_at'], 0, 16))) ?> UTC · Erzeugung <?= ($docsManifest['status'] ?? '') === 'complete' ? 'vollständig' : 'unvollständig' ?>.
+        Entwickler- und Unternehmensdokumentation sehen Plattformadministratoren; Mitarbeiter- und Supportrollen nicht.</p>
+        <div class="doc-cards">
         <?php foreach ((array)$docsManifest['documents'] as $d): $allowed = docs_can_access($ctx, (string)$d['access']); ?>
-            <div class="card" style="margin:0">
-                <h3 style="margin-top:0"><?= e((string)$d['title']) ?></h3>
-                <dl class="legal-data">
+            <div class="doc-card">
+                <h3><?= e((string)$d['title']) ?></h3>
+                <dl class="doc-meta">
                     <dt>Zielgruppe</dt><dd><?= e((string)$d['audience']) ?></dd>
-                    <dt>Vertraulichkeit</dt><dd><?= e((string)$d['classification']) ?> (<?= e($docsLabels[$d['access']] ?? (string)$d['access']) ?>)</dd>
+                    <dt>Vertraulichkeit</dt><dd><?= e((string)$d['classification']) ?><br><span class="hint"><?= e($docsLabels[$d['access']] ?? (string)$d['access']) ?></span></dd>
                     <dt>Softwarestand</dt><dd>Version <?= e((string)$docsManifest['version']) ?>, Commit <?= e((string)$docsManifest['commit']) ?></dd>
-                    <dt>Dokumentrevision</dt><dd><?= e((string)$d['revision']) ?> vom <?= e((string)$d['revision_date']) ?><?= !empty($d['revision_summary']) ? ': ' . e((string)$d['revision_summary']) : '' ?></dd>
-                    <dt>Prüfdatum</dt><dd><?= e((string)$docsManifest['generated_at']) ?> UTC (Erzeugung), fachliche Prüfung siehe Revisionsvermerk</dd>
-                    <dt>Status</dt><dd><?= $docsVersionMismatch ? '<span class="badge badge-danger">veraltet</span>' : '<span class="badge badge-success">aktuell, veröffentlicht mit dem Release</span>' ?></dd>
+                    <dt>Revision</dt><dd><?= e((string)$d['revision']) ?> vom <?= e((string)$d['revision_date']) ?><?= !empty($d['revision_summary']) ? '<br><span class="hint">' . e((string)$d['revision_summary']) . '</span>' : '' ?></dd>
+                    <dt>Prüfdatum</dt><dd><?= e(substr((string)$docsManifest['generated_at'], 0, 10)) ?> (Erzeugung)<br><span class="hint">fachliche Prüfung: siehe Revisionsvermerk</span></dd>
+                    <dt>Status</dt><dd><?= $docsVersionMismatch ? '<span class="badge badge-danger">veraltet</span>' : '<span class="badge badge-success">aktuell</span>' ?></dd>
                     <dt>Umfang</dt><dd><?= count((array)$d['chapters']) ?> Kapitel, PDF <?= monitor_bytes((int)($d['pdf_bytes'] ?? 0)) ?></dd>
                 </dl>
                 <?php if ($allowed): ?>
-                    <p><a class="btn btn-primary" href="admin-doc.php/<?= e((string)$d['html']) ?>" target="_blank" rel="noopener">Lesen (Inhaltsverzeichnis, Navigation, Suche)</a>
-                       <a class="btn" href="admin-doc.php?f=<?= e(rawurlencode((string)$d['pdf'])) ?>">Gesamt-PDF</a></p>
+                    <div class="doc-actions">
+                        <a class="btn" href="admin-doc.php/<?= e((string)$d['html']) ?>" target="_blank" rel="noopener">Lesen</a>
+                        <a class="btn btn-secondary" href="admin-doc.php?f=<?= e(rawurlencode((string)$d['pdf'])) ?>">Gesamt-PDF</a>
+                    </div>
                     <details><summary>Kapitel als PDF (<?= count((array)$d['chapters']) ?>)</summary><ol>
-                    <?php foreach ((array)$d['chapters'] as $ch): ?><li><a href="admin-doc.php?f=<?= e(rawurlencode((string)$ch['pdf'])) ?>"><?= e((string)$ch['title']) ?></a> <span class="hint"><?= e((string)($ch['source'] ?? '')) ?></span></li><?php endforeach; ?>
+                    <?php foreach ((array)$d['chapters'] as $ch): ?><li><a href="admin-doc.php?f=<?= e(rawurlencode((string)$ch['pdf'])) ?>"><?= e((string)$ch['title']) ?></a></li><?php endforeach; ?>
                     </ol></details>
                 <?php else: ?>
-                    <p class="hint">Keine Leseberechtigung für dieses Dokument (<?= e((string)$d['access']) ?>).</p>
+                    <p class="doc-locked">Keine Leseberechtigung (<?= e((string)$d['access']) ?>).</p>
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
@@ -1062,9 +1061,9 @@ $winFrom = $now - $d * 86400;
         <?php foreach ((array)$docsManifest['files'] as $df): if (!empty($df['doc']) || !str_ends_with((string)$df['name'], '.pdf')) { continue; } ?>
             <li><a href="admin-doc.php?f=<?= e(rawurlencode((string)$df['name'])) ?>"><?= e((string)($df['title'] ?: $df['name'])) ?></a> (<?= monitor_bytes((int)$df['bytes']) ?>)</li>
         <?php endforeach; ?>
-            <li>Schaubilder (SVG und PNG) liegen unter <code>diagramme/</code> und sind in den Dokumenten eingebettet; Quellen: <code>docs/diagramme/*.mmd</code>.</li>
+            <li>Schaubilder (SVG und PNG) sind in den Dokumenten eingebettet; Quellen im Repository unter <code>docs/diagramme/</code>.</li>
         </ul>
-        <p class="hint">Jeder Abruf wird im Audit protokolliert (<code>admin_doc_download</code>). Kunden erhalten das Benutzerhandbuch in der Kundenanwendung unter <code>handbuch.php</code>. Regeln, Erzeugung und Rechte: Entwicklerdokumentation, Kapitel Dokumentationssystem.</p>
+        <p class="hint">Jeder Abruf wird im Protokoll erfasst. Kunden erhalten das Benutzerhandbuch in der Kundenanwendung unter „Handbuch“ (Hilfe-Center). Regeln, Erzeugung und Rechte: Entwicklerdokumentation, Kapitel Dokumentationssystem.</p>
     <?php endif; ?>
 </div>
 <div class="card" id="dokumentation-archiv">

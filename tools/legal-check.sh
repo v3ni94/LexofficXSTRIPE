@@ -27,6 +27,8 @@ grep -q "audit_cleanup" "$ROOT/php-ionos/app/jobs.php" && grep -q "audit_cleanup
 grep -q "typ=protokoll" "$ROOT/php-ionos/team.php" && grep -q "'protokoll'" "$ROOT/php-ionos/export.php" && grep -q "is_owner(\$ctx)" "$ROOT/php-ionos/export.php" && ok "Protokoll-Export nur Inhaber" || bad "Protokoll-Export"
 grep -q 'audit-more' "$ROOT/php-ionos/team.php" && ok "Protokoll: 20 Zeilen, Rest aufklappbar" || bad "Protokoll-Anzeige"
 ! grep -qi "nie gelöscht" "$ROOT/php-ionos/team.php" "$ROOT/php-ionos/sql/schema.sql" && ok "kein veralteter Hinweis 'nie geloescht'" || bad "veralteter Hinweis"
+grep -q "consent_record_registration" "$ROOT/php-ionos/register.php" && grep -q "consent_list_for_org" "$ROOT/php-ionos/rechtliches.php" && grep -q "consent_list_for_user" "$ROOT/php-ionos/security.php" && grep -q "agb-2026-09" "$ROOT/docs/einwilligungen.md" && ok "Zustimmungsnachweis: Registrierung, Rechtliches, Sicherheit, Archiv der Fassungen" || bad "Zustimmungsnachweis"
+grep -q "consent_text" "$ROOT/php-ionos/vormerken.php" && ok "Vormerkung zeigt Einwilligung mit Fassung und Zeitpunkt" || bad "Vormerkung Einwilligung"
 grep -q "Anlage 1" "$ROOT/php-ionos/app/legal_drafts.php" && grep -q "Lexware Office" "$ROOT/php-ionos/app/legal_drafts.php" && grep -q "203" "$ROOT/php-ionos/app/legal_drafts.php" && ok "Entwuerfe: AVV mit Datenanlage, Verschwiegenheit § 203" || bad "Entwuerfe"
 ! grep -q "—" "$ROOT/php-ionos/app/legal_drafts.php" "$ROOT/php-ionos/rechtliches.php" "$ROOT/php-ionos/admin-legal.php" && ok "keine Gedankenstriche" || bad "Gedankenstrich"
 
@@ -65,6 +67,12 @@ if mariadb_sandbox_available; then
     erw "unveroeffentlichte Fassung loeschbar" unveroeffentlicht_geloescht 1
     erw "Renderer escaped HTML" render_escaped 1
     erw "Renderer: Ueberschrift, Listen, fett, Platzhalter" render_struktur 1
+    erw "Zustimmung: AGB und Datenschutz je Registrierung" consent_zwei_gegenstaende 2
+    erw "Zustimmung: idempotent je Benutzer, Gegenstand, Fassung" consent_idempotent 2
+    erw "Zustimmung: Fassungen aus app/consent.php" consent_fassungen "agb:agb-2026-09,datenschutz:datenschutz-2026-09"
+    erw "Zustimmung: E-Mail kleingeschrieben" consent_email_klein inhaber@firma-a.test
+    erw "Zustimmung: Weg registration" consent_weg registration
+    erw "Zustimmung: unbekannter Gegenstand abgelehnt" consent_unbekannt_abgelehnt 1
     erw "Audit: alter Eintrag geloescht" audit_geloescht 1
     erw "Audit: junger Eintrag bleibt" audit_rest 1
     erw "Audit-Aufbewahrung Vorgabe 90 Tage" audit_retention_default 90

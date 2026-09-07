@@ -364,7 +364,17 @@ Bewertungsskala: **erfüllt** / **teilweise** / **nicht erfüllt** / **nicht anw
 
 ## 8. Empfehlungsliste und offene Prüfpunkte
 
-### 8.1 Empfehlungsliste (priorisiert, nur Vorschläge, Umsetzung erst nach Freigabe der Geschäftsführung)
+### 8.0 Entscheidung vom 07.09.2026 (Geschäftsführung: Abwägung an die Entwicklung delegiert)
+
+Umgesetzt in Migration 026 (rein additiv): zusammengesetzte Indizes `payment_collections (tenant_id, stripe_status)` und
+`invoices (tenant_id, lexoffice_status)` sowie `audit_log (created_at)` für die tägliche Bereinigung. Kein zusätzlicher Index auf
+`jobs` (vorhandene `ix_jobs_pick` und `ix_jobs_tenant` decken die Zugriffe). Bewusst nicht umgesetzt, weil Aufwand und Risiko den
+Nutzen übersteigen oder die Entscheidung dem Betreiber obliegt: UUID-Primärschlüssel (Punkt 6.2), `CHECK`-Constraints, gezielte
+Deadlock-Wiederholung (wird im Rahmen der Performance-Überarbeitung der Synchronisation betrachtet), Slow-Query-Log und
+Wiederherstellungstest (Betreiberaufgaben, im Leitfaden Scharfschaltung aufgeführt), UTC-Konvention für neue Tabellen (als Regel
+in CLAUDE.md aufgenommen, bestehende Spalten unverändert).
+
+### 8.1 Empfehlungsliste (ursprüngliche Vorschläge, Stand vor der Entscheidung)
 
 1. **Zusammengesetzte Indizes ergänzen** für die am häufigsten gemeinsam gefilterten Spalten: `payment_collections (tenant_id, stripe_status)`, `invoices (tenant_id, lexoffice_status)`, `jobs (tenant_id, type, status)`, geringes Risiko, mit `EXPLAIN`-Nachweis vor Freigabe.
 2. **Bereinigungsabfrage von `audit_log` mit Index unterlegen** (aktuell reiner Tabellenscan bei jedem täglichen Lauf, Abschnitt 2.4/6): entweder einen Index mit `created_at` als führender Spalte ergänzen oder die Löschung anders staffeln (z. B. je `tenant_id`-Bereich).

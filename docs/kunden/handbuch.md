@@ -626,6 +626,21 @@ Ist mehr als ein öffentlicher Tarif verfügbar, zeigt "Abonnement" im Abschnitt
 
 **Erwartetes Ergebnis:** Der Status wechselt auf "Akzeptiert am ... durch ...". Erscheint eine neue Fassung eines bereits akzeptierten Dokuments, zeigt die Seite den Hinweis "Neue Fassung, Zustimmung erforderlich" mit dem Datum der zuletzt akzeptierten Fassung.
 
+### 11.1a Zustimmungen einsehen
+
+**Ziel:** Nachsehen, wann und in welcher Fassung AGB und Datenschutzerklärung akzeptiert wurden.
+
+**Voraussetzungen:** angemeldeter Benutzer.
+
+**Schritte:**
+
+1. Für die Firma: auf "Rechtliches" den Abschnitt "Zustimmungen zu AGB und Datenschutzerklärung" öffnen. Die Tabelle nennt Gegenstand, Fassung, Zeitpunkt (UTC), Person und Weg (Registrierung).
+2. Für das eigene Konto: unter "Sicherheit" den Abschnitt "Meine Zustimmungen" öffnen.
+
+**Erwartetes Ergebnis:** Je Registrierung erscheinen zwei Einträge (AGB, Datenschutzerklärung). Konten, die vor dieser Funktion angelegt wurden, zeigen einen Hinweis statt einer Liste; ihre Zustimmung erfolgte im Registrierungsformular zum Zeitpunkt der Registrierung.
+
+**Typische Fehler:** Keine.
+
 ### 11.2 Berufliche Verschwiegenheitspflicht angeben
 
 Unterliegt Ihre Firma einer beruflichen Verschwiegenheitspflicht (§ 203 StGB), etwa als Rechtsanwalt, Steuerberater, Wirtschaftsprüfer, Notar, Arzt oder Apotheker, setzen Sie im Abschnitt "Berufliche Verschwiegenheitspflicht (§ 203 StGB)" die entsprechende Checkbox und tragen optional die Berufsgruppe ein. Damit wird Ihnen die passende Verschwiegenheitsvereinbarung zur Zustimmung angezeigt.

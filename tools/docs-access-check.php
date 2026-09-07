@@ -20,9 +20,10 @@ $orgAdmin = ['user_id' => 'u5', 'email' => 'admin@firma.test', 'is_superadmin' =
 $anon = [];
 
 echo "1) Zugriffsstufen\n";
-$ok('technical: Superadmin ohne Eintrag verweigert', !docs_can_access($super, 'technical'));
+$ok('technical: Plattformadministrator mit 2FA erlaubt (Entscheidung 07.09.2026)', docs_can_access($super, 'technical'));
 $ok('technical: eingetragener Superadmin erlaubt (Gross-/Kleinschreibung egal)', docs_can_access($tech, 'technical'));
-$ok('technical: eingetragene Adresse ohne Superadmin verweigert', !docs_can_access($techNoSuper, 'technical'));
+$ok('technical: eingetragene Adresse ohne Superadmin und ohne Plattformadminrolle verweigert', !docs_can_access($techNoSuper, 'technical'));
+$ok('technical: eingetragene Adresse mit Plattformadminrolle erlaubt', docs_can_access($techNoSuper + ['platform_admin' => true], 'technical'));
 $ok('technical: Firmenadministrator verweigert', !docs_can_access($orgAdmin, 'technical'));
 $ok('technical: Inhaber verweigert', !docs_can_access($owner, 'technical'));
 $ok('admin: Superadmin mit 2FA erlaubt', docs_can_access($super, 'admin'));
@@ -33,7 +34,8 @@ $ok('customer: Superadmin erlaubt', docs_can_access($super, 'customer'));
 $ok('customer: nicht angemeldet verweigert', !docs_can_access($anon, 'customer'));
 $ok('unbekannte Stufe verweigert', !docs_can_access($super, 'sonstwas'));
 $GLOBALS['config']['docs']['technical_readers'] = [];
-$ok('technical: leere Leserliste verweigert jeden', !docs_can_access($tech, 'technical') && !docs_can_access($super, 'technical'));
+$ok('technical: leere Leserliste, Plattformadministratoren weiterhin erlaubt, Rolle ohne Eintrag verweigert', docs_can_access($super, 'technical') && !docs_can_access($techNoSuper + ['platform_admin' => true], 'technical'));
+$ok('technical: Superadmin ohne 2FA verweigert', !docs_can_access($superNo2fa, 'technical'));
 
 echo "2) Manifest-Allowlist\n";
 $m = ['files' => [['name' => 'kunden.pdf', 'kind' => 'pdf', 'access' => 'customer', 'doc' => 'kunden'], ['name' => 'entwickler/index.html', 'kind' => 'html', 'access' => 'technical', 'doc' => 'entwickler']]];

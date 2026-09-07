@@ -38,6 +38,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.34 | Zustimmungsnachweis AGB/Datenschutz (Migration 025, `app/consent.php`), Reiterleiste `layout_subnav()`, Dokumentationskarten, Dokumentationsrechte für Plattformadministratoren, Indizes (Migration 026), automatischer zweiter Anlauf `deploy-vps` bei Verbindungsfehler | siehe git log | legal-check 64/0, docs-access-check 23/0, github-ssh-retry-check, github-poll-check |
 | 4.33 | Host-Trennung: Adminseiten per Muster `admin-*.php` (admin-legal.php lieferte 404) | siehe git log | php -l |
 | 4.32 | Dokumentationssystem: drei Dokumentationen (Unternehmen, Entwickler/Betrieb, Kunden) aus docs/, Generator mit CI-PDF (Logo je Seite, Deckblatt, Abschlussblatt, TOC, Querformat), HTML mit Suche, Kapitel-PDFs, Manifest Schema 2, Zugriffsstufen (`app/docs.php`, `docs.technical_readers`), `handbuch.php`, Archiv in `shared/docs-archive` (deploy.sh), 14 Mermaid-Schaubilder, Datenwörterbuch-Generator, Datenbankkapitel mit Kompendium-Prüfung, Dokumentationspflicht in CLAUDE.md | siehe git log | docs-build-check, Sichtprüfung PDF |
 | 4.31 | Buchhaltungssystem je Firma: Anzeige, Vorauswahl bei Registrierung, Wechsel in Einstellungen mit Vier-Wochen-Sperre, Trennung der alten Verbindung, Audit (Migration 024) | siehe git log | invoice-source-check 42/0 |
@@ -149,12 +150,12 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
    Entscheidung zu Testkonto und Kombitarif für Mandanten mit zwei Buchhaltungen (zwei Firmenaccounts, Multiaccount).
 1e. Offen zum Systemwechsel: Adminaktion zum Aufheben der Vier-Wochen-Sperre (derzeit nur per Datenbank), Verbindungsseite für
    sevdesk nach Freigabe des Adapters.
-1f. **Betreiber:** `docs.technical_readers` in `shared/config.php` mit der eigenen Adresse füllen (sonst ist die Entwicklerdokumentation
+1f. **Betreiber:** erledigt am 07.09.2026 (Entwicklerdokumentation ist seit 4.34 für Plattformadministratoren ohne Leserliste sichtbar). Alt: `docs.technical_readers` in `shared/config.php` mit der eigenen Adresse füllen (sonst ist die Entwicklerdokumentation
    im Adminbereich für niemanden abrufbar), danach `restart-workers.sh`. Prüfen: Adminbereich, System, Versionen & Dokumentation.
 1g. **Betreiber:** DNS-Nachweis `dig +short app.smart-einzug.de` (erwartet 72.61.80.67), Altinstanz `sepa.muellerhv.de` und IONOS-Cronjob
    abschalten; Ergebnis in `docs/entwickler/hosts.md` und `docs/vps/08-hostinger-coolify.md` nachtragen (Nachweisstufe).
-1h. **Geschäftsführung:** Vorschläge aus `docs/entwickler/datenbank.md` (Prüfung gegen das MariaDB-Kompendium) entscheiden; keine
-   Datenbankänderung ohne Freigabe.
+1h. Entschieden am 07.09.2026 (Abwägung delegiert): Indizes umgesetzt (Migration 026), Übriges zurückgestellt oder Betreiberaufgabe
+   (`docs/entwickler/datenbank.md`, Abschnitt 8.0).
 1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
 1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
    E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll

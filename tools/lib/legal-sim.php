@@ -85,6 +85,19 @@ $html = legal_render_md("# Titel <b>x</b>\n\nAbsatz **fett** [Platzhalter: Ansch
 $out('render_escaped', str_contains($html, '&lt;b&gt;') && !str_contains($html, '<b>') ? 1 : 0);
 $out('render_struktur', (str_contains($html, '<h2>') && str_contains($html, '<ul>') && str_contains($html, '<ol>') && str_contains($html, '<strong>fett</strong>') && str_contains($html, 'mark class="placeholder"')) ? 1 : 0);
 
+// 9b. Zustimmungsnachweis AGB/Datenschutz (Migration 025)
+require_once $root . '/php-ionos/app/consent.php';
+$pdo->exec("DELETE FROM consent_records");
+consent_record_registration('user-1', '11111111-1111-1111-1111-111111111111', 'Inhaber@Firma-A.test');
+consent_record_registration('user-1', '11111111-1111-1111-1111-111111111111', 'inhaber@firma-a.test');
+$cu = consent_list_for_user('user-1'); $co = consent_list_for_org('11111111-1111-1111-1111-111111111111');
+$out('consent_zwei_gegenstaende', count($cu));
+$out('consent_idempotent', count($co));
+$out('consent_fassungen', implode(',', array_map(static fn($c) => $c['subject'] . ':' . $c['version'], array_reverse($cu))));
+$out('consent_email_klein', $cu[0]['user_email']);
+$out('consent_weg', $cu[0]['method']);
+try { consent_record('user-1', null, 'x@y.test', 'unbekannt', 'v1'); $out('consent_unbekannt_abgelehnt', 0); } catch (Throwable $e) { $out('consent_unbekannt_abgelehnt', 1); }
+
 // 10. Audit-Aufbewahrung: alte Eintraege werden geloescht, neue bleiben
 $pdo->exec("INSERT INTO audit_log (tenant_id, user_id, user_email, action, created_at) VALUES ('11111111-1111-1111-1111-111111111111', NULL, 'alt@example.test', 'login_success', DATE_SUB(NOW(), INTERVAL 100 DAY))");
 $pdo->exec("INSERT INTO audit_log (tenant_id, user_id, user_email, action, created_at) VALUES ('11111111-1111-1111-1111-111111111111', NULL, 'neu@example.test', 'login_success', DATE_SUB(NOW(), INTERVAL 80 DAY))");

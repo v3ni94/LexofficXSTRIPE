@@ -6,8 +6,8 @@ Stand 07.09.2026 (Version 4.32). Dieses Kapitel beschreibt das Dokumentationssys
 
 | Code | Dokument | Zielgruppe | Klassifizierung | Zugriff |
 |---|---|---|---|---|
-| `unternehmen` | Unternehmens- und Verkaufsdokumentation | Kaufinteressenten, Prüfer, Übernehmer | intern | Plattformadministratoren (Adminbereich); externe Weitergabe nur als freigegebene Fassung |
-| `entwickler` | Entwickler- und Betriebsdokumentation | Programmierer, Administratoren | streng vertraulich | nur Plattformadministratoren, die in `docs.technical_readers` (shared/config.php) eingetragen sind |
+| `unternehmen` | Unternehmens- und Verkaufsdokumentation | Kaufinteressenten, Prüfer, Übernehmer | intern | Plattformadministratoren (Adminbereich), nicht für Mitarbeiter- oder Supportrollen; externe Weitergabe nur als freigegebene Fassung |
+| `entwickler` | Entwickler- und Betriebsdokumentation | Programmierer, Administratoren | streng vertraulich | Plattformadministratoren (Entscheidung des Vorstands vom 07.09.2026); zusätzlich Adressen aus `docs.technical_readers` mit Plattformadminrolle; nie Mitarbeiter- oder Supportrollen |
 | `kunden` | Benutzerhandbuch | Kunden | kundenbezogen | angemeldete Benutzer der Kundenanwendung über `handbuch.php`, Plattformadministratoren im Adminbereich |
 
 Alle drei Dokumente entstehen aus Markdown-Quellen unter `docs/`. Die Zuordnung Kapitel zu Dokument steht ausschließlich in `DOCUMENTS` in `tools/build-docs.py`. Webansicht (HTML mit Inhaltsverzeichnis, Kapitelnavigation, Suche), Gesamt-PDF und Kapitel-PDFs werden aus denselben Quellen erzeugt; es gibt keine getrennt gepflegten Fassungen.
@@ -25,7 +25,7 @@ Der GitHub-Workflow (`.github/workflows/deploy.yml`, Job `test`) führt die Prü
 
 ## Auslieferung und Rechte
 
-- `php-ionos/admin-doc.php` liefert ausschließlich Dateien aus `manifest.json` (Allowlist, realpath-Prüfung), prüft bei jedem Abruf serverseitig `require_superadmin()` und zusätzlich je Datei den Zugriff nach `access`: `technical` nur für Adressen in `docs.technical_readers`, `admin` für alle Plattformadministratoren, `customer` für Plattformadministratoren; Suchindizes und Diagramme unterliegen derselben Prüfung. Historische Fassungen aus dem Archiv werden über `?archiv=<id>` mit denselben Regeln ausgeliefert. Jeder Abruf wird im Audit protokolliert (`admin_doc_download`).
+- `php-ionos/admin-doc.php` liefert ausschließlich Dateien aus `manifest.json` (Allowlist, realpath-Prüfung), prüft bei jedem Abruf serverseitig `require_superadmin()` und zusätzlich je Datei den Zugriff nach `access`: `technical` und `admin` für Plattformadministratoren (`technical` zusätzlich für Adressen in `docs.technical_readers` mit Plattformadminrolle), `customer` für Plattformadministratoren; Suchindizes und Diagramme unterliegen derselben Prüfung. Historische Fassungen aus dem Archiv werden über `?archiv=<id>` mit denselben Regeln ausgeliefert. Jeder Abruf wird im Audit protokolliert (`admin_doc_download`).
 - `php-ionos/handbuch.php` liefert angemeldeten Benutzern der Kundenanwendung nur das Benutzerhandbuch (`access = customer`): HTML-Ansicht und PDF. Keine anderen Dateien.
 - Verkaufsfassungen für Externe entstehen durch Weitergabe der PDF `unternehmen.pdf` nach Freigabe der Geschäftsführung; vertrauliche Inhalte stehen dort nicht, weil das Kapitel `docs/unternehmen/` keine Zugangsdaten, Serveradressen oder Sicherheitsbefunde enthält (Prüfung durch `tools/docs-build-check.py`, Muster für Geheimnisse).
 

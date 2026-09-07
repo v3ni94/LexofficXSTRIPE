@@ -8,12 +8,20 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.33';
+const APP_VERSION = '4.34';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.34', 'date' => '07.09.2026', 'title' => 'Zustimmungsnachweis AGB und Datenschutz, Reiterleiste, Dokumentationsrechte, Indizes, automatischer Deploy-Neustart',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Jede Registrierung speichert die Zustimmung zu AGB und Datenschutzerklärung mit Fassung, Zeitpunkt (UTC), Person und Weg (Migration 025). Firmen sehen die Nachweise unter Rechtliches, Benutzer unter Sicherheit; die Vorregistrierung zeigt Fassung und Zeitpunkt ihrer Einwilligung auf der Bestätigungsseite.'],
+            ['type' => 'Geändert', 'text' => 'Untermenüs im Adminbereich als Reiterleiste direkt unter dem Seitenkopf (System, Plattform-Administration, Rechtsdokumente), mobil scrollbar. Dokumentationskarten neu gestaltet (klare Felder, Schaltflächen ohne Überlappung, Kapitel als aufklappbare Liste).'],
+            ['type' => 'Geändert', 'text' => 'Entwickler- und Unternehmensdokumentation sind für Plattformadministratoren einsehbar; Mitarbeiter- und Supportrollen erhalten keinen Zugriff (Vorgabe des Vorstands vom 07.09.2026). docs.technical_readers ist nur noch eine optionale Zusatzliste.'],
+            ['type' => 'Geändert', 'text' => 'Datenbank: Indizes für Firma plus Status auf Einzügen und Rechnungen sowie für die Protokollbereinigung (Migration 026), Ergebnis der Prüfung gegen das MariaDB-Kompendium; weitergehende Vorschläge bewusst zurückgestellt.'],
+            ['type' => 'Geändert', 'text' => 'Deployment: Endet der VPS-Job mit reinem SSH-Verbindungsfehler, startet er den Workflow genau einmal automatisch neu (neuer Runner, andere Adresse); fachliche Fehler lösen keinen Neustart aus.'],
+         ]],
         ['version' => '4.33', 'date' => '07.09.2026', 'title' => 'Adminseite Rechtsdokumente auf dem Adminhost erreichbar',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'admin-legal.php (Rechtsdokumente) war auf dem Adminhost nicht erreichbar (404), weil die Host-Trennung eine feste Liste erlaubter Adminseiten führte. Jetzt gilt jede Seite admin.php oder admin-*.php als Adminseite: nur auf dem Adminhost, im Wartungsmodus weiter erreichbar, auf dem App-Host 404.'],

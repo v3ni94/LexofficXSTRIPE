@@ -76,6 +76,12 @@ on:
       - 'deploy/vps/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
+    inputs:
+      auto_retry:
+        description: 'Intern: 1 = automatischer zweiter Anlauf nach reinem SSH-Verbindungsfehler (nicht von Hand setzen)'
+        required: false
+        default: '0'
+        type: string
 
 permissions:
   contents: read
@@ -503,10 +509,16 @@ jobs:
       (needs.changes.outputs.app == 'true' || needs.changes.outputs.vps == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # actions: write nur fuer den automatischen zweiten Anlauf (gh workflow run) nach einem reinen SSH-Verbindungsfehler.
+    permissions:
+      contents: read
+      actions: write
     concurrency:
       group: production-vps
       cancel-in-progress: false
     env:
+      # Zustand des letzten ssh-/rsync-Schritts (attempts, exit_code, connect_failed), geschrieben von vps-ssh-retry.sh.
+      VPS_RETRY_STATE_FILE: ${{ runner.temp }}/vps-retry-state
       VPS_HOST: ${{ secrets.VPS_HOST }}
       VPS_SSH_USER: ${{ secrets.VPS_SSH_USER }}
       VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
@@ -727,3 +739,27 @@ jobs:
             echo "| Ziel | ${VPS_APP_DOMAIN} (${VPS_DEPLOY_PATH}) |"
             echo "| Health-Check | ${{ steps.health.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Laeufe #51 und #58 scheiterten, weil kein SSH-Versuch den Server erreichte (Runner-Adresse blockiert oder
+      # Netzstoerung). Ein neuer Lauf bekommt einen anderen Runner mit anderer Adresse. Deshalb genau EIN automatischer
+      # zweiter Anlauf (auto_retry=1), nur bei reinem Verbindungsfehler (connect_failed=true in der Zustandsdatei), nie bei
+      # fachlichen Fehlern und nie aus einem bereits automatisch gestarteten Lauf heraus. Der Server wurde in diesem Fall
+      # nicht veraendert (Aussage von vps-ssh-retry.sh), die Wiederholung ist gefahrlos.
+      - name: Bei reinem SSH-Verbindungsfehler einmal automatisch neu anlaufen
+        if: failure() && github.event.inputs.auto_retry != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          f="${VPS_RETRY_STATE_FILE:-}"
+          if [[ -n "$f" && -f "$f" ]] && grep -q '^connect_failed=true$' "$f"; then
+            echo "::notice::Kein SSH-Versuch erreichte den Server. Der Workflow wird einmal automatisch neu gestartet (auto_retry=1)."
+            if gh workflow run deploy.yml --ref "${GITHUB_REF_NAME}" -f auto_retry=1; then
+              echo "Neuer Lauf ausgeloest. Bleibt auch er ohne Verbindung, liegt ein dauerhaftes Netz- oder Firewallproblem vor (docs/vps/06-betrieb.md, SSH-Fehler des Deployments)."
+            else
+              echo "::warning::Automatischer Neustart konnte nicht ausgeloest werden (Berechtigung actions: write pruefen)."
+            fi
+          else
+            echo "Kein reiner Verbindungsfehler (oder keine Zustandsdatei): kein automatischer Neustart."
+          fi

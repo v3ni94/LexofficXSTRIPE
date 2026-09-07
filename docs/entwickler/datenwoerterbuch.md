@@ -1,6 +1,6 @@
 # Datenwörterbuch (alle Anwendungstabellen)
 
-Erzeugt aus `php-ionos/sql/schema.sql` durch `tools/gen-datenwoerterbuch.py`; fachliche Angaben aus `docs/entwickler/tabellen-beschreibungen.json`. 45 Tabellen. Datenbank: MariaDB (Coolify-MariaDB auf dem VPS; Zeichensatz utf8mb4, Kollation utf8mb4_unicode_ci laut Tabellendefinitionen). Zeitangaben: DATETIME ohne Zeitzone; die Anwendung schreibt teils UTC (UTC_TIMESTAMP(), Kommentar UTC) und teils Serverzeit (NOW(), CURRENT_TIMESTAMP, Zeitzone des Containers TZ=Europe/Berlin), siehe Spaltenkommentare. Geldbeträge: Cent als INT (`*_cents`) oder DECIMAL(10,2) in EUR, siehe Spaltentyp.
+Erzeugt aus `php-ionos/sql/schema.sql` durch `tools/gen-datenwoerterbuch.py`; fachliche Angaben aus `docs/entwickler/tabellen-beschreibungen.json`. 46 Tabellen. Datenbank: MariaDB (Coolify-MariaDB auf dem VPS; Zeichensatz utf8mb4, Kollation utf8mb4_unicode_ci laut Tabellendefinitionen). Zeitangaben: DATETIME ohne Zeitzone; die Anwendung schreibt teils UTC (UTC_TIMESTAMP(), Kommentar UTC) und teils Serverzeit (NOW(), CURRENT_TIMESTAMP, Zeitzone des Containers TZ=Europe/Berlin), siehe Spaltenkommentare. Geldbeträge: Cent als INT (`*_cents`) oder DECIMAL(10,2) in EUR, siehe Spaltentyp.
 
 Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen), UQ eindeutig, IX Index. Beziehungen ohne FK-Eintrag werden nur durch Anwendungscode gesichert.
 
@@ -57,6 +57,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [interest_registrations](#interest-registrations) | Vormerkungen (Warteliste) fuer angekuendigte Integrationen, zuerst sevdesk, mit Double-Opt-in (Migration 020, CLAUDE.md-Abschnitt sevdesk). | Marketing / Vorregistrierung | keine (plattformweit je Anbieter und E-Mail-Adresse) | 30 | 1 |
 | [legal_documents](#legal-documents) | Versionierte Rechtsdokumente mit Zustimmungsnachweis (z. B. Auftragsverarbeitungsvertrag nach Art. 28 DSGVO, Verschwiegenheitsvereinbarung nach § 203 StGB), Migration 023. | Recht und Vertraege | keine (plattformweit, ein Dokument gilt fuer alle oder eine Teilmenge von Firmen laut required_for) | 12 | 0 |
 | [legal_acceptances](#legal-acceptances) | Zustimmungsnachweis je Firma und Fassung eines Rechtsdokuments (wer, wann, auf welchem Weg), Migration 023. | Recht und Vertraege | organization_id | 7 | 0 |
+| [consent_records](#consent-records) | Zustimmungsnachweis zu AGB und Datenschutzerklärung je Benutzer (Gegenstand, Fassung, Zeitpunkt UTC, Weg, Quellseite, E-Mail). Ergänzt legal_acceptances (Vertragsdokumente mit Volltext) und interest_registrations (Vorregistrierung). | Konten und Firmen / Rechtsdokumente | organization_id | 9 | 0 |
 
 ## plans
 
@@ -271,7 +272,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | ip | VARCHAR(45) | ja |  |  |
 | created_at | DATETIME | nein | CURRENT_TIMESTAMP |  |
 
-**Indizes und Eindeutigkeit:** IX ix_audit_tenant_time (tenant_id, created_at); IX ix_audit_user_time (user_id, created_at); IX ix_audit_action (action)  
+**Indizes und Eindeutigkeit:** IX ix_audit_tenant_time (tenant_id, created_at); IX ix_audit_user_time (user_id, created_at); IX ix_audit_action (action); IX ix_audit_created (created_at)  
 **Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
 **Erzeugt durch:** app/audit.php audit_log() (zentrale Funktion, von sehr vielen Stellen im Code aufgerufen)  
 **Gelesen durch:** Adminbereich (Auditansichten), Support-Werkzeuge  
@@ -1048,7 +1049,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | requires_review | TINYINT(1) | nein | 0 | [per ALTER ergänzt] |
 | review_reason | VARCHAR(255) | ja |  | [per ALTER ergänzt] |
 
-**Indizes und Eindeutigkeit:** UQ uq_invoice_tenant_lexoffice (tenant_id, lexoffice_invoice_id); IX ix_invoice_customer (customer_id)  
+**Indizes und Eindeutigkeit:** UQ uq_invoice_tenant_lexoffice (tenant_id, lexoffice_invoice_id); IX ix_invoice_customer (customer_id); IX ix_invoice_tenant_status (tenant_id, lexoffice_status)  
 **Von der Datenbank erzwungene Beziehungen:** tenant_id → organizations.id (ON DELETE CASCADE); customer_id → customers.id (ON DELETE SET NULL)  
 **Statuswerte und Übergänge:**  
 - `collection_status`: none | open | in_collection | collected | failed | scheduled (schema.sql-Kommentar Zeile 562). Uebergaenge (app/collections.php, app/sync.php, stripe-webhook.php): open -> scheduled (Terminierung, _submit_collection_locked()) -> in_collection (Einreichung) -> collected/failed (Stripe-Webhook bzw. sync_collection_statuses()); collections_cancel_all_pending() setzt scheduled zurueck auf open.
@@ -1099,7 +1100,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | source | VARCHAR(20) | nein | 'app' | app (im Portal ausgeloest) oder Herkunft aus Stripe-Import (Migration 009) [per ALTER ergänzt] |
 | imported_mandate_reference | VARCHAR(35) | ja |  | [per ALTER ergänzt] |
 
-**Indizes und Eindeutigkeit:** IX ix_collection_tenant (tenant_id); IX ix_collection_pi (stripe_payment_intent_id); IX ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date)  
+**Indizes und Eindeutigkeit:** IX ix_collection_tenant (tenant_id); IX ix_collection_pi (stripe_payment_intent_id); IX ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date); IX ix_collection_tenant_status (tenant_id, stripe_status)  
 **Von der Datenbank erzwungene Beziehungen:** tenant_id → organizations.id (ON DELETE CASCADE); invoice_id → invoices.id (ON DELETE CASCADE); mandate_id → sepa_mandates.id; customer_iban_id → customer_ibans.id  
 **Statuswerte und Übergänge:**  
 - `stripe_status`: scheduled | submitting | processing | succeeded | failed | disputed | refunded | cancelled (schema.sql-Kommentar Zeile 584). Uebergaenge: scheduled -> submitting (_submit_single_scheduled()) -> processing (stripe-webhook.php) -> succeeded/failed (Stripe-Webhook, sync_collection_statuses()); scheduled -> cancelled (collections_cancel_all_pending(), cancel_scheduled_collection()).
@@ -1604,6 +1605,35 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 **Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Betraege: keine; Zeit: accepted_at DATETIME; externe IDs: keine  
 **Migrationen:** 023_legal_documents.sql (CREATE TABLE)  
 **Besonderheiten:** UNIQUE (organization_id, document_id) verhindert doppelte Zustimmung zur selben Fassung. user_email bleibt laut Kommentar (Zeile 1001) auch nach Loeschung des Benutzers lesbar (kein Fremdschluessel auf users, nur informativer user_id-Verweis ohne FOREIGN-KEY-Constraint im Schema). Keine IP-Speicherung laut Kommentar zu Migration 023.  
+
+## consent_records
+
+**Zweck:** Zustimmungsnachweis zu AGB und Datenschutzerklärung je Benutzer (Gegenstand, Fassung, Zeitpunkt UTC, Weg, Quellseite, E-Mail). Ergänzt legal_acceptances (Vertragsdokumente mit Volltext) und interest_registrations (Vorregistrierung).  
+**Modul:** Konten und Firmen / Rechtsdokumente  
+**Mandantenzuordnung:** organization_id (NULL bei benutzerbezogener Zustimmung ohne Firma)  
+**Primärschlüssel:** id  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| id | CHAR(36) | nein |  | [PK; PRIMARY KEY] |
+| user_id | CHAR(36) | ja |  |  |
+| organization_id | CHAR(36) | ja |  |  |
+| user_email | VARCHAR(255) | nein |  |  |
+| subject | VARCHAR(40) | nein |  | agb \| datenschutz |
+| version | VARCHAR(60) | nein |  | Fassung, z. B. agb-2026-09 |
+| archiviert | in | nein | 'registration' |  |
+| source_url | VARCHAR(255) | ja |  | Seite, deren Text akzeptiert wurde |
+| deren | Text | nein | CURRENT_TIMESTAMP |  |
+
+**Indizes und Eindeutigkeit:** IX ix_consent_user (user_id, accepted_at); IX ix_consent_org (organization_id, accepted_at); IX ix_consent_subject (subject, version)  
+**Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
+**Erzeugt durch:** app/consent.php consent_record(), consent_record_registration() aus register.php nach erfolgreicher Registrierung  
+**Verändert durch:** keine Änderung vorgesehen (Nachweis, nur Einfügen)  
+**Gelesen durch:** rechtliches.php (consent_list_for_org), security.php (consent_list_for_user)  
+**Löschung, Archivierung, Aufbewahrung:** kein automatisches Löschen (Nachweis); kein Fremdschlüssel, damit die Zeile den Benutzer überdauert  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: accepted_at UTC (UTC_TIMESTAMP()); keine Beträge; keine externen IDs; keine IP  
+**Migrationen:** 025_consent_records.sql  
+**Besonderheiten:** Fassungen als Konstanten AGB_VERSION/DATENSCHUTZ_VERSION in app/consent.php, Archiv in docs/einwilligungen.md; idempotent je Benutzer, Gegenstand, Fassung.  
 
 ## Offene Beschreibungen
 

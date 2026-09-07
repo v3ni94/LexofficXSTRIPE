@@ -708,6 +708,13 @@ Für manuelle `docker compose`-Aufrufe (etwa `exec -T php php bin/mail-check.php
 Passt der Hostkey nicht mehr zum Secret `VPS_SSH_KNOWN_HOSTS`, ist das kein Netzfehler: `StrictHostKeyChecking`
 bleibt bewusst aktiv, das Secret muss nach einer Neuinstallation des Servers erneuert werden.
 
+**Seit 4.34 automatisch:** Endet der Job `deploy-vps` mit einem reinen Verbindungsfehler (kein SSH-Versuch erreichte den
+Server, `connect_failed=true` in der Zustandsdatei von `vps-ssh-retry.sh`), startet der letzte Schritt den Workflow genau
+einmal neu (`gh workflow run deploy.yml -f auto_retry=1`, Berechtigung `actions: write` nur in diesem Job). Ein neuer Runner
+erhält eine andere Adresse; das deckt gesperrte Runner-Adressen und kurze Netzstörungen ab. Aus einem automatisch gestarteten
+Lauf heraus gibt es keinen weiteren Anlauf, und fachliche Fehler lösen nie einen Neustart aus. Bleibt auch der zweite Lauf ohne
+Verbindung, gelten die Prüfschritte oben.
+
 **Was ausdrücklich nicht die Lösung ist:** Die Wartefrist des Pollings zu erhöhen. Sie betrifft die Dauer
 des Deployments, nicht die Erreichbarkeit; ein unerreichbarer Server wird durch längeres Warten nicht
 erreichbar, der Lauf bliebe nur länger rot.

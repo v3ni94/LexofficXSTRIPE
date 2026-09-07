@@ -56,7 +56,7 @@ layout_header('Rechtsdokumente', $ctx);
 ?>
 <h1>Rechtsdokumente</h1>
 <p class="page-sub">Auftragsverarbeitungsvertrag, Verschwiegenheitsvereinbarung und weitere Dokumente mit Zustimmungsnachweis je Firma. Veröffentlichte Fassungen sehen die Firmen unter Rechtliches; Pflichtdokumente werden im Dashboard angemahnt und der AVV bei der Registrierung abgeschlossen.</p>
-<nav class="admin-subnav" aria-label="Adminbereiche"><a href="admin.php">Plattform-Administration</a> · <a href="admin-system.php">System</a> · <a href="admin-legal.php">Rechtsdokumente</a></nav>
+<?= layout_subnav(['admin' => ['label' => 'Plattform-Administration', 'href' => 'admin.php', 'ext' => true], 'support' => ['label' => 'Support', 'href' => 'admin-support.php', 'ext' => true], 'system' => ['label' => 'System', 'href' => 'admin-system.php', 'ext' => true], 'legal' => ['label' => 'Rechtsdokumente', 'href' => 'admin-legal.php']], 'legal', 'Adminbereiche') ?>
 
 <div class="card">
     <h2>Aktuelle Fassungen</h2>

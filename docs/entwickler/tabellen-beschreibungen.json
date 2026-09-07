@@ -1221,5 +1221,33 @@
     "spalten_erlaeuterung": {
       "method": "registration | backend | admin (Weg der Zustimmung: bei Registrierung, im Kundenbackend, durch Administrator)"
     }
+  },
+  "consent_records": {
+    "zweck": "Zustimmungsnachweis zu AGB und Datenschutzerklärung je Benutzer (Gegenstand, Fassung, Zeitpunkt UTC, Weg, Quellseite, E-Mail). Ergänzt legal_acceptances (Vertragsdokumente mit Volltext) und interest_registrations (Vorregistrierung).",
+    "modul": "Konten und Firmen / Rechtsdokumente",
+    "mandant": "organization_id (NULL bei benutzerbezogener Zustimmung ohne Firma)",
+    "statuswerte": {},
+    "erzeugt_durch": [
+      "app/consent.php consent_record(), consent_record_registration() aus register.php nach erfolgreicher Registrierung"
+    ],
+    "veraendert_durch": [
+      "keine Änderung vorgesehen (Nachweis, nur Einfügen)"
+    ],
+    "gelesen_durch": [
+      "rechtliches.php (consent_list_for_org)",
+      "security.php (consent_list_for_user)"
+    ],
+    "loeschung": "kein automatisches Löschen (Nachweis); kein Fremdschlüssel, damit die Zeile den Benutzer überdauert",
+    "geld_zeit_extern": "Zeit: accepted_at UTC (UTC_TIMESTAMP()); keine Beträge; keine externen IDs; keine IP",
+    "migrationen": [
+      "025_consent_records.sql"
+    ],
+    "besonderheiten": "Fassungen als Konstanten AGB_VERSION/DATENSCHUTZ_VERSION in app/consent.php, Archiv in docs/einwilligungen.md; idempotent je Benutzer, Gegenstand, Fassung.",
+    "spalten_erlaeuterung": {
+      "subject": "agb | datenschutz",
+      "version": "Fassung, z. B. agb-2026-09",
+      "method": "registration | backend | import",
+      "source_url": "Seite, deren Text akzeptiert wurde"
+    }
   }
 }
