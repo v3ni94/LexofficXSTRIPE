@@ -188,14 +188,22 @@ function job_collections_due(array $job): array
     $handled = (array)($r['handled_ids'] ?? []);
     unset($r['handled_ids']);
     queue_heartbeat($job, 100, sprintf('%d eingereicht, %d fehlgeschlagen, %d zurückgestellt', (int)$r['submitted'], (int)$r['failed'], (int)$r['deferred']));
-    if ((int)($r['remaining'] ?? 0) > 0 && $handled) {
-        // Zwischenstand merken: bereits behandelte (auch zurückgestellte) Einzüge werden in der Fortsetzung
-        // übersprungen, damit ein zurückgestellter Einzug nicht alle folgenden blockiert
-        $payload = $job['payload_data'];
-        $payload['_seen'] = array_slice(array_values(array_unique(array_merge($seen, array_map('strval', $handled)))), -5000);
-        queue_update_payload($job, $payload);
-        $job['payload_data'] = $payload;
-        throw new JobRequeueException(sprintf('%d fällige Einzüge folgen im nächsten Durchlauf', (int)$r['remaining']));
+    if ((int)($r['remaining'] ?? 0) > 0) {
+        // Nicht alle fälligen Einzüge behandelt (Zeitbudget oder Stop-Signal des Workers): IMMER als Fortsetzung
+        // einplanen, auch wenn noch kein Einzug behandelt wurde (Stop-Signal vor dem ersten Einzug); sonst
+        // gälte der Job fälschlich als erledigt und die Einzüge warteten bis zum nächsten Scheduler-Intervall.
+        if ($handled) {
+            // Zwischenstand merken: bereits behandelte (auch zurückgestellte) Einzüge werden in der Fortsetzung
+            // übersprungen, damit ein zurückgestellter Einzug nicht alle folgenden blockiert
+            $payload = $job['payload_data'];
+            $payload['_seen'] = array_slice(array_values(array_unique(array_merge($seen, array_map('strval', $handled)))), -5000);
+            queue_update_payload($job, $payload);
+            $job['payload_data'] = $payload;
+        }
+        throw new JobRequeueException(sprintf(
+            worker_stop_requested() ? 'Worker wird beendet, %d fällige Einzüge folgen in der Fortsetzung' : '%d fällige Einzüge folgen im nächsten Durchlauf',
+            (int)$r['remaining']
+        ));
     }
     return ['status' => 'completed', 'result' => $r];
 }

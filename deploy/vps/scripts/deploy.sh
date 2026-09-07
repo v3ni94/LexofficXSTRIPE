@@ -28,8 +28,8 @@
 # (eigener Container, neuer Code, DB+Redis erreichbar, laufende Anwendung unberuehrt) -> Migrationen
 # isoliert mit dem neuen Code einspielen (noch VOR dem Cutover; schlaegt einer der beiden Schritte fehl,
 # wurde nichts an den laufenden Containern veraendert, kein Rollback noetig) -> Cutover ("docker compose
-# up -d", jetzt sicher: Schema bereits migriert) -> auf "healthy" warten -> current-Symlink umstellen
-# (Buchfuehrung) -> php-fpm neu laden -> Worker/Scheduler kontrolliert neu starten -> Health-Check -> bei
+# up -d", jetzt sicher: Schema bereits migriert) -> auf "healthy" warten -> Release-Bindung verifizieren -> current-Symlink umstellen
+# (Buchfuehrung) -> php-fpm neu laden -> Health-Check -> bei
 # Fehler automatisches Rollback auf das vorherige Release (Code UND Symlink). Alte Releases werden auf
 # die letzten 5 begrenzt.
 #
@@ -552,24 +552,6 @@ while true; do
     sleep 5
 done
 
-# Symlink "current" erst NACH dem gesunden Cutover umstellen (reine Buchfuehrung fuer Menschen und
-# Werkzeuge wie readlink/db-import.sh, siehe Kopfkommentar; fuer die Korrektheit der Container ohne
-# Bedeutung, da deren working_dir bereits ueber RELEASE_SHA an dieses Release gebunden ist). Solange
-# dieser Schritt nicht erreicht ist, zeigt "current" weiterhin auf das zuletzt bekannte GUTE Release.
-deploy_step "aktivierung"
-echo "Aktiviere Release $SHA (Symlink $CURRENT_LINK, Buchfuehrung) ..."
-set_current "$SHA"
-
-echo "$(date -u +%FT%TZ) deploy $SHA" >> "$DEPLOY_DIR/.release_history"
-[[ -n "$PREV_SHA" ]] && echo "$PREV_SHA" > "$DEPLOY_DIR/.previous_sha"
-
-# php-fpm-Reload (SIGUSR2): Nach dem Cutover ist der php-Container bereits mit dem neuen Release neu
-# erzeugt; der Reload ist dann wirkungslos, aber sofort erledigt und ohne Risiko. Er bleibt fuer den Fall,
-# dass derselbe SHA erneut ausgerollt wird (kein Recreate, z.B. nach einer Aenderung an shared/config.php):
-# dann uebernimmt php-fpm geaenderte Konfiguration/OPcache ohne Verbindungsabbruch.
-echo "Lade php-fpm neu (SIGUSR2, ohne Verbindungsabbruch) ..."
-"${COMPOSE[@]}" exec -T php kill -USR2 1
-
 # KEIN zweiter Neustart von Scheduler und Workern mehr (frueher "restart -t 660", das waren bis zu
 # 11 Minuten je Neustart, Version 4.11). Beweis der Entbehrlichkeit: working_dir jedes PHP-Containers ist
 # /opt/smarteinzug/releases/${RELEASE_SHA} (docker-compose.yml, x-php-common) und damit Teil der
@@ -578,6 +560,8 @@ echo "Lade php-fpm neu (SIGUSR2, ohne Verbindungsabbruch) ..."
 # working_dir; laeuft er bereits mit genau diesem Release (Wiederholung desselben SHA), gibt es nichts, was
 # ein Neustart laden koennte. Statt blind neu zu starten, wird die Release-Bindung deshalb VERIFIZIERT:
 # Jeder Container aus dem PHP-Image muss laufen und working_dir dieses Release tragen, sonst Rollback.
+# Die Verifikation laeuft VOR der Aktivierung des Symlinks "current": Schlaegt sie fehl und wird auch
+# der Rollback verweigert, zeigt die Buchfuehrung weiterhin auf das zuletzt bekannte GUTE Release.
 echo "Verifiziere die Release-Bindung aller PHP-Container (working_dir = $RELEASES_DIR/$SHA) ..."
 RELEASE_BOUND_SERVICES=(php scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance metrics)
 if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx worker-lexware-2; then
@@ -608,6 +592,26 @@ if (( BINDING_ERRORS > 0 )); then
     run_rollback || true
     exit 1
 fi
+
+# Symlink "current" erst NACH dem gesunden Cutover umstellen (reine Buchfuehrung fuer Menschen und
+# Werkzeuge wie readlink/db-import.sh, siehe Kopfkommentar; fuer die Korrektheit der Container ohne
+# Bedeutung, da deren working_dir bereits ueber RELEASE_SHA an dieses Release gebunden ist) und erst NACH
+# der bestandenen Verifikation der Release-Bindung (oben). Solange dieser Schritt nicht erreicht ist,
+# zeigt "current" weiterhin auf das zuletzt bekannte GUTE Release.
+deploy_step "aktivierung"
+echo "Aktiviere Release $SHA (Symlink $CURRENT_LINK, Buchfuehrung) ..."
+set_current "$SHA"
+
+echo "$(date -u +%FT%TZ) deploy $SHA" >> "$DEPLOY_DIR/.release_history"
+[[ -n "$PREV_SHA" ]] && echo "$PREV_SHA" > "$DEPLOY_DIR/.previous_sha"
+
+# php-fpm-Reload (SIGUSR2): Nach dem Cutover ist der php-Container bereits mit dem neuen Release neu
+# erzeugt; der Reload ist dann wirkungslos, aber sofort erledigt und ohne Risiko. Er bleibt fuer den Fall,
+# dass derselbe SHA erneut ausgerollt wird (kein Recreate, z.B. nach einer Aenderung an shared/config.php):
+# dann uebernimmt php-fpm geaenderte Konfiguration/OPcache ohne Verbindungsabbruch.
+echo "Lade php-fpm neu (SIGUSR2, ohne Verbindungsabbruch) ..."
+"${COMPOSE[@]}" exec -T php kill -USR2 1
+
 
 deploy_step "health-check"
 echo "Health-Check nach der Aktivierung ..."

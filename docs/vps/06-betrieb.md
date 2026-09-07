@@ -528,8 +528,10 @@ Benachrichtigung, das kleinere Übel gegenüber einem SIGKILL mit bis zu 30 Minu
 **Verhalten eines laufenden Jobs beim Deploy:** Der Worker erhält SIGTERM (Cutover per `up -d`),
 nimmt keinen neuen Job mehr an, führt den laufenden bis zum Abbruchpunkt (Sync: aktueller Schritt,
 Einzüge: aktueller Einzug, Klärung: aktueller Versuch, Wartung: aktuelle Teilaufgabe) und reiht ihn als
-Fortsetzung ein; der neue Worker-Container setzt ihn fort. Ein hängender externer Aufruf endet
-spätestens mit dem Timeout des Clients (20 bzw. 30 s); ein hängender Job eines unterbrechbaren Typs wird
+Fortsetzung ein (auch dann, wenn das Signal einen Einzugsjob noch vor dem ersten Einzug trifft; er gilt
+nie als erledigt, solange fällige Einzüge offen sind); der neue Worker-Container setzt ihn fort. Ein
+hängender externer Aufruf endet spätestens mit dem Timeout des Clients (20 bzw. 30 s); ein hängender Job
+eines unterbrechbaren Typs wird
 nach 30 s kontrolliert unterbrochen. Ein hängender Geldfluss- oder Mail-Job blockiert das Deployment
 höchstens 75 s (Docker-Grace), danach greift die Heartbeat-Freigabe. Die Signalhandler werden vor dem
 ersten Datenbankzugriff installiert; ein Signal während eines blockierten Verbindungsaufbaus wird
@@ -551,8 +553,10 @@ Konfigurations-Hash (Label `com.docker.compose.config-hash`). Ändert sich `RELE
 `docker compose up -d` den Container zwingend neu, mit dem neuen Code als `working_dir`; läuft er bereits
 mit diesem Release (Wiederholung desselben SHA), gibt es nichts nachzuladen. `deploy.sh` und
 `rollback.sh` verifizieren deshalb nach dem Cutover per `docker inspect`, dass jeder Container aus dem
-PHP-Image läuft und das Ziel-Release als `working_dir` trägt; bei Abweichung Rollback bzw. Abbruch. Der
-php-fpm-Reload (SIGUSR2) bleibt als kostenlose Sicherung für den Fall identischer SHA.
+PHP-Image läuft und das Ziel-Release als `working_dir` trägt; bei Abweichung Rollback bzw. Abbruch. In
+`deploy.sh` liegt die Verifikation **vor** der Aktivierung des Symlinks `current`: Schlägt sie fehl und
+wird auch der Rollback verweigert, zeigt die Buchführung weiterhin auf das zuletzt bekannte gute
+Release. Der php-fpm-Reload (SIGUSR2) bleibt als kostenlose Sicherung für den Fall identischer SHA.
 
 ### GitHub-Polling und Recovery
 
