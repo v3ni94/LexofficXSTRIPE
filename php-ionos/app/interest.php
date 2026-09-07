@@ -180,20 +180,19 @@ function interest_register(array $input, ?string $sourceDomain = null): array
         if ($fensterAlt > 0 && time() - $fensterAlt < 86400 && (int)$row['mail_count'] >= INTEREST_MAILS_PER_DAY) {
             return ['ok' => true, 'error' => null, 'state' => $wartend, 'id' => $row['id']];
         }
-        // Token B bleibt über Wiederholungen hinweg stabil (Abmeldelinks älterer Mails gelten weiter).
-        if ($row['manage_token_hash'] === null) {
-            $pdo->prepare('UPDATE interest_registrations SET manage_token_hash = ? WHERE id = ?')->execute([hash('sha256', $manage), $row['id']]);
-        } else {
-            $manage = null;
-        }
+        // Bestehende Zeile: Angaben und Einwilligung aktualisieren, die Token aber erst NACH erfolgreichem Versand
+        // ersetzen. Sonst wuerde ein fehlgeschlagener Wiederversand die Links einer bereits zugestellten Mail
+        // (Bestaetigung und Abmeldung) ungueltig machen.
         $pdo->prepare(
             'UPDATE interest_registrations
                 SET status = ?, name = COALESCE(?, name), company = COALESCE(?, company), source_domain = COALESCE(?, source_domain),
-                    consent_text = ?, consent_at = UTC_TIMESTAMP(), token_hash = ?, token_expires_at = ?
+                    consent_text = ?, consent_at = UTC_TIMESTAMP()
               WHERE id = ?'
-        )->execute(['pending', $v['name'], $v['company'], $domain, INTEREST_CONSENT_VERSION, $tokenHash, $expires, $row['id']]);
+        )->execute(['pending', $v['name'], $v['company'], $domain, INTEREST_CONSENT_VERSION, $row['id']]);
+        $tokenSpeichernNachVersand = true;
     }
     $id = (string)$row['id'];
+    $tokenSpeichernNachVersand = $tokenSpeichernNachVersand ?? false;
 
     $fensterAlt = interest_ts($row['mail_window_at'] ?? null);
     $neuesFenster = $fensterAlt === 0 || time() - $fensterAlt >= 86400;
@@ -205,18 +204,17 @@ function interest_register(array $input, ?string $sourceDomain = null): array
           WHERE id = ?'
     )->execute([$id]);
 
-    if ($manage === null) {
-        // Vorhandener Token B ist nur als Hash gespeichert: Für den Abmeldelink dieser Mail wird ein neuer
-        // Token B erzeugt; damit bleibt genau ein gültiger Abmeldetoken je Eintrag (der aus der jüngsten Mail).
-        $manage = bin2hex(random_bytes(32));
-        $pdo->prepare('UPDATE interest_registrations SET manage_token_hash = ? WHERE id = ?')->execute([hash('sha256', $manage), $id]);
-    }
     $providerName = (string)($providers[$v['provider']]['name'] ?? $v['provider']);
     $confirmUrl = app_base_url() . '/vormerken.php?token=' . $token;
     $unsubscribeUrl = app_base_url() . '/vormerken.php?abmelden=' . $manage;
     $tpl = mail_tpl_interest_confirm($providerName, $confirmUrl, $unsubscribeUrl);
     if (mail_send($v['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
-        // Erfolg: eine eventuell noch gesetzte Wartemarke aufheben, sonst wuerde die Wartung eine zweite Mail senden.
+        // Erfolg: Token dieser Mail werden gueltig (genau ein gueltiger Bestaetigungs- und Abmeldetoken je Eintrag, der
+        // aus der juengsten zugestellten Mail); eine eventuell gesetzte Wartemarke wird aufgehoben.
+        if ($tokenSpeichernNachVersand) {
+            $pdo->prepare('UPDATE interest_registrations SET token_hash = ?, token_expires_at = ?, manage_token_hash = ? WHERE id = ?')
+                ->execute([$tokenHash, $expires, hash('sha256', $manage), $id]);
+        }
         $pdo->prepare('UPDATE interest_registrations SET mail_pending = 0, mail_pending_since = NULL WHERE id = ?')->execute([$id]);
         return ['ok' => true, 'error' => null, 'state' => 'mail_sent', 'id' => $id];
     }
@@ -226,11 +224,11 @@ function interest_register(array $input, ?string $sourceDomain = null): array
     return ['ok' => true, 'error' => null, 'state' => 'mail_deferred', 'id' => $id];
 }
 
-/** Anzahl wartender Bestaetigungsmails (Adminanzeige). */
+/** Anzahl wartender Mails (Bestaetigungs- und Bestaetigt-Mails, Adminanzeige). */
 function interest_pending_mail_count(): int
 {
     try {
-        return (int)db()->query("SELECT COUNT(*) FROM interest_registrations WHERE mail_pending = 1 AND status = 'pending' AND blocked_at IS NULL")->fetchColumn();
+        return (int)db()->query("SELECT COUNT(*) FROM interest_registrations WHERE mail_pending = 1 AND status IN ('pending', 'confirmed') AND blocked_at IS NULL")->fetchColumn();
     } catch (Throwable $e) {
         return 0;
     }
@@ -248,10 +246,18 @@ function interest_send_pending(int $limit = 50): int
     }
     $pdo = db();
     $d = (int)INTEREST_RETENTION_DAYS;
-    $rows = $pdo->query("SELECT * FROM interest_registrations WHERE mail_pending = 1 AND status = 'pending' AND blocked_at IS NULL
+    $rows = $pdo->query("SELECT * FROM interest_registrations WHERE mail_pending = 1 AND status IN ('pending', 'confirmed') AND blocked_at IS NULL
                            AND created_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL $d DAY) ORDER BY mail_pending_since ASC LIMIT " . max(1, min(500, $limit)))->fetchAll();
     $n = 0;
     foreach ($rows as $row) {
+        if ($row['status'] === 'confirmed') {
+            // Die Mail nach der Bestaetigung konnte nicht erzeugt werden: nachsenden, Token B dabei erneuern.
+            $dummy = null;
+            if (interest_send_confirmed_mail($row, $dummy)) {
+                $n++;
+            }
+            continue;
+        }
         $provider = integration_provider((string)$row['provider_code']);
         $token = bin2hex(random_bytes(32));
         $manage = bin2hex(random_bytes(32));
@@ -304,8 +310,10 @@ function interest_by_manage_token(string $token): ?array
  * Bei Erfolg wird ein frischer Token B erzeugt (Rückgabe über $manageToken, nur der Hash wird gespeichert) und
  * die Bestätigungsmail mit Abmeldelink versendet; jede Vormerkung erhält damit immer eine Bestätigung per E-Mail.
  */
-function interest_confirm(string $token, ?string &$manageToken = null): string
+function interest_confirm(string $token, ?string &$manageToken = null, ?bool &$mailSent = null): string
 {
+    $manageToken = null;
+    $mailSent = false;
     $row = interest_by_token($token);
     if (!$row || $row['status'] === 'unsubscribed' || $row['blocked_at'] !== null) {
         return 'invalid';
@@ -313,18 +321,37 @@ function interest_confirm(string $token, ?string &$manageToken = null): string
     if ($row['status'] === 'confirmed') {
         return 'already';
     }
-    $manageToken = bin2hex(random_bytes(32));
-    db()->prepare("UPDATE interest_registrations SET status = 'confirmed', confirmed_at = UTC_TIMESTAMP(), token_hash = NULL, token_expires_at = NULL, manage_token_hash = ? WHERE id = ?")
-        ->execute([hash('sha256', $manageToken), $row['id']]);
+    db()->prepare("UPDATE interest_registrations SET status = 'confirmed', confirmed_at = UTC_TIMESTAMP(), token_hash = NULL, token_expires_at = NULL WHERE id = ?")
+        ->execute([$row['id']]);
     funnel_event($row['source_domain'], 'interest_confirmed', null, null, (string)$row['provider_code']);
+    $mailSent = interest_send_confirmed_mail($row, $manageToken);
+    return 'confirmed';
+}
+
+/**
+ * Mail nach der Bestaetigung mit frischem Token B. Der neue Token wird erst gespeichert, wenn die Mail uebergeben
+ * wurde; sonst bleibt der Abmeldelink der ersten Mail gueltig und die Zeile wird als wartend markiert (Nachsenden
+ * durch interest_send_pending). Liefert true bei Uebergabe; $manageToken enthaelt dann den neuen Klartext-Token.
+ */
+function interest_send_confirmed_mail(array $row, ?string &$manageToken = null): bool
+{
+    $manageToken = null;
+    $neu = bin2hex(random_bytes(32));
     $provider = integration_provider((string)$row['provider_code']);
     $tpl = mail_tpl_interest_confirmed(
         (string)($provider['name'] ?? $row['provider_code']),
-        app_base_url() . '/vormerken.php?abmelden=' . $manageToken,
+        app_base_url() . '/vormerken.php?abmelden=' . $neu,
         public_base_url() . ($row['provider_code'] === 'sevdesk' ? '/integrationen/sevdesk/' : '/integrationen/')
     );
-    mail_send((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html']);
-    return 'confirmed';
+    $sender = defined('IN_WORKER') ? 'mail_send_queued' : 'mail_send';
+    if ($sender((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
+        db()->prepare('UPDATE interest_registrations SET manage_token_hash = ?, mail_pending = 0, mail_pending_since = NULL, last_mail_at = UTC_TIMESTAMP() WHERE id = ?')
+            ->execute([hash('sha256', $neu), $row['id']]);
+        $manageToken = $neu;
+        return true;
+    }
+    db()->prepare('UPDATE interest_registrations SET mail_pending = 1, mail_pending_since = COALESCE(mail_pending_since, UTC_TIMESTAMP()) WHERE id = ?')->execute([$row['id']]);
+    return false;
 }
 
 /** Abmeldung über Token B: 'unsubscribed' oder 'invalid'. */

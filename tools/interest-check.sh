@@ -48,7 +48,11 @@ if mariadb_sandbox_available; then
     echo "5) Nachsenden bei nicht aktivem Mailversand"
     erw "ohne Mailversand: Zustand mail_deferred (Eintrag gespeichert)" deferred_state mail_deferred; erw "Eintrag pending, nicht bestaetigt" deferred_status pending; erw "als wartend markiert" deferred_flag 1; erw "keine Mail erzeugt" deferred_mails 0
     erw "erneutes Absenden waehrend des Wartens bleibt ehrlich (mail_deferred)" deferred_again mail_deferred
-    erw "Wartung ohne Mailversand sendet nichts" resend_ohne 0; erw "Wartung mit Mailversand sendet die wartende Mail" resend_mit 1; erw "Wartemarke geloescht" resend_flag 0; erw "nachgesendete Mail nennt Datum und Herkunft" resend_nennt_datum 1; erw "zweiter Wartungslauf sendet nichts doppelt" resend_zweimal_null 0; erw "Mail mit Token A und B" resend_mail_tokens 1; erw "Token aus der nachgesendeten Mail bestaetigt" resend_confirm confirmed
+    erw "Wartung ohne Mailversand sendet nichts" resend_ohne 0; erw "Wartung mit Mailversand sendet die wartende Mail" resend_mit 1; erw "Wartemarke geloescht" resend_flag 0; erw "nachgesendete Mail nennt Datum und Herkunft" resend_nennt_datum 1; erw "zweiter Wartungslauf sendet nichts doppelt" resend_zweimal_null 0;
+    erw "Wiederversand bei ausgeschaltetem Versand: wartend" stabil_state mail_deferred; erw "Token der zugestellten Mail bleiben unveraendert" stabil_tokens_unveraendert 1; erw "alter Abmeldelink bleibt gueltig" stabil_alter_link_gueltig 1
+    erw "Bestaetigung ohne Versand: bestaetigt" confirm_ohne_mail confirmed; erw "Bestaetigung ohne Versand: keine Mail behauptet" confirm_ohne_mail_gesendet 0; erw "kein neuer Token B ohne Mail" confirm_ohne_mail_token 1
+    erw "Bestaetigt-Mail als wartend markiert" confirm_ohne_mail_wartend 1; erw "alter Abmeldelink nach Bestaetigung ohne Mail gueltig" confirm_ohne_mail_alter_b 1
+    erw "Wartung sendet die Bestaetigt-Mail nach" confirm_nachgesendet 1; erw "Wartemarke danach geloescht" confirm_nach_flag 0; erw "neuer Token B nach Nachsendung" confirm_neuer_b_anders 1 erw "Mail mit Token A und B" resend_mail_tokens 1; erw "Token aus der nachgesendeten Mail bestaetigt" resend_confirm confirmed
     erw "Herkunft: erlaubte Domain mit www" origin_ok 1; erw "Herkunft: fremder Origin abgelehnt" origin_fremd 0; erw "Herkunft: Referer allein reicht" origin_referer 1; erw "Herkunft: ohne Header zugelassen" origin_leer 1; erw "Herkunft: Origin null zugelassen" origin_null 1
 else
     echo "  (Datenbankteil uebersprungen: mariadbd nicht verfuegbar)"

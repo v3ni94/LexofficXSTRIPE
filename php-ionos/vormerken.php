@@ -119,9 +119,19 @@ if ($tokenA !== '') {
     }
     if ($method === 'POST' && $aktion === 'bestaetigen') {
         $manage = null;
-        $ergebnis = interest_confirm($tokenA, $manage);
-        if ($ergebnis === 'invalid' || $manage === null) {
+        $mailSent = false;
+        $ergebnis = interest_confirm($tokenA, $manage, $mailSent);
+        if ($ergebnis === 'invalid') {
             vormerken_page('Bestätigung nicht möglich', ['Diese Vormerkung wurde abgemeldet oder der Link ist nicht mehr gültig.'], $back, 'Erneut vormerken', null, 410);
+        }
+        if (!$mailSent || $manage === null) {
+            // Mail nach der Bestaetigung konnte nicht erzeugt werden: nichts behaupten, Nachsenden uebernimmt die Wartung;
+            // der Abmeldelink der ersten E-Mail bleibt gueltig. Freiwillige Angaben brauchen einen frischen Token und
+            // entfallen hier.
+            vormerken_page('Ihre Vormerkung ist bestätigt', [
+                'Wir informieren Sie über die sevdesk-Anbindung und den geplanten Start. Derzeit müssen Sie noch kein sevdesk- oder Stripe-Konto verbinden.',
+                'Eine Bestätigung per E-Mail folgt, sobald der Versand verfügbar ist. Der Abmeldelink aus Ihrer ersten E-Mail bleibt gültig; es entsteht kein Abonnement und keine Zahlungspflicht.',
+            ], $back, 'Zur Produktseite');
         }
         // Freiwillige Angaben laufen über den frischen Token B aus interest_confirm (nur als Hash gespeichert).
         vormerken_page('Ihre Vormerkung ist bestätigt', [

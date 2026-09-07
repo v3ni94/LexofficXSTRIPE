@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.23';
+const APP_VERSION = '4.24';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.24', 'date' => '07.09.2026', 'title' => 'Links zugestellter E-Mails bleiben gültig, Mail nach Bestätigung wird nachgesendet',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Ein fehlgeschlagener Wiederversand der Bestätigungsmail (etwa bei nicht aktivem Versand) machte bisher die Bestätigungs- und Abmeldelinks einer bereits zugestellten E-Mail ungültig. Neue Token werden jetzt erst gespeichert, wenn die Mail tatsächlich übergeben wurde.'],
+            ['type' => 'Behoben', 'text' => 'Die E-Mail nach der Bestätigung der Vormerkung wurde bei nicht aktivem Versand still verworfen, die Seite behauptete dennoch den Versand. Jetzt bleibt der Abmeldelink der ersten E-Mail gültig, die Seite sagt „Bestätigung per E-Mail folgt, sobald der Versand verfügbar ist“, und die Wartung sendet die Mail mit frischem Abmeldelink nach.'],
+         ]],
         ['version' => '4.23', 'date' => '07.09.2026', 'title' => 'Nachsenden vervollständigt, Cron-Frage geklärt',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Nach der adversarialen Prüfung von 4.22: Migration 022 trägt die Wartemarke für vorhandene offene Vormerkungen und Benutzer der letzten 30 Tage nach (sonst wäre der Eintrag des Kunden vom 07.09.2026 nie nachgesendet worden). Die Willkommensmail wird auch nachgesendet, wenn die Adresse bei Registrierung ohne Mailversand bereits als bestätigt gilt (dann ohne Bestätigungslink). Ein erfolgreicher Versand hebt die Wartemarke auf (keine doppelte Mail), erneutes Absenden während des Wartens zeigt weiterhin „Bestätigungs-E-Mail folgt“ statt „Link geschickt“.'],

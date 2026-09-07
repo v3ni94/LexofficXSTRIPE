@@ -126,6 +126,26 @@ foreach ($pdo->query("SELECT payload FROM jobs WHERE type='mail'")->fetchAll(PDO
 }
 $out('resend_nennt_datum', (str_contains($letzteNach, 'Ihre Eintragung vom ' . date('d.m.Y')) && str_contains($letzteNach, 'smart-einzug.de')) ? 1 : 0);
 $out('resend_zweimal_null', interest_send_pending());
+// Token einer bereits zugestellten Mail duerfen durch einen fehlgeschlagenen Wiederversand nicht ungueltig werden:
+// Zeile mit zugestellter Mail (Versand an), dann Wiederversand bei ausgeschaltetem Versand.
+$GLOBALS['config']['mail']['enabled'] = true;
+interest_register(['provider' => 'sevdesk', 'email' => 'stabil@x.test', 'consent' => '1'], null);
+$rs = $row('stabil@x.test'); $tks = $tokens($rs); $hashA = $rs['token_hash']; $hashB = $rs['manage_token_hash'];
+$pdo->exec("UPDATE interest_registrations SET last_mail_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 11 MINUTE) WHERE email = 'stabil@x.test'");
+$GLOBALS['config']['mail']['enabled'] = false;
+$out('stabil_state', (string)interest_register(['provider' => 'sevdesk', 'email' => 'stabil@x.test', 'consent' => '1'], null)['state']);
+$rs2 = $row('stabil@x.test');
+$out('stabil_tokens_unveraendert', ($rs2['token_hash'] === $hashA && $rs2['manage_token_hash'] === $hashB) ? 1 : 0);
+$out('stabil_alter_link_gueltig', interest_by_manage_token($tks['b']) ? 1 : 0);
+// Bestaetigung bei ausgeschaltetem Versand: Zeile bestaetigt, Mail wartend, alter Token B bleibt gueltig
+$mnX = null; $sentX = null;
+$out('confirm_ohne_mail', interest_confirm($tks['a'], $mnX, $sentX)); $out('confirm_ohne_mail_gesendet', $sentX ? 1 : 0); $out('confirm_ohne_mail_token', $mnX === null ? 1 : 0);
+$rs3 = $row('stabil@x.test'); $out('confirm_ohne_mail_wartend', (int)$rs3['mail_pending']); $out('confirm_ohne_mail_alter_b', interest_by_manage_token($tks['b']) ? 1 : 0);
+$GLOBALS['config']['mail']['enabled'] = true;
+$mailsVorC = $mails(); $gesendetC = interest_send_pending(); $out('confirm_nachgesendet', $gesendetC >= 1 ? 1 : 0);
+$rs4 = $row('stabil@x.test'); $out('confirm_nach_flag', (int)$rs4['mail_pending']); $out('confirm_neuer_b_anders', $rs4['manage_token_hash'] !== $hashB ? 1 : 0);
+$GLOBALS['config']['mail']['enabled'] = false;
+$GLOBALS['config']['mail']['enabled'] = true;
 $tk2 = $tokens($rr); $out('resend_mail_tokens', ($tk2['a'] !== '' && $tk2['b'] !== '') ? 1 : 0);
 $mn = null; $out('resend_confirm', $tk2['a'] !== '' ? interest_confirm($tk2['a'], $mn) : 'kein-token');
 $erl = ['smart-einzug.de', 'lexware-einzug.de', 'app.smart-einzug.de'];
