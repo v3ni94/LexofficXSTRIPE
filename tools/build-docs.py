@@ -75,6 +75,8 @@ ATTACHMENTS = [
      'Betrieb, Architektur und VPS-Migration (Originalfassung, MHAG-SE-OPS-20260907, v1.0)'),
     ('anlagen/MHAG_Konzept_Produkt2-sevdesk-x-Stripe_2026-09-07.pdf',
      'Konzeptpapier Produkt 2: sevdesk × Stripe auf derselben Plattform (07.09.2026)'),
+    ('anlagen/MHAG_Ergaenzung_Buchhaltungssystem-Wechsel_2026-09-07.pdf',
+     'Ergänzung: Buchhaltungssystem je Firma, Anzeige und Wechsel mit Vier-Wochen-Sperre (07.09.2026)'),
 ]
 
 # ===================================================================================================
