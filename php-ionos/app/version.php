@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.27';
+const APP_VERSION = '4.28';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.28', 'date' => '07.09.2026', 'title' => 'restart-workers.sh respektiert die Deploy-Sperre',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'restart-workers.sh konnte parallel zu einem laufenden Deployment Container mit dem alten Release neu erzeugen (Lauf #63 scheiterte an der Release-Bindung). Das Skript nutzt jetzt dieselbe Sperre wie deploy-runner.sh: Es bricht ab, wenn ein Deployment läuft, und blockiert seinerseits den Start eines Deployments, solange es arbeitet.'],
+         ]],
         ['version' => '4.27', 'date' => '07.09.2026', 'title' => 'Gegenprobe in restart-workers.sh korrigiert',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Gegenprobe am Ende von restart-workers.sh lud config.php direkt und löste deren Schutz gegen Direktaufruf aus (Ausgabe „Forbidden“). Sie nutzt jetzt bin/mail-check.php und zeigt die ersten Zeilen (Versand aktiv, Absender, Antwortadresse).'],

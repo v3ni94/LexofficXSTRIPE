@@ -29,6 +29,18 @@ if [[ "${DEPLOY_ENV:-prod}" == "staging" ]]; then
 fi
 HINTERGRUND=(scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail worker-maintenance metrics)
 
+# Dieselbe Sperre wie deploy-runner.sh/rollback.sh: Laeuft gerade ein Deployment, wuerde dieses Skript Container
+# mit dem ALTEN Release neu erzeugen, waehrend deploy.sh den Cutover macht (Vorfall 07.09.2026, Lauf #63:
+# Release-Bindung passte nicht mehr). Solange dieses Skript laeuft, weist deploy-runner.sh ein Deployment ab
+# (trigger_state rejected) statt hineinzulaufen.
+LOCK_FILE="$DEPLOY_DIR/.deploy.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    echo "ABBRUCH: Ein Deployment oder Rollback laeuft gerade (Sperre $LOCK_FILE). Bitte warten, bis" >&2
+    echo "        .deploy-status.json phase=success/failed zeigt, und das Skript danach erneut ausfuehren." >&2
+    exit 2
+fi
+
 echo "Pruefe Syntax von $CONFIG in einem frischen Container (liest die aktuelle Datei) ..."
 if ! "${COMPOSE[@]}" run --rm --no-deps -T php php -l "$CONFIG"; then
     echo "ABBRUCH: config.php hat einen Syntaxfehler. Es wurde kein Dienst angefasst." >&2

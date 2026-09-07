@@ -632,6 +632,9 @@ frischen Container, erzeugt die Hintergrunddienste neu (`up -d --force-recreate 
 Datei auf dem Host mit dem im php-Container und erzeugt bei Abweichung auch den php-Container neu (wenige Sekunden,
 Caddy löst `php:9000` je Anfrage neu auf), andernfalls lädt es php-fpm per SIGUSR2 neu. Am Ende zeigt eine Gegenprobe
 aus dem php-Container `mail.enabled`, `reply_to` und `status_publish`, wie der Container sie tatsächlich liest.
+Das Skript hält während seiner Laufzeit dieselbe Sperre wie `deploy-runner.sh` (`.deploy.lock`): Läuft ein Deployment,
+bricht es ab (Exit 2); läuft es selbst, wird ein gleichzeitig ausgelöstes Deployment abgewiesen. Nie während eines
+laufenden Deployments von Hand Container neu erzeugen (Lauf #63 vom 07.09.2026).
 Von Hand: `stat -c %i /opt/smarteinzug/shared/config.php` gegen `docker compose exec -T php stat -c %i /opt/smarteinzug/shared/config.php`.
 
 
