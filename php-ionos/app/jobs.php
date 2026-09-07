@@ -11,6 +11,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/queue.php';
+require_once __DIR__ . '/interest.php';
 require_once __DIR__ . '/sync_state.php';
 require_once __DIR__ . '/collections.php';
 require_once __DIR__ . '/alerts.php';
@@ -285,6 +286,7 @@ function job_maintenance(array $job): array
     foreach ([
         'support_sessions' => fn() => support_sessions_expire(),
         'registration_requests' => fn() => registration_requests_cleanup(),
+        'interest_pending_deleted' => fn() => interest_cleanup(),
         'devices' => fn() => devices_cleanup(),
         'jobs_pruned' => fn() => queue_prune($cfg['prune_days']),
         'stale_jobs_released' => fn() => queue_release_stale(),

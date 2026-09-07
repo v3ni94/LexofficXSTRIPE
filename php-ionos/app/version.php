@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.17';
+const APP_VERSION = '4.18';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.18', 'date' => '07.09.2026', 'title' => 'sevdesk-Vorankündigung mit Vormerkung',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Die Seite smart-einzug.de/integrationen/sevdesk/ ist jetzt indexierbar und kündigt die sevdesk-Integration an (in Planung, Start geplant zum 30.09.2026): geplanter Funktionsumfang, Ablauf der Vormerkung, Unterschied zur Lexware-Office-Integration, Fragen und Markenhinweis. Keine Preise, keine Tarifaussagen zu sevdesk, kein Kaufbutton.'],
+            ['type' => 'Neu', 'text' => 'Vormerkung (Warteliste) mit Double-Opt-in: Formular auf der Produktseite, Endpunkt vormerken.php, Tabelle interest_registrations (Migration 020). Gespeichert werden E-Mail, optional Firma, Herkunftsseite, Zeitpunkte und die Fassung des Einwilligungstextes; kein Klartext-Token (nur SHA-256), keine IP-Adressen. Bestätigungslink 7 Tage gültig, danach Abmeldelink; unbestätigte Einträge löscht die Wartung nach 30 Tagen. Schutz: Herkunftsprüfung, Honeypot, Wiederversand frühestens nach 10 Minuten, höchstens 30 Einträge je Minute, identische Antworten gegen Adressermittlung.'],
+            ['type' => 'Neu', 'text' => 'Adminbereich: Karte „Vormerkungen für angekündigte Integrationen“ mit Zählung je Anbieter (bestätigt, unbestätigt, abgemeldet) und den letzten 200 Einträgen. Datenschutzerklärung um Abschnitt 3a (Vormerkung, Einwilligung, Widerruf) ergänzt; Übersicht Integrationen und Hilfe angeglichen.'],
+            ['type' => 'Geändert', 'text' => 'Empfehlung zur Produkttrennung in docs/integrations.md: eine Plattform, getrennte Anbindungen über die bestehende Adaptergrenze und getrennter Marktauftritt je Rechnungssystem, keine zweite Anwendung. Test tools/interest-check.sh (47 Fälle gegen temporäre MariaDB).'],
+         ]],
         ['version' => '4.17', 'date' => '07.09.2026', 'title' => 'Deployment übersteht Netzaussetzer, kein grüner Lauf ohne Auslieferung',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Ein einzelner Netzaussetzer beendete den gesamten Deployjob: Der erste SSH-Aufruf scheiterte mit "connect to host ... Connection timed out" (Exitcode 255), obwohl der Server in Ordnung war und dort nichts geschehen ist. Alle übertragenden Schritte und das Auslösen laufen jetzt über .github/scripts/vps-ssh-retry.sh mit bis zu vier Versuchen und wachsender Pause (5, 10, 20 s). Jeder Schritt ist idempotent (mkdir -p, rsync mit unveränderter Quelle), das Auslösen zusätzlich durch die serverseitige Sperre geschützt. rsync-Exitcode 24 gilt als Erfolg, dauerhafte rsync-Fehler werden nicht wiederholt.'],

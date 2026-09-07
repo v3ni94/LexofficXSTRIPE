@@ -924,3 +924,28 @@ CREATE TABLE IF NOT EXISTS support_ticket_messages (
     KEY ix_ticket_msg (ticket_id, created_at),
     CONSTRAINT fk_ticket_msg FOREIGN KEY (ticket_id) REFERENCES support_tickets (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Vormerkungen für angekündigte Integrationen (Migration 020). Identisch zu
+-- sql/migrations/020_interest_registrations.sql, wiederholbar.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS interest_registrations (
+    id               CHAR(36)     NOT NULL PRIMARY KEY,
+    provider_code    VARCHAR(32)  NOT NULL,
+    email            VARCHAR(255) NOT NULL,
+    company          VARCHAR(160) NULL,
+    source_domain    VARCHAR(100) NULL,
+    status           VARCHAR(20)  NOT NULL DEFAULT 'pending', -- pending | confirmed | unsubscribed
+    consent_text     VARCHAR(80)  NOT NULL,
+    token_hash       CHAR(64)     NULL,
+    token_expires_at DATETIME     NULL,
+    created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_mail_at     DATETIME     NULL,
+    confirmed_at     DATETIME     NULL,
+    unsubscribed_at  DATETIME     NULL,
+    notified_at      DATETIME     NULL,
+    UNIQUE KEY uq_interest_provider_email (provider_code, email),
+    KEY ix_interest_status (provider_code, status, created_at),
+    KEY ix_interest_token (token_hash),
+    CONSTRAINT fk_interest_provider FOREIGN KEY (provider_code) REFERENCES integration_providers (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

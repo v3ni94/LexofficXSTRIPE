@@ -12,6 +12,7 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/alerts.php';
 require_once __DIR__ . '/app/admin_charts.php';
+require_once __DIR__ . '/app/interest.php';
 
 // Host-Prüfung: ist admin_base_url gesetzt, antwortet diese Seite nur auf dem
 // Adminhost (bootstrap.php prüft dies bereits zentral, hier zusätzlich als
@@ -228,6 +229,8 @@ $totals = $pdo->query(
 )->fetch();
 
 $platformAlerts = alerts_platform();
+$interestStats = interest_stats();
+$interestRecent = interest_recent(200);
 
 layout_header('Administration', $ctx);
 ?>
@@ -404,6 +407,45 @@ layout_header('Administration', $ctx);
     <p class="hint">Grandfathering: Bestehende Firmen behalten ihren Tarif, bis er hier geändert wird. Ein Wechsel auf einen Tarif mit
         weniger Benutzern wird abgelehnt, solange mehr Benutzer bzw. offene Einladungen vorhanden sind. Jede Tarifänderung erfordert
         als Zweitbestätigung den aktuellen 2FA-Code.</p>
+</div>
+
+<div class="card" id="vormerkungen">
+    <h2>Vormerkungen für angekündigte Integrationen</h2>
+    <?php if (!$interestStats): ?>
+        <p class="hint">Noch keine Vormerkungen. Das Formular liegt auf smart-einzug.de/integrationen/sevdesk/ und schreibt über vormerken.php.</p>
+    <?php else: ?>
+        <div class="table-wrap">
+            <table class="table-sm">
+                <thead><tr><th>Integration</th><th>Bestätigt</th><th>Unbestätigt</th><th>Abgemeldet</th></tr></thead>
+                <tbody>
+                <?php foreach ($interestStats as $code => $s): ?>
+                    <tr><td><?= e($s['name']) ?> <span class="hint">(<?= e($code) ?>)</span></td><td><strong><?= (int)$s['confirmed'] ?></strong></td><td><?= (int)$s['pending'] ?></td><td><?= (int)$s['unsubscribed'] ?></td></tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <div class="table-wrap">
+            <table class="table-sm">
+                <thead><tr><th>E-Mail</th><th>Firma</th><th>Herkunft</th><th>Integration</th><th>Status</th><th>Eingetragen</th><th>Bestätigt</th></tr></thead>
+                <tbody>
+                <?php foreach ($interestRecent as $r): ?>
+                    <tr>
+                        <td><?= e($r['email']) ?></td>
+                        <td class="hint"><?= e($r['company'] ?? '-') ?></td>
+                        <td><?= e($r['source_domain'] ?? 'direkt') ?></td>
+                        <td><?= e($r['provider_code']) ?></td>
+                        <td><?= e(['pending' => 'unbestätigt', 'confirmed' => 'bestätigt', 'unsubscribed' => 'abgemeldet'][$r['status']] ?? $r['status']) ?></td>
+                        <td><?= format_datetime($r['created_at']) ?></td>
+                        <td><?= format_datetime($r['confirmed_at']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+    <p class="hint">Double-Opt-in: Nur bestätigte Adressen dürfen zum Start angeschrieben werden. Unbestätigte Einträge verfallen nach 7 Tagen
+        von selbst (Link ungültig), abgemeldete bleiben als Nachweis der Abmeldung stehen und werden nicht mehr verwendet. Es gibt keine
+        IP-Adressen und keine Preiszusage; eine Vormerkung ist die Bitte um eine Nachricht zum Start.</p>
 </div>
 
 <div class="card" id="support">

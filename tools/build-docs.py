@@ -59,6 +59,7 @@ CHAPTERS = [
     ('device-trust.md', None),
     ('status-page.md', None),
     ('sync-performance.md', None),
+    ('integrations.md', None),
 ]
 
 

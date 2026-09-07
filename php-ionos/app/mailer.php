@@ -472,6 +472,24 @@ function mail_tpl_verify_email(string $verifyUrl): array
 }
 
 /**
+ * Bestätigung einer Vormerkung (Double-Opt-in) für eine angekündigte Integration, siehe app/interest.php.
+ */
+function mail_tpl_interest_confirm(string $providerName, string $confirmUrl): array
+{
+    $subject = 'Vormerkung für die ' . $providerName . '-Integration bestätigen';
+    $paragraphs = [
+        'Sie haben sich für eine Nachricht zum Start der ' . $providerName . '-Integration von ' . mail_product_name() . ' vorgemerkt.',
+        'Bitte bestätigen Sie Ihre E-Mail-Adresse über den folgenden Link. Erst danach ist die Vormerkung wirksam.',
+    ];
+    $button = ['label' => 'Vormerkung bestätigen', 'url' => $confirmUrl];
+    $footerNote = 'Der Link ist 7 Tage gültig. Die Vormerkung ist kostenlos und unverbindlich; Sie erhalten eine Nachricht, '
+        . 'sobald die Integration verfügbar ist, und können sich jederzeit über den Link in dieser E-Mail wieder abmelden. '
+        . 'Falls Sie diese E-Mail nicht erwartet haben, können Sie sie ignorieren; es wird dann nichts gespeichert, was Sie nicht bestätigt haben.';
+    $layout = mail_layout($subject, $paragraphs, $button, $footerNote);
+    return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];
+}
+
+/**
  * Generische Sicherheitsbenachrichtigung. $lines werden unverändert als
  * Absätze übernommen, danach folgt ein Standardhinweis.
  *

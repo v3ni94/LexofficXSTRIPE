@@ -1,4 +1,4 @@
-# Integrationen und Adaptergrenze (Paket F), Stand 05.09.2026
+# Integrationen und Adaptergrenze (Paket F), Stand 07.09.2026
 
 ## Architektur
 
@@ -53,4 +53,22 @@ Erst wenn alle Punkte erfüllt sind, wechselt der Status auf `closed_test`, dana
 7. Rechtstexte (AGB, Datenschutz, Markenhinweise) um sevdesk ergänzt und geprüft.
 8. Freigabe durch die Geschäftsführung der Müller Holding AG.
 
-Bis dahin erscheint sevdesk in allen Texten nur als "in Planung", ohne Preis, ohne Kaufbutton und ohne Registrierungsmöglichkeit.
+Bis dahin erscheint sevdesk in allen Texten nur als "in Planung", ohne Preis, ohne Kaufbutton und ohne Firmenaccount. Zulässig ist seit Version 4.18 ausschließlich eine kostenlose, unverbindliche **Vormerkung** (Warteliste, Double-Opt-in), siehe unten; der Starttermin wird als "geplant zum 30.09.2026" genannt, nie als Zusage.
+
+## Produkttrennung Lexware Office und sevdesk (Empfehlung, Stand 07.09.2026)
+
+Frage des Betreibers: die beiden Produkte komplett trennen? Empfehlung: **eine Plattform, getrennte Anbindungen und getrennter Marktauftritt**, keine zweite Anwendung.
+
+- Technik: Die Trennung existiert bereits als Adaptergrenze (`InvoiceSource`, Registry `integration_providers`, `integrations.invoice_source`). sevdesk wird ein zweiter Adapter (`SevdeskSource`), die Firma wählt ihre Rechnungsquelle bei der Einrichtung. Mandate, Einzüge, Vorabankündigung, Abrechnung, Admin und Monitoring bleiben gemeinsam. Für die Warteschlange kommt ein eigener Workertyp (`worker-sevdesk`) hinzu, damit API-Grenzen und Störungen des einen Systems das andere nicht bremsen (Circuit Breaker je Anbieter, bereits vorhanden).
+- Markt und SEO: je Rechnungssystem eine eigene Landingpage unter `smart-einzug.de/integrationen/<anbieter>/` und optional eigene Leaddomains (wie lexware-einzug.de / lexoffice-einzug.de). Herkunft je Firma wird über `signup_domain` gemessen, so lässt sich auch eine Provision je Leadquelle abrechnen.
+- Preise: gemeinsam über die Tabelle `plans`; ein eigener Tarif für sevdesk ist möglich, ohne den Code zu ändern.
+- Gegen zwei getrennte Anwendungen sprechen doppelte Infrastruktur, doppelte Sicherheitspflege, doppelte Abrechnung und doppelte Rechtstexte bei identischem Kern (Mandat, Einzug, Stripe).
+
+## Vormerkung (Warteliste) für angekündigte Integrationen (Version 4.18)
+
+- Formular auf `smart-einzug.de/integrationen/sevdesk/` (indexierbar), Ziel `app.smart-einzug.de/vormerken.php` (CSP `form-action` erlaubt den Host).
+- Tabelle `interest_registrations` (Migration 020): eine Zeile je Anbieter und E-Mail, Status `pending`, `confirmed`, `unsubscribed`; nur `token_hash` (SHA-256), Fassung des Einwilligungstextes; keine IP-Adressen.
+- Double-Opt-in: Bestätigungslink 7 Tage gültig; unbestätigte Einträge löscht die Wartung 30 Tage nach Eintragung (`interest_cleanup()` in `job_maintenance`). Der Token bleibt nach Bestätigung als Abmeldelink gültig.
+- Schutz ohne Personenbezug: Origin/Referer aus `signup_domains`, Honeypot, Wiederversand frühestens nach 10 Minuten je Adresse, höchstens 30 neue Einträge je Minute; identische Antwort für neu, unbestätigt und bereits bestätigt.
+- Adminbereich: Karte "Vormerkungen für angekündigte Integrationen" (Zählung je Anbieter, letzte 200 Einträge). Zum Start dürfen nur bestätigte Adressen angeschrieben werden; ein Versandwerkzeug existiert noch nicht.
+- Test: `bash tools/interest-check.sh` (temporäre MariaDB, 47 Fälle).
