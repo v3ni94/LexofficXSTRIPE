@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.22';
+const APP_VERSION = '4.23';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.23', 'date' => '07.09.2026', 'title' => 'Nachsenden vervollständigt, Cron-Frage geklärt',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Nach der adversarialen Prüfung von 4.22: Migration 022 trägt die Wartemarke für vorhandene offene Vormerkungen und Benutzer der letzten 30 Tage nach (sonst wäre der Eintrag des Kunden vom 07.09.2026 nie nachgesendet worden). Die Willkommensmail wird auch nachgesendet, wenn die Adresse bei Registrierung ohne Mailversand bereits als bestätigt gilt (dann ohne Bestätigungslink). Ein erfolgreicher Versand hebt die Wartemarke auf (keine doppelte Mail), erneutes Absenden während des Wartens zeigt weiterhin „Bestätigungs-E-Mail folgt“ statt „Link geschickt“.'],
+            ['type' => 'Behoben', 'text' => 'Nachsendungen laufen über die Mail-Warteschlange (Ratenbegrenzung, Circuit Breaker) statt direkt aus dem Wartungsworker; nachgesendete Bestätigungsmails nennen Datum und Herkunft der Eintragung; Einträge älter als 30 Tage werden nicht mehr nachgesendet. „Erneut versuchen“ eines endgültig fehlgeschlagenen Mailjobs wird verweigert, weil dessen Inhalt bereinigt ist; job_mail sendet keine leeren Nachrichten. Kontingenthinweis: Audit „gesendet“ nur bei tatsächlicher Übergabe.'],
+            ['type' => 'Neu', 'text' => 'Betriebsfrage Cron: Der VPS braucht keine Cron-Jobs, Scheduler und Worker decken alle Aufgaben ab (Abdeckungsmatrix in docs/vps/06-betrieb.md). Offen: alten IONOS-Cronjob löschen. Konfigurationsänderungen erreichen Dauerprozesse erst nach Neustart: neues Skript deploy/vps/scripts/restart-workers.sh, in docs/mail-einrichtung.md eingebunden.'],
+         ]],
         ['version' => '4.22', 'date' => '07.09.2026', 'title' => 'Bestätigungs- und Willkommensmails werden nachgesendet',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Nach der Vorregistrierung erschien „E-Mail konnte nicht gesendet werden, bitte in zehn Minuten erneut versuchen“, obwohl die Ursache der nicht aktive Mailversand in Produktion war (mail.enabled = false). Der Eintrag wird jetzt gespeichert und als wartend markiert; die Seite sagt ehrlich „Vormerkung gespeichert, Bestätigungs-E-Mail folgt“. Die Wartung (Job maintenance stündlich, auf dem Webhosting cron.php) sendet die Bestätigungsmail automatisch nach, sobald der Versand aktiv ist; Token werden dabei neu erzeugt. Migration 021.'],

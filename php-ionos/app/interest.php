@@ -111,7 +111,7 @@ function interest_local(?string $utc): ?string
 }
 
 /**
- * @return array ['ok' => bool, 'error' => ?string, 'state' => 'mail_sent'|'already'|'mail_failed'|null, 'id' => ?string]
+ * @return array ['ok' => bool, 'error' => ?string, 'state' => 'mail_sent'|'already'|'mail_deferred'|null, 'id' => ?string]
  */
 function interest_register(array $input, ?string $sourceDomain = null): array
 {
@@ -170,12 +170,15 @@ function interest_register(array $input, ?string $sourceDomain = null): array
         if ($row['status'] === 'confirmed' || $row['blocked_at'] !== null) {
             return ['ok' => true, 'error' => null, 'state' => 'already', 'id' => $row['id']];
         }
+        // Wartende Zeile (Mail konnte bisher nicht erzeugt werden): ehrlich als wartend melden, nichts erneut versuchen,
+        // das Nachsenden uebernimmt die Wartung.
+        $wartend = (int)($row['mail_pending'] ?? 0) === 1 ? 'mail_deferred' : 'already';
         if ($row['last_mail_at'] !== null && time() - interest_ts($row['last_mail_at']) < INTEREST_RESEND_SECONDS) {
-            return ['ok' => true, 'error' => null, 'state' => 'already', 'id' => $row['id']];
+            return ['ok' => true, 'error' => null, 'state' => $wartend, 'id' => $row['id']];
         }
         $fensterAlt = interest_ts($row['mail_window_at']);
         if ($fensterAlt > 0 && time() - $fensterAlt < 86400 && (int)$row['mail_count'] >= INTEREST_MAILS_PER_DAY) {
-            return ['ok' => true, 'error' => null, 'state' => 'already', 'id' => $row['id']];
+            return ['ok' => true, 'error' => null, 'state' => $wartend, 'id' => $row['id']];
         }
         // Token B bleibt über Wiederholungen hinweg stabil (Abmeldelinks älterer Mails gelten weiter).
         if ($row['manage_token_hash'] === null) {
@@ -213,6 +216,8 @@ function interest_register(array $input, ?string $sourceDomain = null): array
     $unsubscribeUrl = app_base_url() . '/vormerken.php?abmelden=' . $manage;
     $tpl = mail_tpl_interest_confirm($providerName, $confirmUrl, $unsubscribeUrl);
     if (mail_send($v['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
+        // Erfolg: eine eventuell noch gesetzte Wartemarke aufheben, sonst wuerde die Wartung eine zweite Mail senden.
+        $pdo->prepare('UPDATE interest_registrations SET mail_pending = 0, mail_pending_since = NULL WHERE id = ?')->execute([$id]);
         return ['ok' => true, 'error' => null, 'state' => 'mail_sent', 'id' => $id];
     }
     // Versand nicht aktiv oder gestoert: Eintrag bleibt pending und wird als wartend markiert; die Wartung sendet die
@@ -242,7 +247,9 @@ function interest_send_pending(int $limit = 50): int
         return 0;
     }
     $pdo = db();
-    $rows = $pdo->query("SELECT * FROM interest_registrations WHERE mail_pending = 1 AND status = 'pending' AND blocked_at IS NULL ORDER BY mail_pending_since ASC LIMIT " . max(1, min(500, $limit)))->fetchAll();
+    $d = (int)INTEREST_RETENTION_DAYS;
+    $rows = $pdo->query("SELECT * FROM interest_registrations WHERE mail_pending = 1 AND status = 'pending' AND blocked_at IS NULL
+                           AND created_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL $d DAY) ORDER BY mail_pending_since ASC LIMIT " . max(1, min(500, $limit)))->fetchAll();
     $n = 0;
     foreach ($rows as $row) {
         $provider = integration_provider((string)$row['provider_code']);
@@ -253,9 +260,11 @@ function interest_send_pending(int $limit = 50): int
         $tpl = mail_tpl_interest_confirm(
             (string)($provider['name'] ?? $row['provider_code']),
             app_base_url() . '/vormerken.php?token=' . $token,
-            app_base_url() . '/vormerken.php?abmelden=' . $manage
+            app_base_url() . '/vormerken.php?abmelden=' . $manage,
+            date('d.m.Y', interest_ts($row['consent_at'] ?? $row['created_at'])),
+            $row['source_domain'] ?? null
         );
-        if (mail_send((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
+        if (mail_send_queued((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
             $pdo->prepare('UPDATE interest_registrations SET mail_pending = 0, mail_pending_since = NULL, last_mail_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$row['id']]);
             $n++;
         }

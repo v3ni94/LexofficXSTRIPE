@@ -102,6 +102,30 @@ function mail_build_body(string $textBody, ?string $htmlBody): array
  * Worker, wird die Nachricht als Job eingereiht und sofort true geliefert (Webanfragen warten nicht auf
  * SMTP). Andernfalls direkte Übergabe an den Versandweg.
  */
+/**
+ * Wie mail_send(), bevorzugt aber auch innerhalb eines Workers die Warteschlange (Pool mail mit Ratenbegrenzung und
+ * Circuit Breaker) statt des Direktversands. Fuer Nachsendungen aus dem Wartungsjob gedacht.
+ */
+function mail_send_queued(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
+{
+    if (!mail_enabled()) {
+        return false;
+    }
+    try {
+        require_once __DIR__ . '/queue.php';
+        if (queue_enabled()) {
+            $to = mail_sanitize_header($to);
+            if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                return false;
+            }
+            queue_push('mail', ['to' => $to, 'subject' => mb_substr($subject, 0, 255), 'text' => $textBody, 'html' => $htmlBody], ['priority' => 'normal']);
+            return true;
+        }
+    } catch (Throwable $e) {
+    }
+    return mail_send($to, $subject, $textBody, $htmlBody);
+}
+
 function mail_send(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
 {
     if (!mail_enabled()) {
@@ -495,14 +519,17 @@ function mail_tpl_verify_email(string $verifyUrl): array
 /**
  * Bestätigung einer Vormerkung (Double-Opt-in) für eine angekündigte Integration, siehe app/interest.php.
  */
-function mail_tpl_interest_confirm(string $providerName, string $confirmUrl, ?string $unsubscribeUrl = null): array
+function mail_tpl_interest_confirm(string $providerName, string $confirmUrl, ?string $unsubscribeUrl = null, ?string $registeredAt = null, ?string $sourceDomain = null): array
 {
     $subject = 'Bitte bestätigen Sie Ihre ' . $providerName . '-Vormerkung bei ' . mail_product_name();
-    $paragraphs = [
+    $paragraphs = [];
+    if ($registeredAt !== null) {
+        $paragraphs[] = 'Ihre Eintragung vom ' . $registeredAt . ($sourceDomain ? ' über ' . $sourceDomain : '') . ' konnte erst jetzt bestätigt werden; bitte entschuldigen Sie die Verzögerung.';
+    }
+    $paragraphs[] = (
         'Sie haben sich für Informationen zur geplanten ' . $providerName . '-Anbindung von ' . mail_product_name() . ' eingetragen. '
         . 'Bitte bestätigen Sie Ihre E-Mail-Adresse über den folgenden Link. Durch die Bestätigung entsteht kein kostenpflichtiges Abonnement. '
-        . 'Wenn Sie diese Vormerkung nicht angefordert haben, müssen Sie nichts tun.',
-    ];
+        . 'Wenn Sie diese Vormerkung nicht angefordert haben, müssen Sie nichts tun.');
     $button = ['label' => 'E-Mail-Adresse bestätigen', 'url' => $confirmUrl];
     $footerNote = 'Der Bestätigungslink ist 7 Tage gültig. Ohne Bestätigung wird der Eintrag nach spätestens 30 Tagen automatisch gelöscht. '
         . 'Die Vormerkung ist kostenlos und unverbindlich.';
@@ -532,18 +559,20 @@ function mail_tpl_interest_confirmed(string $providerName, string $unsubscribeUr
 /**
  * Willkommen nach der Registrierung eines Firmenaccounts, mit Bestätigungslink für die E-Mail-Adresse.
  */
-function mail_tpl_welcome(string $orgName, string $verifyUrl): array
+function mail_tpl_welcome(string $orgName, ?string $verifyUrl): array
 {
     $product = mail_product_name();
-    $subject = 'Willkommen bei ' . $product . ': Bitte E-Mail-Adresse bestätigen';
+    $subject = $verifyUrl !== null ? 'Willkommen bei ' . $product . ': Bitte E-Mail-Adresse bestätigen' : 'Willkommen bei ' . $product;
     $paragraphs = [
-        'Ihr Firmenaccount „' . $orgName . '“ ist angelegt. Bitte bestätigen Sie zunächst Ihre E-Mail-Adresse über den folgenden Link.',
+        $verifyUrl !== null
+            ? 'Ihr Firmenaccount „' . $orgName . '“ ist angelegt. Bitte bestätigen Sie zunächst Ihre E-Mail-Adresse über den folgenden Link.'
+            : 'Ihr Firmenaccount „' . $orgName . '“ ist angelegt; Ihre E-Mail-Adresse gilt als bestätigt.',
         'Die nächsten Schritte in der Anwendung: Zwei-Faktor-Anmeldung einrichten, Ihr Buchhaltungssystem verbinden, Ihr eigenes Stripe-Konto verbinden. '
         . 'Danach stehen offene Rechnungen zum SEPA-Einzug bereit.',
         'Bei Fragen hilft das Hilfe-Center in der Anwendung oder eine Antwort auf diese E-Mail.',
     ];
-    $button = ['label' => 'E-Mail-Adresse bestätigen', 'url' => $verifyUrl];
-    $footerNote = 'Der Bestätigungslink ist 24 Stunden gültig; in der Anwendung können Sie ihn jederzeit erneut anfordern. '
+    $button = $verifyUrl !== null ? ['label' => 'E-Mail-Adresse bestätigen', 'url' => $verifyUrl] : ['label' => 'Zur Anwendung', 'url' => app_base_url() . '/login.php'];
+    $footerNote = ($verifyUrl !== null ? 'Der Bestätigungslink ist 24 Stunden gültig; in der Anwendung können Sie ihn jederzeit erneut anfordern. ' : '')
         . 'Falls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail; es entsteht kein Vertrag.';
     $layout = mail_layout($subject, $paragraphs, $button, $footerNote);
     return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];

@@ -585,6 +585,47 @@ Release. Der php-fpm-Reload (SIGUSR2) bleibt als kostenlose Sicherung für den F
 - **SSH-Abbruch:** Beim Auslösen wird ein unklares Ergebnis nicht als Fehler gewertet, sondern der
   tatsächliche Stand abgefragt; beim Polling ist jede Abfrage unabhängig (Keepalive zentral gesetzt).
 
+## Braucht der VPS Cron-Jobs?
+
+Nein, nicht für die Anwendung. Auf dem VPS ist `features.queue` gesetzt; der Scheduler-Container reiht alle
+wiederkehrenden Aufgaben selbst ein, fünf Worker verarbeiten sie. `cron.php` ist dort funktional inaktiv: Bei aktiver
+Warteschlange und laufenden Workern beendet er sich nach der Prüfung, ohne etwas zu verarbeiten (Inline-Verarbeitung
+nur als Notpfad ohne Worker). Abdeckung, geprüft am 07.09.2026:
+
+| Aufgabe (Webhosting: `cron.php`) | VPS: eingereiht durch | Jobtyp | Worker |
+|---|---|---|---|
+| Fällige Einzüge einreichen | Scheduler alle 300 s | `collections_due` | worker-stripe |
+| Unklare Einzugsversuche klären | Scheduler alle 600 s | `unclear_attempts` | worker-stripe |
+| Lexware-Synchronisation je Firma | Scheduler (Plan je Firma, Waisen sofort) | `sync_run` | worker-lexware-1, -2 |
+| Monitoring und Statusseite | Scheduler alle 240 s | `monitor_collect` | worker-maintenance |
+| Alarme, Mandatserinnerungen | Scheduler stündlich | `alerts`, `mandate_reminders` | worker-mail |
+| E-Mail-Versand | bei Bedarf aus der Anwendung | `mail` | worker-mail |
+| Bereinigungen, Nachsenden wartender Mails, Pruning | Scheduler stündlich | `maintenance` | worker-maintenance |
+| Hängende Jobs freigeben | Scheduler alle 30 s (`queue_release_stale`) | (keiner) | Scheduler |
+
+Systemseitig braucht der VPS ebenfalls keinen eigenen Cron: Backups laufen über Coolify, TLS über den Coolify-Proxy,
+Containerprotokolle über die Docker-Logrotation im Stack, Betriebssystem-Updates über `unattended-upgrades` (die
+Anmeldemeldung „1 updates could not be installed automatically“ ist zu prüfen: `cat /var/log/unattended-upgrades/unattended-upgrades.log`).
+
+**Zu erledigen (Betreiber):** Der alte Cronjob des IONOS-Webhostings gegen die alte Datenbank ist im IONOS-Kundenbereich
+(Hosting, Cronjobs) beziehungsweise beim externen Cron-Dienst zu löschen und in `docs/vps/07-cutover-checkliste.md`,
+Punkt 12, abzuhaken. Er richtet keinen Schaden an den Kundendaten auf dem VPS an, arbeitet aber gegen einen veralteten
+Datenbestand und könnte bei dort aktivem Mailversand veraltete Nachrichten erzeugen.
+
+## Konfigurationsänderungen erreichen Dauerprozesse nur nach Neustart
+
+Scheduler, Worker und Metrik-Sammler laden `shared/config.php` genau einmal beim Containerstart; php-fpm liest sie je
+Anfrage. Eine reine Konfigurationsänderung (etwa `mail.enabled`, `status_publish`, `billing`) wirkt in der Weboberfläche
+sofort, in den Hintergrunddiensten erst nach einem Neustart. Ein Deployment mit neuem Release erzeugt die Container
+neu; ohne Deployment:
+
+```bash
+bash /opt/smarteinzug/deploy/scripts/restart-workers.sh
+```
+
+Das Skript startet Scheduler, alle Worker und den Metrik-Sammler neu, ohne Release- oder Datenbankwechsel. Laufende
+Jobs werden über das Signalmodell kooperativ beendet und fortgesetzt.
+
 ## SSH-Fehler des Deployments
 
 **Vorfall (Lauf #51, Version 4.14):** Der GitHub-Job `deploy-vps` scheiterte im ersten SSH-Schritt mit

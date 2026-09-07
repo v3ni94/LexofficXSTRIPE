@@ -336,13 +336,15 @@ function plan_quota_warning_maybe_send(string $tenantId): bool
     require_once __DIR__ . '/mailer.php';
     require_once __DIR__ . '/audit.php';
     $subject = sprintf('%s: Einzugskontingent zu %d Prozent belegt', product_name(), (int)$quota['percent']);
+    $gesendet = false;
     try {
-        mail_send((string)$o['email'], $subject, implode("\n", $lines));
+        $gesendet = mail_send((string)$o['email'], $subject, implode("\n", $lines));
     } catch (Throwable $e) {
         error_log('Kontingenthinweis: ' . $e->getMessage());
     }
-    audit_log($tenantId, null, 'quota_warning_sent', 'organization', $tenantId, ['used' => (int)$quota['used'], 'limit' => (int)$quota['limit'], 'percent' => (int)$quota['percent']]);
-    return true;
+    // Audit nur, wenn die Nachricht tatsaechlich uebergeben wurde; sonst wuerde das Protokoll einen Versand behaupten.
+    audit_log($tenantId, null, $gesendet ? 'quota_warning_sent' : 'quota_warning_not_sent', 'organization', $tenantId, ['used' => (int)$quota['used'], 'limit' => (int)$quota['limit'], 'percent' => (int)$quota['percent'], 'mail_enabled' => mail_enabled()]);
+    return $gesendet;
 }
 
 /** Ist die Plattform-Abrechnung aktiv konfiguriert? */

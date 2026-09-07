@@ -373,6 +373,11 @@ function queue_retry_now(string $id, ?array $actor): array
     if (!$job || !in_array($job['status'], ['failed', 'retry', 'queued'], true)) {
         return ['ok' => false, 'message' => 'Dieser Job kann nicht erneut versucht werden.'];
     }
+    if (($job['type'] ?? '') === 'mail' && !empty($job['payload_data']['_pruned'])) {
+        // Inhalt endgueltig fehlgeschlagener Mailjobs wird bereinigt (kein Klartext im Dead Letter); eine Wiederholung
+        // wuerde eine leere Nachricht senden. Der fachliche Vorgang muss neu ausgeloest werden.
+        return ['ok' => false, 'message' => 'Der Inhalt dieser E-Mail wurde nach dem endgültigen Fehlschlag bereinigt. Bitte den Vorgang fachlich neu auslösen.'];
+    }
     $dedupe = $job['payload_data']['_dedupe_key'] ?? null;
     try {
         $st = db()->prepare("UPDATE jobs SET status = 'queued', available_at = ?, attempts = 0, last_error = NULL, finished_at = NULL, closed_at = NULL, locked_by = NULL, locked_at = NULL, heartbeat_at = NULL, dedupe_key = ? WHERE id = ? AND status IN ('failed','retry','queued')");

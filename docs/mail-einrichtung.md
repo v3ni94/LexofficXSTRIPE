@@ -2,8 +2,9 @@
 
 Stand: 07.09.2026. Ohne aktiven Mailversand sendet die Anwendung keine E-Mails: keine Willkommens- und
 Bestätigungsmail nach der Registrierung, keine Einladungen, keine Sicherheitsmeldungen, keine Vorabankündigungen per
-Mail, und `vormerken.php` nimmt keine Vorregistrierung an (Antwort 503, weil ohne Bestätigungsmail kein Double-Opt-in
-möglich ist). Die Statusseite zeigt die Komponente „E-Mail-Benachrichtigungen“ dann als unbekannt.
+Mail. Vorregistrierungen werden gespeichert und als wartend markiert (Seite „Vormerkung gespeichert, Bestätigungs-E-Mail
+folgt“); die Bestätigungsmail wird nach der Aktivierung automatisch nachgesendet. Die Statusseite zeigt die Komponente
+„E-Mail-Benachrichtigungen“ als unbekannt.
 
 ## 1. Postfach anlegen (Betreiber)
 
@@ -34,7 +35,7 @@ die eigene Adresse senden:
 
 ```bash
 cd /opt/smarteinzug/deploy && export RELEASE_SHA="$(basename "$(readlink -f /opt/smarteinzug/releases/current)")"
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env restart worker-mail worker-maintenance
+bash scripts/restart-workers.sh   # startet Scheduler, alle Worker und den Metrik-Sammler neu (lesen config.php nur beim Start)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env exec -T php php bin/mail-check.php
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env exec -T php php bin/mail-check.php --send=ihre.adresse@example.de
 ```
@@ -57,8 +58,11 @@ Kann eine Bestätigungsmail nicht erzeugt werden (Versand nicht aktiv oder gest�
 - Vorregistrierung: Der Eintrag bleibt `pending` und wird mit `mail_pending = 1` markiert. Die Seite meldet ehrlich
   „Vormerkung gespeichert, Bestätigungs-E-Mail folgt“. `interest_send_pending()` (Wartungsjob und `cron.php`) sendet die
   Mail nach, sobald `mail.enabled` gesetzt ist; Token werden dabei neu erzeugt, die 7 Tage beginnen mit dem Versand.
-- Registrierung: `users.welcome_mail_pending = 1`; `auth_send_pending_welcome_mails()` sendet die Willkommensmail mit
-  Bestätigungslink nach, solange die Adresse noch nicht bestätigt ist.
+- Registrierung: `users.welcome_mail_pending = 1`; `auth_send_pending_welcome_mails()` sendet die Willkommensmail nach: mit
+  Bestätigungslink, wenn die Adresse noch unbestätigt ist, sonst ohne (bei Registrierung ohne Mailversand gilt die Adresse
+  als bestätigt). Nachsendungen laufen über die Mail-Warteschlange (Ratenbegrenzung, Circuit Breaker).
+- Migration 022 trägt die Wartemarke für Einträge nach, die vor 4.22 entstanden sind (offene Vormerkungen, Benutzer der
+  letzten 30 Tage). Nachgesendete Bestätigungsmails nennen Datum und Herkunft der Eintragung.
 - Der Adminbereich zeigt bei nicht aktivem Versand eine Warnung mit der Anzahl wartender Nachsendungen.
 
 Nach der Aktivierung des Versands genügt es also, den Wartungsjob abzuwarten (stündlich) oder ihn über den

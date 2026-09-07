@@ -254,6 +254,9 @@ function job_mail(array $job): array
     if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
         throw new JobFailedException('Ungültige Empfängeradresse.');
     }
+    if (!empty($p['_pruned']) || trim((string)($p['text'] ?? '')) === '') {
+        throw new JobFailedException('Leerer oder bereinigter Nachrichteninhalt, Versand verweigert.');
+    }
     api_call_gate('mail', 20);
     $ok = mail_send_direct($to, (string)($p['subject'] ?? ''), (string)($p['text'] ?? ''), isset($p['html']) ? (string)$p['html'] : null);
     if (!$ok) {

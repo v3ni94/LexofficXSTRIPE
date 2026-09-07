@@ -1144,7 +1144,14 @@ function auth_send_pending_welcome_mails(int $limit = 50): int
     )->fetchAll();
     $n = 0;
     foreach ($rows as $user) {
-        $ok = !empty($user['email_verified_at']) ? true : email_verification_send($user, (string)($user['org_name'] ?? 'Ihr Firmenaccount'));
+        $orgName = (string)($user['org_name'] ?? 'Ihr Firmenaccount');
+        if (!empty($user['email_verified_at'])) {
+            // Adresse gilt bereits als bestaetigt (Registrierung ohne Mailversand): Willkommensmail ohne Bestaetigungslink.
+            $tpl = mail_tpl_welcome($orgName, null);
+            $ok = mail_send_queued((string)$user['email'], $tpl['subject'], $tpl['text'], $tpl['html']);
+        } else {
+            $ok = email_verification_send($user, $orgName);
+        }
         if ($ok) {
             $pdo->prepare('UPDATE users SET welcome_mail_pending = 0 WHERE id = ?')->execute([$user['id']]);
             $n++;

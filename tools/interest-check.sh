@@ -47,7 +47,8 @@ if mariadb_sandbox_available; then
     erw "Obergrenze je Minute" limit_error busy
     echo "5) Nachsenden bei nicht aktivem Mailversand"
     erw "ohne Mailversand: Zustand mail_deferred (Eintrag gespeichert)" deferred_state mail_deferred; erw "Eintrag pending, nicht bestaetigt" deferred_status pending; erw "als wartend markiert" deferred_flag 1; erw "keine Mail erzeugt" deferred_mails 0
-    erw "Wartung ohne Mailversand sendet nichts" resend_ohne 0; erw "Wartung mit Mailversand sendet die wartende Mail" resend_mit 1; erw "Wartemarke geloescht" resend_flag 0; erw "Mail mit Token A und B" resend_mail_tokens 1; erw "Token aus der nachgesendeten Mail bestaetigt" resend_confirm confirmed
+    erw "erneutes Absenden waehrend des Wartens bleibt ehrlich (mail_deferred)" deferred_again mail_deferred
+    erw "Wartung ohne Mailversand sendet nichts" resend_ohne 0; erw "Wartung mit Mailversand sendet die wartende Mail" resend_mit 1; erw "Wartemarke geloescht" resend_flag 0; erw "nachgesendete Mail nennt Datum und Herkunft" resend_nennt_datum 1; erw "zweiter Wartungslauf sendet nichts doppelt" resend_zweimal_null 0; erw "Mail mit Token A und B" resend_mail_tokens 1; erw "Token aus der nachgesendeten Mail bestaetigt" resend_confirm confirmed
     erw "Herkunft: erlaubte Domain mit www" origin_ok 1; erw "Herkunft: fremder Origin abgelehnt" origin_fremd 0; erw "Herkunft: Referer allein reicht" origin_referer 1; erw "Herkunft: ohne Header zugelassen" origin_leer 1; erw "Herkunft: Origin null zugelassen" origin_null 1
 else
     echo "  (Datenbankteil uebersprungen: mariadbd nicht verfuegbar)"
@@ -69,6 +70,11 @@ grep -q "interest_cleanup" "$ROOT/php-ionos/app/jobs.php" && grep -q "interest_c
 grep -q "interest_send_pending" "$ROOT/php-ionos/app/jobs.php" && grep -q "interest_send_pending" "$ROOT/php-ionos/cron.php" && grep -q "auth_send_pending_welcome_mails" "$ROOT/php-ionos/app/jobs.php" && grep -q "auth_send_pending_welcome_mails" "$ROOT/php-ionos/cron.php" && ok "Nachsenden in Wartung und Cron verdrahtet" || bad "Nachsenden nicht verdrahtet"
 grep -q "welcome_mail_pending = 1" "$ROOT/php-ionos/app/auth.php" && ok "Willkommensmail wird bei Fehlschlag als wartend markiert" || bad "welcome_mail_pending fehlt"
 grep -q "mail_pending" "$ROOT/php-ionos/sql/migrations/021_mail_pending.sql" && grep -q "welcome_mail_pending" "$ROOT/php-ionos/sql/schema.sql" && ok "Migration 021 und schema.sql" || bad "Migration 021"
+grep -q "SET mail_pending = 1" "$ROOT/php-ionos/sql/migrations/022_mail_pending_backfill.sql" && ok "Migration 022 traegt die Wartemarke fuer Altbestand nach" || bad "Migration 022 fehlt"
+grep -q "_pruned" "$ROOT/php-ionos/app/queue.php" && grep -q "bereinigt" "$ROOT/php-ionos/app/queue.php" && ok "queue_retry_now verweigert bereinigte Mailjobs" || bad "retry bereinigt"
+grep -q "Leerer oder bereinigter Nachrichteninhalt" "$ROOT/php-ionos/app/jobs.php" && ok "job_mail sendet keine leeren Mails" || bad "job_mail leer"
+grep -q "mail_send_queued" "$ROOT/php-ionos/app/interest.php" && grep -q "mail_send_queued" "$ROOT/php-ionos/app/auth.php" && ok "Nachsenden ueber die Mail-Warteschlange" || bad "Nachsenden direkt"
+[[ -x "$ROOT/deploy/vps/scripts/restart-workers.sh" ]] && ok "restart-workers.sh vorhanden" || bad "restart-workers.sh fehlt"
 grep -q "'aktion' => 'bestaetigen'" "$ROOT/php-ionos/vormerken.php" && ok "Bestaetigung erst per Button (POST)" || bad "GET bestaetigt direkt"
 grep -q "vormerkung-v3" "$ROOT/docs/einwilligungen.md" && grep -q "INTEREST_CONSENT_VERSION = 'vormerkung-v3'" "$ROOT/php-ionos/app/interest.php" && ok "Einwilligungsfassung v3 archiviert" || bad "Einwilligungsfassung"
 grep -q "interest_block_id\|interest_invite_id" "$ROOT/php-ionos/admin.php" && grep -q "export=vormerkungen" "$ROOT/php-ionos/admin.php" && ok "Adminaktionen und CSV-Export" || bad "Adminaktionen"

@@ -36,6 +36,10 @@ $c = mail_tpl_interest_confirm('sevdesk', 'https://app.example.test/vormerken.ph
 (str_contains($c['subject'], 'Bitte bestätigen Sie Ihre sevdesk-Vormerkung') && str_contains($c['text'], 'kein kostenpflichtiges Abonnement') && str_contains($c['html'], 'abmelden=b')) ? $ok('Vormerkungs-Bestaetigungsmail nach Masterplan mit Abmeldelink') : $bad('Bestaetigungsmail');
 $d = mail_tpl_interest_confirmed('sevdesk', 'https://app.example.test/vormerken.php?abmelden=b', 'https://smart-einzug.de/integrationen/sevdesk/');
 (str_contains($d['subject'], 'ist bestätigt') && str_contains($d['text'], 'noch kein sevdesk- oder Stripe-Konto verbinden') && str_contains($d['html'], 'abmelden=b')) ? $ok('Mail nach Bestaetigung mit Abmeldelink') : $bad('Mail nach Bestaetigung');
-foreach ([$w, $c, $d] as $tpl) { str_contains($tpl['html'], 'HRB 104291') ? $ok('Pflichtangaben in Vorlage: ' . $tpl['subject']) : $bad('Pflichtangaben fehlen: ' . $tpl['subject']); }
+$w0 = mail_tpl_welcome('Muster GmbH', null);
+(!str_contains($w0['html'], 'verify-email') && str_contains($w0['text'], 'gilt als bestätigt') && str_contains($w0['html'], 'login.php')) ? $ok('Willkommensmail ohne Bestaetigungslink (Adresse gilt als bestaetigt)') : $bad('Willkommensmail ohne Link');
+$c2 = mail_tpl_interest_confirm('sevdesk', 'https://app.example.test/vormerken.php?token=a', 'https://app.example.test/vormerken.php?abmelden=b', '07.09.2026', 'smart-einzug.de');
+(str_contains($c2['text'], 'Ihre Eintragung vom 07.09.2026 über smart-einzug.de') && str_contains($c2['text'], 'müssen Sie nichts tun')) ? $ok('Nachgesendete Bestaetigungsmail nennt Datum und Herkunft') : $bad('Nachsendung ohne Datum');
+foreach ([$w, $c, $d, $w0, $c2] as $tpl) { str_contains($tpl['html'], 'HRB 104291') ? $ok('Pflichtangaben in Vorlage: ' . $tpl['subject']) : $bad('Pflichtangaben fehlen: ' . $tpl['subject']); }
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail === 0 ? 0 : 1);

@@ -113,10 +113,19 @@ $mailsVor = $mails();
 $GLOBALS['config']['mail']['enabled'] = false;
 $rd = interest_register(['provider' => 'sevdesk', 'email' => 'spaeter@x.test', 'consent' => '1'], 'smart-einzug.de');
 $out('deferred_state', (string)$rd['state']); $rr = $row('spaeter@x.test'); $out('deferred_status', (string)$rr['status']); $out('deferred_flag', (int)$rr['mail_pending']); $out('deferred_mails', $mails() - $mailsVor);
+$rd2 = interest_register(['provider' => 'sevdesk', 'email' => 'spaeter@x.test', 'consent' => '1'], 'smart-einzug.de');
+$out('deferred_again', (string)$rd2['state']);
 $out('resend_ohne', interest_send_pending());
 $GLOBALS['config']['mail']['enabled'] = true;
 $out('resend_mit', interest_send_pending());
 $rr = $row('spaeter@x.test'); $out('resend_flag', (int)$rr['mail_pending']);
+$letzteNach = '';
+foreach ($pdo->query("SELECT payload FROM jobs WHERE type='mail'")->fetchAll(PDO::FETCH_COLUMN) as $pl) {
+    $pd = json_decode((string)$pl, true);
+    if (($pd['to'] ?? '') === 'spaeter@x.test' && str_contains((string)($pd['text'] ?? ''), 'Ihre Eintragung vom')) { $letzteNach = (string)$pd['text']; }
+}
+$out('resend_nennt_datum', (str_contains($letzteNach, 'Ihre Eintragung vom ' . date('d.m.Y')) && str_contains($letzteNach, 'smart-einzug.de')) ? 1 : 0);
+$out('resend_zweimal_null', interest_send_pending());
 $tk2 = $tokens($rr); $out('resend_mail_tokens', ($tk2['a'] !== '' && $tk2['b'] !== '') ? 1 : 0);
 $mn = null; $out('resend_confirm', $tk2['a'] !== '' ? interest_confirm($tk2['a'], $mn) : 'kein-token');
 $erl = ['smart-einzug.de', 'lexware-einzug.de', 'app.smart-einzug.de'];
