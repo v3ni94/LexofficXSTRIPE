@@ -65,7 +65,7 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 | `bash tools/deploy-runner-check.sh` | 35 / 0 |
 | `bash tools/scheduler-sync-check.sh` | 35 / 0 |
 | `bash tools/worker-signal-check.sh` | 17 / 0 |
-| `bash tools/interest-check.sh` | 133 / 0 (temporäre MariaDB, Fassung 4.24) |
+| `bash tools/interest-check.sh` | 133 / 0 (statische Prüfung „keine stille Bestätigung“ seit 4.24 fälschlich rot, weil sie den lesenden Vergleich `=== 'confirmed'` traf; Muster auf schreibende Zuweisung eingegrenzt) (temporäre MariaDB, Fassung 4.24) |
 | `php tools/mail-ci-check.php` | 32 / 0 |
 | `php tools/pricing-check.php`, `php tools/billing-setup-check.php` | 13 / 0, 55 / 0 |
 | `python3 tools/site-qa.py` | 0 Fehler, 4 Warnungen (bekannte Überschriftendoppelungen zwischen Domains) |
