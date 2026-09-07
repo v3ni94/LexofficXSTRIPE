@@ -984,6 +984,12 @@ function signup_attribution_capture(): void
     if ($src !== '' && preg_match('/^[a-z0-9.-]{3,100}$/', $src)) {
         $_SESSION['signup']['domain'] = in_array($src, $allowed, true) || !$allowed ? $src : 'sonstige:' . $src;
     }
+    // Fachliche Anbieter-Vorauswahl, getrennt von der Marketingherkunft und niemals ein Berechtigungsnachweis:
+    // nur Werte aus der festen Liste, alles andere wird ignoriert.
+    $integration = strtolower(trim((string)($_GET['integration'] ?? '')));
+    if (in_array($integration, ['lexware_office', 'sevdesk'], true)) {
+        $_SESSION['signup']['integration'] = $integration;
+    }
     foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as $k) {
         $v = trim((string)($_GET[$k] ?? ''));
         if ($v !== '') {

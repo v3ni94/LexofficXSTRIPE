@@ -13,6 +13,7 @@ require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/alerts.php';
 require_once __DIR__ . '/app/admin_charts.php';
 require_once __DIR__ . '/app/interest.php';
+require_once __DIR__ . '/app/integration_state.php';
 
 // Host-Prüfung: ist admin_base_url gesetzt, antwortet diese Seite nur auf dem
 // Adminhost (bootstrap.php prüft dies bereits zentral, hier zusätzlich als
@@ -26,6 +27,18 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
 
 $ctx = require_superadmin();
 $pdo = db();
+
+// CSV-Export der Vormerkungen (nur Superadmin, protokolliert, Zellen gegen Formelausführung geschützt).
+if (($_GET['export'] ?? '') === 'vormerkungen') {
+    $filter = ['status' => (string)($_GET['vstatus'] ?? ''), 'source' => (string)($_GET['vsource'] ?? ''), 'q' => (string)($_GET['vq'] ?? '')];
+    $rows = interest_search($filter, 5000);
+    audit_log(null, $ctx, 'interest_exported', 'interest_registration', null, ['rows' => count($rows), 'filter' => array_filter($filter)]);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="vormerkungen-' . date('Ymd-His') . '.csv"');
+    header('Cache-Control: no-store');
+    echo interest_export_csv($rows);
+    exit;
+}
 
 /**
  * Tarifwerte aus dem Formular lesen und prüfen. Preis als Dezimalbetrag (z.B. 25,00),
@@ -162,6 +175,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             audit_log(null, $ctx, $action === 'interest_delete' ? 'interest_deleted' : 'interest_unsubscribed', 'interest_registration', $iid, ['reason' => 'admin']);
             flash_set('success', $action === 'interest_delete' ? 'Vormerkung gelöscht.' : 'Vormerkung abgemeldet.');
+        } elseif ($action === 'interest_block' || $action === 'interest_invite') {
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            $iid = (string)($_POST['interest_id'] ?? '');
+            if (!preg_match('/^[0-9a-f-]{36}$/', $iid)) {
+                throw new RuntimeException('Ungültige Kennung.');
+            }
+            $done = $action === 'interest_block' ? interest_block_id($iid) : interest_invite_id($iid);
+            if (!$done) {
+                throw new RuntimeException($action === 'interest_block' ? 'Eintrag nicht gefunden oder bereits gesperrt.' : 'Einladung nur für bestätigte, nicht gesperrte Einträge.');
+            }
+            audit_log(null, $ctx, $action === 'interest_block' ? 'interest_blocked' : 'interest_invited', 'interest_registration', $iid, ['reason' => 'admin']);
+            flash_set('success', $action === 'interest_block' ? 'Sperrvermerk gesetzt.' : 'Betaeinladung vorgemerkt.');
         }
     } catch (Throwable $e) {
         flash_set('error', 'Fehler: ' . $e->getMessage());
@@ -189,7 +214,7 @@ foreach ($funnel as $f) {
     $funnelMap[$f['domain']][$f['event']] = (int)$f['cnt'];
 }
 $funnelSteps = [
-    'page_view' => 'Besucher (Seitenaufrufe)', 'cta_click' => 'CTA geklickt', 'registration_started' => 'Registrierung begonnen',
+    'page_view' => 'Besucher (Seitenaufrufe)', 'cta_click' => 'CTA geklickt', 'registration_started' => 'Registrierung begonnen', 'interest_submitted' => 'Vormerkung abgesendet', 'interest_confirmed' => 'Vormerkung bestätigt',
     'registration_completed' => 'Registrierung abgeschlossen', 'subscription_active' => 'Abo abgeschlossen',
     '2fa_enabled' => '2FA eingerichtet', 'lexware_connected' => 'Lexware Office verbunden', 'stripe_connected' => 'Stripe verbunden',
     'onboarding_completed' => 'Onboarding abgeschlossen', 'first_sync' => 'Erste Synchronisation', 'first_collection' => 'Erster SEPA-Einzug',
@@ -242,7 +267,10 @@ $totals = $pdo->query(
 
 $platformAlerts = alerts_platform();
 $interestStats = interest_stats();
-$interestRecent = interest_recent(200);
+$interestFilter = ['status' => (string)($_GET['vstatus'] ?? ''), 'source' => (string)($_GET['vsource'] ?? ''), 'q' => (string)($_GET['vq'] ?? '')];
+$interestRecent = interest_search($interestFilter, 200);
+$interestMetrics = interest_metrics('sevdesk');
+$interestSwitches = integration_switches('sevdesk');
 
 layout_header('Administration', $ctx);
 ?>
@@ -423,9 +451,19 @@ layout_header('Administration', $ctx);
 
 <div class="card" id="vormerkungen">
     <h2>Vormerkungen für angekündigte Integrationen</h2>
-    <?php if (!$interestStats): ?>
-        <p class="hint">Noch keine Vormerkungen. Das Formular liegt auf smart-einzug.de/integrationen/sevdesk/ und schreibt über vormerken.php.</p>
-    <?php else: ?>
+    <p class="hint">sevdesk: öffentlicher Status <strong><?= e($interestSwitches['public_state']) ?></strong>, Vormerkung <?= $interestSwitches['waitlist'] ? 'offen' : 'geschlossen' ?>,
+        Verbindung <?= $interestSwitches['connect'] ? 'frei' : 'gesperrt' ?>, neue Einzüge <?= $interestSwitches['collections'] ? 'frei' : 'gesperrt' ?>,
+        Rückschreibung <?= $interestSwitches['writeback'] ? 'frei' : 'gesperrt' ?>. Schalter nur serverseitig (platform_settings, Schlüssel sevdesk_*), siehe docs/sevdesk.md.</p>
+    <div class="table-wrap">
+        <table class="table-sm">
+            <thead><tr><th>Formular abgesendet</th><th>Bestätigt</th><th>Betatest-Interesse</th><th>Eingeladen</th><th>Aktiviert</th><th>Verbundene Firmen</th><th>Erste Einzüge</th></tr></thead>
+            <tbody><tr>
+                <td><?= (int)$interestMetrics['submitted'] ?></td><td><strong><?= (int)$interestMetrics['confirmed'] ?></strong></td><td><?= (int)$interestMetrics['beta'] ?></td>
+                <td><?= (int)$interestMetrics['invited'] ?></td><td><?= (int)$interestMetrics['activated'] ?></td><td><?= (int)$interestMetrics['connected'] ?></td><td><?= (int)$interestMetrics['collected'] ?></td>
+            </tr></tbody>
+        </table>
+    </div>
+    <?php if ($interestStats): ?>
         <div class="table-wrap">
             <table class="table-sm">
                 <thead><tr><th>Integration</th><th>Bestätigt</th><th>Unbestätigt</th><th>Abgemeldet</th></tr></thead>
@@ -436,26 +474,47 @@ layout_header('Administration', $ctx);
                 </tbody>
             </table>
         </div>
+    <?php endif; ?>
+    <form method="get" action="admin.php#vormerkungen" class="inline-form">
+        <input type="text" name="vq" value="<?= e($interestFilter['q']) ?>" placeholder="Suche E-Mail, Firma, Name" style="max-width: 220px; padding: 5px 8px; font-size: 13px;">
+        <select name="vstatus" style="padding: 5px 8px; font-size: 13px;">
+            <?php foreach (['' => 'alle Status', 'pending' => 'unbestätigt', 'confirmed' => 'bestätigt', 'unsubscribed' => 'abgemeldet', 'blocked' => 'gesperrt', 'invited' => 'eingeladen'] as $k => $l): ?>
+                <option value="<?= e($k) ?>" <?= $interestFilter['status'] === $k ? 'selected' : '' ?>><?= e($l) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <input type="text" name="vsource" value="<?= e($interestFilter['source']) ?>" placeholder="Herkunft (Domain)" style="max-width: 180px; padding: 5px 8px; font-size: 13px;">
+        <button type="submit" class="btn btn-sm btn-secondary">Filtern</button>
+        <a class="btn btn-sm btn-secondary" href="admin.php?export=vormerkungen&amp;vq=<?= e(urlencode($interestFilter['q'])) ?>&amp;vstatus=<?= e($interestFilter['status']) ?>&amp;vsource=<?= e($interestFilter['source']) ?>">CSV-Export</a>
+    </form>
+    <?php if ($interestRecent): ?>
         <div class="table-wrap">
             <table class="table-sm">
-                <thead><tr><th>E-Mail</th><th>Firma</th><th>Herkunft</th><th>Integration</th><th>Status</th><th>Eingetragen</th><th>Bestätigt</th><th>Aktion</th></tr></thead>
+                <thead><tr><th>E-Mail</th><th>Name / Firma</th><th>Herkunft</th><th>Status</th><th>Einwilligung</th><th>Eingetragen</th><th>Bestätigt</th><th>Beta</th><th>Aktion</th></tr></thead>
                 <tbody>
                 <?php foreach ($interestRecent as $r): ?>
+                    <?php $blocked = $r['blocked_at'] !== null; ?>
                     <tr>
                         <td><?= e($r['email']) ?></td>
-                        <td class="hint"><?= e($r['company'] ?? '-') ?></td>
+                        <td class="hint"><?= e(trim(($r['name'] ?? '') . ' ' . ($r['company'] ? '(' . $r['company'] . ')' : ''))) ?: '-' ?></td>
                         <td><?= e($r['source_domain'] ?? 'direkt') ?></td>
-                        <td><?= e($r['provider_code']) ?></td>
-                        <td><?= e(['pending' => 'unbestätigt', 'confirmed' => 'bestätigt', 'unsubscribed' => 'abgemeldet'][$r['status']] ?? $r['status']) ?></td>
+                        <td><?= $blocked ? 'gesperrt' : e(['pending' => 'unbestätigt', 'confirmed' => 'bestätigt', 'unsubscribed' => 'abgemeldet'][$r['status']] ?? $r['status']) ?></td>
+                        <td class="hint"><?= e($r['consent_text']) ?><br><?= format_datetime($r['consent_at']) ?></td>
                         <td><?= format_datetime($r['created_at']) ?></td>
                         <td><?= format_datetime($r['confirmed_at']) ?></td>
+                        <td class="hint"><?= (int)$r['beta_interest'] ? 'Interesse' : '' ?><?= $r['invited_at'] ? '<br>eingeladen ' . e(format_date($r['invited_at'])) : '' ?></td>
                         <td>
                             <form method="post" class="inline-form">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="interest_id" value="<?= e($r['id']) ?>">
-                                <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 110px; padding: 5px 8px; font-size: 13px;">
+                                <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 100px; padding: 5px 8px; font-size: 13px;">
+                                <?php if ($r['status'] === 'confirmed' && !$blocked && !$r['invited_at']): ?>
+                                <button type="submit" name="action" value="interest_invite" class="btn btn-sm btn-secondary">Beta einladen</button>
+                                <?php endif; ?>
                                 <?php if ($r['status'] !== 'unsubscribed'): ?>
                                 <button type="submit" name="action" value="interest_unsubscribe" class="btn btn-sm btn-secondary">Abmelden</button>
+                                <?php endif; ?>
+                                <?php if (!$blocked): ?>
+                                <button type="submit" name="action" value="interest_block" class="btn btn-sm btn-secondary">Sperren</button>
                                 <?php endif; ?>
                                 <button type="submit" name="action" value="interest_delete" class="btn btn-sm btn-secondary">Löschen</button>
                             </form>
@@ -465,11 +524,14 @@ layout_header('Administration', $ctx);
                 </tbody>
             </table>
         </div>
+    <?php else: ?>
+        <p class="hint">Keine Einträge für diesen Filter.</p>
     <?php endif; ?>
-    <p class="hint">Double-Opt-in: Nur bestätigte Adressen dürfen zum Start angeschrieben werden. „Unbestätigt“ umfasst auch nicht zugestellte
-        Mails. Löschfristen (Wartung): unbestätigt 30 Tage nach Eintragung, abgemeldet 30 Tage nach Abmeldung, bestätigt 30 Tage nach der
-        Startnachricht. Widerruf oder Löschverlangen per Nachricht werden hier mit „Abmelden“ bzw. „Löschen“ ausgeführt (2FA-Code, Audit).
-        Zeiten in Ortszeit. Es gibt keine IP-Adressen und keine Preiszusage; eine Vormerkung ist die Bitte um eine Nachricht zum Start.</p>
+    <p class="hint">Einwilligungsstatus (unbestätigt, bestätigt, abgemeldet, gesperrt) ist vom Vertriebsstand (Betatest-Interesse, eingeladen, aktiviert)
+        getrennt: „Beta einladen“ ist nur für bestätigte, nicht gesperrte Einträge möglich und macht einen abgemeldeten Eintrag nie wieder versandberechtigt.
+        „Sperren“ entfernt alle Klartextangaben außer der E-Mail-Adresse und schließt weiteren Versand dauerhaft aus. Löschfristen (Wartung): unbestätigt 30 Tage
+        nach Eintragung, abgemeldet 30 Tage nach Abmeldung, bestätigt 30 Tage nach der Startnachricht; gesperrte Einträge bleiben. Zeiten in Ortszeit,
+        keine IP-Adressen. Jede Aktion verlangt den aktuellen 2FA-Code und wird im Audit protokolliert, der CSV-Export ebenfalls.</p>
 </div>
 
 <div class="card" id="support">

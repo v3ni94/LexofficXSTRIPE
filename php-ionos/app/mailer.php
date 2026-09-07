@@ -476,17 +476,18 @@ function mail_tpl_verify_email(string $verifyUrl): array
  */
 function mail_tpl_interest_confirm(string $providerName, string $confirmUrl, ?string $unsubscribeUrl = null): array
 {
-    $subject = 'Vormerkung für die ' . $providerName . '-Integration bestätigen';
+    $subject = 'Bitte bestätigen Sie Ihre ' . $providerName . '-Vormerkung bei ' . mail_product_name();
     $paragraphs = [
-        'Sie haben sich für eine Nachricht zum Start der ' . $providerName . '-Integration von ' . mail_product_name() . ' vorgemerkt.',
-        'Bitte bestätigen Sie Ihre E-Mail-Adresse über den folgenden Link. Erst danach ist die Vormerkung wirksam.',
+        'Sie haben sich für Informationen zur geplanten ' . $providerName . '-Anbindung von ' . mail_product_name() . ' eingetragen. '
+        . 'Bitte bestätigen Sie Ihre E-Mail-Adresse über den folgenden Link. Durch die Bestätigung entsteht kein kostenpflichtiges Abonnement. '
+        . 'Wenn Sie diese Vormerkung nicht angefordert haben, müssen Sie nichts tun.',
     ];
     if ($unsubscribeUrl !== null) {
-        $paragraphs[] = 'Abmelden können Sie sich jederzeit über diesen Link: ' . $unsubscribeUrl;
+        $paragraphs[] = 'Abmelden oder Eintrag löschen lassen: ' . $unsubscribeUrl;
     }
-    $button = ['label' => 'Vormerkung bestätigen', 'url' => $confirmUrl];
-    $footerNote = 'Der Bestätigungslink ist 7 Tage gültig. Die Vormerkung ist kostenlos und unverbindlich. '
-        . 'Falls Sie diese E-Mail nicht erwartet haben, können Sie sie ignorieren: Ohne Bestätigung wird der Eintrag nach spätestens 30 Tagen automatisch gelöscht.';
+    $button = ['label' => 'E-Mail-Adresse bestätigen', 'url' => $confirmUrl];
+    $footerNote = 'Der Bestätigungslink ist 7 Tage gültig. Ohne Bestätigung wird der Eintrag nach spätestens 30 Tagen automatisch gelöscht. '
+        . 'Die Vormerkung ist kostenlos und unverbindlich.';
     $layout = mail_layout($subject, $paragraphs, $button, $footerNote);
     return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Regressionstest der Vormerkung (app/interest.php, vormerken.php) gegen eine temporaere MariaDB:
-# Anlage, Normalisierung, Double-Opt-in-Token nur als Hash, Wiederholungsschutz, ungueltige Eingaben,
-# Bestaetigung, Abmeldung, Ablauf, Wartung, Obergrenze je Minute, Statisches: Endpunkt ohne IP-Speicherung,
-# Seite indexierbar mit Formular und Datenschutzanker.
+# Regressionstest der Vorregistrierung (app/interest.php, vormerken.php) gegen eine temporaere MariaDB: Anlage,
+# getrennte Token (A Bestaetigung, B Abmeldung) nur als Hash, Wiederholungs- und Tagesgrenze, ungueltige Eingaben,
+# Schalter, Bestaetigung per Button-Logik, freiwillige Angaben, Einladung, Abmeldung mit neuer Bestaetigungspflicht,
+# Sperrvermerk, Wartung, Kennzahlen, Suche, formelsicherer CSV-Export, Obergrenze, Herkunftspruefung; statische Pruefungen.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PASS=0; FAIL=0
@@ -15,46 +15,57 @@ T="$(mktemp -d)"; cleanup() { mariadb_sandbox_stop; rm -rf "$T"; }; trap cleanup
 if mariadb_sandbox_available; then
     mariadb_sandbox_start "$T/mdb" "'features' => ['queue' => true], 'mail' => ['enabled' => true, 'from_address' => 'noreply@example.test', 'from_name' => 'Test'], 'base_url' => 'https://app.example.test'," || exit 1
     OUT="$(php "$ROOT/tools/lib/interest-sim.php" "$ROOT" 2>&1)"
-    echo "1) Anlage und Bestaetigungsmail"
-    erw "Anlage erfolgreich" neu_ok 1; erw "Zustand mail_sent" neu_state mail_sent; erw "genau eine Zeile" zeilen 1
-    erw "E-Mail kleingeschrieben" email_normalisiert kunde@example.test; erw "Firmenname bereinigt" company_bereinigt "Muster GmbH"
-    erw "Herkunft ohne www" herkunft smart-einzug.de; erw "Status pending" status_nach_anlage pending; erw "Einwilligungsfassung" consent vormerkung-v2
-    erw "Mail als Job eingereiht" mail_job 1; erw "Mail an die Adresse" mail_an kunde@example.test; erw "Token im Mailtext" token_im_text 1
-    erw "Token NICHT im Klartext gespeichert" token_nicht_gespeichert 1; erw "SHA-256 des Tokens gespeichert" token_hash_passt 1
-    erw "Abmeldelink in der Bestaetigungsmail" abmeldelink_in_mail 1; erw "consent_at gesetzt" consent_at 1; erw "last_mail_at beim Versuch gesetzt" last_mail_at 1; erw "mail_count=1" mail_count 1
-    erw "Tagesgrenze: hoechstens 3 Mails je Adresse in 24 h (1 + 2 weitere)" tagesgrenze_mails 3; erw "Zaehler steht auf 3" tagesgrenze_zaehler 3; erw "jeder Versand erneuert den Token" token_erneuert 1
-    echo "2) Wiederholung, ungueltige Eingaben"
-    erw "Wiederholung innerhalb 10 Minuten: gleiche Antwortklasse" wdh_state already; erw "keine zweite Zeile" wdh_zeilen 1; erw "keine zweite Mail" wdh_mails 1
-    erw "ungueltige E-Mail abgelehnt" err_email email; erw "ohne Einwilligung abgelehnt" err_consent consent; erw "Honeypot abgelehnt" err_honeypot honeypot
-    erw "freigegebener Anbieter (lexware_office) nicht vormerkbar" err_provider_frei provider; erw "unbekannter Anbieter abgelehnt" err_provider_fremd provider; erw "Ablehnungen legen nichts an" err_zeilen 1
-    echo "3) Bestaetigen, Abmelden, Ablauf, Wartung, Grenze"
-    erw "falscher Token" confirm_falsch invalid; erw "Muell-Token" confirm_muell invalid; erw "Bestaetigung" confirm confirmed; erw "zweite Bestaetigung idempotent" confirm_erneut already
-    erw "Status confirmed" status_bestaetigt confirmed; erw "confirmed_at gesetzt" confirmed_at 1; erw "Token ohne Ablauf fuer Abmeldung" ablauf_entfernt 1
-    erw "erneute Anmeldung nach Bestaetigung: gleiche Antwort" nach_bestaetigung_state already; erw "keine weitere Mail" nach_bestaetigung_mails 3
-    erw "Abmeldung" unsub unsubscribed; erw "Status unsubscribed" status_abgemeldet unsubscribed
-    erw "abgemeldete Zeile nicht wieder bestaetigbar" confirm_nach_abmeldung invalid
-    erw "Wartung: abgemeldet nicht vor 30 Tagen" cleanup_abgemeldet_frueh 0; erw "Wartung: abgemeldet nach 30 Tagen geloescht" cleanup_abgemeldet_spaet 1
-    erw "abgelaufener Link ungueltig" confirm_abgelaufen invalid; erw "Wartung: unbestaetigt nicht vor 30 Tagen" cleanup_pending_frueh 0; erw "Wartung: unbestaetigt nach 30 Tagen geloescht" cleanup_pending_spaet 1
-    erw "Wartung: bestaetigt 30 Tage nach Startnachricht geloescht" cleanup_benachrichtigt 1
-    erw "Herkunft: erlaubte Domain mit www" origin_ok 1; erw "Herkunft: fremder Origin abgelehnt (Referer zaehlt nicht mehr)" origin_fremd 0; erw "Herkunft: Referer allein reicht" origin_referer 1; erw "Herkunft: ohne Header zugelassen" origin_leer 1; erw "Herkunft: Origin null zugelassen" origin_null 1
-    erw "Obergrenze je Minute" limit_error busy; erw "Statistik zaehlt pending" stats_pending 30; erw "Anbietername aus integration_providers" stats_name sevdesk
+    grep -q "Fatal\|Warning\|Notice" <<< "$OUT" && bad "PHP-Meldung in der Simulation: $(grep -m1 "Fatal\|Warning\|Notice" <<< "$OUT")"
+    echo "1) Anlage, Mail mit zwei getrennten Token"
+    erw "Zustand mail_sent" neu_state mail_sent; erw "eine Zeile" zeilen 1; erw "eine Mail" mails 1
+    erw "E-Mail kleingeschrieben" email_normalisiert kunde@example.test; erw "Name bereinigt" name_bereinigt "Erika Muster"; erw "Firma bereinigt" company_bereinigt "Muster GmbH"
+    erw "Herkunft ohne www" herkunft smart-einzug.de; erw "Status pending" status_nach_anlage pending; erw "Einwilligung v3" consent vormerkung-v3; erw "consent_at gesetzt" consent_at 1; erw "Zweck launch_info" purpose launch_info
+    erw "Token A (Bestaetigung) in der Mail" token_a_in_mail 1; erw "Token B (Abmeldung) in der Mail" token_b_in_mail 1; erw "Token A und B verschieden" tokens_verschieden 1
+    erw "kein Klartext-Token gespeichert" klartext_nicht_gespeichert 1; erw "Mailtext: kein kostenpflichtiges Abonnement" mail_text_kein_abo 1; erw "Kennzahl Formularabsendung" funnel_submitted 1
+    echo "2) Wiederholung, Tagesgrenze, ungueltige Eingaben, Schalter"
+    erw "Wiederholung: gleiche Antwortklasse" wdh_state already; erw "keine zweite Zeile" wdh_zeilen 1; erw "keine zweite Mail" wdh_mails 1
+    erw "hoechstens 3 Mails je Adresse in 24 h" tagesgrenze_mails 3; erw "Zaehler 3" tagesgrenze_zaehler 3; erw "juengster Token A gueltig" token_a_erneuert 1; erw "juengster Token B gueltig" token_b_gueltig 1
+    erw "ungueltige E-Mail" err_email email; erw "ohne Einwilligung" err_consent consent; erw "Honeypot" err_honeypot honeypot
+    erw "freigegebener Anbieter nicht vormerkbar" err_provider_frei provider; erw "unbekannter Anbieter" err_provider_fremd provider; erw "Ablehnungen legen nichts an" err_zeilen 1
+    erw "Schalter sevdesk_waitlist=0 schliesst die Vormerkung" err_waitlist_zu provider
+    echo "3) Bestaetigung, Angaben, Einladung, Abmeldung, Sperrvermerk"
+    erw "falscher Token" confirm_falsch invalid; erw "Muell-Token" confirm_muell invalid; erw "Bestaetigung" confirm confirmed
+    erw "Status confirmed" status_bestaetigt confirmed; erw "confirmed_at gesetzt" confirmed_at 1; erw "Token A nach Bestaetigung geloescht" token_a_geloescht 1; erw "Token A nicht wiederverwendbar" confirm_erneut invalid
+    erw "Kennzahl Bestaetigung" funnel_confirmed 1; erw "erneute Anmeldung nach Bestaetigung: gleiche Antwort" nach_bestaetigung_state already; erw "keine weitere Mail" nach_bestaetigung_mails 3
+    erw "freiwillige Angaben gespeichert" angaben 1; erw "Betatest-Interesse" beta 1; erw "Rechnungen je Monat" ipm 21_100; erw "Stripe vorhanden" has_stripe 1; erw "API-Zugang nein" has_api 0; erw "ungueltiger Bereich wird NULL" ipm_ungueltig_null 1
+    erw "Betaeinladung fuer bestaetigten Eintrag" invite 1
+    erw "falscher Abmeldetoken" unsub_falsch invalid; erw "Abmeldung ueber Token B" unsub unsubscribed; erw "Status unsubscribed" status_abgemeldet unsubscribed; erw "keine Angaben nach Abmeldung" angaben_nach_abmeldung 0
+    erw "erneute Eintragung nach Abmeldung: neue Mail" erneut_state mail_sent; erw "erneute Eintragung bleibt pending (Abmeldung nicht automatisch aufgehoben)" erneut_status pending; erw "keine zweite Zeile" erneut_zeilen 1
+    erw "Sperrvermerk gesetzt" block 1; erw "gesperrt = abgemeldet" block_status unsubscribed; erw "Klartext ausser E-Mail entfernt" block_name_null 1; erw "E-Mail bleibt als Sperrvermerk" block_email_bleibt kunde@example.test
+    erw "Eintragung trotz Sperre: gleiche Antwort" block_register_state already; erw "Eintragung trotz Sperre: keine Mail" block_keine_mail 1; erw "keine Einladung fuer gesperrte" block_invite 0; erw "Wartung loescht gesperrte nicht" cleanup_gesperrt_bleibt 1
+    echo "4) Wartung, Kennzahlen, Suche, CSV, Grenze, Herkunft"
+    erw "Wartung loescht 3 alte Zeilen (pending, abgemeldet, benachrichtigt)" cleanup 3; erw "junger pending-Eintrag bleibt" jung_bleibt 1
+    erw "Kennzahl Absendungen zaehlt jede gueltige Absendung (9, auch Wiederholungen)" metrik_submitted 9; erw "Kennzahl bestaetigt" metrik_confirmed 1; erw "Kennzahl Betatest-Interesse" metrik_beta 1; erw "Kennzahl verbundene Firmen 0" metrik_connected 0
+    erw "Suche E-Mail" suche_q 1; erw "Filter Status" suche_status 1; erw "Filter Herkunft" suche_source 1; erw "Filter gesperrt" suche_blocked 1
+    erw "CSV mit BOM" csv_bom 1; erw "CSV: Formel entschaerft" csv_formel_entschaerft 1; erw "CSV: Anfuehrungszeichen verdoppelt" csv_quote 1
+    erw "Obergrenze je Minute" limit_error busy
+    erw "Herkunft: erlaubte Domain mit www" origin_ok 1; erw "Herkunft: fremder Origin abgelehnt" origin_fremd 0; erw "Herkunft: Referer allein reicht" origin_referer 1; erw "Herkunft: ohne Header zugelassen" origin_leer 1; erw "Herkunft: Origin null zugelassen" origin_null 1
 else
     echo "  (Datenbankteil uebersprungen: mariadbd nicht verfuegbar)"
 fi
-echo "4) Statisch"
+echo "5) Statisch"
 P="$ROOT/websites/smart-einzug.de/integrationen/sevdesk/index.html"
 ! grep -q noindex "$P" && ok "Seite indexierbar" || bad "Seite noindex"
-grep -q 'action="https://app.smart-einzug.de/vormerken.php"' "$P" && ok "Formular zeigt auf vormerken.php" || bad "Formularziel fehlt"
-grep -q 'name="website"' "$P" && grep -q 'name="consent"' "$P" && ok "Honeypot und Einwilligung im Formular" || bad "Formularfelder fehlen"
-grep -q 'id="vormerkung"' "$ROOT/websites/smart-einzug.de/datenschutz/index.html" && ok "Datenschutzabschnitt #vormerkung vorhanden" || bad "Datenschutzabschnitt fehlt"
-grep -q "form-action 'self' https://app.smart-einzug.de" "$ROOT/websites/smart-einzug.de/.htaccess" && ok "CSP erlaubt das Formularziel" || bad "CSP form-action"
-! grep -qiE "REMOTE_ADDR|client_ip\(" "$ROOT/php-ionos/vormerken.php" "$ROOT/php-ionos/app/interest.php" && ok "keine IP-Verarbeitung im Endpunkt" || bad "IP-Zugriff gefunden"
-grep -q "interest_cleanup" "$ROOT/php-ionos/app/jobs.php" && grep -q "interest_cleanup" "$ROOT/php-ionos/cron.php" && ok "Wartung in job_maintenance UND cron.php verdrahtet" || bad "interest_cleanup fehlt in einem Betriebspfad"
-! grep -q "mail_enabled()" "$ROOT/php-ionos/app/interest.php" && ok "keine stille Bestaetigung ohne Mailversand" || bad "mail_enabled-Sonderpfad vorhanden"
-grep -q "aktion=abmelden" "$ROOT/php-ionos/app/interest.php" && ok "Abmeldelink wird uebergeben" || bad "Abmeldelink fehlt"
+[[ "$(grep -c 'action="https://app.smart-einzug.de/vormerken.php"' "$P")" == "2" ]] && ok "zwei Formulare auf vormerken.php" || bad "Formularzahl"
+grep -q 'name="website"' "$P" && grep -q 'name="consent"' "$P" && grep -q 'name="name"' "$P" && ok "Honeypot, Einwilligung, Name im Formular" || bad "Formularfelder"
+grep -q "Müller Holding AG per E-Mail über den Entwicklungsstand" "$P" && ok "Einwilligungstext nach Masterplan" || bad "Einwilligungstext"
+grep -q "Buchhaltung Pro" "$P" && grep -q "Firmenlastschriftverfahren (B2B)" "$P" && ok "Voraussetzungen (sevdesk-Tarif nach Hilfe, kein B2B)" || bad "Voraussetzungen fehlen"
+! grep -qi "Partner\b\|zertifiziert" "$P" && ok "keine Partnerschafts-/Zertifizierungsbehauptung" || bad "Partnerschaftsbehauptung"
+grep -q 'id="sevdesk"' "$ROOT/websites/smart-einzug.de/index.html" && ok "Startseiten-Teaser vorhanden" || bad "Teaser fehlt"
+grep -q 'id="vormerkung"' "$ROOT/websites/smart-einzug.de/datenschutz/index.html" && ok "Datenschutz 3a" || bad "Datenschutz"
+grep -q "form-action 'self' https://app.smart-einzug.de" "$ROOT/websites/smart-einzug.de/.htaccess" && ok "CSP erlaubt das Formularziel" || bad "CSP"
+! grep -qiE "REMOTE_ADDR|client_ip\(" "$ROOT/php-ionos/vormerken.php" "$ROOT/php-ionos/app/interest.php" && ok "keine IP-Verarbeitung" || bad "IP-Zugriff"
+grep -q "interest_cleanup" "$ROOT/php-ionos/app/jobs.php" && grep -q "interest_cleanup" "$ROOT/php-ionos/cron.php" && ok "Wartung in beiden Betriebspfaden" || bad "Wartung"
+! grep -q "mail_enabled()" "$ROOT/php-ionos/app/interest.php" && ok "keine stille Bestaetigung ohne Mailversand" || bad "mail_enabled-Sonderpfad"
 grep -q "'aktion' => 'bestaetigen'" "$ROOT/php-ionos/vormerken.php" && ok "Bestaetigung erst per Button (POST)" || bad "GET bestaetigt direkt"
-grep -q "vormerkung-v2" "$ROOT/docs/einwilligungen.md" && grep -q "INTEREST_CONSENT_VERSION = 'vormerkung-v2'" "$ROOT/php-ionos/app/interest.php" && ok "Einwilligungsfassung v2 archiviert" || bad "Einwilligungsfassung nicht archiviert"
-grep -q "interest_delete_id\|interest_unsubscribe_id" "$ROOT/php-ionos/admin.php" && ok "Adminaktionen Abmelden/Loeschen vorhanden" || bad "Adminaktionen fehlen"
-grep -q "ix_interest_created" "$ROOT/php-ionos/sql/migrations/020_interest_registrations.sql" && ok "Index auf created_at" || bad "Index fehlt"
-grep -q "interest_registrations" "$ROOT/php-ionos/sql/schema.sql" && ok "schema.sql gespiegelt" || bad "schema.sql ohne Tabelle"
+grep -q "vormerkung-v3" "$ROOT/docs/einwilligungen.md" && grep -q "INTEREST_CONSENT_VERSION = 'vormerkung-v3'" "$ROOT/php-ionos/app/interest.php" && ok "Einwilligungsfassung v3 archiviert" || bad "Einwilligungsfassung"
+grep -q "interest_block_id\|interest_invite_id" "$ROOT/php-ionos/admin.php" && grep -q "export=vormerkungen" "$ROOT/php-ionos/admin.php" && ok "Adminaktionen und CSV-Export" || bad "Adminaktionen"
+grep -q "manage_token_hash" "$ROOT/php-ionos/sql/migrations/020_interest_registrations.sql" && grep -q "manage_token_hash" "$ROOT/php-ionos/sql/schema.sql" && ok "Migration 020 und schema.sql mit Token B" || bad "Migration"
+grep -q "integration_switch('sevdesk', 'connect')" "$ROOT/php-ionos/register.php" && ok "register.php: sevdesk vor Freigabe zur Vorregistrierung" || bad "register.php"
+! grep -q "token=" "$ROOT/php-ionos/app/sevdesk.php" | grep -v Authorization && grep -q "Authorization: " "$ROOT/php-ionos/app/sevdesk.php" && ok "sevdesk-Client: Authorization-Header, kein URL-Token" || bad "sevdesk-Client"
 echo; echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"; [[ $FAIL -eq 0 ]]

@@ -1,28 +1,28 @@
 <?php
 /**
- * Vormerkungen (Warteliste) für angekündigte Integrationen, zuerst sevdesk.
+ * Vorregistrierung (unverbindliche Warteliste) für angekündigte Integrationen, zuerst sevdesk.
  *
- * Öffentlicher Eingang ist vormerken.php (Formular auf smart-einzug.de/integrationen/sevdesk/). Ablauf:
- *   1. interest_register(): Adresse prüfen, Zeile anlegen oder vorhandene verwenden, Bestätigungs-E-Mail
- *      mit Bestätigungs- und Abmeldelink (Double-Opt-in). Ohne funktionierenden Mailversand gibt es KEINE
- *      Vormerkung (mail_failed), niemals eine stille Bestätigung.
- *   2. interest_confirm():   Bestätigung (nach Klick auf den Button der Bestätigungsseite), Status confirmed.
- *      Der Token bleibt ohne Ablauf gültig, aber nur noch für die Abmeldung.
- *   3. interest_unsubscribe(): Abmeldung, Status unsubscribed. Eine abgemeldete Zeile lässt sich über den
- *      alten Link nicht wieder bestätigen; erneute Vormerkung nur über das Formular mit neuer Mail.
- *   4. interest_cleanup() (Wartung, beide Betriebspfade cron.php und job_maintenance): löscht unbestätigte
- *      Zeilen 30 Tage nach Eintragung, abgemeldete 30 Tage nach Abmeldung und bestätigte 30 Tage nach der
- *      Startnachricht (notified_at). Das entspricht den Zusagen in Datenschutzerklärung 3a.
+ * Eingang ist vormerken.php (Formular auf smart-einzug.de/integrationen/sevdesk/). Ablauf:
+ *   1. interest_register(): prüfen, Zeile anlegen oder vorhandene verwenden, Bestätigungs-E-Mail mit
+ *      Bestätigungslink (Token A, 7 Tage) und Abmeldelink (Token B, dauerhaft). Ohne funktionierenden
+ *      Mailversand keine Vormerkung (mail_failed), niemals eine stille Bestätigung.
+ *   2. interest_confirm():   nach Klick auf den Button der Bestätigungsseite (kein Auslösen per bloßem GET,
+ *      damit Linkscanner keinen Einwilligungsnachweis vortäuschen). Token A wird danach gelöscht.
+ *   3. interest_unsubscribe(): über Token B. Eine erneute Eintragung nach Abmeldung erzeugt eine neue
+ *      Bestätigungsrunde; die Abmeldung wird nie automatisch aufgehoben.
+ *   4. interest_block_id(): Sperrvermerk (Admin): kein Versand, Klartextangaben außer E-Mail entfernt, von der
+ *      Löschung ausgenommen, damit die Sperre wirkt. interest_optional_update(): freiwillige Angaben nach
+ *      Bestätigung (Betatest-Interesse, Rechnungen je Monat, Stripe- und API-Zugang), nur über Token B.
+ *   5. interest_cleanup() (cron.php und job_maintenance): unbestätigt 30 Tage nach Eintragung, abgemeldet 30
+ *      Tage nach Abmeldung, bestätigt 30 Tage nach der Startnachricht; gesperrte Einträge bleiben.
  *
- * Zeitstempel: durchgehend UTC (UTC_TIMESTAMP(), Vergleich in PHP mit ' UTC'); Anzeige rechnet um
- * (interest_local()). Schutz ohne Personenbezug (keine IP-Adressen): globale Obergrenze neuer Zeilen je Minute,
- * Wiederversand frühestens nach 10 Minuten je Adresse (auch nach fehlgeschlagenem Versuch), höchstens 3
- * Bestätigungsmails je Adresse in 24 Stunden, Honeypot im Formular. "mail_sent" bedeutet bei aktiver
- * Warteschlange: eingereiht, nicht zugestellt. Antworten für neu, unbestätigt und bereits bestätigt sind gleich,
- * damit sich über das Formular nicht ermitteln lässt, welche Adressen hinterlegt sind.
+ * Zeitstempel in UTC. Kein Speichern von IP-Adressen; Mengenbegrenzung: globale Obergrenze neuer Zeilen je
+ * Minute, Wiederversand frühestens nach 10 Minuten je Adresse (auch nach Fehlversuch), höchstens 3 Mails je
+ * Adresse in 24 Stunden, Honeypot. Antworten für neu, unbestätigt, bestätigt, gesperrt sind gleich.
+ * Kennzahlen: funnel_events interest_submitted (jede gültige Absendung) und interest_confirmed (Bestätigung).
  *
- * Keine Preisangabe, kein Kaufbutton, kein Firmenaccount: Eine Vormerkung ist die Bitte um eine Nachricht
- * zum Start (oder zu einer wesentlichen Terminänderung) und nichts weiter.
+ * Kein Preis, kein Kaufbutton, kein Firmenaccount, kein Abonnement: eine Vormerkung ist die Bitte um Nachrichten
+ * zu Entwicklungsstand und Start (Zweck launch_info), einschließlich einer möglichen Betaeinladung.
  */
 if (get_included_files()[0] === __FILE__) {
     http_response_code(403);
@@ -30,18 +30,19 @@ if (get_included_files()[0] === __FILE__) {
 }
 
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/audit.php';
 require_once __DIR__ . '/invoice_source.php';
+require_once __DIR__ . '/integration_state.php';
 
-/**
- * Fassung des Einwilligungstextes. Wortlaut je Fassung ist in docs/einwilligungen.md archiviert; bei jeder
- * Textänderung auf der Seite hochzählen und dort ergänzen.
- */
-const INTEREST_CONSENT_VERSION = 'vormerkung-v2';
+/** Fassung des Einwilligungstextes; Wortlaut je Fassung in docs/einwilligungen.md. */
+const INTEREST_CONSENT_VERSION = 'vormerkung-v3';
+const INTEREST_PURPOSE = 'launch_info';
 const INTEREST_MAX_PER_MINUTE = 30;
 const INTEREST_RESEND_SECONDS = 600;
 const INTEREST_MAILS_PER_DAY = 3;
 const INTEREST_TOKEN_DAYS = 7;
 const INTEREST_RETENTION_DAYS = 30;
+const INTEREST_INVOICE_RANGES = ['bis_20', '21_100', '101_500', 'ueber_500'];
 
 /** @return array<string, array> Rechnungssysteme, die noch nicht freigegeben sind (code => Zeile) */
 function interest_open_providers(): array
@@ -55,11 +56,12 @@ function interest_open_providers(): array
     return $out;
 }
 
-/** Eingabe prüfen, ohne Datenbank. */
 function interest_validate(array $input): array
 {
     $email = mb_strtolower(trim((string)($input['email'] ?? '')));
-    $company = trim(preg_replace('/\s+/u', ' ', (string)($input['company'] ?? '')) ?? '');
+    $clean = static fn(string $v): string => trim(preg_replace('/\s+/u', ' ', $v) ?? '');
+    $company = $clean((string)($input['company'] ?? ''));
+    $name = $clean((string)($input['name'] ?? ''));
     $provider = trim((string)($input['provider'] ?? ''));
     if (trim((string)($input['website'] ?? '')) !== '') {
         return ['ok' => false, 'error' => 'honeypot'];
@@ -70,21 +72,17 @@ function interest_validate(array $input): array
     if ($email === '' || mb_strlen($email) > 254 || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         return ['ok' => false, 'error' => 'email'];
     }
-    if (mb_strlen($company) > 160) {
+    if (mb_strlen($company) > 160 || mb_strlen($name) > 120) {
         return ['ok' => false, 'error' => 'company'];
     }
     if (empty($input['consent'])) {
         return ['ok' => false, 'error' => 'consent'];
     }
-    return ['ok' => true, 'error' => null, 'email' => $email, 'company' => $company !== '' ? $company : null, 'provider' => $provider];
+    return ['ok' => true, 'error' => null, 'email' => $email, 'company' => $company !== '' ? $company : null,
+        'name' => $name !== '' ? $name : null, 'provider' => $provider];
 }
 
-/**
- * Herkunftsprüfung des Formulars (ohne Datenbank, testbar): erlaubt sind die Marketingdomains
- * (signup_domains, mit oder ohne www) und der Host der Anwendung. Fehlen Origin und Referer (Datenschutz-
- * Erweiterungen, "Origin: null"), gilt die Anfrage nicht als abgelehnt; die Prüfung schützt gegen
- * browsergestützte Einbettung fremder Seiten, nicht gegen Skripte. Dagegen wirken die Mengenbegrenzungen.
- */
+/** Herkunftsprüfung ohne Datenbank (nur gegen browsergestützte Einbettung fremder Seiten). */
 function interest_origin_allowed(?string $origin, ?string $referer, array $allowedHosts): bool
 {
     $host = '';
@@ -101,20 +99,17 @@ function interest_origin_allowed(?string $origin, ?string $referer, array $allow
     return in_array($host, $allowed, true) || in_array(preg_replace('/^www\./', '', $host), $allowed, true);
 }
 
-/** UTC-Zeitstempel der Datenbank als Unixzeit (0 bei leer). */
 function interest_ts(?string $utc): int
 {
     return $utc ? (int)strtotime($utc . ' UTC') : 0;
 }
 
-/** UTC-Zeitstempel in Ortszeit der Anwendung für format_datetime(). */
 function interest_local(?string $utc): ?string
 {
     return $utc ? date('Y-m-d H:i:s', interest_ts($utc)) : null;
 }
 
 /**
- * Vormerkung anlegen oder Bestätigungsmail erneut senden.
  * @return array ['ok' => bool, 'error' => ?string, 'state' => 'mail_sent'|'already'|'mail_failed'|null, 'id' => ?string]
  */
 function interest_register(array $input, ?string $sourceDomain = null): array
@@ -124,7 +119,7 @@ function interest_register(array $input, ?string $sourceDomain = null): array
         return ['ok' => false, 'error' => $v['error'], 'state' => null, 'id' => null];
     }
     $providers = interest_open_providers();
-    if (!isset($providers[$v['provider']])) {
+    if (!isset($providers[$v['provider']]) || !integration_switch($v['provider'], 'waitlist')) {
         return ['ok' => false, 'error' => 'provider', 'state' => null, 'id' => null];
     }
     $pdo = db();
@@ -136,9 +131,12 @@ function interest_register(array $input, ?string $sourceDomain = null): array
     }
 
     $domain = $sourceDomain !== null ? mb_substr(strtolower(preg_replace('/^www\./', '', $sourceDomain)), 0, 100) : null;
+    funnel_event($domain, 'interest_submitted', null, null, $v['provider']);
+
     $token = bin2hex(random_bytes(32));
     $tokenHash = hash('sha256', $token);
     $expires = gmdate('Y-m-d H:i:s', time() + INTEREST_TOKEN_DAYS * 86400);
+    $manage = bin2hex(random_bytes(32));
 
     $lade = static function () use ($pdo, $v): ?array {
         $s = $pdo->prepare('SELECT * FROM interest_registrations WHERE provider_code = ? AND email = ?');
@@ -150,11 +148,12 @@ function interest_register(array $input, ?string $sourceDomain = null): array
     if (!$row) {
         try {
             $pdo->prepare(
-                'INSERT INTO interest_registrations (id, provider_code, email, company, source_domain, status, consent_text, consent_at, token_hash, token_expires_at, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?, UTC_TIMESTAMP())'
-            )->execute([uuid4(), $v['provider'], $v['email'], $v['company'], $domain, 'pending', INTEREST_CONSENT_VERSION, $tokenHash, $expires]);
+                'INSERT INTO interest_registrations (id, provider_code, email, name, company, source_domain, purpose, status, consent_text, consent_at,
+                        token_hash, token_expires_at, manage_token_hash, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?, ?, UTC_TIMESTAMP())'
+            )->execute([uuid4(), $v['provider'], $v['email'], $v['name'], $v['company'], $domain, INTEREST_PURPOSE, 'pending',
+                INTEREST_CONSENT_VERSION, $tokenHash, $expires, hash('sha256', $manage)]);
         } catch (PDOException $e) {
-            // Wettlauf zweier gleichzeitiger Einsendungen (UNIQUE KEY): die andere Anfrage hat gewonnen.
             if ((string)$e->getCode() !== '23000') {
                 throw $e;
             }
@@ -164,31 +163,34 @@ function interest_register(array $input, ?string $sourceDomain = null): array
             throw new RuntimeException('Vormerkung konnte nicht angelegt werden.');
         }
         if ($row['token_hash'] !== $tokenHash) {
-            // Zeile stammt aus der parallelen Anfrage; diese Anfrage sendet keine zweite Mail.
             return ['ok' => true, 'error' => null, 'state' => 'already', 'id' => $row['id']];
         }
     } else {
-        if ($row['status'] === 'confirmed') {
+        if ($row['status'] === 'confirmed' || $row['blocked_at'] !== null) {
             return ['ok' => true, 'error' => null, 'state' => 'already', 'id' => $row['id']];
         }
-        $seitLetzterMail = time() - interest_ts($row['last_mail_at']);
-        if ($row['last_mail_at'] !== null && $seitLetzterMail < INTEREST_RESEND_SECONDS) {
+        if ($row['last_mail_at'] !== null && time() - interest_ts($row['last_mail_at']) < INTEREST_RESEND_SECONDS) {
             return ['ok' => true, 'error' => null, 'state' => 'already', 'id' => $row['id']];
         }
         $fensterAlt = interest_ts($row['mail_window_at']);
         if ($fensterAlt > 0 && time() - $fensterAlt < 86400 && (int)$row['mail_count'] >= INTEREST_MAILS_PER_DAY) {
             return ['ok' => true, 'error' => null, 'state' => 'already', 'id' => $row['id']];
         }
+        // Token B bleibt über Wiederholungen hinweg stabil (Abmeldelinks älterer Mails gelten weiter).
+        if ($row['manage_token_hash'] === null) {
+            $pdo->prepare('UPDATE interest_registrations SET manage_token_hash = ? WHERE id = ?')->execute([hash('sha256', $manage), $row['id']]);
+        } else {
+            $manage = null;
+        }
         $pdo->prepare(
             'UPDATE interest_registrations
-                SET status = ?, company = COALESCE(?, company), source_domain = COALESCE(?, source_domain),
+                SET status = ?, name = COALESCE(?, name), company = COALESCE(?, company), source_domain = COALESCE(?, source_domain),
                     consent_text = ?, consent_at = UTC_TIMESTAMP(), token_hash = ?, token_expires_at = ?
               WHERE id = ?'
-        )->execute(['pending', $v['company'], $domain, INTEREST_CONSENT_VERSION, $tokenHash, $expires, $row['id']]);
+        )->execute(['pending', $v['name'], $v['company'], $domain, INTEREST_CONSENT_VERSION, $tokenHash, $expires, $row['id']]);
     }
     $id = (string)$row['id'];
 
-    // Versuch zählen, BEVOR gesendet wird: auch ein fehlgeschlagener Versuch sperrt die Wiederholung.
     $fensterAlt = interest_ts($row['mail_window_at'] ?? null);
     $neuesFenster = $fensterAlt === 0 || time() - $fensterAlt >= 86400;
     $pdo->prepare(
@@ -199,16 +201,23 @@ function interest_register(array $input, ?string $sourceDomain = null): array
           WHERE id = ?'
     )->execute([$id]);
 
+    if ($manage === null) {
+        // Vorhandener Token B ist nur als Hash gespeichert: Für den Abmeldelink dieser Mail wird ein neuer
+        // Token B erzeugt; damit bleibt genau ein gültiger Abmeldetoken je Eintrag (der aus der jüngsten Mail).
+        $manage = bin2hex(random_bytes(32));
+        $pdo->prepare('UPDATE interest_registrations SET manage_token_hash = ? WHERE id = ?')->execute([hash('sha256', $manage), $id]);
+    }
     $providerName = (string)($providers[$v['provider']]['name'] ?? $v['provider']);
     $confirmUrl = app_base_url() . '/vormerken.php?token=' . $token;
-    $tpl = mail_tpl_interest_confirm($providerName, $confirmUrl, $confirmUrl . '&aktion=abmelden');
+    $unsubscribeUrl = app_base_url() . '/vormerken.php?abmelden=' . $manage;
+    $tpl = mail_tpl_interest_confirm($providerName, $confirmUrl, $unsubscribeUrl);
     if (mail_send($v['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
         return ['ok' => true, 'error' => null, 'state' => 'mail_sent', 'id' => $id];
     }
     return ['ok' => true, 'error' => null, 'state' => 'mail_failed', 'id' => $id];
 }
 
-/** Zeile zu einem Klartext-Token oder null (auch bei abgelaufenem Link im Zustand pending). */
+/** Zeile zu Token A (Bestätigung) oder null (auch abgelaufen). */
 function interest_by_token(string $token): ?array
 {
     if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
@@ -217,49 +226,71 @@ function interest_by_token(string $token): ?array
     $stmt = db()->prepare('SELECT * FROM interest_registrations WHERE token_hash = ?');
     $stmt->execute([hash('sha256', $token)]);
     $row = $stmt->fetch();
-    if (!$row) {
-        return null;
-    }
-    if ($row['status'] === 'pending' && $row['token_expires_at'] !== null && interest_ts($row['token_expires_at']) < time()) {
+    if (!$row || ($row['token_expires_at'] !== null && interest_ts($row['token_expires_at']) < time())) {
         return null;
     }
     return $row;
 }
 
-/** Bestätigung: 'confirmed', 'already' oder 'invalid' (auch für abgemeldete Zeilen). */
+/** Zeile zu Token B (Abmeldung, freiwillige Angaben) oder null. */
+function interest_by_manage_token(string $token): ?array
+{
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        return null;
+    }
+    $stmt = db()->prepare('SELECT * FROM interest_registrations WHERE manage_token_hash = ?');
+    $stmt->execute([hash('sha256', $token)]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+/** Bestätigung über Token A: 'confirmed', 'already' oder 'invalid' (auch für abgemeldete und gesperrte Zeilen). */
 function interest_confirm(string $token): string
 {
     $row = interest_by_token($token);
-    if (!$row || $row['status'] === 'unsubscribed') {
+    if (!$row || $row['status'] === 'unsubscribed' || $row['blocked_at'] !== null) {
         return 'invalid';
     }
     if ($row['status'] === 'confirmed') {
         return 'already';
     }
-    db()->prepare("UPDATE interest_registrations SET status = 'confirmed', confirmed_at = UTC_TIMESTAMP(), token_expires_at = NULL WHERE id = ?")
+    db()->prepare("UPDATE interest_registrations SET status = 'confirmed', confirmed_at = UTC_TIMESTAMP(), token_hash = NULL, token_expires_at = NULL WHERE id = ?")
         ->execute([$row['id']]);
+    funnel_event($row['source_domain'], 'interest_confirmed', null, null, (string)$row['provider_code']);
     return 'confirmed';
 }
 
-/** Abmeldung: 'unsubscribed' oder 'invalid'. */
-function interest_unsubscribe(string $token): string
+/** Abmeldung über Token B: 'unsubscribed' oder 'invalid'. */
+function interest_unsubscribe(string $manageToken): string
 {
-    $row = interest_by_token($token);
+    $row = interest_by_manage_token($manageToken);
     if (!$row) {
         return 'invalid';
     }
-    return interest_unsubscribe_id((string)$row['id']) ? 'unsubscribed' : 'invalid';
+    interest_unsubscribe_id((string)$row['id']);
+    return 'unsubscribed';
 }
 
-/** Abmeldung einer Zeile (Link oder Adminaktion). */
 function interest_unsubscribe_id(string $id): bool
 {
-    $stmt = db()->prepare("UPDATE interest_registrations SET status = 'unsubscribed', unsubscribed_at = UTC_TIMESTAMP() WHERE id = ? AND status <> 'unsubscribed'");
+    $stmt = db()->prepare("UPDATE interest_registrations SET status = 'unsubscribed', unsubscribed_at = UTC_TIMESTAMP(), token_hash = NULL, token_expires_at = NULL WHERE id = ? AND status <> 'unsubscribed'");
     $stmt->execute([$id]);
     return $stmt->rowCount() > 0;
 }
 
-/** Löschung einer Zeile (Adminaktion, z. B. Auskunfts- oder Löschverlangen). */
+/** Sperrvermerk (Admin): kein Versand mehr, keine Reaktivierung über das Formular, Klartext außer E-Mail entfernt. */
+function interest_block_id(string $id): bool
+{
+    $stmt = db()->prepare(
+        "UPDATE interest_registrations SET status = 'unsubscribed', blocked_at = UTC_TIMESTAMP(), unsubscribed_at = COALESCE(unsubscribed_at, UTC_TIMESTAMP()),
+                name = NULL, company = NULL, source_domain = NULL, token_hash = NULL, token_expires_at = NULL,
+                beta_interest = 0, invoices_per_month = NULL, has_stripe = NULL, has_api_access = NULL, invited_at = NULL
+          WHERE id = ? AND blocked_at IS NULL"
+    );
+    $stmt->execute([$id]);
+    return $stmt->rowCount() > 0;
+}
+
 function interest_delete_id(string $id): bool
 {
     $stmt = db()->prepare('DELETE FROM interest_registrations WHERE id = ?');
@@ -267,24 +298,44 @@ function interest_delete_id(string $id): bool
     return $stmt->rowCount() > 0;
 }
 
-/**
- * Wartung: löscht unbestätigte Zeilen 30 Tage nach Eintragung, abgemeldete 30 Tage nach Abmeldung und
- * bestätigte 30 Tage nach der Startnachricht. @return int gelöschte Zeilen
- */
+/** Betaeinladung vormerken: nur bestätigt und nicht gesperrt (Einwilligungsstatus getrennt vom Vertriebsstand). */
+function interest_invite_id(string $id): bool
+{
+    $stmt = db()->prepare("UPDATE interest_registrations SET invited_at = UTC_TIMESTAMP() WHERE id = ? AND status = 'confirmed' AND blocked_at IS NULL");
+    $stmt->execute([$id]);
+    return $stmt->rowCount() > 0;
+}
+
+/** Freiwillige Angaben nach Bestätigung (Token B, nur bestätigte Zeilen). */
+function interest_optional_update(string $manageToken, array $input): bool
+{
+    $row = interest_by_manage_token($manageToken);
+    if (!$row || $row['status'] !== 'confirmed' || $row['blocked_at'] !== null) {
+        return false;
+    }
+    $range = (string)($input['invoices_per_month'] ?? '');
+    $range = in_array($range, INTEREST_INVOICE_RANGES, true) ? $range : null;
+    $flag = static fn(string $k) => isset($input[$k]) && $input[$k] !== '' ? (int)((string)$input[$k] === '1') : null;
+    db()->prepare('UPDATE interest_registrations SET beta_interest = ?, invoices_per_month = ?, has_stripe = ?, has_api_access = ? WHERE id = ?')
+        ->execute([!empty($input['beta_interest']) ? 1 : 0, $range, $flag('has_stripe'), $flag('has_api_access'), $row['id']]);
+    return true;
+}
+
+/** Wartung; gesperrte Einträge bleiben, damit der Sperrvermerk wirkt. */
 function interest_cleanup(): int
 {
     $d = (int)INTEREST_RETENTION_DAYS;
     $stmt = db()->prepare(
         "DELETE FROM interest_registrations
-          WHERE (status = 'pending' AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL $d DAY))
+          WHERE blocked_at IS NULL AND (
+                (status = 'pending' AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL $d DAY))
              OR (status = 'unsubscribed' AND unsubscribed_at IS NOT NULL AND unsubscribed_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL $d DAY))
-             OR (status = 'confirmed' AND notified_at IS NOT NULL AND notified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL $d DAY))"
+             OR (status = 'confirmed' AND notified_at IS NOT NULL AND notified_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL $d DAY)))"
     );
     $stmt->execute();
     return $stmt->rowCount();
 }
 
-/** Kennzahlen je Anbieter für den Adminbereich. */
 function interest_stats(): array
 {
     $rows = db()->query(
@@ -301,19 +352,94 @@ function interest_stats(): array
     return $out;
 }
 
-/** Jüngste Vormerkungen (Zeitstempel bereits in Ortszeit umgerechnet). */
-function interest_recent(int $limit = 200): array
+/** Getrennt ermittelte Kennzahlen je Anbieter (Masterplan, Abschnitt 8). */
+function interest_metrics(string $code): array
 {
-    $stmt = db()->prepare(
-        'SELECT id, provider_code, email, company, source_domain, status, created_at, confirmed_at, unsubscribed_at
-           FROM interest_registrations ORDER BY created_at DESC LIMIT ' . max(1, min(1000, $limit))
-    );
-    $stmt->execute();
+    $pdo = db();
+    $n = static function (string $sql, array $p = []) use ($pdo): int {
+        try {
+            $s = $pdo->prepare($sql);
+            $s->execute($p);
+            return (int)$s->fetchColumn();
+        } catch (Throwable $e) {
+            return 0;
+        }
+    };
+    return [
+        'submitted'  => $n("SELECT COUNT(*) FROM funnel_events WHERE event = 'interest_submitted' AND path = ?", [$code]),
+        'confirmed'  => $n("SELECT COUNT(*) FROM interest_registrations WHERE provider_code = ? AND status = 'confirmed'", [$code]),
+        'beta'       => $n("SELECT COUNT(*) FROM interest_registrations WHERE provider_code = ? AND status = 'confirmed' AND beta_interest = 1", [$code]),
+        'invited'    => $n("SELECT COUNT(*) FROM interest_registrations WHERE provider_code = ? AND invited_at IS NOT NULL", [$code]),
+        'activated'  => $n("SELECT COUNT(*) FROM interest_registrations WHERE provider_code = ? AND activated_org_id IS NOT NULL", [$code]),
+        'connected'  => $n("SELECT COUNT(*) FROM integrations WHERE invoice_source = ?", [$code]),
+        'collected'  => $n("SELECT COUNT(*) FROM payment_collections pc JOIN integrations i ON i.tenant_id = pc.tenant_id WHERE i.invoice_source = ? AND pc.stripe_status = 'succeeded'", [$code]),
+    ];
+}
+
+/**
+ * Suche und Filter für den Adminbereich. $filter: status, source, q (E-Mail, Firma, Name).
+ * Zeitstempel in Ortszeit.
+ */
+function interest_search(array $filter, int $limit = 200): array
+{
+    $where = [];
+    $params = [];
+    $status = (string)($filter['status'] ?? '');
+    if (in_array($status, ['pending', 'confirmed', 'unsubscribed', 'blocked', 'invited'], true)) {
+        $where[] = ['blocked' => 'blocked_at IS NOT NULL', 'invited' => 'invited_at IS NOT NULL'][$status] ?? 'status = ?';
+        if (!in_array($status, ['blocked', 'invited'], true)) {
+            $params[] = $status;
+        }
+    }
+    $source = (string)($filter['source'] ?? '');
+    if ($source !== '' && preg_match('/^[a-z0-9.-]{3,100}$/', $source)) {
+        $where[] = 'source_domain = ?';
+        $params[] = $source;
+    }
+    $q = trim((string)($filter['q'] ?? ''));
+    if ($q !== '') {
+        $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], mb_substr($q, 0, 100)) . '%';
+        $where[] = '(email LIKE ? OR company LIKE ? OR name LIKE ?)';
+        array_push($params, $like, $like, $like);
+    }
+    $sql = 'SELECT id, provider_code, email, name, company, source_domain, purpose, status, consent_text, consent_at, created_at, confirmed_at,
+                   unsubscribed_at, blocked_at, beta_interest, invoices_per_month, has_stripe, has_api_access, invited_at, activated_org_id, notified_at
+              FROM interest_registrations' . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
+         . ' ORDER BY created_at DESC LIMIT ' . max(1, min(5000, $limit));
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
     $rows = $stmt->fetchAll();
     foreach ($rows as &$r) {
-        foreach (['created_at', 'confirmed_at', 'unsubscribed_at'] as $k) {
+        foreach (['consent_at', 'created_at', 'confirmed_at', 'unsubscribed_at', 'blocked_at', 'invited_at', 'notified_at'] as $k) {
             $r[$k] = interest_local($r[$k]);
         }
     }
     return $rows;
+}
+
+function interest_recent(int $limit = 200): array
+{
+    return interest_search([], $limit);
+}
+
+/** CSV-Zelle mit Schutz gegen Formelausführung in Tabellenprogrammen. */
+function interest_csv_cell($value): string
+{
+    $v = str_replace(["\r", "\n"], ' ', (string)$value);
+    if ($v !== '' && in_array($v[0], ['=', '+', '-', '@', "\t"], true)) {
+        $v = "'" . $v;
+    }
+    return '"' . str_replace('"', '""', $v) . '"';
+}
+
+/** CSV-Export (Semikolon, UTF-8 mit BOM für Tabellenprogramme). */
+function interest_export_csv(array $rows): string
+{
+    $cols = ['provider_code', 'email', 'name', 'company', 'source_domain', 'purpose', 'status', 'consent_text', 'consent_at', 'created_at',
+        'confirmed_at', 'unsubscribed_at', 'blocked_at', 'beta_interest', 'invoices_per_month', 'has_stripe', 'has_api_access', 'invited_at', 'activated_org_id'];
+    $lines = [implode(';', array_map('interest_csv_cell', $cols))];
+    foreach ($rows as $r) {
+        $lines[] = implode(';', array_map(static fn($c) => interest_csv_cell($r[$c] ?? ''), $cols));
+    }
+    return "\xEF\xBB\xBF" . implode("\r\n", $lines) . "\r\n";
 }

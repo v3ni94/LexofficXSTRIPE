@@ -8,12 +8,20 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.18';
+const APP_VERSION = '4.19';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.19', 'date' => '07.09.2026', 'title' => 'sevdesk-Masterplan Phase 1: Landingpage, Vorregistrierung, Adminverwaltung, Freigabeschalter',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Landingpage smart-einzug.de/integrationen/sevdesk/ nach Masterplan: Status „In Vorbereitung, Start für Ende September 2026 geplant“, geplanter Ablauf in drei Schritten (als Ziel gekennzeichnet), Nutzen, sichtbare Voraussetzungen (sevdesk-API nach offizieller Hilfe im Tarif Buchhaltung Pro, Systemversion 2.0, Prüfung beim Verbindungstest; Stripe SEPA-Basislastschrift, kein B2B), Abgrenzung zu Lexware Office, Fragen, zwei Formulare, Unabhängigkeitshinweis. Startseiten-Teaser „Demnächst: SEPA-Lastschriften für sevdesk“, Übersicht angeglichen.'],
+            ['type' => 'Geändert', 'text' => 'Vorregistrierung: getrennte Token für Bestätigung (7 Tage, nach Bestätigung gelöscht) und Abmeldung (dauerhaft), Name optional, Einwilligungstext v3 mit Zweck (Entwicklungsstand, Start, mögliche Betaeinladung) und Verantwortlicher, Texte der Rückmeldungen und der Bestätigungsmail nach Masterplan, freiwillige Angaben nach Bestätigung (Rechnungen je Monat, Stripe-Konto, API-Zugang, Betatest-Interesse), Sperrvermerk (nur E-Mail bleibt), Kennzahlen über funnel_events (Vormerkung abgesendet, bestätigt). Eine Abmeldung wird nie automatisch aufgehoben; erneute Eintragung braucht eine neue Bestätigung.'],
+            ['type' => 'Neu', 'text' => 'Adminbereich: Suche, Filter (Status, Herkunft), formelsicherer CSV-Export mit Audit, Einwilligungsnachweis je Eintrag (Fassung, Zeitpunkt), Aktionen Abmelden, Sperren, Löschen und Betaeinladung (nur bestätigt und nicht gesperrt) mit 2FA-Code und Audit; Kennzahlen getrennt: Formularabsendungen, bestätigt, Betatest-Interesse, eingeladen, aktiviert, verbundene Firmen, erste Einzüge; Anzeige der Freigabeschalter.'],
+            ['type' => 'Neu', 'text' => 'Freigabeschalter je Integration in platform_settings (sevdesk_public_state, sevdesk_waitlist, sevdesk_connect, sevdesk_collections, sevdesk_writeback; app/integration_state.php). register.php?integration=sevdesk führt vor der Freigabe zur Vorregistrierung; die Vorauswahl kommt aus einer festen Liste und ist nie ein Berechtigungsnachweis. Adapter-Gerüst app/sevdesk.php mit Authorization-Header, ohne Fähigkeiten und mit Sperre bis zur Verifikation mit einem Testkonto (Blocker: kein Testkonto).'],
+            ['type' => 'Geändert', 'text' => 'Dokumentation docs/sevdesk.md (Bestandsaufnahme vorhanden/fehlt/kritisch/Schritt, Zielarchitektur, Schalter, Launch und Rollback) im Adminbereich; Datenschutzerklärung 3a erweitert (Verantwortlicher, Zweck, freiwillige Angaben, Sperrvermerk); Einwilligungsarchiv v3. Befund Tarife: Repository einheitlich rollierend, live zeigte lexoffice-einzug.de am 07.09.2026 noch 31.12.2026, Prüfung des Webhosting-Deployments offen.'],
+         ]],
         ['version' => '4.18', 'date' => '07.09.2026', 'title' => 'sevdesk-Vorankündigung mit Vormerkung',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Die Seite smart-einzug.de/integrationen/sevdesk/ ist jetzt indexierbar und kündigt die sevdesk-Integration an (in Planung, Start geplant zum 30.09.2026): geplanter Funktionsumfang, Ablauf der Vormerkung, Unterschied zur Lexware-Office-Integration, Fragen und Markenhinweis. Keine Preise, keine Tarifaussagen zu sevdesk, kein Kaufbutton.'],

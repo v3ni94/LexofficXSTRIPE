@@ -32,7 +32,8 @@ ausdrücklich: kein Push, kein Deployment.
 |---|---|---|---|
 | 4.11 bis 4.16 | Statusdatei, Worker-Signalmodell, Docker-CLI-Probe, Billing-Werkzeuge, Betriebsdoku im Admin, Scheduler-Waisen, verlinkte Kennzahlen, Statusseite | bis bdd42e0 | ja, produktiv aktiv (Deploy 22 s, alle Container healthy laut Serverausgabe) |
 | 4.17 | Deployjob robust gegen SSH-Netzaussetzer: `vps-ssh-retry.sh`, `vps-trigger.sh` (triggered/rejected/unclear/unreachable), Frischeprüfung des Endstatus (`JOB_STARTED_AT`), `.release-complete`-Nachweis in `deploy.sh`, Bereinigung unvollständiger Releases, Fristen je Schritt, Doku | 54caa37 | ja (Workflow-Lauf dadurch ausgelöst, Ergebnis nicht einsehbar: GitHub-API in der Session gesperrt) |
-| 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md` | 9b3c880 | **nein** (lokal; Push wäre Produktionsdeploy mit Migration, Freigabe des Betreibers nötig) |
+| 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | **nein** (lokal) |
+| 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | lokal | **nein** (lokal; Push = Produktionsdeploy mit Migration 020, Freigabe nötig) |
 
 Betroffene Dateien 4.17: `.github/workflows/deploy.yml`, `.github/scripts/vps-ssh-retry.sh`, `.github/scripts/vps-trigger.sh`,
 `.github/scripts/vps-wait-status.sh`, `deploy/vps/scripts/deploy.sh`, `deploy/vps/scripts/rollback.sh`, `tools/github-ssh-retry-check.sh`,
@@ -55,7 +56,7 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 | `bash tools/deploy-runner-check.sh` | 35 / 0 |
 | `bash tools/scheduler-sync-check.sh` | 35 / 0 |
 | `bash tools/worker-signal-check.sh` | 17 / 0 |
-| `bash tools/interest-check.sh` | 69 / 0 (temporäre MariaDB, einschließlich Review-Fixes) |
+| `bash tools/interest-check.sh` | 100 / 0 (temporäre MariaDB, Fassung 4.19) |
 | `php tools/pricing-check.php`, `php tools/billing-setup-check.php` | 13 / 0, 55 / 0 |
 | `python3 tools/site-qa.py` | 0 Fehler, 4 Warnungen (bekannte Überschriftendoppelungen zwischen Domains) |
 | `python3 tools/compose-check.py`, `docs-build-check.py`, `staging-isolation-check.py` | 0 Fehler |
@@ -82,14 +83,24 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 - Produktionskonfiguration ohne Schlüssel `environment` (Anzeige „Umgebung: ?“ in `bin/billing-check.php`), toleriert.
 - Repository-Variable `WEBHOSTING_APP_DEPLOY` und externer Uptime-Check sind ungeprüft beziehungsweise nicht eingerichtet.
 
+- Masterplan sevdesk: Adapter, Rechnungsabgleich und Einzug sind **blockiert**, bis ein sevdesk-Testkonto mit API-Zugang
+  vorliegt (nach sevdesk-Hilfe Tarif Buchhaltung Pro, Systemversion 2.0). Basisadresse und Headerform des Clients sind
+  Konfigurationswerte, unverifiziert. Live zeigte lexoffice-einzug.de am 07.09.2026 laut Masterplan noch „31.12.2026“;
+  das Repository ist rollierend (pricing-check grün), also ist der Stand des IONOS-Webhostings beziehungsweise des
+  Jobs `deploy-webhosting` zu prüfen (aus der Session nicht einsehbar).
+- Widerspruch: Der Masterplan verlangt eine Tarifaussage zu sevdesk (Buchhaltung Pro nach offizieller Hilfe); die
+  frühere Regel „keine Aussagen zu sevdesk-Tarifen“ wurde deshalb auf genau diese belegte Formulierung geändert (CLAUDE.md).
+
 ## 6. Nächste offene Schritte (Reihenfolge)
 
 1. Erledigt: Review-Befunde eingearbeitet, Tests grün, lokal committet.
-2. Freigabe des Betreibers für den Push von 4.18 einholen (löst Produktionsdeployment mit Migration 020 aus).
+2. Freigabe des Betreibers für den Push von 4.18 und 4.19 einholen (löst Produktionsdeployment mit Migration 020 aus).
    Vor dem Push: `mail.enabled` in Produktion prüfen, sonst werden Vormerkungen ohne Bestätigung direkt als bestätigt
    gespeichert (bewusstes Verhalten in `interest_register()`).
 3. Statusseite prüfen: `curl -sS https://status.smart-einzug.de/status.json | head -c 200` nach etwa vier Minuten
    (Monitoring alle 240 s), Restdateien entfernen, `config.php` im php-Container mit `php -l` prüfen.
 4. DETM-Leadseiten: blockiert bis Impressumsdaten und Entscheidung zum Provisionsnachweis vorliegen.
-5. Später: Versandwerkzeug für die Startnachricht an bestätigte Vormerkungen (nur `status = confirmed`), sevdesk-Adapter
-   `SevdeskSource`, eigener Workertyp, Tarif in `plans`.
+5. Masterplan Phase 2 (ab 11.09.): sevdesk-Testkonto beschaffen, Endpunkte verifizieren, `SevdeskSource` füllen, Workertyp
+   `sevdesk`, Anbieterwahl in der Firmeneinrichtung (`invoice_source`), Verbindungsseite „Buchhaltungssystem“ ohne
+   Lexware-Pflichtfelder, Pilotfreigabe über `sevdesk_connect`. Versandwerkzeug für die Startnachricht (nur bestätigt und
+   nicht gesperrt, setzt `notified_at`). Rechtliche Prüfung der Texte (Einwilligung v3, Datenschutz 3a, Sperrvermerk).

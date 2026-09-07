@@ -14,6 +14,15 @@ if (current_user()) {
     redirect('companies.php');
 }
 signup_attribution_capture();
+// sevdesk vor der Freigabe: Der Einstieg führt zur unverbindlichen Vorregistrierung, nicht zu einem Firmenaccount
+// (Masterplan, Abschnitt 5). Erst mit gesetztem Schalter sevdesk_connect läuft die normale Konto- und Firmeneinrichtung.
+if (($_SESSION['signup']['integration'] ?? '') === 'sevdesk') {
+    require_once __DIR__ . '/app/integration_state.php';
+    if (!integration_switch('sevdesk', 'connect')) {
+        unset($_SESSION['signup']['integration']);
+        redirect(marketing_url('/integrationen/sevdesk/#vormerken'));
+    }
+}
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SESSION['signup']['started'])) {
     $_SESSION['signup']['started'] = true;
     funnel_event($_SESSION['signup']['domain'] ?? null, 'registration_started');
