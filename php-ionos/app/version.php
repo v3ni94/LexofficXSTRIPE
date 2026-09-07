@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.25';
+const APP_VERSION = '4.26';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.26', 'date' => '07.09.2026', 'title' => 'Konfigurationsänderungen erreichen die Container zuverlässig',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'restart-workers.sh startete die Hintergrunddienste nur neu. Weil shared/config.php als Einzeldatei eingebunden ist und sed oder Editoren die Datei mit neuem Inode schreiben, lasen Container weiter den alten Inhalt (mail.enabled blieb im Container false). Das Skript erzeugt die Dienste jetzt neu, prüft den Inode im php-Container, erzeugt diesen bei Abweichung ebenfalls neu oder lädt sonst php-fpm neu (OPcache), prüft vorab die Syntax und zeigt am Ende, welche Werte der Container tatsächlich liest.'],
+         ]],
         ['version' => '4.25', 'date' => '07.09.2026', 'title' => 'Mailprüfung warnt bei ungültigen Adressen, Betriebshinweise',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'bin/mail-check.php beschrieb die Wirkung eines abgeschalteten Versands noch mit dem Stand vor 4.22 (Vormerkung antwortet 503). Der Hinweis nennt jetzt das Speichern mit Wartemarke und das Nachsenden durch die Wartung.'],

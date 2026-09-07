@@ -623,6 +623,18 @@ neu; ohne Deployment:
 bash /opt/smarteinzug/deploy/scripts/restart-workers.sh
 ```
 
+**Warum `docker compose restart` nicht reicht (Vorfall 07.09.2026):** `shared/config.php` ist als Einzeldatei in die
+Container gebunden; Docker bindet den Inode. `sed -i`, die meisten Editoren und `cp neu config.php` schreiben eine neue
+Datei mit neuem Inode, laufende und nur neu gestartete Container sehen weiter den alten Inhalt (`mail.enabled` blieb im
+Container `false`, obwohl die Datei auf dem Host `true` zeigte). Dazu hält php-fpm die Datei wegen
+`opcache.validate_timestamps=0` bis zum Reload im Cache. `restart-workers.sh` prüft deshalb zuerst die Syntax in einem
+frischen Container, erzeugt die Hintergrunddienste neu (`up -d --force-recreate --no-deps`), vergleicht den Inode der
+Datei auf dem Host mit dem im php-Container und erzeugt bei Abweichung auch den php-Container neu (wenige Sekunden,
+Caddy löst `php:9000` je Anfrage neu auf), andernfalls lädt es php-fpm per SIGUSR2 neu. Am Ende zeigt eine Gegenprobe
+aus dem php-Container `mail.enabled`, `reply_to` und `status_publish`, wie der Container sie tatsächlich liest.
+Von Hand: `stat -c %i /opt/smarteinzug/shared/config.php` gegen `docker compose exec -T php stat -c %i /opt/smarteinzug/shared/config.php`.
+
+
 Das Skript startet Scheduler, alle Worker und den Metrik-Sammler neu, ohne Release- oder Datenbankwechsel. Laufende
 Jobs werden über das Signalmodell kooperativ beendet und fortgesetzt.
 

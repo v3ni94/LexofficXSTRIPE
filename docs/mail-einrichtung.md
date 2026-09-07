@@ -35,7 +35,7 @@ die eigene Adresse senden:
 
 ```bash
 cd /opt/smarteinzug/deploy && export RELEASE_SHA="$(basename "$(readlink -f /opt/smarteinzug/releases/current)")"
-bash scripts/restart-workers.sh   # startet Scheduler, alle Worker und den Metrik-Sammler neu (lesen config.php nur beim Start)
+bash scripts/restart-workers.sh   # erzeugt Scheduler, Worker und Metrik-Sammler neu und laedt php-fpm neu; ein blosser restart reicht nicht (Einzeldatei-Bind-Mount, OPcache), siehe docs/vps/06-betrieb.md
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env exec -T php php bin/mail-check.php
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env exec -T php php bin/mail-check.php --send=ihre.adresse@example.de
 ```
