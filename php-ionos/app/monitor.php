@@ -248,6 +248,14 @@ function monitor_category($e): string
     // PHP-Image unerkannt auf "other" zurueck.
     if (preg_match('/could not resolve|does not resolve|getaddrinfo|try again|temporary failure in name resolution|dns|name or service/', $msg)) return 'dns';
     if (preg_match('/ssl|tls|certificate|zertifikat/', $msg)) return 'tls';
+    // Redis' eigener "protected mode": lehnt OHNE gesetztes Passwort jeden Befehl eines
+    // Nicht-Loopback-Clients ab ("DENIED Redis is running in protected mode ... no password is set
+    // for the default user ..."). Eigene Kategorie statt "auth", weil die Ursache NICHT ein falsches
+    // Passwort in unserer Konfiguration ist, sondern eine Servereinstellung von Redis selbst
+    // (protected-mode in redis.conf); "auth" wuerde faelschlich zur Passwortpruefung verleiten statt
+    // zu redis.conf. Muss VOR der generischen "connection"-Kategorie geprueft werden, da die Meldung
+    // auch "connections"/"connect" enthaelt.
+    if (preg_match('/protected mode|no password is set for the default user/', $msg)) return 'redis_protected_mode';
     if (preg_match('/noauth|wrongpass|invalid password|401|403|unauthori|forbidden|api key|api-schl|ungültiger schl/', $msg)) return 'auth';
     if (preg_match('/429|rate limit|too many|drossel/', $msg)) return 'throttled';
     if (preg_match('/50\d|gateway|unavailable/', $msg)) return 'http_5xx';

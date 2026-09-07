@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.7';
+const APP_VERSION = '4.8';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.8', 'date' => '07.09.2026', 'title' => 'Tatsächliche Ursache des Redis-Fehlschlags: protected mode',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Candidate-Prüfung meldete weiterhin einen Redis-Fehlschlag ("redis: auth" bzw. zuvor "redis: other"), obwohl config.php korrekt kein Passwort und redis.conf kein requirepass enthielt und "docker exec smarteinzug-redis-1 redis-cli ping" PONG lieferte. Tatsächliche, durch einen echten temporären Redis-Server bestätigte Ursache: redis.conf setzte protected-mode yes ohne Passwort; in dieser Kombination lehnt Redis jeden Befehl (nicht die TCP-Verbindung) eines NICHT über Loopback verbindenden Clients ab, also jeden Zugriff aus einem anderen Container. "docker exec ... redis-cli ping" lief dagegen selbst über Loopback und täuschte deshalb Gesundheit vor, die für keinen anderen Container galt. redis.conf setzt jetzt protected-mode no (sicher, da Redis ohnehin nur im internen, nicht öffentlich erreichbaren Docker-Netz erreichbar ist).'],
+            ['type' => 'Geändert', 'text' => 'monitor_category() erkennt die Redis-protected-mode-Meldung als eigene Kategorie redis_protected_mode statt sie fälschlich als auth (falsches Passwort in der eigenen Konfiguration vermutet, was hier nie die Ursache war) oder other zu melden.'],
+            ['type' => 'Neu', 'text' => 'Regressionstest tools/healthcheck-redis-check.php erweitert: startet testweise einen echten, temporären Redis-Server (protected-mode yes/no) und prüft den Zugriff über eine echte, nicht-Loopback-Adresse dieses Hosts; bestätigt sowohl die neue Diagnosekategorie als auch, dass protected-mode no den Zugriff tatsächlich ermöglicht, sowie eine statische Prüfung, dass redis.conf protected-mode no enthält.'],
+         ]],
         ['version' => '4.7', 'date' => '07.09.2026', 'title' => 'Staging- und Produktionsisolation im VPS-Stack',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Eine Prüfung auf dem produktiven VPS (nur docker compose config, kein Start) ergab, dass Staging und Produktion denselben Compose-Projektnamen erbten und dadurch dieselben Container-, Netz- und Volume-Namen erhalten hätten (z. B. "smarteinzug_smarteinzug_internal", "smarteinzug_caddy_data"); zusätzlich verwendeten beide Umgebungen identische Traefik-Router-/Middleware-/Dienstnamen. docker-compose.staging.yml setzt jetzt einen eigenen Projektnamen ("smarteinzug-staging") und eigene Traefik-Namen ("smarteinzug-staging-*"); die Traefik-Labels von Produktion stehen dafür nicht mehr in der gemeinsamen docker-compose.yml, sondern ausschließlich in docker-compose.prod.yml.'],

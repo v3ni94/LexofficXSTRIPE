@@ -205,14 +205,16 @@ vollständig erfolgreich, die Datenbankprüfung des Candidaten war unauffällig;
 ausschließlich die Redis-Teilprüfung. Die laufenden Container wurden dabei nicht verändert, ein
 Rollback war nicht nötig.
 
-**Ursache:** `monitor_category()` erkannte die tatsächliche Fehlermeldung nicht und fiel auf den
+**Ursache (damaliger Kenntnisstand, siehe Nachtrag unten für die inzwischen bestätigte tatsächliche
+Ursache):** `monitor_category()` erkannte die tatsächliche Fehlermeldung nicht und fiel auf den
 unbrauchbaren Sammelbegriff „other“ zurück. Das PHP-Image ist Alpine-/musl-basiert; musl formuliert
 DNS-Fehler anders als die bisher erkannte glibc-Formulierung (z. B. „Try again“ oder „Name does not
-resolve“ statt „Temporary failure in name resolution“ bzw. „Name or service not known“). Zusätzlich
-konnte eine rein transiente Verzögerung beim Anheften des zweiten Docker-Netzes (`smarteinzug_internal`,
-in dem Redis liegt) an einen frisch per `docker compose run` erzeugten Einwegcontainer nicht durch
-einen zweiten Versuch abgefangen werden, da `bin/healthcheck.php --redis` bislang nur einen einzigen
-Verbindungsversuch unternahm.
+resolve“ statt „Temporary failure in name resolution“ bzw. „Name or service not known“). Als **nicht
+bestätigte Arbeitshypothese** für den Redis-Teil wurde damals eine rein transiente Verzögerung beim
+Anheften des zweiten Docker-Netzes (`smarteinzug_internal`, in dem Redis liegt) an einen frisch per
+`docker compose run` erzeugten Einwegcontainer vermutet. Diese Hypothese ist durch den Nachtrag unten
+**widerlegt**: Die tatsächliche Ursache war deterministisch (kein Timing, kein Netzwerk-Race) und lag in
+Redis' eigener Konfiguration.
 
 **Behoben (Version 4.6):**
 
@@ -236,6 +238,57 @@ Verbindungsversuch unternahm.
   `python3 tools/compose-check.py` (bestätigt statisch, dass `deploy.sh` die Reihenfolge
   Candidate-Prüfung, Migration, Cutover einhält und beide isolierten Schritte ausschließlich über
   `docker compose run --rm --no-deps` laufen).
+
+### Nachtrag (Version 4.8): tatsächliche Ursache bestätigt – Redis' eigener „protected mode“
+
+**Symptom:** Auf dem produktiven VPS meldete die neue, isolierte Candidate-Prüfung weiterhin einen
+Redis-Fehlschlag, jetzt als „UNGESUND: redis: auth“ statt „redis: other“ (unterschiedliche
+Beobachtungen zu unterschiedlichen Zeitpunkten, siehe unten). Dabei bestand kein Widerspruch zu den
+eigenen Prüfungen: `shared/config.php` enthielt `'redis' => ['host' => 'redis', 'password' => null,
+...]` (kein Passwort konfiguriert), `redis.conf` enthielt kein `requirepass`/`masterauth`, und
+`docker exec smarteinzug-redis-1 redis-cli ping` lieferte anstandslos `PONG` – nach diesen drei
+Prüfungen allein hätte alles unauffällig wirken müssen.
+
+**Tatsächliche Ursache (durch einen echten, temporären Redis-Server direkt reproduziert, keine
+Vermutung):** `redis.conf` setzte `protected-mode yes` (Redis' Standardwert), aber **ohne** ein
+Passwort. In genau dieser Kombination lehnt Redis **jeden Befehl** (nicht die TCP-Verbindung selbst,
+die gelingt) eines Clients ab, der **nicht über die Loopback-Adresse** (127.0.0.1/::1) verbindet – mit
+der Fehlermeldung „DENIED Redis is running in protected mode … no password is set for the default
+user … In this mode connections are only accepted from the loopback interface.“ Das betrifft
+ausnahmslos **jeden** Zugriff aus einem anderen Container (`php`, `scheduler`, jeder `worker-*`, die
+isolierte Candidate-Prüfung) – unabhängig davon, dass `bind 0.0.0.0 -::1` explizit gesetzt war (ein
+gesetzter `bind` hebt den Schutz entgegen einer verbreiteten Annahme NICHT auf, nur ein gesetztes
+Passwort oder `protected-mode no` tun das). Der Grund, warum `docker exec … redis-cli ping` trotzdem
+`PONG` lieferte: Dieser Befehl läuft **innerhalb** des `redis`-Containers selbst und verbindet damit
+zwangsläufig über dessen eigene Loopback-Adresse – genau der eine Fall, den protected-mode ausdrücklich
+ausnimmt. Er täuschte damit eine Gesundheit vor, die für keinen anderen Container galt. Die
+unterschiedlichen Kategorien „other“ und „auth“ waren beides nur Symptome derselben, vorher nicht
+erkannten DENIED-Meldung, je nachdem, welche Fassung von `monitor_category()` gerade lief; keines der
+beiden Wörter deutete auf ein falsches Passwort in `config.php` hin (dort war ja korrekt keines
+gesetzt) – die eigentliche Ursache war ausschließlich Redis' eigene `protected-mode`-Einstellung.
+
+**Praktische Auswirkung, bevor dies auffiel:** Da Redis in dieser Anwendung ausdrücklich optional ist
+(Sperren und Ratenbegrenzung fallen ohne Redis automatisch auf die Datenbank zurück, siehe
+`app/redis.php`), führte dies zu keinem fachlichen Fehler, aber vermutlich dazu, dass Redis seit der
+Einrichtung des VPS-Stacks für Sperren/Ratenbegrenzung aus anderen Containern nie tatsächlich
+funktioniert hat, ohne dass dies bislang bemerkt wurde.
+
+**Behoben (Version 4.8):**
+
+- `deploy/vps/redis/redis.conf`: `protected-mode no` (statt `yes`). Sicher, weil dieser Dienst ohnehin
+  ausschließlich über das interne, nicht öffentlich erreichbare Docker-Netz erreichbar ist (`internal:
+  true`, kein veröffentlichter Port) und kein Passwort vorgesehen ist – protected-mode böte hier keinen
+  zusätzlichen Schutz, verhindert aber den vorgesehenen Betrieb. Redis' eigene Fehlermeldung nennt genau
+  diese Lösung selbst („just disable protected mode … however MAKE SURE Redis is not publicly
+  accessible from the internet if you do so“).
+- `monitor_category()` erkennt die tatsächliche Redis-protected-mode-Meldung jetzt als eigene Kategorie
+  `redis_protected_mode` (nicht als `auth`, das fälschlich ein falsches Passwort in der eigenen
+  Konfiguration vermuten ließe, obwohl die Ursache eine Servereinstellung von Redis selbst ist).
+- Regressionstest `tools/healthcheck-redis-check.php` erweitert: startet testweise einen echten,
+  temporären Redis-Server (protected-mode yes bzw. no, kein Passwort) und prüft den Zugriff über eine
+  echte, nicht-Loopback-Adresse dieses Hosts (entspricht dem Zugriffsweg eines anderen Containers) –
+  bestätigt sowohl die neue Diagnosekategorie als auch, dass `protected-mode no` den Zugriff tatsächlich
+  ermöglicht; zusätzlich eine statische Prüfung, dass `redis.conf` `protected-mode no` enthält.
 
 ## Staging- und Produktionsisolation
 

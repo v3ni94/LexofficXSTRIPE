@@ -4,15 +4,30 @@
  *
  * Hintergrund: Der erste produktive Einsatz der Candidate-Pruefung (deploy.sh, "docker compose run
  * --rm --no-deps -T php php bin/healthcheck.php --db --redis") scheiterte mit der unbrauchbaren Meldung
- * "UNGESUND: redis: other". Ursache: monitor_category() erkannte die tatsaechliche Fehlermeldung nicht
- * und fiel auf den generischen Sammelbegriff "other" zurueck (das PHP-Image ist Alpine/musl-basiert;
+ * "UNGESUND: redis: other". Ursache (Teil 1): monitor_category() erkannte die tatsaechliche Fehlermeldung
+ * nicht und fiel auf den generischen Sammelbegriff "other" zurueck (das PHP-Image ist Alpine/musl-basiert;
  * musl formuliert DNS-Fehler anders als glibc, z.B. "Try again" oder "Name does not resolve" statt
- * "Temporary failure in name resolution"/"Name or service not known"). Dieses Skript prueft direkt (ohne
- * Docker-Daemon, ohne laufenden Redis-Server), dass:
+ * "Temporary failure in name resolution"/"Name or service not known").
+ *
+ * Ursache (Teil 2, per direktem Test gegen einen echten, temporaeren Redis-Server bestaetigt statt
+ * vermutet): deploy/vps/redis/redis.conf setzte "protected-mode yes" OHNE ein Passwort (kein
+ * requirepass). Redis' eigenes protected-mode lehnt in dieser Konstellation JEDEN Befehl (nicht die
+ * TCP-Verbindung selbst) eines Clients ab, der NICHT ueber die Loopback-Adresse verbindet - das betrifft
+ * ausnahmslos jeden Zugriff aus einem anderen Container (php, scheduler, worker, die isolierte
+ * Candidate-Pruefung), unabhaengig vom konfigurierten "bind". Ein "docker exec ... redis-cli ping"
+ * INNERHALB des redis-Containers selbst laeuft dagegen ueber Loopback und bleibt unberuehrt - genau das
+ * hatte bei der Fehlersuche auf dem VPS faelschlich Gesundheit vorgetaeuscht. Behoben durch
+ * "protected-mode no" in redis.conf (sicher, da der Dienst ohnehin nur ueber das interne, nicht
+ * oeffentlich erreichbare Docker-Netz erreichbar ist) und eine eigene Diagnosekategorie
+ * "redis_protected_mode" (statt des irrefuehrenden "auth", das faelschlich ein falsches Passwort in
+ * UNSERER Konfiguration vermuten liesse, obwohl die Ursache eine Servereinstellung von Redis selbst ist).
+ *
+ * Dieses Skript prueft direkt (ohne Docker-Daemon), dass:
  *   1. monitor_category() sowohl glibc- als auch musl-typische DNS-Fehlermeldungen als "dns" erkennt
  *      (nicht mehr als "other").
  *   2. monitor_category() weitere, bislang unerkannte phpredis-Meldungen (u.a. "went away", "reset by
- *      peer") korrekt kategorisiert.
+ *      peer") korrekt kategorisiert, und die tatsaechliche Redis-protected-mode-Meldung als eigene
+ *      Kategorie "redis_protected_mode" erkennt (nicht als "auth" oder "other").
  *   3. bin/healthcheck.php --redis gegen einen NICHT AUFLOESBAREN Hostnamen (fehlendes/nicht erreichbares
  *      Docker-Netz, echte Netzwerkebene, kein Mock) eine eindeutige, kategorisierte Diagnose liefert statt
  *      "redis: other" oder "redis: nicht erreichbar".
@@ -22,6 +37,12 @@
  *      liefert (Redis bleibt optional, kein Regressionsrisiko fuer Installationen ohne Redis).
  *   6. Redis bleibt fuer normale Aufrufer (redis_client() ohne Parameter) weiterhin genau einen Versuch
  *      je Prozess wert (kein ungewolltes Wiederholungsverhalten ausserhalb des Healthcheck-Aufrufs).
+ *   7. Gegen einen ECHTEN, temporaeren lokalen Redis-Server (sofern "redis-server" verfuegbar ist, sonst
+ *      wird dieser Teil uebersprungen): protected-mode yes + kein Passwort + Zugriff ueber eine echte,
+ *      NICHT-Loopback-Adresse dieses Hosts liefert "redis: redis_protected_mode" statt "other"/"auth";
+ *      derselbe Zugriffsweg mit protected-mode no (wie im ausgelieferten redis.conf) gelingt.
+ *   8. deploy/vps/redis/redis.conf enthaelt tatsaechlich "protected-mode no" (Regression gegen genau
+ *      diesen Fehler).
  *
  * Aufruf: php tools/healthcheck-redis-check.php     Exit 0 = in Ordnung, 1 = Fehler
  */
@@ -63,6 +84,11 @@ $cases = [
     ['connection reset by peer', 'connection', 'TCP-Verbindung zurueckgesetzt'],
     ['NOAUTH Authentication required.', 'auth', 'Redis-Authentifizierung fehlt'],
     ['WRONGPASS invalid username-password pair', 'auth', 'Redis-Authentifizierung falsch'],
+    [
+        "DENIED Redis is running in protected mode because protected mode is enabled and no password is set for the default user. In this mode connections are only accepted from the loopback interface. If you want to connect from external computers to Redis you may adopt one of the following solutions: 1) Just disable protected mode sending the command 'CONFIG SET protected-mode no' from the loopback interface by connecting to Redis from the same host the server is running, however MAKE SURE Redis is not publicly accessible from internet if you do so. Use CONFIG REWRITE to make this change permanent. 2) Alternatively you can just disable the protected mode by editing the Redis configuration file, and setting the protected mode option to 'no', and then restarting the server. 3) If you started the server manually just for testing, restart it with the '--protected-mode no' option. 4) Setup a an authentication password for the default user. NOTE: You only need to do one of the above things in order for the server to start accepting connections from the outside.",
+        'redis_protected_mode',
+        'Redis protected-mode (echte phpredis-Meldung, siehe deploy/vps/redis/redis.conf)',
+    ],
 ];
 foreach ($cases as [$msg, $expected, $desc]) {
     $got = monitor_category(new Exception($msg));
@@ -158,6 +184,97 @@ if ($first !== $second) {
 }
 if (redis_last_error() === null || redis_last_error() === 'other') {
     fail($errors, "redis_last_error() lieferte '" . (redis_last_error() ?? 'null') . "' statt einer verwertbaren Kategorie.");
+}
+
+// --- Teil 7: echter, temporaerer Redis-Server, protected-mode yes/no, Zugriff ueber eine ECHTE,
+// nicht-Loopback-Adresse dieses Hosts (entspricht dem Zugriffsweg eines anderen Containers) -----------
+function hostNonLoopbackIp(): ?string
+{
+    $out = @shell_exec('hostname -I 2>/dev/null');
+    foreach (preg_split('/\s+/', trim((string)$out)) as $ip) {
+        if ($ip !== '' && $ip !== '127.0.0.1') {
+            return $ip;
+        }
+    }
+    return null;
+}
+
+function startTempRedis(string $dir, int $port, bool $protectedMode): bool
+{
+    $conf = $dir . '/redis-' . $port . '.conf';
+    file_put_contents($conf, "bind 0.0.0.0 -::1\nprotected-mode " . ($protectedMode ? 'yes' : 'no') . "\nport $port\nappendonly no\nsave \"\"\n");
+    exec('redis-server ' . escapeshellarg($conf) . ' --daemonize yes 2>&1', $o, $rc);
+    if ($rc !== 0) {
+        return false;
+    }
+    for ($i = 0; $i < 20; $i++) {
+        exec('redis-cli -p ' . (int)$port . ' ping 2>/dev/null', $pingOut);
+        if (($pingOut[0] ?? '') !== '' || ($pingOut[0] ?? '') === 'PONG' || str_contains(implode('', $pingOut), 'DENIED')) {
+            return true; // antwortet bereits (auch eine DENIED-Antwort zeigt: Server laeuft)
+        }
+        usleep(100_000);
+    }
+    return false;
+}
+
+function stopTempRedis(int $port): void
+{
+    exec('redis-cli -p ' . (int)$port . ' shutdown nosave 2>/dev/null');
+}
+
+if (@shell_exec('command -v redis-server 2>/dev/null') === null || trim((string)@shell_exec('command -v redis-server 2>/dev/null')) === '') {
+    echo "redis-server nicht gefunden, Teil 7 (echter Redis-Server) uebersprungen.\n";
+} else {
+    $hostIp = hostNonLoopbackIp();
+    if ($hostIp === null) {
+        fail($errors, "Konnte keine nicht-Loopback-Adresse dieses Hosts ermitteln (hostname -I), Teil 7 uebersprungen.");
+    } else {
+        $tmpDir = sys_get_temp_dir() . '/se-redis-check-' . getmypid();
+        @mkdir($tmpDir);
+        $portProtected = 17000 + (getmypid() % 500);
+        $portOpen = $portProtected + 1;
+
+        if (!startTempRedis($tmpDir, $portProtected, true)) {
+            fail($errors, "Konnte temporaeren Redis-Server (protected-mode yes) fuer Teil 7 nicht starten.");
+        } else {
+            [$outP, $rcP] = runHealthcheckRedis($phpIonos, ['host' => $hostIp, 'port' => $portProtected, 'password' => null, 'prefix' => 'se:']);
+            if ($rcP === 0) {
+                fail($errors, "protected-mode yes + kein Passwort + Nicht-Loopback-Zugriff meldete faelschlich Erfolg (erwartet: Fehlschlag).");
+            } elseif (!str_contains($outP, 'redis_protected_mode')) {
+                fail($errors, "protected-mode yes + kein Passwort + Nicht-Loopback-Zugriff lieferte keine 'redis_protected_mode'-Diagnose: " . trim($outP));
+            } else {
+                echo "echter Redis, protected-mode yes, Nicht-Loopback-Zugriff: eindeutige Diagnose (" . trim($outP) . ")\n";
+            }
+            stopTempRedis($portProtected);
+        }
+
+        if (!startTempRedis($tmpDir, $portOpen, false)) {
+            fail($errors, "Konnte temporaeren Redis-Server (protected-mode no) fuer Teil 7 nicht starten.");
+        } else {
+            [$outO, $rcO] = runHealthcheckRedis($phpIonos, ['host' => $hostIp, 'port' => $portOpen, 'password' => null, 'prefix' => 'se:']);
+            if ($rcO !== 0 || trim($outO) !== 'OK') {
+                fail($errors, "protected-mode no + kein Passwort + Nicht-Loopback-Zugriff (wie im ausgelieferten redis.conf) schlug fehl: " . trim($outO));
+            } else {
+                echo "echter Redis, protected-mode no, Nicht-Loopback-Zugriff: OK (bestaetigt die Wirkung der redis.conf-Aenderung)\n";
+            }
+            stopTempRedis($portOpen);
+        }
+        @array_map('unlink', glob($tmpDir . '/*.conf') ?: []);
+        @rmdir($tmpDir);
+    }
+}
+
+// --- Teil 8: ausgeliefertes redis.conf enthaelt tatsaechlich "protected-mode no" -----------------------
+$redisConf = $root . '/deploy/vps/redis/redis.conf';
+if (!is_file($redisConf)) {
+    fail($errors, "deploy/vps/redis/redis.conf nicht gefunden.");
+} else {
+    $confText = file_get_contents($redisConf);
+    if (!preg_match('/^\s*protected-mode\s+no\s*$/mi', $confText)) {
+        fail($errors, "deploy/vps/redis/redis.conf enthaelt kein 'protected-mode no'. Ohne requirepass lehnt Redis sonst jeden Befehl eines anderen Containers ab (siehe Teil 7).");
+    } else {
+        echo "deploy/vps/redis/redis.conf: 'protected-mode no' vorhanden.\n";
+    }
 }
 
 echo "\n";
