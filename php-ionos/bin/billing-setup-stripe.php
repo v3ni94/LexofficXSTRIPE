@@ -41,15 +41,14 @@ if ($apply && $mode === 'unbekannt') {
     exit(2);
 }
 
-try {
-    $client = billing_client();
-} catch (Throwable $e) {
-    // Trockenlauf ohne Schlüssel bleibt möglich: dann werden nur die geplanten Parameter gezeigt.
+// Bewusst NICHT billing_client(): Produkt und Preis müssen VOR dem Scharfschalten angelegt werden,
+// billing_client() verlangt aber billing.enabled. Der Trockenlauf funktioniert auch ohne Schlüssel.
+$client = billing_setup_client($b);
+if ($client === null) {
     if ($apply) {
-        fwrite(STDERR, 'Abbruch: ' . $e->getMessage() . "\n");
+        fwrite(STDERR, "Abbruch: kein brauchbarer Stripe-Geheimschlüssel in config billing.stripe_secret_key.\n");
         exit(2);
     }
-    $client = null;
     echo "Hinweis: Kein nutzbarer Stripe-Schlüssel, es werden nur die geplanten Parameter gezeigt.\n\n";
 }
 

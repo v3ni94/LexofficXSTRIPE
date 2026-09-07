@@ -279,6 +279,31 @@ function billing_check_config(array $b, string $baseUrl): array
     return $r;
 }
 
+/**
+ * Stripe-Client der Werkzeuge, UNABHAENGIG von config('billing')['enabled'].
+ *
+ * billing_client() (app/billing.php) verweigert bewusst jeden Aufruf, solange die Abrechnung nicht
+ * freigeschaltet ist: Im laufenden Betrieb darf ohne Freischaltung nichts abgerechnet werden. Prüfung und
+ * Anlage finden aber genau VOR dem Scharfschalten statt und brauchen deshalb einen Client, sobald ein
+ * brauchbarer Geheimschlüssel vorliegt. Liefert null, wenn der Schlüssel fehlt oder keiner ist.
+ * Voraussetzung: app/stripe.php ist geladen (beide Werkzeuge laden app/billing.php).
+ */
+function billing_setup_client(array $b): ?StripeClient
+{
+    // Testhaken (nur CLI, wie billing_client()): Ersatz-Client ohne echte Stripe-Aufrufe.
+    if (PHP_SAPI === 'cli' && isset($GLOBALS['lexsepa_billing_client_factory']) && is_callable($GLOBALS['lexsepa_billing_client_factory'])) {
+        $c = ($GLOBALS['lexsepa_billing_client_factory'])();
+        if ($c instanceof StripeClient) {
+            return $c;
+        }
+    }
+    $key = (string)($b['stripe_secret_key'] ?? '');
+    if (billing_key_mode($key) === 'unbekannt' || !class_exists('StripeClient')) {
+        return null;
+    }
+    return new StripeClient($key);
+}
+
 /** Erwartete Webhook-Adresse der Plattform-Abrechnung. */
 function billing_expected_webhook_url(string $baseUrl): string
 {

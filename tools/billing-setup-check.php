@@ -136,6 +136,39 @@ billing_recurring_days(['interval' => 'day', 'interval_count' => 28]) === 28
 $m = billing_merge_findings(['errors' => ['a'], 'warnings' => ['b']], ['errors' => ['c'], 'info' => ['d']]);
 $m['errors'] === ['a', 'c'] && $m['warnings'] === ['b'] && $m['info'] === ['d'] ? ok('Ergebnisse werden zusammengeführt') : bad('Zusammenführung falsch');
 
+echo "\nF) Client der Werkzeuge ist unabhängig vom Schalter billing.enabled\n";
+// Die Prüfung und die Anlage der Artikel finden VOR dem Scharfschalten statt. billing_client()
+// (app/billing.php) verweigert dann jeden Aufruf; billing_setup_client() darf das nicht.
+billing_setup_client(['stripe_secret_key' => '']) === null ? ok('ohne Schlüssel kein Client') : bad('leerer Schlüssel liefert einen Client');
+billing_setup_client(['stripe_secret_key' => 'pk_live_' . str_repeat('x', 24)]) === null ? ok('öffentlicher Schlüssel liefert keinen Client') : bad('pk_-Schlüssel liefert einen Client');
+$GLOBALS['lexsepa_billing_client_factory'] = static function () { return new StripeClient('sk_test_' . str_repeat('x', 24)); };
+require_once $root . '/php-ionos/app/stripe.php';
+$c1 = billing_setup_client(['enabled' => false, 'stripe_secret_key' => 'sk_live_' . str_repeat('x', 24)]);
+$c1 instanceof StripeClient ? ok('mit Schlüssel und enabled=false wird ein Client geliefert (Prüfung vor dem Scharfschalten)') : bad('enabled=false verhindert den Client');
+$c2 = billing_setup_client([]);
+$c2 instanceof StripeClient ? ok('Testhaken greift wie bei billing_client()') : bad('Testhaken greift nicht');
+unset($GLOBALS['lexsepa_billing_client_factory']);
+billing_setup_client([]) === null ? ok('ohne Testhaken und ohne Schlüssel wieder null') : bad('Testhaken nicht zurückgesetzt');
+// Nur echte Aufrufe zählen, keine Erwähnungen in Kommentaren (dort wird der Unterschied erklärt).
+$codeOnly = static function (string $file): string {
+    $out = [];
+    foreach (explode("\n", (string)file_get_contents($file)) as $line) {
+        $s = ltrim($line);
+        if ($s === '' || str_starts_with($s, '//') || str_starts_with($s, '*') || str_starts_with($s, '/*')) {
+            continue;
+        }
+        $out[] = $line;
+    }
+    return implode("\n", $out);
+};
+$calls = 0;
+foreach (['/php-ionos/bin/billing-check.php', '/php-ionos/bin/billing-setup-stripe.php'] as $f) {
+    $calls += preg_match_all('/(?<![_a-z])billing_client\s*\(/i', $codeOnly($root . $f));
+}
+$calls === 0
+    ? ok('beide Werkzeuge rufen billing_setup_client() auf, nirgends billing_client()')
+    : bad($calls . ' Aufruf(e) von billing_client() in den Werkzeugen: sie scheitern damit vor dem Scharfschalten');
+
 echo "\nF) Übereinstimmung mit dem Code, der die Ereignisse verarbeitet\n";
 $billing = file_get_contents($root . '/php-ionos/app/billing.php');
 $missing = [];

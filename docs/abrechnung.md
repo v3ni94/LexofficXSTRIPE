@@ -36,7 +36,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env 
 ### Schritt 1: Zuerst mit Testschlüsseln, nicht im Live-Konto
 
 In `shared/config.php` den Abschnitt `billing` mit den **Test**schlüsseln des Stripe-Kontos füllen
-(`sk_test_...`), `enabled` zunächst auf `false` lassen. Danach `bin/billing-check.php`: Es prüft
+(`sk_test_...`), `enabled` zunächst auf `false` lassen. Beide Werkzeuge arbeiten bewusst unabhängig von
+diesem Schalter (`billing_setup_client()`), damit Prüfung und Anlage vor dem Scharfschalten möglich sind;
+die Anwendung selbst rechnet ohne `enabled` weiterhin nichts ab. Danach `bin/billing-check.php`: Es prüft
 Schlüsselart, Signaturgeheimnis, Basisadresse, Konto, Preise, Webhook, Kundenportal, Stripe Tax und
 meldet, wie viele Firmen beim Scharfschalten gesperrt würden. Schlüssel erscheinen nur maskiert.
 
@@ -126,6 +128,9 @@ Stripe-Dashboard gekündigt werden. Die Preis-IDs in `plans` bleiben erhalten.
 ## Laufender Betrieb
 
 - `bin/billing-check.php` nach jeder Änderung an Tarifen, Schlüsseln oder Webhooks ausführen.
+- Das Feld `environment` in `shared/config.php` sollte auf `'prod'` stehen. In Produktion ist es aus
+  Rückwärtskompatibilität nicht zwingend (`bin/healthcheck.php --expect-env=prod` beanstandet sein Fehlen
+  nicht), für Staging dagegen Pflicht. Gesetzt ist es eindeutiger und die Prüfberichte nennen die Umgebung.
 - `invoice.payment_failed` setzt den Status auf `past_due`; die Firma arbeitet bis zum Ende der bezahlten
   Periode weiter (`subscription_period_end`), danach greift die Sperre.
 - Tarifwechsel wirken sofort: Upgrade mit sofortiger anteiliger Berechnung, Downgrade mit anteiliger

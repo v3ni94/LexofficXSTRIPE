@@ -45,12 +45,14 @@ if ($cfg['mode'] === 'test' && !empty($b['enabled']) && (string)config('environm
 
 // --- 2. Stripe-Konto --------------------------------------------------------------------------
 echo "\n2. Stripe-Konto\n";
-$client = null;
-try {
-    $client = billing_client();
-} catch (Throwable $e) {
-    $errors[] = 'Kein Stripe-Client: ' . $e->getMessage();
-    echo "   nicht prüfbar (" . $e->getMessage() . ")\n";
+// Bewusst NICHT billing_client(): Der prüft zusätzlich billing.enabled und verweigert damit genau im
+// Zustand vor dem Scharfschalten jede Auskunft. Hier wird nur gelesen, sobald ein Schlüssel vorliegt.
+$client = billing_setup_client($b);
+if ($client === null) {
+    $errors[] = 'Kein brauchbarer Stripe-Geheimschlüssel in config billing.stripe_secret_key: Konto, Preise, Webhook, Kundenportal und Steuer sind nicht prüfbar.';
+    echo "   nicht prüfbar (kein brauchbarer Schlüssel)\n";
+} elseif (empty($b['enabled'])) {
+    $infos[] = 'Die Stripe-Prüfungen liefen mit dem hinterlegten Schlüssel, obwohl billing.enabled noch aus ist (nur lesende Aufrufe).';
 }
 if ($client !== null) {
     try {
