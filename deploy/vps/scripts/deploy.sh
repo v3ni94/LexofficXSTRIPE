@@ -97,6 +97,18 @@ if [[ ! -d "$RELEASE_DIR/deploy/vps" || ! -f "$ROLLBACK_SH" ]]; then
     echo "::error:: $RELEASE_DIR/deploy/vps fehlt oder ist unvollstaendig. Kein Deployment."
     exit 1
 fi
+# Vollstaendigkeitsnachweis: Der GitHub-Workflow schreibt .release-complete ERST, nachdem alle
+# Uebertragungen (Anwendung, deploy/vps, Statusseite) erfolgreich waren. Fehlt die Datei, ist das Release
+# entweder halb uebertragen (abgebrochener rsync, abgebrochener Lauf) oder von Hand angelegt. Beides darf
+# nicht ausgeliefert werden: Ein fehlender Migrationsschritt wuerde als "0 offen" gemeldet und neuer Code
+# liefe auf altem Schema. SMARTEINZUG_SKIP_RELEASE_CHECK=1 erlaubt einen bewussten Handbetrieb.
+if [[ ! -f "$RELEASE_DIR/.release-complete" && "${SMARTEINZUG_SKIP_RELEASE_CHECK:-0}" != "1" ]]; then
+    echo "::error:: $RELEASE_DIR/.release-complete fehlt: Das Release ist nicht als vollstaendig"
+    echo "::error:: gekennzeichnet (halb uebertragen oder von Hand angelegt). Kein Deployment."
+    echo "::error:: Der GitHub-Workflow schreibt diese Datei nach dem letzten rsync. Bei bewusstem"
+    echo "::error:: Handbetrieb: SMARTEINZUG_SKIP_RELEASE_CHECK=1 setzen."
+    exit 1
+fi
 if [[ ! -f "$DEPLOY_DIR/.env" ]]; then
     echo "::error:: $DEPLOY_DIR/.env fehlt. Vorlage .env.example einmalig nach .env kopieren und fuellen."
     exit 1
@@ -702,6 +714,26 @@ else
 fi
 
 deploy_step "bereinigung"
+# Erst die Reste abgebrochener Laeufe entfernen: Bricht ein Workflow-Lauf zwischen "Zielverzeichnis
+# anlegen" und dem letzten rsync ab (Netzfehler, abgebrochener Lauf), bleibt ein leeres oder halbes
+# Releaseverzeichnis OHNE .release-complete liegen. Es ist nie auslieferbar (deploy.sh verweigert es),
+# wuerde aber einen der fuenf aufbewahrten Plaetze belegen und damit die Rollbacktiefe verringern.
+# Ausgenommen sind das aktuelle und das vorherige Release sowie Verzeichnisse der letzten Stunde
+# (dort koennte gerade ein paralleler Lauf uebertragen).
+echo "Entferne Reste abgebrochener Laeufe (Releases ohne Vollstaendigkeitsnachweis) ..."
+while IFS= read -r rest; do
+    [[ -n "$rest" ]] || continue
+    rest_sha="$(basename "$rest")"
+    [[ "$rest_sha" == "current" || "$rest_sha" == "$SHA" || "$rest_sha" == "$PREV_SHA" ]] && continue
+    [[ -f "$rest/.release-complete" ]] && continue
+    if [[ -n "$(find "$rest" -maxdepth 0 -mmin -60 2>/dev/null)" ]]; then
+        echo "  $rest_sha: ohne Nachweis, aber juenger als eine Stunde (moeglicher paralleler Lauf), bleibt erhalten."
+        continue
+    fi
+    echo "  Entferne unvollstaendiges Release $rest_sha (kein .release-complete)"
+    rm -rf "${rest:?}"
+done < <(find "$RELEASES_DIR" -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
+
 echo "Bereinige alte Releases (behalte die letzten 5) ..."
 mapfile -t OLD_RELEASES < <(ls -1dt "$RELEASES_DIR"/*/ 2>/dev/null | grep -v '/current/$' | tail -n +6 || true)
 for old in "${OLD_RELEASES[@]}"; do

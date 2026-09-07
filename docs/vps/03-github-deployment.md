@@ -91,6 +91,19 @@ Version 4.11 kommt der Vorab-Stopp der noch mit SIGQUIT/660 s laufenden Containe
 statt 11 Minuten, `docs/vps/06-betrieb.md`, „Übergang beim ersten Deployment ab Version 4.11“). Die Frist
 von 12 Minuten bleibt.
 
+### Wiederholung der SSH-Schritte und Vollständigkeitsnachweis (Version 4.17)
+
+Die übertragenden Schritte des Jobs `deploy-vps` (Zielverzeichnis, drei rsync, Vollständigkeitsnachweis)
+und das Auslösen laufen über `.github/scripts/vps-ssh-retry.sh`: bis zu vier Versuche mit wachsender
+Pause. Grund war ein einzelner `Connection timed out`, der einen ganzen Lauf beendete. rsync-Exitcode 24
+gilt als Erfolg, dauerhafte rsync-Fehler (1 bis 4, 11 bis 13) werden nicht wiederholt.
+
+Nach der letzten Übertragung entsteht `releases/<sha>/.release-complete`; `deploy.sh` liefert nur
+Releases mit diesem Nachweis aus. Das Auslösen liegt in `.github/scripts/vps-trigger.sh` und liefert
+`trigger_state`; der Warteschritt bekommt zusätzlich den Startzeitpunkt und erkennt damit einen
+veralteten Endstatus. Regressionstests ohne Netz: `tools/github-ssh-retry-check.sh`,
+`tools/github-poll-check.sh`, `tools/redis-deploy-check.sh`.
+
 ## Secrets und Variablen im Überblick
 
 GitHub-Repository > Settings > Secrets and variables > Actions. Zwei getrennte Bereiche: Secrets

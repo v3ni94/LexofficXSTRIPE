@@ -85,6 +85,9 @@ make_release() {
     # einmalig nach shared/status, damit Caddy /status.json ausliefern kann.
     install -d -m 750 "$sandbox/releases/$sha/status"
     printf '{"schema":1,"overall":{"state":"unknown"}}\n' > "$sandbox/releases/$sha/status/status.json"
+    # Vollstaendigkeitsnachweis, wie ihn der GitHub-Workflow nach dem letzten rsync schreibt; ohne ihn
+    # verweigert deploy.sh die Auslieferung (siehe dort ".release-complete").
+    printf '%s\n2026-01-01T00:00:00Z\n42\n' "$sha" > "$sandbox/releases/$sha/.release-complete"
     printf '#!/usr/bin/env bash\nexit 0\n' > "$rel/scripts/rollback.sh"
     chmod +x "$rel/scripts/rollback.sh"
     cp "$DEPLOY_SH_SRC" "$rel/scripts/deploy.sh"
@@ -302,6 +305,8 @@ FAKE
 # deploy.sh fuer "$sha" direkt ausfuehren (ohne Runner). Rueckgabe: Exitcode. Ausgabe in deploy-output.log,
 # Aufrufe des Fake-docker in fake-docker-calls.log (wird NICHT zurueckgesetzt: ein zweiter Lauf im selben
 # Sandbox protokolliert beide Laeufe).
+# Zusaetzliche Umgebungsvariablen (z.B. SMARTEINZUG_SKIP_RELEASE_CHECK, REDIS_WAIT_HEALTHY_SECONDS)
+# werden aus der Umgebung des Aufrufers uebernommen: "VAR=wert run_deploy ..." wirkt wie erwartet.
 run_deploy() {
     local sandbox="$1" sha="$2"
     FAKE_CALL_LOG="$sandbox/fake-docker-calls.log" \

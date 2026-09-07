@@ -67,6 +67,10 @@
 #      kurzer Frist, Deployment laeuft trotzdem durch (kein Warten auf die alten 660 s).
 #  17. Statusseite: deploy.sh legt /opt/smarteinzug/shared/status an und kopiert den Platzhalter des
 #      Release einmalig hinein; bereits veroeffentlichte Statusdaten ueberleben jedes Folgedeployment.
+#  18. Unvollstaendiges Release (Markerdatei .release-complete fehlt, z.B. abgebrochener rsync): Abbruch
+#      VOR Candidate, Migration und Cutover; mit SMARTEINZUG_SKIP_RELEASE_CHECK=1 bleibt Handbetrieb moeglich.
+#  19. Bereinigung: Reste abgebrochener Laeufe (Verzeichnisse ohne Nachweis, aelter als eine Stunde) werden
+#      entfernt; frische Reste, das aktuelle und das vorherige Release bleiben unberuehrt.
 #
 # Aufruf: bash tools/redis-deploy-check.sh        Exit 0 = alle Faelle bestanden
 set -uo pipefail
@@ -426,6 +430,43 @@ run_deploy "$S17" newsha2; RC17B=$?
 [[ "$RC17B" -eq 0 ]] && ok "Folgedeployment erfolgreich" || bad "Folgedeployment schlug fehl: $(output "$S17")"
 grep -q '"state":"ok"' "$S17/shared/status/status.json" && ok "veroeffentlichte Statusdaten ueberlebten das Deployment (Platzhalter nicht erneut kopiert)" || bad "Statusdaten wurden ueberschrieben: $(cat "$S17/shared/status/status.json")"
 rm -rf "$S17"
+
+echo "18) Unvollstaendiges Release (kein .release-complete): Abbruch VOR Candidate, Migration und Cutover"
+S18="$(new_sandbox)"
+make_release "$S18" prevsha "protected-mode no"
+make_release "$S18" newsha "protected-mode no"
+set_current "$S18" prevsha
+make_fake_docker "$S18"
+rm -f "$S18/releases/newsha/.release-complete"   # abgebrochener rsync: Nachweis fehlt
+run_deploy "$S18" newsha; RC18=$?
+[[ "$RC18" -ne 0 ]] && ok "Deployment abgebrochen (Exitcode $RC18 != 0)" || bad "unvollstaendiges Release wurde ausgeliefert"
+output "$S18" | grep -q "release-complete" && ok "Ursache benannt (.release-complete fehlt)" || bad "keine Meldung zum fehlenden Nachweis: $(output "$S18" | tail -3)"
+[[ "$(call_count "$S18" 'bin/migrate.php')" -eq 0 ]] && ok "keine Migration (der gefaehrliche Fall: fehlende Migrationsdatei melden 0 offen)" || bad "Migration lief trotzdem"
+[[ "$(call_count "$S18" 'up -d --remove-orphans')" -eq 0 ]] && ok "kein Cutover" || bad "Cutover lief trotzdem"
+[[ "$(call_count "$S18" 'force-recreate redis')" -eq 0 ]] && ok "Redis unberuehrt (Abbruch vor jeder Aenderung)" || bad "Redis wurde angefasst"
+# Bewusster Handbetrieb bleibt moeglich.
+SMARTEINZUG_SKIP_RELEASE_CHECK=1 run_deploy "$S18" newsha; RC18B=$?
+[[ "$RC18B" -eq 0 ]] && ok "mit SMARTEINZUG_SKIP_RELEASE_CHECK=1 laeuft der Handbetrieb durch" || bad "Handbetrieb schlug fehl: $(output "$S18" | tail -3)"
+rm -rf "$S18"
+
+echo "19) Bereinigung: Reste abgebrochener Laeufe verschwinden, aktuelles und vorheriges Release bleiben"
+S19="$(new_sandbox)"
+make_release "$S19" prevsha "protected-mode no"
+make_release "$S19" newsha "protected-mode no"
+set_current "$S19" prevsha
+make_fake_docker "$S19"
+# Rest eines abgebrochenen Laufs: leeres Verzeichnis ohne Nachweis, aelter als eine Stunde.
+install -d "$S19/releases/abgebrochen"
+touch -d "3 hours ago" "$S19/releases/abgebrochen"
+# Zweiter Rest, aber frisch: koennte ein paralleler Lauf sein und muss bleiben.
+install -d "$S19/releases/frischerlauf"
+run_deploy "$S19" newsha; RC19=$?
+[[ "$RC19" -eq 0 ]] && ok "Deployment erfolgreich" || bad "Deployment schlug fehl: $(output "$S19" | tail -3)"
+[[ ! -d "$S19/releases/abgebrochen" ]] && ok "alter Rest ohne Nachweis entfernt (Rollbacktiefe bleibt erhalten)" || bad "Rest blieb liegen"
+[[ -d "$S19/releases/frischerlauf" ]] && ok "frischer Rest bleibt erhalten (moeglicher paralleler Lauf)" || bad "frischer Rest wurde entfernt"
+[[ -d "$S19/releases/newsha" && -d "$S19/releases/prevsha" ]] && ok "aktuelles und vorheriges Release unberuehrt" || bad "aktuelles oder vorheriges Release entfernt"
+output "$S19" | grep -q "Entferne unvollstaendiges Release abgebrochen" && ok "Entfernung protokolliert" || bad "keine Protokollzeile"
+rm -rf "$S19"
 
 echo
 echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"

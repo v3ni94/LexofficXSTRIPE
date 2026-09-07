@@ -585,6 +585,79 @@ Release. Der php-fpm-Reload (SIGUSR2) bleibt als kostenlose Sicherung für den F
 - **SSH-Abbruch:** Beim Auslösen wird ein unklares Ergebnis nicht als Fehler gewertet, sondern der
   tatsächliche Stand abgefragt; beim Polling ist jede Abfrage unabhängig (Keepalive zentral gesetzt).
 
+## SSH-Fehler des Deployments
+
+**Vorfall (Lauf #51, Version 4.14):** Der GitHub-Job `deploy-vps` scheiterte im ersten SSH-Schritt mit
+`ssh: connect to host *** port ***: Connection timed out` und Exitcode 255. Der Server war in Ordnung,
+spätere Läufe liefen in 22 Sekunden durch. Die Verbindung kam schlicht nicht zustande.
+
+**Was das für die Korrektheit bedeutet:** Nichts fehlt. Jeder Lauf überträgt den vollständigen Baum in
+sein eigenes `releases/<sha>/`; scheitert ein Lauf, ist auf dem Server nichts geschehen, und der nächste
+erfolgreiche Lauf enthält alle Änderungen der übersprungenen Zwischenversionen. Ein fehlgeschlagener
+Deploy einer Zwischenversion muss deshalb nicht nachgeholt werden.
+
+**Seit Version 4.17 automatisch abgefedert:** Die übertragenden Schritte (Zielverzeichnis, drei rsync,
+Vollständigkeitsnachweis) und das Auslösen laufen über `.github/scripts/vps-ssh-retry.sh`: bis zu vier
+Versuche mit wachsender Pause (5, 10, 20 s). Jeder dieser Schritte ist idempotent, das Auslösen zusätzlich
+durch die serverseitige Sperre geschützt. Ein einmaliger Netzfehler kostet damit Sekunden statt eines
+manuellen Neustarts. Erreicht kein Versuch den Server, bricht der Lauf sofort mit klarer Ursache ab statt
+zwölf Minuten auf einen Status zu warten, den niemand schreibt.
+
+**Prüfschritte, wenn es dauerhaft scheitert:**
+
+```bash
+# 1. Ist der Dienst erreichbar (vom eigenen Rechner, nicht vom Runner)?
+nc -vz <vps-host> <ssh-port>
+
+# 2. Firewall: ist der SSH-Port offen?
+ufw status numbered | head -20
+
+# 3. fail2ban: ist eine Adresse gesperrt? GitHub-Runner wechseln ihre Adressen,
+#    wiederholte Fehlversuche können eine Sperre auslösen.
+fail2ban-client status sshd
+fail2ban-client set sshd unbanip <adresse>     # nur nach Prüfung
+
+# 4. Läuft der SSH-Dienst und auf welchem Port?
+systemctl status ssh --no-pager | head -5
+ss -tlnp | grep sshd
+
+# 5. Hostkey unverändert? (Ein neuer Hostkey lässt jeden Lauf scheitern.)
+ssh-keyscan -p <ssh-port> <vps-host> 2>/dev/null | ssh-keygen -lf -
+```
+
+Passt der Hostkey nicht mehr zum Secret `VPS_SSH_KNOWN_HOSTS`, ist das kein Netzfehler: `StrictHostKeyChecking`
+bleibt bewusst aktiv, das Secret muss nach einer Neuinstallation des Servers erneuert werden.
+
+**Was ausdrücklich nicht die Lösung ist:** Die Wartefrist des Pollings zu erhöhen. Sie betrifft die Dauer
+des Deployments, nicht die Erreichbarkeit; ein unerreichbarer Server wird durch längeres Warten nicht
+erreichbar, der Lauf bliebe nur länger rot.
+
+## Nachweis eines vollständigen Release
+
+Ein abgebrochener rsync konnte früher ein halbes Release hinterlassen, das Candidate-Prüfung, Migration
+und Cutover durchlief. Der gefährliche Fall: Fehlt die Datei einer Migration, meldet `bin/migrate.php`
+„0 offen“, und neuer Code liefe auf altem Schema. Deshalb schreibt der Workflow erst nach der letzten
+Übertragung die Datei `releases/<sha>/.release-complete` (sha, Zeitstempel, Dateizahl), und `deploy.sh`
+verweigert ohne sie die Auslieferung. Für bewussten Handbetrieb: `SMARTEINZUG_SKIP_RELEASE_CHECK=1`.
+`rollback.sh` verlangt den Nachweis nicht, weil ältere Releases ihn nicht tragen, vermerkt sein Fehlen
+aber. Reste abgebrochener Läufe (Verzeichnisse ohne Nachweis, älter als eine Stunde) räumt `deploy.sh` in
+der Bereinigung weg, damit sie keinen der fünf aufbewahrten Rollback-Plätze belegen.
+
+## Kein grüner Lauf ohne Deployment
+
+Die Statusdatei überlebt seit Version 4.11 jeden Lauf. Damit entstand eine Lücke: Verlor der
+Auslöseschritt die Verbindung, sah der Warteschritt den `success` des VORHERIGEN Deployments und meldete
+Erfolg, obwohl nichts ausgeliefert wurde. Seit Version 4.17 gilt:
+
+- `.github/scripts/vps-trigger.sh` liefert drei Zustände: `triggered` (dieser Lauf hat ausgelöst, oder für
+  genau diesen sha läuft bereits ein Deployment), `rejected` (ein fremdes Deployment läuft) und `unclear`
+  (Abbruch mitten in der Sitzung). Ein nie erreichter Server endet sofort als `unreachable` mit Exit 1.
+- Der Warteschritt erhält den Startzeitpunkt (`JOB_STARTED_AT`) und akzeptiert `success` oder `failed` nur,
+  wenn der Stand DANACH geschrieben wurde. Ein älterer Endstatus wird benannt und weiter gewartet; bleibt
+  es dabei, endet der Lauf mit „Kein Deployment dieses Laufs nachweisbar“.
+- Fehlgeschlagene Statusabfragen werden gemeldet (erste und jede sechste) statt verschwiegen, damit eine
+  Zugangsstörung nicht wie ein hängendes Deployment aussieht.
+
 ## Kennzahlen im Adminbereich und ihre Aufschlüsselung
 
 Die fünf Kennzahlen der Übersicht (System, Übersicht) sind verlinkt und führen jeweils auf die Liste, aus

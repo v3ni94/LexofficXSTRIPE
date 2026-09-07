@@ -90,6 +90,13 @@ set_current() {
     mv -Tf "$CURRENT_LINK.tmp" "$CURRENT_LINK"
 }
 
+# Der Vollstaendigkeitsnachweis (.release-complete, siehe deploy.sh) wird beim Rollback NICHT verlangt:
+# Releases, die vor seiner Einfuehrung ausgeliefert wurden, tragen ihn nicht, und ein Rollback auf ein
+# nachweislich einmal erfolgreich betriebenes Release muss moeglich bleiben. Fehlt er, wird es vermerkt.
+if [[ ! -f "$RELEASE_DIR/.release-complete" ]]; then
+    echo "::warning:: $RELEASE_DIR/.release-complete fehlt (Release aus der Zeit vor dieser Pruefung oder von Hand angelegt). Rollback wird trotzdem ausgefuehrt."
+fi
+
 echo "[$(date -u +%FT%TZ)] Rollback auf $TARGET gestartet."
 
 FROM_SHA=""

@@ -8,12 +8,20 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.16';
+const APP_VERSION = '4.17';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.17', 'date' => '07.09.2026', 'title' => 'Deployment übersteht Netzaussetzer, kein grüner Lauf ohne Auslieferung',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Ein einzelner Netzaussetzer beendete den gesamten Deployjob: Der erste SSH-Aufruf scheiterte mit "connect to host ... Connection timed out" (Exitcode 255), obwohl der Server in Ordnung war und dort nichts geschehen ist. Alle übertragenden Schritte und das Auslösen laufen jetzt über .github/scripts/vps-ssh-retry.sh mit bis zu vier Versuchen und wachsender Pause (5, 10, 20 s). Jeder Schritt ist idempotent (mkdir -p, rsync mit unveränderter Quelle), das Auslösen zusätzlich durch die serverseitige Sperre geschützt. rsync-Exitcode 24 gilt als Erfolg, dauerhafte rsync-Fehler werden nicht wiederholt.'],
+            ['type' => 'Behoben', 'text' => 'Gefährlichste Lücke, gefunden bei der Prüfung dieses Fixes: Verlor der Auslöseschritt die Verbindung, konnte der Lauf GRÜN enden, obwohl nichts ausgeliefert wurde. Der Warteschritt sah den success des vorherigen Deployments, weil die Statusdatei jeden Lauf überlebt. Jetzt liefert .github/scripts/vps-trigger.sh drei Zustände (triggered, rejected, unclear; ein nie erreichter Server endet sofort als unreachable mit klarer Ursache statt zwölf Minuten zu warten), und der Warteschritt akzeptiert einen Endstatus nur, wenn er nach dem Start dieses Laufs geschrieben wurde. Andernfalls endet der Lauf mit "Kein Deployment dieses Laufs nachweisbar".'],
+            ['type' => 'Behoben', 'text' => 'Ein abgebrochener rsync konnte ein halbes Release hinterlassen, das Candidate-Prüfung, Migration und Cutover durchlief; fehlte dabei die Datei einer Migration, meldete die Migration "0 offen" und neuer Code liefe auf altem Schema. Der Workflow schreibt jetzt nach der letzten Übertragung releases/<sha>/.release-complete (sha, Zeitstempel, Dateizahl), und deploy.sh verweigert Releases ohne diesen Nachweis (SMARTEINZUG_SKIP_RELEASE_CHECK=1 nur für bewussten Handbetrieb). rollback.sh verlangt ihn nicht, weil ältere Releases ihn nicht tragen, vermerkt sein Fehlen aber. Reste abgebrochener Läufe räumt die Bereinigung weg, damit sie keinen Rollback-Platz belegen.'],
+            ['type' => 'Neu', 'text' => 'Fehlgeschlagene Statusabfragen werden im Workflow gemeldet (erste und jede sechste, mit Ursache), damit eine Zugangsstörung nicht wie ein hängendes Deployment aussieht; das Wartescript bricht mit klarer Meldung ab, wenn jq fehlt. Jeder Übertragungsschritt hat eine eigene Frist von 10 Minuten. Betriebsanleitung: docs/vps/06-betrieb.md, Abschnitte "SSH-Fehler des Deployments" (Prüfschritte zu Netz, Firewall, fail2ban, Hostkey), "Nachweis eines vollständigen Release" und "Kein grüner Lauf ohne Deployment".'],
+            ['type' => 'Neu', 'text' => 'tools/github-ssh-retry-check.sh prüft die Wiederholung und das echte Auslöseskript gegen ein Fake-ssh (43 Fälle: Erfolg im ersten und dritten Versuch, begrenzte Versuchszahl, Verbindungs- gegen Fachfehler, endgültige Exitcodes, TRIGGERED nach fehlgeschlagenem Versuch, REJECTED mit eigenem und fremdem sha, unerreichbarer Server, Abbruch mitten in der Sitzung, Betriebsstandard der Pausen 5, 10, 20 s, gemischte Fehlerfolge, Argumentweitergabe). tools/github-poll-check.sh deckt zusätzlich die Frischeprüfung ab (25 Fälle), tools/redis-deploy-check.sh das unvollständige Release und die Bereinigung (109 Fälle).'],
+         ]],
         ['version' => '4.16', 'date' => '07.09.2026', 'title' => 'Kennzahlen anklickbar, Statusseite mit echten Daten',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Die fünf Kennzahlen der Systemübersicht sind anklickbar und führen auf die Liste, aus der sie stammen. Neu ist der Abschnitt "Wartende Aufgaben" (System, Jobs): wartende Jobs mit Firma, Typ, einreichender Person (fehlt sie, war es der Scheduler), Zeitpunkt, nächstem Versuch, Versuchszahl und letztem Fehler; Reservierungen, deren Worker sich nicht mehr meldet, mit Laufzeit und Alter des Heartbeats; offene Synchronisationsläufe mit Fortschritt und Kennzeichnung "hängt"; fällige Einzüge samt Zustand des Einreichfensters und nächster Öffnung.'],

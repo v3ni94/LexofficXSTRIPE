@@ -556,50 +556,92 @@ jobs:
           # (Runner-Neustart, Netzwerkstoerung), und die Korrektheit darf davon nicht abhaengen.
           echo "SSH_OPTS=-i $SSH_KEY_FILE -p $VPS_SSH_PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o TCPKeepAlive=yes" >> "$GITHUB_ENV"
 
+      # Alle Uebertragungsschritte laufen ueber .github/scripts/vps-ssh-retry.sh: bis zu vier Versuche mit
+      # wachsender Pause (5, 10, 20 s). Grund ist ein echter Vorfall (Lauf #51, Version 4.14): Der erste
+      # SSH-Aufruf scheiterte mit "connect to host ... Connection timed out" und beendete den ganzen Lauf,
+      # obwohl der Server in Ordnung war und auf ihm nichts geschehen ist. Jeder dieser Schritte ist
+      # idempotent (mkdir -p, rsync --delete mit unveraenderter Quelle), Wiederholung ist deshalb
+      # gefahrlos. Regressionstest ohne Netz: tools/github-ssh-retry-check.sh.
       - name: Zielverzeichnis auf dem VPS anlegen
+        timeout-minutes: 10
         shell: bash
         run: |
           set -euo pipefail
           # shellcheck disable=SC2086
-          ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
+          bash .github/scripts/vps-ssh-retry.sh "Zielverzeichnis anlegen" -- \
+            ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
             "mkdir -p '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps' '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/status'"
 
       - name: Anwendung per rsync uebertragen
+        timeout-minutes: 10
         shell: bash
         run: |
           set -euo pipefail
-          rsync -az --delete \
-            -e "ssh $SSH_OPTS" \
-            --exclude='.git' --exclude='.git*' \
-            --exclude='app/config.php' \
-            --exclude='app/storage/' \
-            --exclude='mail.log' \
-            --exclude='.env*' \
-            --exclude='/deploy/' --exclude='/status/' \
-            --include='sql/' \
-            --include='sql/migrations/' \
-            --include='sql/migrations/**' \
-            --exclude='*.sql' \
-            php-ionos/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/"
+          # rsync-Exitcodes: 24 (Dateien verschwanden waehrend der Uebertragung) ist kein Fehler;
+          # 1 bis 4, 11 bis 13 sind dauerhafte Ursachen (Syntax, Protokoll, Datentraeger, Rechte)
+          # und werden nicht wiederholt, damit die Ursache nicht unter Wiederholungen verschwindet.
+          VPS_RETRY_OK_CODES=24 VPS_RETRY_FINAL_CODES=1,2,3,4,11,12,13 \
+            bash .github/scripts/vps-ssh-retry.sh "Anwendung uebertragen" -- \
+            rsync -az --delete \
+              -e "ssh $SSH_OPTS" \
+              --exclude='.git' --exclude='.git*' \
+              --exclude='app/config.php' \
+              --exclude='app/storage/' \
+              --exclude='mail.log' \
+              --exclude='.env*' \
+              --exclude='/deploy/' --exclude='/status/' \
+              --include='sql/' \
+              --include='sql/migrations/' \
+              --include='sql/migrations/**' \
+              --exclude='*.sql' \
+              php-ionos/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/"
 
       - name: Deploy-Skripte per rsync uebertragen
+        timeout-minutes: 10
         if: hashFiles('deploy/vps/**') != ''
         shell: bash
         run: |
           set -euo pipefail
-          rsync -az --delete \
-            -e "ssh $SSH_OPTS" \
-            --exclude='.env' \
-            deploy/vps/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps/"
+          # rsync-Exitcodes: 24 (Dateien verschwanden waehrend der Uebertragung) ist kein Fehler;
+          # 1 bis 4, 11 bis 13 sind dauerhafte Ursachen (Syntax, Protokoll, Datentraeger, Rechte)
+          # und werden nicht wiederholt, damit die Ursache nicht unter Wiederholungen verschwindet.
+          VPS_RETRY_OK_CODES=24 VPS_RETRY_FINAL_CODES=1,2,3,4,11,12,13 \
+            bash .github/scripts/vps-ssh-retry.sh "Deploy-Skripte uebertragen" -- \
+            rsync -az --delete \
+              -e "ssh $SSH_OPTS" \
+              --exclude='.env' \
+              deploy/vps/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps/"
 
       - name: Statusseite per rsync uebertragen
+        timeout-minutes: 10
         if: hashFiles('websites/status.smart-einzug.de/**') != ''
         shell: bash
         run: |
           set -euo pipefail
-          rsync -az --delete \
-            -e "ssh $SSH_OPTS" \
-            websites/status.smart-einzug.de/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/status/"
+          # rsync-Exitcodes: 24 (Dateien verschwanden waehrend der Uebertragung) ist kein Fehler;
+          # 1 bis 4, 11 bis 13 sind dauerhafte Ursachen (Syntax, Protokoll, Datentraeger, Rechte)
+          # und werden nicht wiederholt, damit die Ursache nicht unter Wiederholungen verschwindet.
+          VPS_RETRY_OK_CODES=24 VPS_RETRY_FINAL_CODES=1,2,3,4,11,12,13 \
+            bash .github/scripts/vps-ssh-retry.sh "Statusseite uebertragen" -- \
+            rsync -az --delete \
+              -e "ssh $SSH_OPTS" \
+              websites/status.smart-einzug.de/ "$VPS_SSH_USER@$VPS_HOST:$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/status/"
+
+      # Vollstaendigkeitsnachweis des Release: Erst wenn ALLE Uebertragungen erfolgreich waren, entsteht die
+      # Markerdatei .release-complete. deploy.sh verweigert ohne sie die Auslieferung. Ohne diesen Nachweis
+      # koennte ein abgebrochener rsync ein halbes Release hinterlassen, das Candidate, Migration und
+      # Cutover durchlaeuft: Im schlimmsten Fall liefe neuer Code auf altem Schema, weil die Datei mit der
+      # fehlenden Migration nie ankam und die Migration deshalb "0 offen" meldet.
+      - name: Release als vollstaendig kennzeichnen
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATEIEN="$(find php-ionos deploy/vps websites/status.smart-einzug.de -type f | wc -l)"
+          # shellcheck disable=SC2086
+          bash .github/scripts/vps-ssh-retry.sh "Release als vollstaendig kennzeichnen" -- \
+            ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
+            "printf '%s\n' '$GITHUB_SHA' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '$DATEIEN' > '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/.release-complete'"
 
       # Zwei Schritte statt eines einzigen, ueber die gesamte Deploymentdauer offenen SSH-Kanals:
       #
@@ -614,37 +656,9 @@ jobs:
       # README.md ("Deployment: Ablauf und Ausfallsicherheit").
       - name: Deployment auf dem VPS ausloesen
         id: vps_deploy_trigger
-        timeout-minutes: 2
+        timeout-minutes: 5
         shell: bash
-        run: |
-          set -uo pipefail
-          # shellcheck disable=SC2086
-          OUT="$(ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
-            "bash '$VPS_DEPLOY_PATH/releases/$GITHUB_SHA/deploy/vps/scripts/deploy-runner.sh' '$GITHUB_SHA'" 2>&1)"
-          RC=$?
-          echo "$OUT"
-          if [[ $RC -eq 0 && "$OUT" == TRIGGERED* ]]; then
-            echo "Deployment ausgeloest, dieser Lauf ist fuer $GITHUB_SHA zustaendig."
-            echo "expect_sha=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ $RC -eq 3 || "$OUT" == REJECTED* ]]; then
-            echo "::warning::Es lief bereits ein Deployment oder Rollback (Sperre belegt); dieser Lauf hat"
-            echo "::warning::nichts NEU ausgeloest, sondern wartet im naechsten Schritt auf dessen Abschluss."
-            echo "expect_sha=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # Weder eindeutig ausgeloest noch eindeutig abgelehnt (z.B. die SSH-Verbindung dieses Schritts
-          # selbst brach ab, moeglicherweise NACHDEM deploy-runner.sh die Sperre bereits erworben und den
-          # Hintergrundlauf gestartet hatte). Genau diese Unsicherheit soll ein kurzer SSH-Abbruch nicht
-          # mehr in einen falschen Fehlschlag verwandeln: Statt hier sofort abzubrechen, prueft der naechste
-          # Schritt den tatsaechlichen Stand auf dem Server. Wurde nichts ausgeloest, laeuft die Abfrage
-          # dort kontrolliert in die Zeitueberschreitung.
-          echo "::warning::Ergebnis des Ausloesens unklar (Exit-Code $RC, Ausgabe: ${OUT:-leer}). Pruefe den"
-          echo "::warning::tatsaechlichen Stand auf dem Server im naechsten Schritt, statt hier vorschnell"
-          echo "::warning::abzubrechen (ein Verbindungsabbruch an dieser Stelle soll kein falscher Fehlschlag sein)."
-          echo "expect_sha=false" >> "$GITHUB_OUTPUT"
-          exit 0
+        run: bash .github/scripts/vps-trigger.sh
 
       # Die Warte-/Polling-Logik liegt in .github/scripts/vps-wait-status.sh (Entscheidungslogik
       # success/failed/Frist/sha unveraendert ausgelagert, ergaenzt um Fortschrittsausgabe und Recovery-Hinweis,
@@ -656,8 +670,13 @@ jobs:
         timeout-minutes: 15
         shell: bash
         env:
-          EXPECT_SHA: ${{ steps.vps_deploy_trigger.outputs.expect_sha }}
-        run: bash .github/scripts/vps-wait-status.sh
+          TRIGGER_STATE: ${{ steps.vps_deploy_trigger.outputs.trigger_state }}
+        run: |
+          set -uo pipefail
+          # Startzeitpunkt mitgeben: Ein Endstatus in der Statusdatei zaehlt nur, wenn er DANACH
+          # geschrieben wurde (sonst koennte der success eines frueheren Laufs diesen Lauf gruen melden).
+          export JOB_STARTED_AT="$(date -u +%s)"
+          bash .github/scripts/vps-wait-status.sh
 
       - name: Health-Check von aussen
         id: health

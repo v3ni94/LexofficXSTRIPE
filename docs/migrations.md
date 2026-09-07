@@ -68,6 +68,40 @@ Manuelle Klärung (nur mit Datenbankzugriff, z. B. phpMyAdmin):
 
 Es gibt keine automatische Rückabwicklung. MariaDB führt DDL nicht transaktional aus; deshalb die Klärung am tatsächlichen Datenbankzustand.
 
+## Freigabekriterium: nur additive, rückwärtsverträgliche Migrationen
+
+Auf dem VPS läuft die Migration isoliert mit dem neuen Code, BEVOR die Container gewechselt werden. Während
+sie läuft, beantwortet das alte Release weiter Anfragen, und `rollback.sh` wechselt bei einem Rollback nur
+den Anwendungscode, nie das Schema. Beides trägt nur, wenn jede Migration additiv und rückwärtsverträglich
+ist. Verbindlich vor jeder Freigabe zu prüfen:
+
+- kein `DROP TABLE`, kein `DROP COLUMN`, kein `RENAME` an bestehenden Objekten;
+- kein verengender Typwechsel, keine neue `NOT NULL`-Spalte ohne Vorgabewert;
+- keine Datenumschreibung, die der alte Code nicht versteht;
+- wiederholbar formuliert (`IF NOT EXISTS`, `INSERT IGNORE`), damit eine Teilausführung unschädlich bleibt.
+
+Entfernen oder Umbauen erfolgt in zwei Releases: erst der Code, der das Alte nicht mehr braucht, im
+Folgerelease die Bereinigung. Es gibt keinen Datenbankauszug unmittelbar vor der Migration; die tägliche
+Sicherung läuft über Coolify. Eine Wiederherstellung über bereits gebuchte Zahlungen hinweg ist ausgeschlossen
+(`docs/betrieb-migration-vps.md`), der wirksame Schutz ist deshalb dieses Kriterium, nicht ein Auszug.
+
+### Klärung von `failed` oder `unknown` auf dem VPS
+
+Auf dem VPS gibt es kein phpMyAdmin und keinen öffentlichen Datenbankport. Die Klärung läuft über die
+Container:
+
+```bash
+cd /opt/smarteinzug/deploy
+export RELEASE_SHA="$(basename "$(readlink -f /opt/smarteinzug/releases/current)")"
+# Stand der Migrationen aus Sicht der Anwendung
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env exec -T php php bin/migrate.php --status
+# Datenbankzugang über den Coolify-MariaDB-Container (Name in .env, DB_CONTAINER)
+docker exec -it "$DB_CONTAINER" mariadb -u"$DB_USER" -p "$DB_NAME"
+```
+
+Danach gelten die oben beschriebenen Freigabewege (`DELETE` für erneutes Ausführen, `UPDATE ... 'success'`
+für nachweislich wirksame Änderungen). Erst dann den GitHub-Lauf erneut starten.
+
 ## Deployment-Ablauf
 
 1. Workflow prüft Secrets (`MIGRATION_TOKEN` ohne Zeilenumbruch, `migrate.php` vorhanden, `sql/.htaccess` vorhanden) sowie, im selben Schritt, mit `tools/check-migrate-url.sh` die Adresse aus `WEBHOSTING_MIGRATE_URL` (https, Pfad endet auf `/migrate.php`, keine Zugangsdaten oder Parameter in der Adresse, kein zum VPS gehörender Name). Fehlt oder eignet sich die Adresse nicht, bricht der Workflow bereits hier ab, es wird nichts hochgeladen.
