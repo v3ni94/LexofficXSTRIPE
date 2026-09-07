@@ -9,6 +9,7 @@ erzeugt in php-ionos/app/docs-build/:
     Diagramme als reportlab-Grafik, Fußzeile mit Seitenzahl)
   - index.html                                (alle Kapitel als HTML, Diagramme als SVG eingebettet)
   - diagramme/*.svg                           (dieselben Diagramme als eigenständige SVG-Dateien)
+  - <Anlagen>                                 unveraenderte Originaldokumente aus docs/anlagen/
   - manifest.json                             ({"version", "generated_at", "commit", "files": [...]})
 
 Die Diagrammdaten (Knoten, Kanten) stehen in einer zentralen Datenstruktur (DIAGRAMS), damit SVG-
@@ -23,6 +24,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -50,6 +52,7 @@ CHAPTERS = [
     ('vps/06-betrieb.md', None),
     ('vps/07-cutover-checkliste.md', None),
     ('vps/08-hostinger-coolify.md', None),
+    ('betrieb-migration-vps.md', None),
     ('migrations.md', None),
     ('monitoring.md', None),
     ('multiaccount.md', None),
@@ -58,6 +61,14 @@ CHAPTERS = [
     ('sync-performance.md', None),
 ]
 
+
+# Unveraenderte Originaldokumente, die zusaetzlich zur erzeugten Dokumentation ausgeliefert werden
+# (Auslieferung ausschliesslich ueber php-ionos/admin-doc.php, das nur Dateien aus dem Manifest
+# freigibt). Titel erscheint im Adminbereich unter System, Dokumentation.
+ATTACHMENTS = [
+    ('anlagen/MHAG-SE-OPS-20260907_Betrieb-und-VPS-Migration_v1.0.pdf',
+     'Betrieb, Architektur und VPS-Migration (Originalfassung, MHAG-SE-OPS-20260907, v1.0)'),
+]
 
 # ===================================================================================================
 # Diagrammdaten (zentrale Quelle fuer SVG und PDF)
@@ -839,6 +850,18 @@ def main():
     build_pdf(pdf_path, version, generated_at, commit, chapter_blocks_list, chapter_titles)
     written_files.append(pdf_path)
 
+    # Anlagen (Originaldokumente) unveraendert daneben legen, damit admin-doc.php sie ausliefern darf
+    attachment_titles = {}
+    for rel, title in ATTACHMENTS:
+        src_path = os.path.join(DOCS_DIR, rel)
+        if not os.path.isfile(src_path):
+            print(f'Hinweis: Anlage fehlt und wurde ausgelassen: docs/{rel}', file=sys.stderr)
+            continue
+        dst_path = os.path.join(OUT_DIR, os.path.basename(rel))
+        shutil.copyfile(src_path, dst_path)
+        written_files.append(dst_path)
+        attachment_titles[os.path.basename(rel)] = title
+
     # Manifest schreiben
     def kind_of(path):
         if path.endswith('.pdf'):
@@ -854,7 +877,8 @@ def main():
         'generated_at': generated_at,
         'commit': commit,
         'files': [
-            {'name': os.path.relpath(p, OUT_DIR), 'bytes': os.path.getsize(p), 'kind': kind_of(p)}
+            {'name': os.path.relpath(p, OUT_DIR), 'bytes': os.path.getsize(p), 'kind': kind_of(p),
+             'title': attachment_titles.get(os.path.basename(p), '')}
             for p in written_files
         ],
     }

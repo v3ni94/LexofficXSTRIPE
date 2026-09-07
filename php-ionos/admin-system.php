@@ -839,18 +839,23 @@ $winFrom = $now - $d * 86400;
             <dt>Commit</dt><dd><?= e((string)($docsManifest['commit'] ?? 'unbekannt')) ?></dd>
         </dl>
         <div class="table-wrap"><table>
-            <thead><tr><th>Datei</th><th>Art</th><th>Größe</th><th>Download</th></tr></thead>
+            <thead><tr><th>Datei</th><th>Dokument</th><th>Art</th><th>Größe</th><th>Download</th></tr></thead>
             <tbody>
-            <?php if (empty($docsManifest['files'])): ?><tr><td colspan="4" class="hint">Keine Dateien im Manifest.</td></tr><?php endif; ?>
+            <?php if (empty($docsManifest['files'])): ?><tr><td colspan="5" class="hint">Keine Dateien im Manifest.</td></tr><?php endif; ?>
             <?php foreach ((array)($docsManifest['files'] ?? []) as $df): ?>
+                <?php $dfTitle = trim((string)($df['title'] ?? '')); ?>
                 <tr>
                     <td><?= e((string)($df['name'] ?? '-')) ?></td>
+                    <td><?= $dfTitle !== '' ? e($dfTitle) : '<span class="hint">erzeugte Dokumentation</span>' ?></td>
                     <td><?= e(strtoupper((string)($df['kind'] ?? '-'))) ?></td>
                     <td><?= isset($df['bytes']) ? monitor_bytes((int)$df['bytes']) : '-' ?></td>
                     <td><a href="admin-doc.php?f=<?= e(rawurlencode((string)($df['name'] ?? ''))) ?>">Öffnen</a></td>
                 </tr>
             <?php endforeach; ?>
             </tbody></table></div>
+        <p class="hint">Zeilen mit Angabe unter „Dokument“ sind unveränderte Originalunterlagen (Anlagen aus
+        <code>docs/anlagen/</code>); die übrigen Dateien erzeugt <code>tools/build-docs.py</code> bei jedem
+        Deployment aus den Markdown-Quellen. Jeder Abruf wird im Audit protokolliert.</p>
     <?php endif; ?>
 </div>
 <div class="card">

@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.12';
+const APP_VERSION = '4.13';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.13', 'date' => '07.09.2026', 'title' => 'Betriebs- und Migrationsdokumentation im Adminbereich',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Die interne Betriebs- und Migrationsdokumentation der Müller Holding AG (Dokument-ID MHAG-SE-OPS-20260907, Version 1.0, 45 Kapitel mit Architektur, Containerinventar, Netzen, Deploymentablauf, Störungsanalysen, Backups, Runbooks und Entscheidungsregister) steht im Adminbereich unter System, Dokumentation zur Verfügung: als Kapitel der technischen Dokumentation (HTML und Sammel-PDF, mit Tabellen, Textdiagrammen und Befehlsblöcken) und zusätzlich als unveränderte Originalfassung im PDF. Auslieferung wie bisher ausschließlich über admin-doc.php an Plattformadministratoren, jeder Abruf im Audit.'],
+            ['type' => 'Geändert', 'text' => 'tools/build-docs.py liefert neben der erzeugten Dokumentation auch unveränderte Originalunterlagen aus docs/anlagen/ aus und nennt sie im Manifest mit Titel; die Übersicht im Adminbereich zeigt eine Spalte Dokument und trennt damit Anlagen von der erzeugten Dokumentation.'],
+            ['type' => 'Neu', 'text' => 'tools/docs-build-check.py prüft ohne Webserver, dass jede deklarierte Kapitelquelle und Anlage vorhanden ist, das Manifest zu den erzeugten Dateien passt (Name, Größe, ausgelieferter Dateityp), jede Anlage byteweise mit dem Original übereinstimmt und einen Titel trägt, jedes Kapitel im erzeugten HTML erscheint und admin-doc.php weiterhin Superadmin, Manifest-Allowlist, realpath-Prüfung und Audit erzwingt.'],
+         ]],
         ['version' => '4.12', 'date' => '07.09.2026', 'title' => 'Plattform-Abrechnung: Inbetriebnahme prüfbar und wiederholbar',
          'entries' => [
             ['type' => 'Neu', 'text' => 'bin/billing-check.php prüft die Plattform-Abrechnung, ohne etwas zu ändern: Art und Betriebsart des Stripe-Schlüssels (live oder test, nur maskiert ausgegeben), Signaturgeheimnis, Basisadresse, Stripe-Konto und Einzugsfähigkeit, je buchbarem Tarif den hinterlegten Preis (Betrag, Währung, 28-Tage-Periode, Nettopreis über tax_behavior exclusive, Produkt nicht archiviert), den Webhook-Endpunkt samt der fünf benötigten Ereignisse, das Kundenportal, Stripe Tax sowie die Zahl der Firmen, die beim Scharfschalten gesperrt würden (mit Namen).'],
