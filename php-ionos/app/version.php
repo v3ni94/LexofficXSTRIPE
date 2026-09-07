@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.26';
+const APP_VERSION = '4.27';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.27', 'date' => '07.09.2026', 'title' => 'Gegenprobe in restart-workers.sh korrigiert',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Gegenprobe am Ende von restart-workers.sh lud config.php direkt und löste deren Schutz gegen Direktaufruf aus (Ausgabe „Forbidden“). Sie nutzt jetzt bin/mail-check.php und zeigt die ersten Zeilen (Versand aktiv, Absender, Antwortadresse).'],
+         ]],
         ['version' => '4.26', 'date' => '07.09.2026', 'title' => 'Konfigurationsänderungen erreichen die Container zuverlässig',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'restart-workers.sh startete die Hintergrunddienste nur neu. Weil shared/config.php als Einzeldatei eingebunden ist und sed oder Editoren die Datei mit neuem Inode schreiben, lasen Container weiter den alten Inhalt (mail.enabled blieb im Container false). Das Skript erzeugt die Dienste jetzt neu, prüft den Inode im php-Container, erzeugt diesen bei Abweichung ebenfalls neu oder lädt sonst php-fpm neu (OPcache), prüft vorab die Syntax und zeigt am Ende, welche Werte der Container tatsächlich liest.'],

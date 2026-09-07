@@ -60,5 +60,5 @@ fi
 
 echo "Zustand:"
 "${COMPOSE[@]}" ps --format '{{.Name}}\t{{.Status}}' 2>/dev/null || "${COMPOSE[@]}" ps
-echo "Gegenprobe im php-Container (muss den neuen Stand der Datei zeigen):"
-"${COMPOSE[@]}" exec -T php php -r '$c = require getenv("SMARTEINZUG_CONFIG"); printf("  mail.enabled=%s  reply_to=%s  status_publish=%s\n", var_export((bool)($c["mail"]["enabled"] ?? false), true), (string)($c["mail"]["reply_to"] ?? "(leer)"), empty($c["status_publish"]) ? "nein" : "ja");' 2>/dev/null || echo "  (Gegenprobe nicht moeglich)"
+echo "Gegenprobe im php-Container (muss den neuen Stand der Datei zeigen; laedt die Konfiguration ueber app/bootstrap.php):"
+"${COMPOSE[@]}" exec -T php php bin/mail-check.php 2>/dev/null | sed -n '1,4p' | sed 's/^/  /' || echo "  (Gegenprobe nicht moeglich)"

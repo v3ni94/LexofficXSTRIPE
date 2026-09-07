@@ -35,6 +35,7 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.27 | Gegenprobe in `restart-workers.sh` über `bin/mail-check.php` statt Direktaufruf von `config.php` (Forbidden) | siehe git log | bash -n |
 | 4.26 | `restart-workers.sh` erzeugt Container neu (Einzeldatei-Bind-Mount, Inode-Prüfung, php-fpm-Reload, Syntaxprüfung, Gegenprobe) | siehe git log | bash -n, interest-check |
 | 4.25 | `mail-check.php`: aktueller Hinweistext, Warnung bei ungültiger Absender-/Antwortadresse; Betriebsdoku (Hostinger-Firewall, fail2ban-Einheit, RELEASE_SHA, Protokollpfad) | siehe git log | ja |
 | 4.24 | Token erst nach erfolgreichem Versand, Bestätigt-Mail wird nachgesendet, ehrliche Bestätigungsseite | siehe git log | ja |
@@ -110,6 +111,9 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
   Ursache: Einzeldatei-Bind-Mount bindet den Inode, `sed -i` schreibt einen neuen; `docker compose restart` erzeugt die
   Container nicht neu. Behoben in 4.26 (Skript erzeugt neu, Inode-Vergleich, php-fpm-Reload). Betreiber muss nach dem
   Deployment von 4.26 das Skript erneut ausführen; bis dahin ist der Mailversand trotz geänderter Datei nicht aktiv.
+- **Mailversand 07.09.2026, 22:57 Uhr:** Konfiguration wird jetzt korrekt gelesen (Inodes gleich, `mail.enabled` true,
+  `reply_to` korrigiert). IONOS lehnt die Anmeldung ab (`535 Authentication credentials invalid`): `smtp.user` lautet
+  `kontakt@smart-einzug` ohne `.de` (Zeile 83 der `shared/config.php`); Korrektur durch den Betreiber offen, danach ggf. Passwort.
 - GitHub-Lauf #58 (4.22) scheiterte wie #51 im ersten SSH-Schritt (vier Versuche, Server nie erreicht); Läufe 4.23 und
   4.24 waren grün, 4.24 (c38f7a2) ist seit 07.09.2026, 16:47 UTC aktiv. Auf dem Server ausgeschlossen: fail2ban (nie eine
   Sperre) und ufw (22/tcp ALLOW). Offen: Hostinger-Firewall im hPanel, zeitweilige Netzstörung. Auffällig: Der
