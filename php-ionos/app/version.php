@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.5';
+const APP_VERSION = '4.6';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.6', 'date' => '07.09.2026', 'title' => 'Verwertbare Fehlerdiagnose der Candidate-Prüfung',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Der erste produktive Einsatz der neuen Candidate-Prüfung (Version 4.5) scheiterte mit der unbrauchbaren Meldung "redis: other": Der Fehlertext eines fehlgeschlagenen Redis-Zugriffs im Alpine/musl-basierten PHP-Image wich von der bisher erkannten glibc-Formulierung ab und wurde nicht erkannt. bin/healthcheck.php --redis erkennt jetzt zusätzliche Fehlerklassen (DNS, Verbindung abgelehnt, Authentifizierung, vom Server beendete Verbindung) und versucht bei einem Fehlschlag bis zu dreimal mit kurzer Pause erneut, um eine rein transiente Störung beim Netzwerkaufbau eines frisch erzeugten Containers abzufedern.'],
+            ['type' => 'Geändert', 'text' => 'deploy.sh meldet bei einem Fehlschlag der Candidate-Prüfung, der Migration, des Warteschritts auf gesunde Container oder des Health-Checks nach der Aktivierung zusätzlich Phase, fehlgeschlagenen Befehl, Exitcode, Release-SHA und den aktuellen Containerzustand in die persistente Logdatei, ohne jemals Zugangsdaten auszugeben. Die Reihenfolge Candidate-Prüfung vor Migration vor Cutover aus Version 4.5 bleibt unverändert bestehen; es wurde nichts an der bereits funktionierenden serverseitigen Entkopplung zurückgebaut.'],
+            ['type' => 'Neu', 'text' => 'Regressionstest tools/healthcheck-redis-check.php: prüft monitor_category() gegen glibc- und musl-typische Fehlertexte, sowie bin/healthcheck.php --redis gegen einen nicht auflösbaren Hostnamen und einen geschlossenen Port; tools/compose-check.py bestätigt zusätzlich statisch, dass deploy.sh die Reihenfolge Candidate-Prüfung, Migration, Cutover einhält und beide isolierten Schritte ausschließlich über "docker compose run --rm --no-deps" laufen, ohne laufende Container anzufassen.'],
+         ]],
         ['version' => '4.5', 'date' => '07.09.2026', 'title' => 'Ausfallsicheres VPS-Deployment, Release-Bindung ohne Symlink',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Ein VPS-Deployment brach ab, wenn die SSH-Verbindung des GitHub-Workflows waehrend des mehrminuetigen Container-Neustarts kurz abriss ("client_loop: send disconnect: Broken pipe"); Container blieben im Zustand "created" haengen. Das Deployment laeuft jetzt serverseitig entkoppelt (deploy/vps/scripts/deploy-runner.sh, setsid) und uebersteht einen SSH-Abbruch; der Workflow fragt den Fortschritt ueber kurze, unabhaengige Verbindungen ab.'],

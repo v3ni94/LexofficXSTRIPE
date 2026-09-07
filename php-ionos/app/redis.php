@@ -6,21 +6,44 @@
  */
 declare(strict_types=1);
 
-function redis_client(): ?Redis
+/**
+ * Letzter Fehlschlaggrund von redis_client() (Kategorie aus monitor_category(), keine Geheimnisse),
+ * fuer Diagnosezwecke (bin/healthcheck.php --redis). null, solange noch kein Fehlschlag auftrat.
+ */
+function redis_last_error(): ?string
+{
+    return $GLOBALS['redis_last_error'] ?? null;
+}
+
+/**
+ * @param bool $forceRetry Umgeht den einmaligen Verbindungsversuch je Prozess (static $tried) und
+ *     versucht erneut zu verbinden. Fuer normale Aufrufer (Sperren, Ratenbegrenzung) bleibt es bei
+ *     genau einem Versuch je Prozess; nur der Healthcheck (kurzlebiger CLI-Aufruf, soll eine
+ *     transiente Stoerung z. B. beim Netzwerkaufbau eines frisch erzeugten Containers durch
+ *     Wiederholung abfedern koennen) setzt bewusst true.
+ */
+function redis_client(bool $forceRetry = false): ?Redis
 {
     static $client = null;
     static $tried = false;
-    if ($tried) {
+    if ($tried && !$forceRetry) {
         return $client;
     }
     $tried = true;
     $cfg = (array)config('redis', []);
-    if (!$cfg || empty($cfg['host']) || !class_exists('Redis')) {
+    if (!$cfg || empty($cfg['host'])) {
+        $GLOBALS['redis_last_error'] = 'nicht konfiguriert';
+        return null;
+    }
+    if (!class_exists('Redis')) {
+        $GLOBALS['redis_last_error'] = 'php-redis-Erweiterung fehlt';
         return null;
     }
     try {
         $r = new Redis();
         if (!$r->connect((string)$cfg['host'], (int)($cfg['port'] ?? 6379), 1.5)) {
+            $GLOBALS['redis_last_error'] = 'connection_refused';
+            $client = null;
             return null;
         }
         if (!empty($cfg['password'])) {
@@ -28,8 +51,10 @@ function redis_client(): ?Redis
         }
         $r->setOption(Redis::OPT_PREFIX, (string)($cfg['prefix'] ?? 'se:'));
         $client = $r;
+        $GLOBALS['redis_last_error'] = null;
     } catch (Throwable $e) {
         $client = null;
+        $GLOBALS['redis_last_error'] = monitor_category($e);
     }
     return $client;
 }

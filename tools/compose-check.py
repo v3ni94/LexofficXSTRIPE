@@ -27,6 +27,9 @@ Geprueft wird:
   9. Kein "docker-compose*.yml" verwendet ausserhalb eines Kommentars noch den Pfad
      "/opt/smarteinzug/releases/current" als working_dir, root oder Bind-Mount-Ziel (Regression zurueck
      auf den mutable Symlink); der Symlink darf weiterhin als Buchfuehrung in Kommentaren erwaehnt werden.
+  10. deploy/vps/scripts/deploy.sh haelt die Reihenfolge Candidate-Pruefung -> Migration -> Cutover
+      ("up -d") ein, und weder die Candidate-Pruefung noch die Migration fassen ueber "docker compose
+      run --rm --no-deps" hinaus die laufenden Container an (kein "up"/"restart" in diesen Bloecken).
 
 Aufruf:  python3 tools/compose-check.py        Exit 0 = in Ordnung, 1 = Fehler
 """
@@ -185,6 +188,56 @@ def check_no_removed_services(path: pathlib.Path) -> None:
                  f"eine doppelte, unkontrolliert parallele Ressource (siehe docker-compose.yml, Kopfkommentar).")
 
 
+def check_deploy_sh_candidate_order() -> None:
+    """
+    deploy.sh muss die Reihenfolge Candidate-Pruefung -> Migration -> Cutover ("up -d") beibehalten, und
+    Candidate-Pruefung sowie Migration duerfen NIE die laufenden Container anfassen (nur "run --rm
+    --no-deps", nie "up"/"restart"). Hintergrund: Genau diese Reihenfolge stellt sicher, dass ein
+    fehlschlagender Candidate (z.B. Redis mit dem neuen Code nicht erreichbar) die laufende Produktion
+    unveraendert laesst; eine kuenftige Aenderung, die diese Reihenfolge umkehrt oder die Isolation
+    aufhebt, waere ein Rueckfall auf genau das Risiko, das mit RELEASE_SHA und der Candidate-Isolation
+    behoben wurde (siehe deploy.sh, Kopfkommentar).
+    """
+    text = (ROOT / "deploy" / "vps" / "scripts" / "deploy.sh").read_text(encoding="utf-8")
+
+    def first_index(needle: str) -> int:
+        idx = text.find(needle)
+        if idx == -1:
+            fail(f"deploy.sh: erwarteter Textbaustein nicht gefunden: {needle!r}")
+        return idx
+
+    candidate_idx = first_index("run --rm --no-deps -T php php bin/healthcheck.php --db --redis")
+    migrate_idx = first_index("run --rm --no-deps -T php php bin/migrate.php")
+    cutover_idx = first_index("up -d --remove-orphans")
+    if -1 in (candidate_idx, migrate_idx, cutover_idx):
+        return
+    if not (candidate_idx < migrate_idx < cutover_idx):
+        fail("deploy.sh: Reihenfolge Candidate-Pruefung -> Migration -> Cutover ist nicht mehr eingehalten "
+             "(candidate=%d migrate=%d cutover=%d). Ohne diese Reihenfolge koennte neuer Code live "
+             "Anfragen beantworten, bevor er isoliert geprueft und migriert wurde." % (candidate_idx, migrate_idx, cutover_idx))
+
+    # Zwischen "Pruefe den Candidaten isoliert" und "Spiele Datenbankmigrationen" (also im Codeblock der
+    # Candidate-Pruefung) darf kein "up -d" oder "restart" auftauchen: Der Candidate darf die laufenden
+    # Container nicht anfassen.
+    candidate_block_start = first_index("Pruefe den Candidaten isoliert")
+    migrate_block_start = first_index("Spiele Datenbankmigrationen isoliert")
+    cutover_block_start = first_index("Cutover: laufende Container")
+    if -1 in (candidate_block_start, migrate_block_start, cutover_block_start):
+        return
+    candidate_block = text[candidate_block_start:migrate_block_start]
+    migrate_block = text[migrate_block_start:cutover_block_start]
+    for name, block in (("Candidate-Pruefung", candidate_block), ("Migration", migrate_block)):
+        for forbidden in ("up -d", "restart ", "compose up", "compose restart"):
+            if forbidden in block:
+                fail(f"deploy.sh: Block '{name}' enthaelt '{forbidden}'. Candidate-Pruefung und Migration "
+                     f"duerfen ausschliesslich ueber 'docker compose run --rm --no-deps' laufen und niemals "
+                     f"die laufenden Container anfassen.")
+        if "--no-deps" not in block:
+            fail(f"deploy.sh: Block '{name}' verwendet nicht '--no-deps'. Ohne '--no-deps' wuerde 'docker "
+                 f"compose run' abhaengige Dienste ggf. mitstarten/neu erzeugen statt nur einen isolierten "
+                 f"Einwegcontainer zu verwenden.")
+
+
 def check_no_mutable_current_path(path: pathlib.Path) -> None:
     """working_dir/root/Bind-Mount-Ziele duerfen nicht mehr auf den mutable Symlink "current" zeigen."""
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -215,6 +268,8 @@ def main() -> int:
         check_release_sha_required(path)
         check_no_removed_services(path)
         check_no_mutable_current_path(path)
+
+    check_deploy_sh_candidate_order()
 
     healthcheck_php = (ROOT / "php-ionos" / "bin" / "healthcheck.php").read_text(encoding="utf-8")
     for _, flag in COMMAND_TO_FLAG + [("", DEFAULT_FLAG)]:

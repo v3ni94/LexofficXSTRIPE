@@ -163,6 +163,16 @@ if [[ "$DEPLOY_ENV" == "staging" ]]; then
 fi
 echo "Umgebung: $DEPLOY_ENV"
 
+# Strukturierte Fehlermeldung fuer die persistente Logdatei (siehe "exec > >(tee -a "$LOG_FILE")" oben,
+# das Protokoll enthaelt diese Zeilen also zuverlaessig): Phase, fehlgeschlagener Befehl, Exitcode,
+# Release-SHA und der aktuelle Containerzustand, ohne jemals .env/Secrets auszugeben.
+deploy_fail_report() {
+    local phase="$1" cmd="${2:-}" rc="${3:-}"
+    echo "::error:: Phase=$phase Release-SHA=$SHA Umgebung=$DEPLOY_ENV${cmd:+ Befehl=\"$cmd\"}${rc:+ Exitcode=$rc}"
+    echo "Containerzustand (Projekt smarteinzug):"
+    "${COMPOSE[@]}" ps -a --format '{{.Name}}\t{{.State}}\t{{.Health}}' 2>/dev/null || echo "  (Zustand nicht abrufbar)"
+}
+
 # RELEASE_SHA bindet jeden Container-Start an dieses konkrete Release (working_dir in docker-compose.yml
 # lautet /opt/smarteinzug/releases/${RELEASE_SHA}, nicht an den mutable Symlink "current"): Damit
 # gehoeren Compose-Konfiguration, Healthchecks und Anwendungscode bei jedem "docker compose"-Aufruf
@@ -204,14 +214,26 @@ fi
 # Schlaegt einer der beiden Schritte fehl, wurde an den laufenden Containern noch NICHTS veraendert, ein
 # Rollback ist dann nicht noetig (die alte Version laeuft unveraendert weiter).
 echo "Pruefe den Candidaten isoliert (eigener Container, ohne die laufende Anwendung zu beruehren) ..."
-if ! "${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --db --redis; then
-    echo "::error:: Candidate-Pruefung fehlgeschlagen (Datenbank oder Redis mit dem neuen Code nicht erreichbar)."
+CANDIDATE_CMD='docker compose run --rm --no-deps -T php php bin/healthcheck.php --db --redis'
+set +e
+"${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --db --redis
+CANDIDATE_RC=$?
+set -e
+if [[ "$CANDIDATE_RC" -ne 0 ]]; then
+    deploy_fail_report "candidate-pruefung" "$CANDIDATE_CMD" "$CANDIDATE_RC"
+    echo "::error:: Candidate-Pruefung fehlgeschlagen (Datenbank oder Redis mit dem neuen Code nicht erreichbar; genaue Ursache siehe UNGESUND-Zeile oben, z.B. dns/connection_refused/connection/timeout/auth)."
     echo "Die laufenden Container wurden NICHT veraendert, kein Rollback noetig."
     exit 1
 fi
 
 echo "Spiele Datenbankmigrationen isoliert mit dem neuen Code ein (noch VOR dem Cutover) ..."
-if ! "${COMPOSE[@]}" run --rm --no-deps -T php php bin/migrate.php; then
+MIGRATE_CMD='docker compose run --rm --no-deps -T php php bin/migrate.php'
+set +e
+"${COMPOSE[@]}" run --rm --no-deps -T php php bin/migrate.php
+MIGRATE_RC=$?
+set -e
+if [[ "$MIGRATE_RC" -ne 0 ]]; then
+    deploy_fail_report "migration" "$MIGRATE_CMD" "$MIGRATE_RC"
     echo "::error:: Migration fehlgeschlagen. Die laufenden Container wurden NICHT veraendert (kein Rollback noetig);"
     echo "die alte Version laeuft mit dem alten Datenbankstand unveraendert weiter. Serverprotokoll pruefen,"
     echo "siehe docs/migrations.md. Keine automatische Wiederholung."
@@ -234,6 +256,7 @@ while true; do
         break
     fi
     if (( SECONDS > DEADLINE )); then
+        deploy_fail_report "warte-auf-healthy" "" ""
         echo "::error:: Zeitueberschreitung beim Warten auf gesunde Container: $UNHEALTHY"
         "${COMPOSE[@]}" logs --tail=100
         run_rollback || true
@@ -266,7 +289,12 @@ fi
 
 echo "Health-Check nach der Aktivierung ..."
 sleep 5
-if ! "${COMPOSE[@]}" exec -T php php bin/healthcheck.php --all; then
+set +e
+"${COMPOSE[@]}" exec -T php php bin/healthcheck.php --all
+POST_HEALTH_RC=$?
+set -e
+if [[ "$POST_HEALTH_RC" -ne 0 ]]; then
+    deploy_fail_report "health-check-nach-aktivierung" "docker compose exec -T php php bin/healthcheck.php --all" "$POST_HEALTH_RC"
     echo "::error:: Health-Check nach der Aktivierung fehlgeschlagen. Automatisches Rollback."
     run_rollback || true
     exit 1
@@ -280,9 +308,14 @@ HEALTH_DOMAIN="$(envval DOMAIN_APP app.smart-einzug.de)"
 if [[ "$DEPLOY_ENV" == "staging" ]]; then
     HEALTH_DOMAIN="$(envval DOMAIN_STAGING "$HEALTH_DOMAIN")"
 fi
-if curl -fsS --max-time 10 --resolve "${HEALTH_DOMAIN}:443:127.0.0.1" "https://${HEALTH_DOMAIN}/health.php" >/dev/null; then
+set +e
+curl -fsS --max-time 10 --resolve "${HEALTH_DOMAIN}:443:127.0.0.1" "https://${HEALTH_DOMAIN}/health.php" >/dev/null
+HTTPS_CHECK_RC=$?
+set -e
+if [[ "$HTTPS_CHECK_RC" -eq 0 ]]; then
     echo "HTTPS-Health-Check ueber Caddy (https://${HEALTH_DOMAIN}/health.php, lokal) erfolgreich."
 elif [[ "$HEALTH_STRICT" == "true" ]]; then
+    deploy_fail_report "https-health-check" "curl https://${HEALTH_DOMAIN}/health.php" "$HTTPS_CHECK_RC"
     echo "::error:: HTTPS-Health-Check ueber Caddy fehlgeschlagen (HEALTH_STRICT=true). Automatisches Rollback."
     run_rollback || true
     exit 1

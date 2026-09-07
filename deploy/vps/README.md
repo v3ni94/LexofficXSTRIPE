@@ -288,6 +288,7 @@ bash -n deploy/vps/scripts/*.sh deploy/vps/backup/*.sh
 php -l deploy/vps/scripts/db-verify.php
 python3 tools/compose-check.py
 bash tools/deploy-runner-check.sh
+php tools/healthcheck-redis-check.php
 ```
 
 `tools/deploy-runner-check.sh` prueft `deploy-runner.sh` gegen ein simuliertes `/opt/smarteinzug` in
@@ -296,3 +297,14 @@ zweiten Versuch abgelehnt (kein Doppel-Deploy), ein simulierter SSH-Abbruch (SIG
 ausloesenden Vordergrundprozesses) stoppt den bereits per `setsid` entkoppelten Hintergrundlauf NICHT,
 Erfolg und Fehlschlag landen korrekt in der Statusdatei, und ein erneuter Lauf nach Abschluss ist
 wieder moeglich (idempotent).
+
+`python3 tools/compose-check.py` prueft zusaetzlich statisch (per Textsuche in `deploy.sh`, kein
+Docker noetig), dass die Reihenfolge Candidate-Pruefung vor Migration vor Cutover eingehalten wird
+und beide isolierten Schritte ausschliesslich ueber `docker compose run --rm --no-deps` laufen (nie
+`up`/`restart`, ruehren also nie die laufenden Container an). `tools/healthcheck-redis-check.php`
+prueft `monitor_category()` gegen glibc- und musl-typische Fehlertexte (Hintergrund: das PHP-Image
+ist Alpine/musl-basiert, siehe `docs/vps/06-betrieb.md`, Abschnitt "Candidate-Pruefung meldet
+`redis: other`") sowie `bin/healthcheck.php --redis` gegen einen tatsaechlich nicht aufloesbaren
+Hostnamen und einen tatsaechlich geschlossenen Port (echte Netzwerkebene, kein Mock): Beide Faelle
+muessen eine eindeutige Kategorie liefern (z. B. `dns`, `connection_refused`), nie mehr `other` oder
+`nicht erreichbar`.

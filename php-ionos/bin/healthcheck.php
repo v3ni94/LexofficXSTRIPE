@@ -2,7 +2,10 @@
 /**
  * Gesundheitsprüfung für Container und Deployment.
  *   php bin/healthcheck.php --db            Datenbank SELECT 1
- *   php bin/healthcheck.php --redis         Redis PING (nur wenn konfiguriert)
+ *   php bin/healthcheck.php --redis         Redis PING (nur wenn konfiguriert), bis zu 3 Versuche mit
+ *                                           kurzer Pause; Fehlschlag meldet eine Kategorie (dns,
+ *                                           connection_refused, connection, timeout, auth, ...) statt
+ *                                           eines unbrauchbaren "other"
  *   php bin/healthcheck.php --heartbeat     Heartbeat-Datei dieses Containers jünger als 90 s (Worker/Scheduler)
  *   php bin/healthcheck.php --metrics       Metrik-Sammler: bin/host-metrics.php läuft als PID 1 und hat zuletzt
  *                                           innerhalb von METRICS_MAX_AGE_SECONDS (Standard 300 s) einen Durchlauf beendet
@@ -35,8 +38,30 @@ if ($all || isset($opts['db'])) {
 if ($all || isset($opts['redis'])) {
     $check('redis', function () {
         if (!config('redis')) { return true; }
-        $r = redis_client();
-        return $r && $r->ping() ? true : 'nicht erreichbar';
+        // Bis zu drei Versuche mit kurzer Pause: faengt eine rein transiente Stoerung beim Aufbau der
+        // Docker-Netzwerke eines frisch erzeugten Containers ab (siehe docs/vps/06-betrieb.md,
+        // Abschnitt Fehlerdiagnose Redis), ohne die eigentliche Pruefung zu verwaschen. redis_client(true)
+        // erzwingt bei jedem Versuch eine neue Verbindung statt der sonst prozessweit gecachten.
+        $lastReason = 'nicht erreichbar';
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $r = redis_client(true);
+            if ($r) {
+                try {
+                    if ($r->ping()) {
+                        return true;
+                    }
+                    $lastReason = 'nicht erreichbar';
+                } catch (Throwable $e) {
+                    $lastReason = monitor_category($e);
+                }
+            } else {
+                $lastReason = redis_last_error() ?? 'nicht erreichbar';
+            }
+            if ($attempt < 3) {
+                usleep(700_000);
+            }
+        }
+        return $lastReason;
     });
 }
 if (isset($opts['heartbeat'])) {

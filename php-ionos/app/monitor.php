@@ -242,12 +242,19 @@ function monitor_category($e): string
 {
     $msg = mb_strtolower($e instanceof Throwable ? $e->getMessage() : (string)$e);
     if (preg_match('/timeout|timed out|zeitüberschreitung/', $msg)) return 'timeout';
-    if (preg_match('/could not resolve|dns|name or service/', $msg)) return 'dns';
+    // DNS: neben der glibc-Formulierung ("could not resolve", "name or service", "temporary failure in
+    // name resolution") auch die abweichenden musl/Alpine-Meldungen ("name does not resolve", "try
+    // again", roher "getaddrinfo failed"-Text), sonst faellt eine DNS-Stoerung auf dem Alpine-basierten
+    // PHP-Image unerkannt auf "other" zurueck.
+    if (preg_match('/could not resolve|does not resolve|getaddrinfo|try again|temporary failure in name resolution|dns|name or service/', $msg)) return 'dns';
     if (preg_match('/ssl|tls|certificate|zertifikat/', $msg)) return 'tls';
-    if (preg_match('/401|403|unauthori|forbidden|api key|api-schl|ungültiger schl/', $msg)) return 'auth';
+    if (preg_match('/noauth|wrongpass|invalid password|401|403|unauthori|forbidden|api key|api-schl|ungültiger schl/', $msg)) return 'auth';
     if (preg_match('/429|rate limit|too many|drossel/', $msg)) return 'throttled';
     if (preg_match('/50\d|gateway|unavailable/', $msg)) return 'http_5xx';
-    if (preg_match('/connect|connection|verbindung/', $msg)) return 'connection';
+    if (preg_match('/refused|no route to host|network is unreachable/', $msg)) return 'connection_refused';
+    // Vom Server geschlossene/zurueckgesetzte Verbindungen (u. a. typische phpredis-Meldungen wie "went
+    // away", die weder "connect" noch "connection" als Teilwort enthalten).
+    if (preg_match('/went away|reset by peer|broken pipe|read error|socket error|not connected|end of file|connect|connection|verbindung/', $msg)) return 'connection';
     if (preg_match('/sqlstate|database|datenbank|deadlock/', $msg)) return 'database';
     return 'other';
 }

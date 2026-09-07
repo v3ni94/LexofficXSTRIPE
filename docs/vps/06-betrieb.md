@@ -197,6 +197,46 @@ einem Verbindungsabbruch ein neues Deployment auf Verdacht auslösen und dabei r
 laufendes doppelt zu starten. Ein zweiter Auslöseversuch, während ein Deployment noch läuft, wird
 jetzt von `deploy-runner.sh` selbst abgelehnt („REJECTED“, siehe oben).
 
+### Störung: Candidate-Prüfung meldet „redis: other“
+
+**Symptom:** Der erste produktive Lauf der neuen Candidate-Prüfung (siehe oben) scheiterte mit
+„UNGESUND: redis: other“ in der Phase „Pruefe den Candidaten isoliert“. Der Image-Build war
+vollständig erfolgreich, die Datenbankprüfung des Candidaten war unauffällig; es scheiterte
+ausschließlich die Redis-Teilprüfung. Die laufenden Container wurden dabei nicht verändert, ein
+Rollback war nicht nötig.
+
+**Ursache:** `monitor_category()` erkannte die tatsächliche Fehlermeldung nicht und fiel auf den
+unbrauchbaren Sammelbegriff „other“ zurück. Das PHP-Image ist Alpine-/musl-basiert; musl formuliert
+DNS-Fehler anders als die bisher erkannte glibc-Formulierung (z. B. „Try again“ oder „Name does not
+resolve“ statt „Temporary failure in name resolution“ bzw. „Name or service not known“). Zusätzlich
+konnte eine rein transiente Verzögerung beim Anheften des zweiten Docker-Netzes (`smarteinzug_internal`,
+in dem Redis liegt) an einen frisch per `docker compose run` erzeugten Einwegcontainer nicht durch
+einen zweiten Versuch abgefangen werden, da `bin/healthcheck.php --redis` bislang nur einen einzigen
+Verbindungsversuch unternahm.
+
+**Behoben (Version 4.6):**
+
+- `monitor_category()` (`app/monitor.php`) erkennt zusätzlich musl-typische DNS-Fehlertexte, „Connection
+  refused“/„No route to host“ als eigene Kategorie `connection_refused`, sowie vom Server beendete
+  Verbindungen („went away“, „reset by peer“) und Redis-Authentifizierungsfehler („NOAUTH“, „WRONGPASS“).
+- `redis_client()` (`app/redis.php`) merkt sich den letzten Fehlschlaggrund (`redis_last_error()`, keine
+  Geheimnisse) und erhält einen Parameter `forceRetry`, der den sonst einmaligen Verbindungsversuch je
+  Prozess für einen erneuten Versuch umgeht.
+- `bin/healthcheck.php --redis` unternimmt jetzt bis zu drei Versuche mit kurzer Pause (0,7 s) und meldet
+  bei einem endgültigen Fehlschlag die konkrete Kategorie (z. B. `redis: dns`, `redis: connection_refused`)
+  statt `redis: other`/`redis: nicht erreichbar`. Die Candidate-Isolation selbst (eigener, wegwerfbarer
+  Container über `docker compose run --rm --no-deps`, laufende Anwendung unberührt) bleibt unverändert
+  bestehen; Redis bleibt Teil der Prüfung.
+- `deploy.sh` protokolliert bei einem Fehlschlag der Candidate-Prüfung, der Migration, des
+  Warteschritts auf gesunde Container oder des Health-Checks nach der Aktivierung zusätzlich Phase,
+  fehlgeschlagenen Befehl, Exitcode, Release-SHA und den aktuellen Containerzustand, ohne jemals
+  Zugangsdaten auszugeben.
+- Regressionstests: `php tools/healthcheck-redis-check.php` (Fehlerklassen, Diagnose gegen einen nicht
+  auflösbaren Hostnamen und einen geschlossenen Port, sofortiger Erfolg ohne Redis) und
+  `python3 tools/compose-check.py` (bestätigt statisch, dass `deploy.sh` die Reihenfolge
+  Candidate-Prüfung, Migration, Cutover einhält und beide isolierten Schritte ausschließlich über
+  `docker compose run --rm --no-deps` laufen).
+
 ## Worker skalieren und neu starten
 
 ```bash
