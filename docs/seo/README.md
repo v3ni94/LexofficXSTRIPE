@@ -22,7 +22,7 @@ Stand: 07.09.2026. Dieser Ordner bündelt die Arbeitsergebnisse zum Masterprompt
 ## Verbindliche Vorgaben des Betreibers (07.09.2026)
 
 - Öffentliche Preisbeträge werden vorerst nicht ausgespielt, auch nicht in Metadaten, strukturierten Daten oder Textbausteinen. Konditionen zeigt der Buchungsprozess der Anwendung. Bestehende Verträge und die tatsächliche Abrechnung ändern sich dadurch nicht.
-- Alle drei Marketingdomains gehören erkennbar zum Angebot SmartEinzug; keine Darstellung als drei Anbieter, keine neue Marke.
+- Entscheidung vom 07.09.2026: lexoffice-einzug.de und lexware-einzug.de sind Leadseiten der DETM Management Consulting FZCO (Domaininhaber, Anbieter der Leadseiten, Abrechnung mit der Müller Holding AG). Kein SmartEinzug-Logo auf diesen Domains, Farben und Gestaltung bleiben; Impressum und Datenschutz nennen DETM, offene Pflichtangaben bleiben leer bis zur Lieferung. Die Seiten bewerben weiterhin das Produkt SmartEinzug der Müller Holding AG und dürfen nicht als eigener Softwareanbieter erscheinen.
 - sevdesk bleibt bis zur nachgewiesenen Freigabe „geplant“, angestrebter Start Ende September 2026, Vorregistrierung ist keine nutzbare Integration.
 - Keine Partnerschafts- oder Zertifizierungsbehauptung zu Lexware, sevdesk oder Stripe.
 - PDF-Dokumente im CI der Müller Holding AG tragen das Logo mindestens klein auf jeder Seite, auf dem Deckblatt mittelgroß bis groß (gerne mittig) und schließen immer mit einem Abschlussblatt. Derzeit gibt es keine PDFs im Frontend.
