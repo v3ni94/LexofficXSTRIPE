@@ -547,6 +547,12 @@ behandelt SIGTERM; ein danach noch laufender Job wird über `heartbeat_ttl` regu
 Schritt ist idempotent und danach wirkungslos; er greift erneut nach einem Rollback auf ein älteres
 Release. php-fpm, Caddy und Redis sind nicht betroffen.
 
+`docker stop --signal` gibt es erst ab Docker CLI 23. Statt eine Mindestversion vorauszusetzen, fragt
+`deploy.sh` die Fähigkeit selbst ab (`docker stop --help`) und weicht sonst auf den lange verfügbaren Weg
+aus: `docker kill --signal SIGTERM`, danach warten, bis die Prozesse selbst enden (höchstens dieselben
+90 s), zuletzt ein regulärer Stopp mit kurzer Frist. Eine Prüfung der Docker-Version von Hand ist damit
+nicht nötig; welcher Weg gewählt wurde, steht im Deploy-Protokoll.
+
 **Kein zweiter Worker-Neustart mehr (Beweis):** `working_dir` jedes PHP-Containers ist
 `/opt/smarteinzug/releases/${RELEASE_SHA}` und damit Teil der Compose-Dienstdefinition und ihres
 Konfigurations-Hash (Label `com.docker.compose.config-hash`). Ändert sich `RELEASE_SHA`, erzeugt

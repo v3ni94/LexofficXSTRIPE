@@ -509,6 +509,13 @@ deploy_step "cutover"
 # freigegeben. "docker stop" verhindert zugleich den sofortigen Neustart durch "restart: unless-stopped";
 # "up -d" erzeugt die Dienste anschliessend mit der neuen Stop-Konfiguration (SIGTERM, 75 s bzw. 20 s).
 # php-fpm, Caddy und Redis sind bewusst nicht betroffen (ihre Stop-Signale sind korrekt).
+#
+# "docker stop --signal" gibt es erst ab Docker CLI 23. Statt eine Mindestversion vorauszusetzen (die auf
+# dem Coolify-Host niemand von Hand pruefen soll), fragt dieses Skript die Faehigkeit selbst ab und weicht
+# sonst auf den seit Langem verfuegbaren Weg aus: "docker kill --signal SIGTERM" (sendet nur das Signal,
+# beendet den Container nicht sofort), danach warten, bis die Prozesse selbst enden, hoechstens dieselben
+# 90 s. Ein danach noch laufender Container wird mit kurzer Frist regulaer gestoppt, damit "up -d" nicht
+# erneut auf die alte Frist von 660 s wartet.
 LEGACY_STOP_IDS=()
 for svc in scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail worker-maintenance metrics; do
     cid="$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null | head -n1 || true)"
@@ -522,10 +529,43 @@ for svc in scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail
         LEGACY_STOP_IDS+=("$cid")
     fi
 done
+# Warten, bis keiner der uebergebenen Container mehr laeuft; Rueckgabe 1 bei Zeitueberschreitung.
+legacy_wait_stopped() { # $1 = Sekunden, danach die Container-IDs
+    local limit="$1" deadline running cid
+    shift
+    deadline=$((SECONDS + limit))
+    while (( SECONDS <= deadline )); do
+        running=0
+        for cid in "$@"; do
+            [[ "$(docker inspect --format '{{.State.Running}}' "$cid" 2>/dev/null || echo false)" == "true" ]] && running=$((running + 1))
+        done
+        (( running == 0 )) && return 0
+        sleep 2
+    done
+    return 1
+}
+
 if (( ${#LEGACY_STOP_IDS[@]} > 0 )); then
     echo "Beende ${#LEGACY_STOP_IDS[@]} Hintergrund-Container mit veralteter Stop-Konfiguration vorab (SIGTERM, Frist 90 s) ..."
-    docker stop --signal SIGTERM --timeout 90 "${LEGACY_STOP_IDS[@]}" >/dev/null \
-        || echo "::warning:: Vorab-Stopp der Container mit veralteter Stop-Konfiguration schlug fehl; 'up -d' beendet sie mit ihrer alten Konfiguration (der Cutover kann entsprechend laenger dauern)."
+    LEGACY_STOP_WARN="::warning:: Vorab-Stopp der Container mit veralteter Stop-Konfiguration schlug fehl; 'up -d' beendet sie mit ihrer alten Konfiguration (der Cutover kann entsprechend laenger dauern)."
+    if docker stop --help 2>/dev/null | grep -q -- '--signal'; then
+        docker stop --signal SIGTERM --timeout 90 "${LEGACY_STOP_IDS[@]}" >/dev/null \
+            || echo "$LEGACY_STOP_WARN"
+    else
+        echo "Diese Docker-CLI kennt 'stop --signal' nicht (aelter als Version 23); Ausweichweg: 'kill --signal SIGTERM' und warten."
+        if docker kill --signal SIGTERM "${LEGACY_STOP_IDS[@]}" >/dev/null 2>&1; then
+            # LEGACY_STOP_WAIT_SECONDS: nur fuer Regressionstests ohne echten Docker-Daemon
+            # (tools/redis-deploy-check.sh), im Betrieb bleibt es bei 90 s.
+            if legacy_wait_stopped "${LEGACY_STOP_WAIT_SECONDS:-90}" "${LEGACY_STOP_IDS[@]}"; then
+                echo "Alle vorab beendeten Container haben sich selbst beendet."
+            else
+                echo "::warning:: Nicht alle Container endeten innerhalb von ${LEGACY_STOP_WAIT_SECONDS:-90} s nach SIGTERM; sie werden jetzt mit kurzer Frist gestoppt (ein laufender Job wird nach heartbeat_ttl regulaer freigegeben)."
+                docker stop --time 5 "${LEGACY_STOP_IDS[@]}" >/dev/null 2>&1 || echo "$LEGACY_STOP_WARN"
+            fi
+        else
+            echo "$LEGACY_STOP_WARN"
+        fi
+    fi
 fi
 echo "Migrationen abgeschlossen. Aktiviere Release $SHA (Cutover: Container werden neu erzeugt) ..."
 "${COMPOSE[@]}" up -d --remove-orphans

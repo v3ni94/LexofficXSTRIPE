@@ -243,6 +243,8 @@ wertet X-Forwarded-Proto und X-Forwarded-For dann von rechts aus.
   Release-Bindung per `docker inspect`. Container, die noch mit der alten Stop-Konfiguration laufen
   (SIGQUIT, 660 s; erstes Deployment ab 4.11 oder nach einem Rollback), beendet `deploy.sh` vor dem
   Cutover gezielt mit SIGTERM (Frist 90 s), weil Docker beim Neuerzeugen sonst die alten Werte anwendet.
+  Kennt die Docker-CLI `stop --signal` nicht (aelter als Version 23), erkennt `deploy.sh` das selbst und
+  weicht auf `kill --signal SIGTERM` plus Warten aus; eine Versionspruefung von Hand ist nicht noetig.
   Details: `docs/vps/06-betrieb.md`, "Signalmodell der Worker".
 - Die statische Statusseite (`websites/status.smart-einzug.de`) wird vom GitHub-Workflow je Release
   unter `releases/<git-sha>/status/` abgelegt; Caddy liefert `releases/${RELEASE_SHA}/status` aus (siehe

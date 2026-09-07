@@ -17,6 +17,9 @@
 #   FAKE_RECREATE_FAIL_ON=N       nur das N-te "force-recreate redis" dieses Sandbox schlaegt fehl (z.B. 2 = Rollback)
 #   FAKE_REDIS_HEALTHY=0          "ps -a redis" meldet "starting" statt "healthy"
 #   FAKE_REDIS_PS_EMPTY=1         "ps -a redis" liefert KEINE Zeile (kein Container vorhanden)
+#   FAKE_STOP_SIGNAL_UNSUPPORTED=1  "docker stop --help" kennt kein --signal (Docker-CLI aelter als 23)
+#   FAKE_LEGACY_HANGS=1           die vorab mit "kill --signal" beendeten Container laufen weiter
+#   FAKE_STOP_MODE=fail           "docker stop" schlaegt fehl
 #   FAKE_ALIAS_MISSING=1          Netzwerktest/Candidate melden alias_missing (Alias nicht im Netz)
 #   set_legacy_stop_config <sb>   laufende Hintergrund-Container tragen die ALTE Stop-Konfiguration
 #                                 (SIGQUIT, 660 s) wie beim ersten Deployment ab Version 4.11; der Fake
@@ -186,6 +189,27 @@ case "$ARGS" in
         echo "${FAKE_REDIS_HASH:-h-default}" > "$STATE/redis.hash"
         exit 0
         ;;
+    "stop --help"*)
+        printf 'Usage:  docker stop [OPTIONS] CONTAINER [CONTAINER...]\n\nOptions:\n'
+        [[ "${FAKE_STOP_SIGNAL_UNSUPPORTED:-0}" == "1" ]] || printf '  -s, --signal string   Signal to send to the container\n'
+        printf '  -t, --timeout int     Seconds to wait before killing the container\n'
+        exit 0
+        ;;
+    "kill --signal "*)
+        # docker kill --signal SIGTERM <cid> ...: Ausweichweg fuer Docker-CLI ohne "stop --signal"
+        for tok in $ARGS; do
+            [[ "$tok" == cid-* && "${FAKE_LEGACY_HANGS:-0}" != "1" ]] && : > "$STATE/${tok#cid-}.stopped"
+        done
+        [[ "${FAKE_KILL_MODE:-ok}" == "fail" ]] && exit 1
+        exit 0
+        ;;
+    "stop --time "*)
+        for tok in $ARGS; do
+            [[ "$tok" == cid-* ]] && : > "$STATE/${tok#cid-}.stopped"
+        done
+        [[ "${FAKE_STOP_MODE:-ok}" == "fail" ]] && exit 1
+        exit 0
+        ;;
     "stop --signal "*)
         # docker stop --signal SIGTERM --timeout 90 <cid> ...: Vorab-Stopp veralteter Container (deploy.sh)
         for tok in $ARGS; do
@@ -214,6 +238,7 @@ case "$ARGS" in
             *config-hash*) cat "$STATE/redis.hash" 2>/dev/null ;;
             *WorkingDir*)  cat "$STATE/$svc.workdir" 2>/dev/null ;;
             *StopSignal*)  cat "$STATE/$svc.stopcfg" 2>/dev/null || echo "SIGTERM 75" ;;
+            *State.Running*) [[ -f "$STATE/$svc.stopped" ]] && echo false || echo true ;;
             *State.Status*) echo running ;;
             *) echo "" ;;
         esac

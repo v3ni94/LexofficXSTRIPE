@@ -61,6 +61,10 @@
 #  14. Nur die Compose-Definition geaendert (redis.conf unveraendert) und der Netzwerktest scheitert: Die
 #      Meldung des Rueckbaus ist ehrlich (redis.conf war unveraendert, Definition nicht zurueckgebaut,
 #      Hinweis auf rollback.sh), kein falsches "TECHNISCH erfolgreich ... zurueckgesetzt".
+#  15. Docker-CLI ohne "stop --signal" (aelter als Version 23): deploy.sh erkennt das selbst und weicht auf
+#      "kill --signal SIGTERM" plus Warten aus; kein Aufruf von "stop --signal", Deployment laeuft durch.
+#  16. Ausweichweg, aber die Container enden nicht innerhalb der Frist: Warnung, danach regulaerer Stopp mit
+#      kurzer Frist, Deployment laeuft trotzdem durch (kein Warten auf die alten 660 s).
 #
 # Aufruf: bash tools/redis-deploy-check.sh        Exit 0 = alle Faelle bestanden
 set -uo pipefail
@@ -357,6 +361,50 @@ output "$S14" | grep -q "rollback.sh prevsha" && ok "Hinweis auf rollback.sh mit
 output "$S14" | grep -q "TECHNISCH erfolgreich auf die vorherige Konfiguration zurueckgesetzt" && bad "Falsches 'auf die vorherige Konfiguration zurueckgesetzt' trotz unveraenderter redis.conf" || ok "Kein falsches 'auf die vorherige Konfiguration zurueckgesetzt'"
 [[ "$(call_count "$S14" 'bin/migrate.php')" -eq 0 && "$(call_count "$S14" 'up -d --remove-orphans')" -eq 0 ]] && ok "Keine Migration, kein Cutover" || bad "Migration/Cutover trotz Fehlschlag"
 rm -rf "$S14"
+
+echo "15) Docker-CLI ohne 'stop --signal': Ausweichweg ueber 'kill --signal SIGTERM' plus Warten"
+S15="$(new_sandbox)"
+make_release "$S15" prevsha "protected-mode no"
+make_release "$S15" newsha "protected-mode no"
+set_current "$S15" prevsha
+set_legacy_stop_config "$S15"
+make_fake_docker "$S15"
+export FAKE_STOP_SIGNAL_UNSUPPORTED=1
+run_deploy "$S15" newsha; RC15=$?
+unset FAKE_STOP_SIGNAL_UNSUPPORTED
+[[ "$RC15" -eq 0 ]] && ok "Deployment erfolgreich (Exitcode 0)" || bad "Deployment schlug fehl (Exitcode $RC15): $(output "$S15")"
+output "$S15" | grep -q "kennt 'stop --signal' nicht" && ok "Fehlende Faehigkeit erkannt und im Protokoll benannt" || bad "Keine Meldung zur fehlenden Faehigkeit: $(output "$S15" | grep -i signal)"
+[[ "$(call_count "$S15" 'stop --signal')" -eq 0 ]] && ok "Kein Aufruf von 'stop --signal' (waere mit dieser CLI ein Fehler)" || bad "'stop --signal' trotzdem aufgerufen"
+KILLLINE="$(calls "$S15" | grep 'kill --signal SIGTERM' | head -n1)"
+[[ -n "$KILLLINE" ]] && ok "Ausweichweg 'kill --signal SIGTERM' aufgerufen" || bad "Kein kill --signal: $(calls "$S15" | grep -i kill)"
+MISSING15=""
+for svc in scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail worker-maintenance metrics; do
+    [[ "$KILLLINE" == *"cid-$svc"* ]] || MISSING15="$MISSING15 $svc"
+done
+[[ -z "$MISSING15" ]] && ok "Alle 7 Hintergrund-Container im Ausweichweg enthalten" || bad "Im Ausweichweg fehlen:$MISSING15"
+[[ "$KILLLINE" != *"cid-php"* && "$KILLLINE" != *"cid-redis"* ]] && ok "php-fpm und redis nicht betroffen" || bad "php/redis faelschlich beendet: $KILLLINE"
+output "$S15" | grep -q "haben sich selbst beendet" && ok "Warten bestaetigt das Ende der Container" || bad "Kein Nachweis des Endes: $(output "$S15" | grep -i beendet | tail -3)"
+# Nur Warnungen ZUM VORAB-STOPP sind hier ein Fehler; die HTTPS-Warnung ist in der Sandbox ohne Zertifikat
+# erwartbar (HEALTH_STRICT=false).
+output "$S15" | grep '::warning::' | grep -qiE 'Vorab-Stopp|endeten innerhalb' && bad "Unerwartete Warnung zum Vorab-Stopp: $(output "$S15" | grep '::warning::' | grep -iE 'Vorab-Stopp|endeten innerhalb')" || ok "Keine Warnung zum Vorab-Stopp (Ausweichweg funktionierte sauber)"
+[[ "$(call_count "$S15" 'up -d --remove-orphans')" -ge 1 ]] && ok "Cutover wurde ausgefuehrt" || bad "Cutover fehlt"
+rm -rf "$S15"
+
+echo "16) Ausweichweg, Container enden nicht in der Frist: Warnung, dann regulaerer Stopp mit kurzer Frist"
+S16="$(new_sandbox)"
+make_release "$S16" prevsha "protected-mode no"
+make_release "$S16" newsha "protected-mode no"
+set_current "$S16" prevsha
+set_legacy_stop_config "$S16"
+make_fake_docker "$S16"
+export FAKE_STOP_SIGNAL_UNSUPPORTED=1 FAKE_LEGACY_HANGS=1 LEGACY_STOP_WAIT_SECONDS=2
+run_deploy "$S16" newsha; RC16=$?
+unset FAKE_STOP_SIGNAL_UNSUPPORTED FAKE_LEGACY_HANGS LEGACY_STOP_WAIT_SECONDS
+[[ "$RC16" -eq 0 ]] && ok "Deployment erfolgreich (Exitcode 0), kein Warten auf die alten 660 s" || bad "Deployment schlug fehl (Exitcode $RC16): $(output "$S16")"
+output "$S16" | grep -q "::warning:: Nicht alle Container endeten innerhalb von 2 s nach SIGTERM" && ok "Warnung mit der tatsaechlichen Frist gemeldet" || bad "Keine Warnung zur Zeitueberschreitung: $(output "$S16" | grep '::warning::')"
+[[ "$(call_count "$S16" 'stop --time 5')" -ge 1 ]] && ok "Regulaerer Stopp mit kurzer Frist (stop --time 5) als letzte Stufe" || bad "Kein 'stop --time 5': $(calls "$S16" | grep -i stop)"
+[[ "$(call_count "$S16" 'up -d --remove-orphans')" -ge 1 ]] && ok "Cutover wurde ausgefuehrt" || bad "Cutover fehlt"
+rm -rf "$S16"
 
 echo
 echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"
