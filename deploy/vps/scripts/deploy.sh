@@ -730,7 +730,15 @@ while IFS= read -r rest; do
         echo "  $rest_sha: ohne Nachweis, aber juenger als eine Stunde (moeglicher paralleler Lauf), bleibt erhalten."
         continue
     fi
-    echo "  Entferne unvollstaendiges Release $rest_sha (kein .release-complete)"
+    # Altreleases aus der Zeit VOR dem Nachweis (bis 4.16) tragen keine Markerdatei, sind aber vollstaendig und
+    # waren produktiv aktiv. Sie sind Rollback-Ziele und werden nachtraeglich gekennzeichnet statt geloescht.
+    # Geloescht wird nur, was erkennbar unvollstaendig ist (App, Deploy-Skripte oder Statusseite fehlen).
+    if [[ -f "$rest/app/bootstrap.php" && -f "$rest/deploy/vps/scripts/deploy.sh" && -d "$rest/status" ]]; then
+        printf '%s\n%s\n%s\n' "$rest_sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "legacy" > "$rest/.release-complete"
+        echo "  $rest_sha: vollstaendiges Altrelease ohne Nachweis, nachtraeglich gekennzeichnet (bleibt Rollback-Ziel)."
+        continue
+    fi
+    echo "  Entferne unvollstaendiges Release $rest_sha (kein .release-complete, Bestand unvollstaendig)"
     rm -rf "${rest:?}"
 done < <(find "$RELEASES_DIR" -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
 

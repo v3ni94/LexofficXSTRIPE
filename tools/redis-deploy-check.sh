@@ -69,8 +69,9 @@
 #      Release einmalig hinein; bereits veroeffentlichte Statusdaten ueberleben jedes Folgedeployment.
 #  18. Unvollstaendiges Release (Markerdatei .release-complete fehlt, z.B. abgebrochener rsync): Abbruch
 #      VOR Candidate, Migration und Cutover; mit SMARTEINZUG_SKIP_RELEASE_CHECK=1 bleibt Handbetrieb moeglich.
-#  19. Bereinigung: Reste abgebrochener Laeufe (Verzeichnisse ohne Nachweis, aelter als eine Stunde) werden
-#      entfernt; frische Reste, das aktuelle und das vorherige Release bleiben unberuehrt.
+#  19. Bereinigung: Reste abgebrochener Laeufe (unvollstaendige Verzeichnisse ohne Nachweis, aelter als eine Stunde)
+#      werden entfernt; frische Reste, das aktuelle, das vorherige Release und vollstaendige Altreleases ohne Nachweis
+#      (Zeit vor 4.17, werden nachtraeglich gekennzeichnet) bleiben erhalten.
 #
 # Aufruf: bash tools/redis-deploy-check.sh        Exit 0 = alle Faelle bestanden
 set -uo pipefail
@@ -460,11 +461,17 @@ install -d "$S19/releases/abgebrochen"
 touch -d "3 hours ago" "$S19/releases/abgebrochen"
 # Zweiter Rest, aber frisch: koennte ein paralleler Lauf sein und muss bleiben.
 install -d "$S19/releases/frischerlauf"
+# Vollstaendiges Altrelease aus der Zeit vor dem Nachweis (war produktiv aktiv): darf NICHT geloescht werden.
+make_release "$S19" altrelease "protected-mode no"
+rm -f "$S19/releases/altrelease/.release-complete"
+touch -d "3 days ago" "$S19/releases/altrelease"
 run_deploy "$S19" newsha; RC19=$?
 [[ "$RC19" -eq 0 ]] && ok "Deployment erfolgreich" || bad "Deployment schlug fehl: $(output "$S19" | tail -3)"
 [[ ! -d "$S19/releases/abgebrochen" ]] && ok "alter Rest ohne Nachweis entfernt (Rollbacktiefe bleibt erhalten)" || bad "Rest blieb liegen"
 [[ -d "$S19/releases/frischerlauf" ]] && ok "frischer Rest bleibt erhalten (moeglicher paralleler Lauf)" || bad "frischer Rest wurde entfernt"
 [[ -d "$S19/releases/newsha" && -d "$S19/releases/prevsha" ]] && ok "aktuelles und vorheriges Release unberuehrt" || bad "aktuelles oder vorheriges Release entfernt"
+[[ -d "$S19/releases/altrelease" ]] && ok "vollstaendiges Altrelease ohne Nachweis bleibt erhalten (Rollback-Ziel)" || bad "Altrelease geloescht (Vorfall b5fcd8d: bdd42e0 verloren)"
+grep -q "legacy" "$S19/releases/altrelease/.release-complete" 2>/dev/null && ok "Altrelease nachtraeglich als legacy gekennzeichnet" || bad "Kennzeichnung fehlt"
 output "$S19" | grep -q "Entferne unvollstaendiges Release abgebrochen" && ok "Entfernung protokolliert" || bad "keine Protokollzeile"
 rm -rf "$S19"
 

@@ -33,7 +33,8 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.11 bis 4.16 | Statusdatei, Worker-Signalmodell, Docker-CLI-Probe, Billing-Werkzeuge, Betriebsdoku im Admin, Scheduler-Waisen, verlinkte Kennzahlen, Statusseite | bis bdd42e0 | ja, produktiv aktiv (Deploy 22 s, alle Container healthy laut Serverausgabe) |
 | 4.17 | Deployjob robust gegen SSH-Netzaussetzer: `vps-ssh-retry.sh`, `vps-trigger.sh` (triggered/rejected/unclear/unreachable), Frischeprüfung des Endstatus (`JOB_STARTED_AT`), `.release-complete`-Nachweis in `deploy.sh`, Bereinigung unvollständiger Releases, Fristen je Schritt, Doku | 54caa37 | ja (Workflow-Lauf dadurch ausgelöst, Ergebnis nicht einsehbar: GitHub-API in der Session gesperrt) |
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
-| 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026 (Produktionsdeployment mit Migration 020 ausgelöst; Ergebnis des Workflow-Laufs aus der Session nicht einsehbar) |
+| 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
+| 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | siehe git log | ja (Push nach Freigabe des Ablaufs durch den Betreiber) |
 
 Betroffene Dateien 4.17: `.github/workflows/deploy.yml`, `.github/scripts/vps-ssh-retry.sh`, `.github/scripts/vps-trigger.sh`,
 `.github/scripts/vps-wait-status.sh`, `deploy/vps/scripts/deploy.sh`, `deploy/vps/scripts/rollback.sh`, `tools/github-ssh-retry-check.sh`,
@@ -91,11 +92,18 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 - Widerspruch: Der Masterplan verlangt eine Tarifaussage zu sevdesk (Buchhaltung Pro nach offizieller Hilfe); die
   frühere Regel „keine Aussagen zu sevdesk-Tarifen“ wurde deshalb auf genau diese belegte Formulierung geändert (CLAUDE.md).
 
+- **Produktion: `mail.enabled` steht auf `false`** (`shared/config.php` Zeile 73). Damit versendet die Anwendung keine E-Mails
+  (Bestätigungen, Einladungen, Vorabankündigungen per Mail) und `vormerken.php` nimmt keine Vormerkung an (Antwort 503),
+  weil ohne Bestätigungsmail kein Double-Opt-in möglich ist. Vor jeder Bewerbung der sevdesk-Seite muss ein Postfach
+  angelegt und `mail` konfiguriert werden; Zugangsdaten gehören nur in `shared/config.php`.
+- **Vorfall 07.09.2026:** Die Bereinigung von 4.17 löschte beim Deployment b5fcd8d das Altrelease bdd42e0 (4.16), weil es
+  keine Markerdatei trug. Behoben in 4.20 (vollständige Altreleases werden nachträglich gekennzeichnet). bdd42e0 ist
+  verloren; Rollback-Ziele sind 54caa37 (4.17) und die folgenden Releases.
+
 ## 6. Nächste offene Schritte (Reihenfolge)
 
-1. Erledigt: 4.18 und 4.19 gepusht. Zu prüfen: Workflow-Lauf grün, Migration 020 eingespielt (`php bin/migrate.php --status`),
-   `mail.enabled` in `shared/config.php` gesetzt (sonst nimmt `vormerken.php` keine Vormerkung an und antwortet 503),
-   Formular auf smart-einzug.de/integrationen/sevdesk/ einmal mit eigener Adresse durchspielen.
+1. Mailversand in Produktion einrichten (`mail.enabled`, SMTP-Postfach), danach das Formular auf
+   smart-einzug.de/integrationen/sevdesk/ mit eigener Adresse durchspielen (Mail, Bestätigung per Button, Adminbereich).
 3. Statusseite prüfen: `curl -sS https://status.smart-einzug.de/status.json | head -c 200` nach etwa vier Minuten
    (Monitoring alle 240 s), Restdateien entfernen, `config.php` im php-Container mit `php -l` prüfen.
 4. DETM-Leadseiten: blockiert bis Impressumsdaten und Entscheidung zum Provisionsnachweis vorliegen.

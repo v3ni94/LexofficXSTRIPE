@@ -83,6 +83,9 @@ make_release() {
     : > "$rel/docker-compose.staging.yml"
     # Statusseite des Release (Platzhalter), wie sie der GitHub-Workflow ablegt: deploy.sh kopiert sie
     # einmalig nach shared/status, damit Caddy /status.json ausliefern kann.
+    # Anwendungskern wie im echten Release (deploy.sh erkennt daran vollstaendige Altreleases ohne Nachweis).
+    install -d -m 750 "$sandbox/releases/$sha/app"
+    printf '<?php\n' > "$sandbox/releases/$sha/app/bootstrap.php"
     install -d -m 750 "$sandbox/releases/$sha/status"
     printf '{"schema":1,"overall":{"state":"unknown"}}\n' > "$sandbox/releases/$sha/status/status.json"
     # Vollstaendigkeitsnachweis, wie ihn der GitHub-Workflow nach dem letzten rsync schreibt; ohne ihn

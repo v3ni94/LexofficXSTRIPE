@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.19';
+const APP_VERSION = '4.20';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.20', 'date' => '07.09.2026', 'title' => 'sevdesk-Seite als Inhaltsseite, Altreleases bleiben Rollback-Ziel',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'smart-einzug.de/integrationen/sevdesk/ zur vollständigen Inhaltsseite ausgebaut (rund 1.900 Wörter): Ausgangslage, geplanter Ablauf, Nutzen, Zielgruppen, Grundlagen der SEPA-Lastschrift (Mandat, Vorabankündigung, Rücklastschrift, Gläubiger-ID), Voraussetzungen, Vergleich manueller Einzug gegen geplanten Ablauf, Abgrenzung zu Lexware Office, elf Fragen mit FAQ-Markup (schema.org FAQPage), Zeitplan, zwei Formulare. Title und Description auf die Suchbegriffe sevdesk, SEPA-Lastschrift, Stripe ausgerichtet; alle Aussagen zur Anbindung als geplant gekennzeichnet.'],
+            ['type' => 'Behoben', 'text' => 'Die Bereinigung in deploy.sh (4.17) löschte beim Deployment b5fcd8d das vollständige Altrelease bdd42e0 (4.16), weil es aus der Zeit vor dem Vollständigkeitsnachweis stammte und keine Markerdatei trug. Vollständige Altreleases (Anwendung, Deploy-Skripte und Statusseite vorhanden) werden jetzt nachträglich als „legacy“ gekennzeichnet und bleiben Rollback-Ziel; gelöscht wird nur erkennbar Unvollständiges. bdd42e0 ist auf dem Server nicht mehr vorhanden; Rollback-Ziel bleibt 54caa37 (4.17).'],
+         ]],
         ['version' => '4.19', 'date' => '07.09.2026', 'title' => 'sevdesk-Masterplan Phase 1: Landingpage, Vorregistrierung, Adminverwaltung, Freigabeschalter',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Landingpage smart-einzug.de/integrationen/sevdesk/ nach Masterplan: Status „In Vorbereitung, Start für Ende September 2026 geplant“, geplanter Ablauf in drei Schritten (als Ziel gekennzeichnet), Nutzen, sichtbare Voraussetzungen (sevdesk-API nach offizieller Hilfe im Tarif Buchhaltung Pro, Systemversion 2.0, Prüfung beim Verbindungstest; Stripe SEPA-Basislastschrift, kein B2B), Abgrenzung zu Lexware Office, Fragen, zwei Formulare, Unabhängigkeitshinweis. Startseiten-Teaser „Demnächst: SEPA-Lastschriften für sevdesk“, Übersicht angeglichen.'],
