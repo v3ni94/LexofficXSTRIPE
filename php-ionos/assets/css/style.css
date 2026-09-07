@@ -690,3 +690,14 @@ a.stat-card.stat-link:focus-visible { outline: 2px solid #E3AC48; outline-offset
 .legal-data dt { color: var(--color-muted, #666); }
 .legal-data dd { margin: 0; }
 @media print { .site-header, .site-footer, .flash, .page-sub a { display: none !important; } .legal-text { box-shadow: none; border: 0; } }
+
+/* Plattform-Benutzer und Rechte (4.37): Formularraster und Berechtigungsmatrix */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; align-items: end; }
+.form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; margin: 0; }
+.form-grid .form-actions { grid-column: 1 / -1; margin: 0; }
+.perm-matrix { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 14px 0; }
+.perm-group { border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 12px 8px; margin: 0; background: #fff; }
+.perm-group legend { font-weight: 600; font-size: 13px; padding: 0 4px; color: var(--color-text-muted, #666); }
+.perm-group .inline-check { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; font-size: 13px; }
+.perm-group .inline-check strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; font-size: 12px; }
+.perm-group .inline-check .hint { display: block; }

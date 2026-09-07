@@ -22,7 +22,7 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     }
 }
 
-$ctx = require_superadmin();
+$ctx = require_platform('admin.view'); // Zugriffsstufe je Datei entscheidet docs_can_access() (app/docs.php)
 
 // Dateiname aus ?f= oder aus PATH_INFO (fuer relative Verweise der HTML-Ansicht)
 $requested = (string)($_GET['f'] ?? '');

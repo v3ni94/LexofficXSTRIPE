@@ -14,8 +14,9 @@ $ctx = require_login();
 $user = user_load($ctx['user_id']);
 
 // Bereits eingerichtet und keine Codes mehr anzuzeigen: zurück
+$afterSetup = !empty($ctx['platform_only']) ? platform_home_url() : ((int)$ctx['onboarding_completed'] ? 'dashboard.php' : 'onboarding.php');
 if ((int)$user['totp_enabled'] === 1 && empty($_SESSION['recovery_codes_show'])) {
-    redirect((int)$ctx['onboarding_completed'] ? 'dashboard.php' : 'onboarding.php');
+    redirect($afterSetup);
 }
 
 $error = null;
@@ -31,7 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Der Code ist ungültig. Bitte prüfen Sie die Uhrzeit Ihres Geräts und versuchen Sie es erneut.';
         } else {
             $_SESSION['recovery_codes_show'] = $codes;
-            funnel_event_for_org($ctx['org_id'], '2fa_enabled', $ctx['user_id']);
+            if (!empty($ctx['org_id'])) {
+                funnel_event_for_org($ctx['org_id'], '2fa_enabled', $ctx['user_id']);
+            }
             security_notify_user($user, 'Zwei-Faktor-Authentifizierung eingerichtet', [
                 'Für Ihr Konto wurde soeben die Zwei-Faktor-Authentifizierung mit einer Authenticator-App eingerichtet.',
             ]);
@@ -43,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             unset($_SESSION['recovery_codes_show']);
             flash_set('success', 'Zwei-Faktor-Authentifizierung ist aktiv. Recovery-Codes wurden als gespeichert bestätigt.');
-            redirect((int)$ctx['onboarding_completed'] ? 'dashboard.php' : 'onboarding.php');
+            redirect($afterSetup);
         }
     }
 }

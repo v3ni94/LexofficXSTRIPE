@@ -884,7 +884,7 @@ nicht nur die eigene Konfiguration.
 
 ## Wartungsmodus je Firma
 
-Adminbereich System (Superadmin) oder direkt in der Firmenverwaltung:
+Adminbereich System (Plattformrolle mit `monitoring.edit`) oder direkt in der Firmenverwaltung:
 `organizations.sync_paused` pausiert ausschließlich die Synchronisation einer einzelnen Firma
 (`sync_paused_reason` als Freitext für den Grund); die Anwendung selbst bleibt für diese Firma
 uneingeschränkt nutzbar, nur der Scheduler reiht keine neuen Synchronisationsjobs für sie ein.

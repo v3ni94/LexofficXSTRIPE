@@ -1,7 +1,7 @@
 <?php
 /**
  * Adminbereich "System": technische Betriebsübersicht (Auftrag II, Abschnitt 7).
- * Zugriff nur für Plattformadministratoren (require_superadmin). Ändern von Überwachungseinstellungen,
+ * Zugriff mit Berechtigung monitoring.view (require_platform, app/platform.php). Ändern von Überwachungseinstellungen,
  * Veröffentlichen von Störungsmeldungen und Testversand zusätzlich nur für konfigurierte Bearbeiter
  * (monitoring.editors) mit frischer 2FA-Bestätigung. Seitenaufrufe lösen keine neuen Prüfungen aus;
  * "Jetzt prüfen" führt ausschließlich die freigegebenen, begrenzten Diagnosen aus.
@@ -29,7 +29,7 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     }
 }
 
-$ctx = require_superadmin();
+$ctx = require_platform('monitoring.view');
 $cfg = monitor_config();
 $canEdit = monitor_can_edit($ctx);
 $available = monitor_available();

@@ -84,8 +84,15 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
         <?php if ($ctx && on_admin_host()): ?>
         <nav class="main-nav" aria-label="Hauptnavigation">
             <a href="admin.php" class="nav-admin">Plattform-Administration</a>
-            <a href="admin-support.php" class="nav-admin">Support</a>
-            <a href="<?= e(app_base_url()) ?>/dashboard.php" title="Zur Kundenanwendung">Kundenanwendung</a>
+            <?php if (platform_can($ctx, 'support.view')): ?><a href="admin-support.php" class="nav-admin">Support</a><?php endif; ?>
+            <?php if (platform_can($ctx, 'monitoring.view')): ?><a href="admin-system.php" class="nav-admin">System</a><?php endif; ?>
+            <?php if (platform_can($ctx, 'users.manage')): ?><a href="admin-users.php" class="nav-admin">Benutzer</a><?php endif; ?>
+            <?php if (empty($ctx['platform_only'])): ?><a href="<?= e(app_base_url()) ?>/dashboard.php" title="Zur Kundenanwendung">Kundenanwendung</a><?php endif; ?>
+        </nav>
+        <?php elseif ($ctx && !empty($ctx['platform_only'])): ?>
+        <nav class="main-nav" aria-label="Hauptnavigation">
+            <a href="<?= e(platform_home_url()) ?>" class="nav-admin">Adminbereich</a>
+            <a href="security.php">Sicherheit</a>
         </nav>
         <?php elseif ($ctx): ?>
         <nav class="main-nav" aria-label="Hauptnavigation">
@@ -96,8 +103,8 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <a href="sepa-pflegen.php">SEPA Pflegen</a>
             <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php" title="Einzüge dieser Firma sofort anhalten">Not-Stopp</a><?php endif; ?>
             <a href="hilfe.php?von=<?= e(current_script()) ?>" title="Anleitungen, häufige Fragen, Support-Anfrage">Hilfe</a>
-            <?php if (!empty($ctx['is_superadmin'])): ?>
-                <a href="<?= e(admin_base_url() !== '' ? admin_base_url() . '/admin.php' : 'admin.php') ?>" class="nav-admin">Admin</a>
+            <?php if (platform_access($ctx)): ?>
+                <a href="<?= e(platform_home_url()) ?>" class="nav-admin">Admin</a>
             <?php endif; ?>
         </nav>
         <div class="user-menu">
@@ -203,7 +210,7 @@ function layout_footer(?array $ctx = null): void
         </span>
         <span class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</span>
         <span class="footer-version">
-            <?php if ($ctx && !empty($ctx['is_superadmin']) && on_admin_host() && defined('APP_VERSION')): ?>
+            <?php if ($ctx && platform_access($ctx) && on_admin_host() && defined('APP_VERSION')): ?>
                 <a href="admin-system.php?tab=versionen">Version <?= e(APP_VERSION) ?></a>
             <?php elseif (defined('APP_VERSION')): ?>
                 Version <?= e(APP_VERSION) ?>
@@ -238,10 +245,34 @@ function layout_subnav(array $items, ?string $active = null, string $aria = 'Unt
 function role_label(string $role): string
 {
     return match ($role) {
-        'owner'  => 'Inhaber',
-        'admin'  => 'Administrator',
-        default  => 'Mitarbeiter',
+        'owner'    => 'Inhaber',
+        'admin'    => 'Administrator',
+        'platform' => 'Plattform-Benutzer',
+        default    => 'Mitarbeiter',
     };
+}
+
+/**
+ * Reiterleiste der Adminbereiche, gefiltert nach den Berechtigungen des Kontexts (app/platform.php).
+ * Schluessel: admin, support, system, legal, users.
+ */
+function admin_subnav_items(array $ctx): array
+{
+    $items = [
+        'admin'   => ['label' => 'Plattform-Administration', 'href' => 'admin.php', 'perm' => 'admin.view'],
+        'support' => ['label' => 'Support', 'href' => 'admin-support.php', 'perm' => 'support.view'],
+        'system'  => ['label' => 'System', 'href' => 'admin-system.php', 'perm' => 'monitoring.view'],
+        'legal'   => ['label' => 'Rechtsdokumente', 'href' => 'admin-legal.php', 'perm' => 'legal.view'],
+        'users'   => ['label' => 'Benutzer und Rechte', 'href' => 'admin-users.php', 'perm' => 'users.manage'],
+    ];
+    $out = [];
+    foreach ($items as $k => $it) {
+        if (platform_can($ctx, $it['perm'])) {
+            unset($it['perm']);
+            $out[$k] = $it;
+        }
+    }
+    return $out;
 }
 
 /** Status eines Einzugs / einer Rechnung als Badge rendern. */

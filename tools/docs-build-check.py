@@ -148,7 +148,7 @@ def main() -> int:
     for needle in ('admin-doc.php/', 'docs_can_access', 'docs_archive_list', 'revision'):
         if needle not in admin:
             fail(f'admin-system.php: Baustein fehlt: {needle}')
-    for f, needles in (('admin-doc.php', ('require_superadmin', 'docs_serve')), ('handbuch.php', ('require_login', "'customer'")),
+    for f, needles in (('admin-doc.php', ('require_platform', 'docs_serve')), ('handbuch.php', ('require_login', "'customer'")),
                        ('app/docs.php', ('technical_readers', 'realpath'))):
         text = open(os.path.join(ROOT, 'php-ionos', f), encoding='utf-8').read()
         for n in needles:

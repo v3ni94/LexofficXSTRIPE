@@ -38,6 +38,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.37 | Plattform-Benutzer und Rechte: `app/platform.php` (PLATFORM_PERMISSIONS, Systemrollen, platform_can/require_platform, Einladung, Schutzregeln), Migration 027 (`platform_roles`, `users.platform_role`), `admin-users.php`, Plattformkontext ohne Firma (`_current_user_platform`, `platform_only`, `platform_home_url`), Rechteprüfung in allen Adminseiten und im Support-Modus, Navigation nach Rechten, Dokumentationsrechte über docs.admin/docs.technical; Doku sicherheit.md (neuer Abschnitt), schnittstellen, unternehmensdoku, monitoring, Datenwörterbuch, CLAUDE.md; neues `tools/platform-roles-check.sh` | siehe git log | platform-roles-check 83/0, totp-policy-check 73/0, docs-access-check 23/0, legal-check 66/0, scheduler-sync-check 35/0, interest-check 133/0, invoice-source-check 42/0, php -l |
 | 4.36 | Zweitbestätigung (2FA) nur für Wichtiges nach Vorstandsbeschluss: `QUEUE_MONEY_TYPES`/`queue_type_is_money()`, geteilte Zweige (incident_publish, org_sync_pause, platform_pause nur Aufheben, admin-legal nur publish/retire), zehn Aktionen ohne Code, Formularfelder angepasst; Mobilbefund admin-legal (table-wrap); Doku sicherheit.md (Tabelle), payment-safety 5c, monitoring, unternehmensdoku, schnittstellen, 06-betrieb, integrations, qa, CLAUDE.md; neues `tools/totp-policy-check.php` | siehe git log | totp-policy-check 73/0, legal-check, scheduler-sync-check, php -l |
 | 4.35 | Workflow-Datei repariert: `VPS_RETRY_STATE_FILE` mit festem Pfad statt `runner.temp` in der Job-Umgebung (Lauf #69 „Invalid workflow file“, 4.34 startete gar nicht); Dokumentationsauswirkung: `docs/vps/06-betrieb.md` (Regel zu Kontexten auf Job-Ebene), Revision entwickler r4 | siehe git log | YAML-Parse, github-ssh-retry-check 43/0, github-poll-check 25/0, compose-check 0 Fehler |
 | 4.34 | Zustimmungsnachweis AGB/Datenschutz (Migration 025, `app/consent.php`), Reiterleiste `layout_subnav()`, Dokumentationskarten, Dokumentationsrechte für Plattformadministratoren, Indizes (Migration 026), automatischer zweiter Anlauf `deploy-vps` bei Verbindungsfehler | siehe git log | legal-check 64/0, docs-access-check 23/0, github-ssh-retry-check, github-poll-check |
@@ -80,6 +81,7 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 | `bash tools/interest-check.sh` | 133 / 0 (statische Prüfung „keine stille Bestätigung“ seit 4.24 fälschlich rot, weil sie den lesenden Vergleich `=== 'confirmed'` traf; Muster auf schreibende Zuweisung eingegrenzt) (temporäre MariaDB, Fassung 4.24) |
 | `php tools/mail-ci-check.php` | 32 / 0 |
 | `php tools/totp-policy-check.php` | 73 / 0 (neu in 4.36) |
+| `bash tools/platform-roles-check.sh` | 83 / 0 (neu in 4.37, temporäre MariaDB) |
 | `php tools/pricing-check.php`, `php tools/billing-setup-check.php` | 13 / 0, 55 / 0 |
 | `python3 tools/site-qa.py` | 0 Fehler, 4 Warnungen (bekannte Überschriftendoppelungen zwischen Domains) |
 | `python3 tools/compose-check.py`, `docs-build-check.py`, `staging-isolation-check.py` | 0 Fehler |
@@ -146,6 +148,10 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 
+0. **Betreiber (nach Deployment 4.37):** Migration 027 setzt bestehenden Superadmin-Konten die Rolle Administrator. Unter Adminbereich,
+   „Benutzer und Rechte“ Mitarbeiter einladen (Mailversand muss aktiv sein); für den Fall, dass ein Mitarbeiter ohne Firma sich anmeldet,
+   landet er direkt im Adminbereich (Adminhost). Erster Test: Einladung an eine eigene Zweitadresse mit Rolle Mitarbeiter, Passwort setzen,
+   2FA einrichten, prüfen, dass Not-Stopp, Tarife und Benutzerverwaltung ausgeblendet und per Direktaufruf verweigert werden.
 1. **Betreiber:** Ankunft der Testmail prüfen, nach etwa einer Stunde die nachgesendete Bestätigungsmail der eigenen Vormerkung
    (Button „Vormerkung bestätigen“, danach Bestätigt-Mail mit Abmeldelink) und die Statusseite (Komponente E-Mail) kontrollieren.
 1c. **Betreiber/Rechtsanwalt:** Entwurfstexte AVV und Verschwiegenheitsvereinbarung prüfen (`app/legal_drafts.php`, Adminbereich

@@ -57,12 +57,15 @@ function docs_technical_readers(): array
 /** Darf dieser Kontext Dateien der Zugriffsstufe lesen? */
 function docs_can_access(array $ctx, string $access): bool
 {
+    require_once __DIR__ . '/platform.php';
     $isSuper = (int)($ctx['is_superadmin'] ?? 0) === 1 && (int)($ctx['totp_enabled'] ?? 0) === 1;
     switch ($access) {
         case 'technical':
-            return $isSuper || (!empty($ctx['platform_admin']) && in_array(mb_strtolower((string)($ctx['email'] ?? '')), docs_technical_readers(), true));
+            // Superadmin, Berechtigung docs.technical einer Plattformrolle oder (Altregel) eingetragene Adresse mit Plattformadminrolle.
+            return $isSuper || platform_can($ctx, 'docs.technical')
+                || (!empty($ctx['platform_admin']) && in_array(mb_strtolower((string)($ctx['email'] ?? '')), docs_technical_readers(), true));
         case 'admin':
-            return $isSuper;
+            return $isSuper || platform_can($ctx, 'docs.admin');
         case 'customer':
             return !empty($ctx['user_id']);
         default:

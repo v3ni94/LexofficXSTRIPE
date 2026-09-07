@@ -62,9 +62,10 @@ nur Bezeichner und Ablageorte.
   `totp_is_fresh()`, Zeilen 336-339). Recovery-Codes werden hier bewusst **nicht** akzeptiert
   (Kommentar `app/auth.php:687`). Ein Fehlschlag protokolliert `twofa_reauth_failed` im Audit
   (Zeile 705-707).
-- **`require_superadmin()`** verlangt zusätzlich zu `is_superadmin = 1` eine aktive 2FA
-  (`(int)$ctx['totp_enabled']`, `app/auth.php:280`), ein Superadmin-Konto ohne eingerichtete 2FA hat
-  keinen Zugriff auf den Adminbereich.
+- **`require_platform($recht)`** (`app/auth.php`, seit 4.37) verlangt Plattformzugang (`platform_access()`: Superadmin-Kennzeichen
+  oder Plattformrolle, jeweils nur mit aktiver 2FA) und die genannte Berechtigung (`platform_can()`, `app/platform.php`).
+  `require_superadmin()` ist nur noch der Altname für `require_platform('admin.view')`. Ein Konto ohne eingerichtete 2FA hat
+  keinen Zugriff auf den Adminbereich, unabhängig von seiner Rolle.
 
 ### Geltungsbereich der Zweitbestätigung (Beschluss des Vorstands vom 07.09.2026, umgesetzt in 4.36)
 
@@ -127,14 +128,56 @@ Definiert im Kommentarkopf `app/auth.php:6-12` und in den Prüffunktionen:
 | `owner` (Inhaber) | Alles inkl. Mitgliederverwaltung, Rollen, Inhaberschaft, Abonnement, Löschung der Firma (`can_manage_members()`, `app/auth.php:303-306`: `$ctx['role'] === 'owner'`; `require_owner()`, Zeilen 267-274; `require_owner_action()`, `team.php:23`) |
 | `admin` (Administrator) | Wie `member`, zusätzlich API-Verbindungen (Lexware Office, Stripe) und Firmendaten ändern (`can_manage_settings()`, `app/auth.php:309-312`: `in_array($ctx['role'], ['owner', 'admin'], true)`, genutzt u. a. in `settings.php:18`, `notstopp.php:15`, `stripe-import.php:13`) |
 | `member` (Mitarbeiter) | Voller operativer Zugriff (Synchronisation, Rechnungen, Einzüge, Kunden, SEPA pflegen), keine Mitglieder-/Abo-Verwaltung, keine API-Verbindungen (Kommentar `app/auth.php:11-12`) |
-| `superadmin` (`users.is_superadmin = 1`) | Plattformweiter Zugriff auf den Adminbereich, unabhängig von einer Firmenmitgliedschaft; verlangt zusätzlich aktive 2FA (`require_superadmin()`, `app/auth.php:277-284`) |
+| Plattformrolle (`users.platform_role`, Tabelle `platform_roles`; `users.is_superadmin = 1` als Vollzugriff) | Zugriff auf den Adminbereich nach Berechtigungskatalog, unabhängig von einer Firmenmitgliedschaft; verlangt aktive 2FA (`require_platform()`, `platform_can()`, `app/platform.php`) |
 
-Rollen sind je Firma (`organization_members.role`) vergeben, `superadmin` ist ein globales Attribut
-des Nutzerkontos (`users.is_superadmin`) und unabhängig davon.
+Rollen sind je Firma (`organization_members.role`) vergeben; die Plattformrolle ist ein globales Attribut des Nutzerkontos
+und unabhängig davon. Ein Inhaber einer Kundenfirma kann zugleich Plattformrolle tragen (dann erscheint „Admin“ im Menü).
+
+### Plattform-Benutzer und Rechte (seit 4.37, Migration 027)
+
+Mitarbeiter und Administratoren des Betreibers erhalten den Adminbereich über eine **Plattformrolle** statt über das
+Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.manage`), Logik in `app/platform.php`:
+
+- **Systemrollen:** `admin` (alle Rechte, unveränderlich, entspricht dem bisherigen Superadmin), `support`
+  (Support-Anfragen, Firmenzugriff, Konten entsperren, Systemübersicht lesend), `staff` (lesend: Firmen, Vormerkungen,
+  Systemübersicht). Systemrollen sind nicht löschbar; `support` und `staff` sind anpassbar. Eigene Rollen bestehen aus
+  einer Auswahl des Katalogs; `admin.view` ist immer enthalten.
+- **Berechtigungskatalog** (`PLATFORM_PERMISSIONS`): `admin.view`, `companies.view`, `companies.plan`, `plans.manage`,
+  `notstopp.platform`, `interest.view`, `interest.manage`, `support.view`, `support.tickets`, `support.sessions`,
+  `support.users`, `monitoring.view`, `monitoring.edit`, `legal.view`, `legal.manage`, `docs.admin`, `docs.technical`,
+  `users.manage`. Jede Adminseite verlangt ein Eintrittsrecht (`require_platform`) und prüft je POST-Aktion serverseitig
+  das passende Recht; Menüpunkte und Formulare werden zusätzlich ausgeblendet, sind aber nie der Schutz.
+- **Zuordnung:** `admin.php` (`admin.view`; Kennzahlen/Firmen `companies.view`, Tarif je Firma `companies.plan`,
+  Tarife `plans.manage`, Not-Stopp `notstopp.platform`, Vormerkungen `interest.view`/`interest.manage`),
+  `admin-support.php` (`support.view`; Firmenwechsel `support.sessions`, Anfragen `support.tickets`, Entsperren und
+  2FA-Reset `support.users`), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen
+  `monitoring.edit`, zusätzlich `monitoring.editors`), `admin-legal.php` (`legal.view`/`legal.manage`),
+  `admin-doc.php` (`admin.view`, je Datei `docs_can_access()`: `docs.admin`, `docs.technical`), `admin-users.php`
+  (`users.manage`). Der Support-Modus (`support_session_redeem()`, `_current_user_support()`) verlangt `support.sessions`
+  beim Einlösen und bei jeder Anfrage; entzogene Rechte beenden die Sitzung.
+- **Plattformkontext ohne Firma:** Plattform-Benutzer brauchen keine Firmenmitgliedschaft. `session_finish_login()`
+  meldet sie mit `org_id = NULL` an, `current_user()` liefert über `_current_user_platform()` einen Kontext mit Rolle
+  `platform` und `platform_only = true`; `require_login()` leitet sie von Kundenseiten auf `platform_home_url()`
+  (Adminhost) um, erlaubt sind Adminseiten, `security.php`, `twofa-setup.php`, `verify-email.php`, `support-*.php`,
+  `handbuch.php`. Nach Ende einer Support-Sitzung kehren sie in den Plattformkontext zurück (`support-end.php`).
+- **Einladung:** `platform_user_invite()` legt das Konto mit Zufallspasswort an, setzt die Rolle und sendet einen Link
+  zum Festlegen des Passworts (`password_reset_token_hash`, `PLATFORM_INVITE_DAYS = 3`); danach ist die 2FA-Einrichtung
+  Pflicht. Ohne aktiven Mailversand wird die Einladung verweigert, ein Passwortlink erscheint nie im Adminbereich.
+  Bestehende Konten (etwa Inhaber einer Firma) erhalten nur die Rolle und eine Hinweismail.
+- **Schutzregeln:** die eigene Rolle ist nicht änderbar, das eigene Konto nicht deaktivierbar; der letzte aktive
+  Administrator (`platform_admin_count()`) kann weder herabgestuft noch entfernt noch deaktiviert werden; wer den
+  Vollzugriff verliert (Rolle unter `admin` oder Entzug), verliert sofort alle Sitzungen (`user_revoke_sessions()`),
+  `is_superadmin` wird dabei auf 0 gesetzt, damit die Spalte die Rolle nicht unterläuft. Deaktivieren gilt für das
+  gesamte Konto, auch für Firmenmitgliedschaften (Warnhinweis im Formular).
+- **Nachweis:** `audit_log`-Aktionen `platform_user_invited`, `platform_user_reinvited`, `platform_user_role_changed`,
+  `platform_user_access_removed`, `platform_user_activated`, `platform_user_deactivated`, `platform_role_created`,
+  `platform_role_changed`, `platform_role_deleted`. Prüfung: `bash tools/platform-roles-check.sh` (83 Prüfungen gegen
+  eine temporäre MariaDB: Rechte je Rolle, Dokumentationsrechte, Rollenpflege, Schutzregeln, Einladung ohne Mail,
+  Plattformkontext, Audit).
 
 ## Support-Modus
 
-`app/support.php`: Ein Superadmin kann zeitlich begrenzt „auf eine Firma wechseln":
+`app/support.php`: Ein Plattform-Benutzer mit Berechtigung `support.sessions` kann zeitlich begrenzt „auf eine Firma wechseln":
 
 - Anlage nur mit Begründung (5 bis 255 Zeichen, `support_session_create()`, `app/support.php:21-26`) und
   bereits aktueller 2FA (Aufrufstelle `admin-support.php`, hier nicht erneut ausgewertet, siehe

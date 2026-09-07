@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_reset_token_hash  CHAR(64)     NULL,
     password_reset_expires_at  DATETIME     NULL,
     is_superadmin              TINYINT(1)   NOT NULL DEFAULT 0,
+    platform_role              VARCHAR(32)  NULL,   -- Plattformrolle (platform_roles.code), NULL = kein Adminzugang (Migration 027)
     multiaccount_enabled       TINYINT(1)   NOT NULL DEFAULT 0,  -- manuell aktiviert (Migration 015); automatisch wirksam bei mehreren Firmen
     last_login_at              DATETIME     NULL,
     failed_login_count         INT          NOT NULL DEFAULT 0,
@@ -107,7 +108,8 @@ CREATE TABLE IF NOT EXISTS users (
     session_epoch              INT          NOT NULL DEFAULT 0,
     created_at                 DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                 DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_users_email (email)
+    UNIQUE KEY uq_users_email (email),
+    KEY ix_users_platform_role (platform_role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS user_recovery_codes (
@@ -1026,3 +1028,22 @@ CREATE TABLE IF NOT EXISTS consent_records (
     KEY ix_consent_org (organization_id, accepted_at),
     KEY ix_consent_subject (subject, version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Plattform-Benutzer und Rechte (Migration 027): Rollen des Adminbereichs mit Berechtigungsliste.
+CREATE TABLE IF NOT EXISTS platform_roles (
+    code         VARCHAR(32)  NOT NULL PRIMARY KEY,   -- z. B. admin, support, staff, eigene Rollen
+    name         VARCHAR(100) NOT NULL,
+    description  VARCHAR(255) NULL,
+    permissions  TEXT         NOT NULL,               -- JSON-Array von Berechtigungscodes oder ["*"]
+    is_system    TINYINT(1)   NOT NULL DEFAULT 0,     -- Systemrolle: nicht loeschbar, admin nicht editierbar
+    created_at   DATETIME     NOT NULL DEFAULT UTC_TIMESTAMP(),
+    updated_at   DATETIME     NOT NULL DEFAULT UTC_TIMESTAMP()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO platform_roles (code, name, description, permissions, is_system) VALUES
+    ('admin',   'Administrator',        'Vollzugriff auf alle Bereiche, entspricht dem bisherigen Superadmin.', '["*"]', 1),
+    ('support', 'Mitarbeiter Support',  'Support-Anfragen, Firmenzugriff, Konten entsperren; Systemübersicht nur lesend.',
+        '["admin.view","companies.view","support.view","support.tickets","support.sessions","support.users","monitoring.view","interest.view"]', 1),
+    ('staff',   'Mitarbeiter',          'Lesender Zugriff auf Firmen, Vormerkungen und Systemübersicht.',
+        '["admin.view","companies.view","monitoring.view","interest.view"]', 1);

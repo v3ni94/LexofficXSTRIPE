@@ -93,7 +93,7 @@ consent_record_registration('user-1', '11111111-1111-1111-1111-111111111111', 'i
 $cu = consent_list_for_user('user-1'); $co = consent_list_for_org('11111111-1111-1111-1111-111111111111');
 $out('consent_zwei_gegenstaende', count($cu));
 $out('consent_idempotent', count($co));
-$out('consent_fassungen', implode(',', array_map(static fn($c) => $c['subject'] . ':' . $c['version'], array_reverse($cu))));
+$cf = array_map(static fn($c) => $c['subject'] . ':' . $c['version'], $cu); sort($cf); $out('consent_fassungen', implode(',', $cf)); // sortiert: gleicher Zeitstempel, Reihenfolge sonst zufaellig
 $out('consent_email_klein', $cu[0]['user_email']);
 $out('consent_weg', $cu[0]['method']);
 try { consent_record('user-1', null, 'x@y.test', 'unbekannt', 'v1'); $out('consent_unbekannt_abgelehnt', 0); } catch (Throwable $e) { $out('consent_unbekannt_abgelehnt', 1); }

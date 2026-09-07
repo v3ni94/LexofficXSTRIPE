@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.36';
+const APP_VERSION = '4.37';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.37', 'date' => '07.09.2026', 'title' => 'Plattform-Benutzer und Rechte: Mitarbeiter, Support und Administratoren mit Rollen',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Adminbereich „Benutzer und Rechte“: Mitarbeiter und Administratoren des Betreibers per E-Mail einladen (Link zum Festlegen des Passworts, danach Pflicht zur Zwei-Faktor-Authentifizierung), Rollen vergeben, Zugang entziehen, Konten deaktivieren. Systemrollen Administrator, Mitarbeiter Support und Mitarbeiter; eigene Rollen aus einem Katalog von 18 Berechtigungen (Firmen, Tarife, Not-Stopp, Vormerkungen, Support, System, Rechtsdokumente, Dokumentation, Benutzer). Migration 027.'],
+            ['type' => 'Geändert', 'text' => 'Jede Adminseite und jede Aktion prüft die Berechtigung der Rolle serverseitig (Startseite, Support, System, Rechtsdokumente, Dokumentation, Datenendpunkt); Menü und Reiterleiste zeigen nur erlaubte Bereiche. Der Support-Modus verlangt die Berechtigung „Auf Firmenaccounts wechseln“ beim Start und bei jeder Anfrage. Plattform-Benutzer brauchen keine eigene Firma mehr: Sie arbeiten in einem Plattformkontext und werden von Kundenseiten in den Adminbereich geleitet.'],
+            ['type' => 'Geändert', 'text' => 'Schutzregeln: die eigene Rolle ist nicht änderbar, der letzte Administrator kann weder herabgestuft noch entfernt noch deaktiviert werden, Rechteverlust beendet alle Sitzungen sofort, Einladungen nur bei aktivem Mailversand (nie ein Passwortlink im Adminbereich). Alle Änderungen im Protokoll. Bestehende Superadmin-Konten behalten den Vollzugriff und erhalten die Rolle Administrator.'],
+         ]],
         ['version' => '4.36', 'date' => '07.09.2026', 'title' => 'Zweitbestätigung per 2FA-Code nur noch für Wichtiges, Rechtsdokumente mobil',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Beschluss des Vorstands vom 07.09.2026: Der aktuelle 2FA-Code wird nur noch für Anmeldung, Wechsel in Kundenaccounts, Wartung aktivieren (Firma pausieren, Meldung veröffentlichen), Not-Stopp aufheben, Geldfluss (Einreichung erzwingen, Stripe-Import, Eingriffe in geldbewegende Jobs) und Kontosicherheit (Passwort, Inhaberwechsel, Buchhaltungssystem) verlangt. Der plattformweite Not-Stopp lässt sich wie der je Firma ohne Hürde aktivieren.'],

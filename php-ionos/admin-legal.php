@@ -11,12 +11,16 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/legal.php';
 require_once __DIR__ . '/app/legal_drafts.php';
 
-$ctx = require_superadmin();
+$ctx = require_platform('legal.view');
+$canManage = platform_can($ctx, 'legal.manage');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = (string)($_POST['action'] ?? '');
     try {
+        if (!$canManage) {
+            throw new RuntimeException('Ihre Rolle darf Rechtsdokumente nur einsehen (Berechtigung legal.manage fehlt).');
+        }
         // Zweitbestätigung nur beim Veröffentlichen und Zurückziehen (Außenwirkung für alle Firmen); Entwürfe anlegen,
         // Vorlagen übernehmen und unveröffentlichte Fassungen löschen bleiben ohne (Vorstand 07.09.2026), Audit unverändert.
         if ($action === 'import_draft') {
@@ -58,7 +62,8 @@ layout_header('Rechtsdokumente', $ctx);
 ?>
 <h1>Rechtsdokumente</h1>
 <p class="page-sub">Auftragsverarbeitungsvertrag, Verschwiegenheitsvereinbarung und weitere Dokumente mit Zustimmungsnachweis je Firma. Veröffentlichte Fassungen sehen die Firmen unter Rechtliches; Pflichtdokumente werden im Dashboard angemahnt und der AVV bei der Registrierung abgeschlossen.</p>
-<?= layout_subnav(['admin' => ['label' => 'Plattform-Administration', 'href' => 'admin.php', 'ext' => true], 'support' => ['label' => 'Support', 'href' => 'admin-support.php', 'ext' => true], 'system' => ['label' => 'System', 'href' => 'admin-system.php', 'ext' => true], 'legal' => ['label' => 'Rechtsdokumente', 'href' => 'admin-legal.php']], 'legal', 'Adminbereiche') ?>
+<?= layout_subnav(admin_subnav_items($ctx), 'legal', 'Adminbereiche') ?>
+<?php if (!$canManage): ?><p class="hint">Ihre Rolle darf Rechtsdokumente einsehen, aber nicht ändern.</p><?php endif; ?>
 
 <div class="card">
     <h2>Aktuelle Fassungen</h2>

@@ -26,11 +26,15 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     }
 }
 
-$ctx = require_superadmin();
+$ctx = require_platform('admin.view');
 $pdo = db();
+$can = static fn(string $p): bool => platform_can($ctx, $p);
 
-// CSV-Export der Vormerkungen (nur Superadmin, protokolliert, Zellen gegen Formelausführung geschützt).
+// CSV-Export der Vormerkungen (Berechtigung interest.view, protokolliert, Zellen gegen Formelausführung geschützt).
 if (($_GET['export'] ?? '') === 'vormerkungen') {
+    if (!$can('interest.view')) {
+        forbidden_page($ctx, 'Für den Export der Vormerkungen fehlt Ihrer Rolle die Berechtigung (interest.view).');
+    }
     $filter = ['status' => (string)($_GET['vstatus'] ?? ''), 'source' => (string)($_GET['vsource'] ?? ''), 'q' => (string)($_GET['vq'] ?? '')];
     $rows = interest_search($filter, 5000);
     audit_log(null, $ctx, 'interest_exported', 'interest_registration', null, ['rows' => count($rows), 'filter' => array_filter($filter)]);
@@ -98,6 +102,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
     try {
+        $need = ['platform_pause' => 'notstopp.platform', 'plan_update' => 'plans.manage', 'org_plan' => 'companies.plan',
+                 'interest_unsubscribe' => 'interest.manage', 'interest_delete' => 'interest.manage', 'interest_block' => 'interest.manage', 'interest_invite' => 'interest.manage'];
+        if (isset($need[$action]) && !$can($need[$action])) {
+            throw new RuntimeException('Ihre Rolle hat für diese Aktion keine Berechtigung (' . $need[$action] . ').');
+        }
         if ($action === 'platform_pause') {
             $pause = ($_POST['pause'] ?? '') === '1';
             if (!$pause) {
@@ -286,7 +295,14 @@ layout_header('Administration', $ctx);
     </div>
 <?php endif; ?>
 <p class="page-sub">Plattform <?= e(product_name()) ?> · Betreiber <?= e((string)(config('operator')['name'] ?? 'Müller Holding AG')) ?></p>
-<?= layout_subnav(['uebersicht' => ['label' => 'Übersicht', 'href' => 'admin.php'], 'kennzahlen' => ['label' => 'Kennzahlen', 'href' => '#kennzahlen'], 'diagramme' => ['label' => 'Diagramme', 'href' => '#diagramme'], 'notstopp' => ['label' => 'Not-Stopp', 'href' => '#notstopp'], 'tarife' => ['label' => 'Tarife', 'href' => '#tarife'], 'firmen' => ['label' => 'Firmen', 'href' => '#firmen'], 'support' => ['label' => 'Support', 'href' => 'admin-support.php', 'ext' => true], 'system' => ['label' => 'System', 'href' => 'admin-system.php', 'ext' => true], 'legal' => ['label' => 'Rechtsdokumente', 'href' => 'admin-legal.php', 'ext' => true]], 'uebersicht', 'Adminbereiche') ?>
+<?php $sub = ['uebersicht' => ['label' => 'Übersicht', 'href' => 'admin.php']];
+if ($can('companies.view')) { $sub['kennzahlen'] = ['label' => 'Kennzahlen', 'href' => '#kennzahlen']; $sub['diagramme'] = ['label' => 'Diagramme', 'href' => '#diagramme']; }
+if ($can('notstopp.platform')) { $sub['notstopp'] = ['label' => 'Not-Stopp', 'href' => '#notstopp']; }
+if ($can('plans.manage')) { $sub['tarife'] = ['label' => 'Tarife', 'href' => '#tarife']; }
+if ($can('companies.view')) { $sub['firmen'] = ['label' => 'Firmen', 'href' => '#firmen']; }
+if ($can('interest.view')) { $sub['vormerkungen'] = ['label' => 'Vormerkungen', 'href' => '#vormerkungen']; }
+foreach (admin_subnav_items($ctx) as $k => $it) { if ($k !== 'admin') { $sub[$k] = $it + ['ext' => true]; } }
+echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
 
 <?php if ($platformAlerts): ?>
 <div class="flash flash-warn">
@@ -306,6 +322,7 @@ layout_header('Administration', $ctx);
     <div class="stat-card"><div class="stat-value" style="font-size: 20px;"><?= format_eur_cents((int)$totals['succeeded_cents']) ?></div><div class="stat-label">Eingezogenes Volumen (alle Firmen)</div></div>
 </div>
 
+<?php if ($can('companies.view')): ?>
 <div class="card" id="kennzahlen">
     <h2>Kennzahlen je Akquisitionsquelle</h2>
     <div class="table-wrap">
@@ -362,7 +379,9 @@ layout_header('Administration', $ctx);
     </div>
     <p class="hint">Seitenaufrufe und CTA-Klicks kommen cookielos von den Marketingseiten (track.php), alle weiteren Schritte aus der Anwendung.</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('notstopp.platform')): ?>
 <div class="card" id="notstopp">
     <h2>Not-Stopp (Plattform)</h2>
     <?php $paused = platform_setting('collections_paused', '0') === '1'; ?>
@@ -377,7 +396,9 @@ layout_header('Administration', $ctx);
     </form>
     <p class="hint">Aktivieren geht ohne Hürde. Das Aufheben gibt den Geldfluss wieder frei und verlangt den aktuellen Code aus Ihrer Authenticator-App.</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('plans.manage')): ?>
 <div class="card" id="tarife">
     <h2>Tarife</h2>
     <p class="hint">Name, Preis (netto je Periode), Limits und Sichtbarkeit lassen sich hier direkt ändern. Leere Limits bedeuten
@@ -413,7 +434,9 @@ layout_header('Administration', $ctx);
     </div>
     <style>.plan-table .plan-input { padding: 5px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }</style>
 </div>
+<?php endif; ?>
 
+<?php if ($can('companies.view')): ?>
 <div class="card" id="firmen">
     <h2>Firmenaccounts</h2>
     <div class="table-wrap">
@@ -432,7 +455,7 @@ layout_header('Administration', $ctx);
                     <td><?= (int)$o['collections'] ?></td>
                     <td><?= format_datetime($o['last_sync']) ?></td>
                     <td>
-                        <form method="post" class="inline-form">
+                        <?php if ($can('companies.plan')): ?><form method="post" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="org_plan">
                             <input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
@@ -443,7 +466,7 @@ layout_header('Administration', $ctx);
                             </select>
                             <label class="inline-check"><input type="checkbox" name="billing_exempt" value="1" <?= (int)$o['billing_exempt'] ? 'checked' : '' ?>> befreit</label>
                             <button type="submit" class="btn btn-sm btn-secondary">OK</button>
-                        </form>
+                        </form><?php else: ?><span class="hint">nur lesend</span><?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -451,10 +474,12 @@ layout_header('Administration', $ctx);
         </table>
     </div>
     <p class="hint">Grandfathering: Bestehende Firmen behalten ihren Tarif, bis er hier geändert wird. Ein Wechsel auf einen Tarif mit
-        weniger Benutzern wird abgelehnt, solange mehr Benutzer bzw. offene Einladungen vorhanden sind. Jede Tarifänderung erfordert
-        als Zweitbestätigung den aktuellen 2FA-Code.</p>
+        weniger Benutzern wird abgelehnt, solange mehr Benutzer bzw. offene Einladungen vorhanden sind. Jede Tarifänderung wird protokolliert
+        (Berechtigung companies.plan).</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('interest.view')): ?>
 <div class="card" id="vormerkungen">
     <h2>Vormerkungen für angekündigte Integrationen</h2>
     <p class="hint">sevdesk: öffentlicher Status <strong><?= e($interestSwitches['public_state']) ?></strong>, Vormerkung <?= $interestSwitches['waitlist'] ? 'offen' : 'geschlossen' ?>,
@@ -509,7 +534,7 @@ layout_header('Administration', $ctx);
                         <td><?= format_datetime($r['confirmed_at']) ?></td>
                         <td class="hint"><?= (int)$r['beta_interest'] ? 'Interesse' : '' ?><?= $r['invited_at'] ? '<br>eingeladen ' . e(format_date($r['invited_at'])) : '' ?></td>
                         <td>
-                            <form method="post" class="inline-form" onsubmit="return (event.submitter && event.submitter.value === 'interest_delete') ? confirm('Vormerkung endgültig löschen? Das lässt sich nicht rückgängig machen.') : true;">
+                            <?php if ($can('interest.manage')): ?><form method="post" class="inline-form" onsubmit="return (event.submitter && event.submitter.value === 'interest_delete') ? confirm('Vormerkung endgültig löschen? Das lässt sich nicht rückgängig machen.') : true;">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="interest_id" value="<?= e($r['id']) ?>">
                                 <?php if ($r['status'] === 'confirmed' && !$blocked && !$r['invited_at']): ?>
@@ -522,7 +547,7 @@ layout_header('Administration', $ctx);
                                 <button type="submit" name="action" value="interest_block" class="btn btn-sm btn-secondary">Sperren</button>
                                 <?php endif; ?>
                                 <button type="submit" name="action" value="interest_delete" class="btn btn-sm btn-secondary">Löschen</button>
-                            </form>
+                            </form><?php else: ?><span class="hint">nur lesend</span><?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -538,10 +563,20 @@ layout_header('Administration', $ctx);
         nach Eintragung, abgemeldet 30 Tage nach Abmeldung, bestätigt 30 Tage nach der Startnachricht; gesperrte Einträge bleiben. Zeiten in Ortszeit,
         keine IP-Adressen. Jede Aktion verlangt den aktuellen 2FA-Code und wird im Audit protokolliert, der CSV-Export ebenfalls.</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('support.view')): ?>
 <div class="card" id="support">
     <h2>Support</h2>
     <p>Firmenzugriff ("Auf Firma wechseln"), Konten entsperren, 2FA zurücksetzen und das Protokoll der Support-Zugriffe finden Sie im
         Bereich <a href="admin-support.php">Support</a>.</p>
 </div>
+<?php endif; ?>
+<?php if ($can('users.manage')): ?>
+<div class="card" id="benutzer">
+    <h2>Benutzer und Rechte</h2>
+    <p>Mitarbeiter und Administratoren des Betreibers einladen, Rollen vergeben und eigene Rollen mit Berechtigungen anlegen:
+        <a href="admin-users.php">Benutzer und Rechte</a>. Kundenkonten verwalten die Firmen selbst unter Team.</p>
+</div>
+<?php endif; ?>
 <?php layout_footer($ctx); ?>

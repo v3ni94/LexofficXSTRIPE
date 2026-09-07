@@ -204,8 +204,8 @@ return [
     // contact_refresh_hours: Kontaktdaten bekannter Kunden höchstens so oft neu laden (0 = immer).
     // Systemmonitoring (Adminbereich System, Auftrag II Abschnitt 7). Alle Werte optional.
     // Dokumentationssystem (Adminbereich, Versionen & Dokumentation). Entwickler-/Betriebs- und Unternehmensdokumentation
-    // sehen Plattformadministratoren (is_superadmin, 2FA); Mitarbeiter- und Supportrollen nie. technical_readers erlaubt
-    // zusaetzlich einzelnen Plattformadminrollen ohne Superadmin-Recht den Zugriff auf die Entwicklerdokumentation.
+    // sehen Plattformrollen mit den Berechtigungen docs.admin bzw. docs.technical (app/platform.php, Systemrolle Administrator);
+    // Mitarbeiter- und Supportrollen nie. technical_readers ist eine optionale Zusatzliste (Altregel) fuer die Entwicklerdokumentation.
     'docs' => [
         'technical_readers' => [],            // optional, z. B. ['technik@example.de']
         'archive_dir' => '',                  // leer = <Ordner der config.php>/docs-archive (deploy.sh legt dort Staende ab)

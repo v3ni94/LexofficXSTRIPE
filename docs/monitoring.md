@@ -4,7 +4,7 @@ Stand: 06.09.2026 (Auftrag II, Abschnitt 7). Datenbankänderung: Migration 017. 
 
 ## Einstieg und Rechte
 
-Adminnavigation (admin.php), letzter Eintrag "System". Zugriff nur mit users.is_superadmin und aktiver 2FA (require_superadmin); die Rolle Administrator einer Kundenfirma reicht nicht. Der Datenendpunkt admin-system-data.php prüft dieselbe Berechtigung serverseitig und liefert nur gespeicherte Daten.
+Adminnavigation (admin.php), letzter Eintrag "System". Zugriff nur mit Plattformrolle und Berechtigung monitoring.view bei aktiver 2FA (require_platform, app/platform.php; Änderungen zusätzlich monitoring.edit); die Rolle Administrator einer Kundenfirma reicht nicht. Der Datenendpunkt admin-system-data.php prüft dieselbe Berechtigung serverseitig und liefert nur gespeicherte Daten.
 
 Leserecht: alle Plattformadministratoren. Änderungsrecht (Störungsmeldungen anlegen, veröffentlichen, Testversand, manuelle Veröffentlichung des Snapshots): zusätzlich Eintrag in config monitoring.editors (E-Mail-Adressen); leer bedeutet alle Plattformadministratoren. Nur das Veröffentlichen einer Störungs- oder Wartungsmeldung verlangt einen aktuellen Authenticator-Code oder eine Codeeingabe innerhalb der letzten 5 Minuten (require_recent_totp mit Bestätigungsfenster, Abschnitt 5.7); Zurückziehen, Testversand und Snapshot-Übertragung laufen seit 4.36 ohne Code, aber mit CSRF-Schutz und Audit (Beschluss des Vorstands vom 07.09.2026, Regel in docs/entwickler/sicherheit.md).
 

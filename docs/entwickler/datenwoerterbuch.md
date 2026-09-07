@@ -1,6 +1,6 @@
 # Datenwörterbuch (alle Anwendungstabellen)
 
-Erzeugt aus `php-ionos/sql/schema.sql` durch `tools/gen-datenwoerterbuch.py`; fachliche Angaben aus `docs/entwickler/tabellen-beschreibungen.json`. 46 Tabellen. Datenbank: MariaDB (Coolify-MariaDB auf dem VPS; Zeichensatz utf8mb4, Kollation utf8mb4_unicode_ci laut Tabellendefinitionen). Zeitangaben: DATETIME ohne Zeitzone; die Anwendung schreibt teils UTC (UTC_TIMESTAMP(), Kommentar UTC) und teils Serverzeit (NOW(), CURRENT_TIMESTAMP, Zeitzone des Containers TZ=Europe/Berlin), siehe Spaltenkommentare. Geldbeträge: Cent als INT (`*_cents`) oder DECIMAL(10,2) in EUR, siehe Spaltentyp.
+Erzeugt aus `php-ionos/sql/schema.sql` durch `tools/gen-datenwoerterbuch.py`; fachliche Angaben aus `docs/entwickler/tabellen-beschreibungen.json`. 47 Tabellen. Datenbank: MariaDB (Coolify-MariaDB auf dem VPS; Zeichensatz utf8mb4, Kollation utf8mb4_unicode_ci laut Tabellendefinitionen). Zeitangaben: DATETIME ohne Zeitzone; die Anwendung schreibt teils UTC (UTC_TIMESTAMP(), Kommentar UTC) und teils Serverzeit (NOW(), CURRENT_TIMESTAMP, Zeitzone des Containers TZ=Europe/Berlin), siehe Spaltenkommentare. Geldbeträge: Cent als INT (`*_cents`) oder DECIMAL(10,2) in EUR, siehe Spaltentyp.
 
 Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen), UQ eindeutig, IX Index. Beziehungen ohne FK-Eintrag werden nur durch Anwendungscode gesichert.
 
@@ -14,7 +14,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 |---|---|---|---|---|---|
 | [plans](#plans) | Tarifkatalog der Plattformabrechnung (Abonnement der Firmenaccounts bei der Müller Holding AG). Legt Preis, Periode und Limits je Tarifcode fest (Kommentar schema.sql Zeile 11: 'Tarife (Limits kommen ausschliesslich aus dieser Tabelle)'). | Konten und Firmen / Plattform-Abrechnung | keine (plattformweit, ein Datensatz je Tarifcode) | 14 | 0 |
 | [organizations](#organizations) | Firmenaccount (Mandant) des Portals. Traeger von Tarif, Abrechnungsstatus, SEPA-Stammdaten (Glaeubiger-ID, Mandatspraefix) und Firmenadresse. | Konten und Firmen | id (die Tabelle IST der Mandant) | 38 | 0 |
-| [users](#users) | Persoenlicher Benutzerzugang (Login), unabhaengig von der Firmenzugehoerigkeit. Verpflichtende Zwei-Faktor-Authentifizierung (TOTP). | Konten und Firmen / Anmeldung | keine (Benutzer koennen laut multiaccount_enabled mehreren Firmen ueber organization_members zugeordnet sein) | 28 | 0 |
+| [users](#users) | Persoenlicher Benutzerzugang (Login), unabhaengig von der Firmenzugehoerigkeit. Verpflichtende Zwei-Faktor-Authentifizierung (TOTP). | Konten und Firmen / Anmeldung | keine (Benutzer koennen laut multiaccount_enabled mehreren Firmen ueber organization_members zugeordnet sein) | 29 | 0 |
 | [user_recovery_codes](#user-recovery-codes) | Einmal-Wiederherstellungscodes fuer den Fall eines verlorenen TOTP-Geraets. | Konten und Firmen / Anmeldung | keine direkt; ueber user_id an users und damit indirekt an dessen Firmen gebunden | 5 | 1 |
 | [login_attempts](#login-attempts) | Protokoll aller Anmeldeversuche (Passwort, TOTP, Wiederherstellungscode) fuer Sperrlogik und Missbrauchserkennung. | Konten und Firmen / Anmeldung | keine (plattformweit, nur nach E-Mail und IP) | 6 | 0 |
 | [audit_log](#audit-log) | Revisionssicheres Protokoll geldrelevanter und sicherheitsrelevanter Aktionen (CLAUDE.md: 'jede geldrelevante Aktion in audit_log'). | Sicherheit und Nachvollziehbarkeit | tenant_id | 10 | 0 |
@@ -58,6 +58,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [legal_documents](#legal-documents) | Versionierte Rechtsdokumente mit Zustimmungsnachweis (z. B. Auftragsverarbeitungsvertrag nach Art. 28 DSGVO, Verschwiegenheitsvereinbarung nach § 203 StGB), Migration 023. | Recht und Vertraege | keine (plattformweit, ein Dokument gilt fuer alle oder eine Teilmenge von Firmen laut required_for) | 12 | 0 |
 | [legal_acceptances](#legal-acceptances) | Zustimmungsnachweis je Firma und Fassung eines Rechtsdokuments (wer, wann, auf welchem Weg), Migration 023. | Recht und Vertraege | organization_id | 7 | 0 |
 | [consent_records](#consent-records) | Zustimmungsnachweis zu AGB und Datenschutzerklärung je Benutzer (Gegenstand, Fassung, Zeitpunkt UTC, Weg, Quellseite, E-Mail). Ergänzt legal_acceptances (Vertragsdokumente mit Volltext) und interest_registrations (Vorregistrierung). | Konten und Firmen / Rechtsdokumente | organization_id | 9 | 0 |
+| [platform_roles](#platform-roles) | Rollen des Adminbereichs (Plattform-Benutzer und Rechte, Version 4.37): je Rolle eine Liste von Berechtigungscodes aus dem festen Katalog PLATFORM_PERMISSIONS in app/platform.php, oder ["*"] für Vollzugriff. Systemrollen admin, support, staff werden mit Migration 027 angelegt. | Konten und Firmen / Plattform-Administration | keine (plattformweit) | 7 | 0 |
 
 ## plans
 
@@ -182,7 +183,8 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | password_reset_token_hash | CHAR(64) | ja |  |  |
 | password_reset_expires_at | DATETIME | ja |  |  |
 | is_superadmin | TINYINT(1) | nein | 0 |  |
-| multiaccount_enabled | TINYINT(1) | nein | 0 | manuell aktiviert (Migration 015) oder automatisch wirksam, sobald der Benutzer mehreren Firmen angehoert |
+| platform_role | VARCHAR(32) | ja |  | Plattformrolle (platform_roles.code) für den Adminbereich; NULL = kein Adminzugang. is_superadmin = 1 bleibt Vollzugriff (Migration 027 setzt dazu die Rolle admin). |
+| NULL | = kein Adminzugang (Migration 027) multiaccount_enabled       TINYINT(1)   NOT NULL DEFAULT 0 | nein | 0 |  |
 | last_login_at | DATETIME | ja |  | manuell aktiviert (Migration 015); automatisch wirksam bei mehreren Firmen |
 | failed_login_count | INT | nein | 0 |  |
 | locked_until | DATETIME | ja |  |  |
@@ -190,14 +192,14 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | created_at | DATETIME | nein | CURRENT_TIMESTAMP |  |
 | updated_at | DATETIME | nein | CURRENT_TIMESTAMP | [ON UPDATE CURRENT_TIMESTAMP] |
 
-**Indizes und Eindeutigkeit:** UQ uq_users_email (email)  
+**Indizes und Eindeutigkeit:** UQ uq_users_email (email); IX ix_users_platform_role (platform_role)  
 **Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
 **Erzeugt durch:** app/auth.php _auth_register_create() (Zeile 1073, Registrierung), invite.php (Zeile 76, Benutzer akzeptiert eine Einladung ohne bestehenden Account)  
 **Verändert durch:** app/auth.php auth_login() (failed_login_count, password_hash bei automatischer Rehash-Aktualisierung), app/auth.php session_finish_login() (last_login_at, failed_login_count, locked_until), app/auth.php user_revoke_sessions() (session_epoch), app/auth.php twofa_confirm_setup()/twofa_verify_user()/twofa_reset() (totp_secret_encrypted, totp_enabled, totp_confirmed_at, totp_last_step), app/auth.php email_verification_send()/email_verification_consume() (email_verify_token_hash, email_verify_expires_at, email_verified_at), app/auth.php password_reset_request()/password_reset_complete()/password_change() (password_reset_token_hash, password_reset_expires_at, password_hash), app/auth.php auth_send_pending_welcome_mails() (welcome_mail_pending = 0), app/auth.php user_multiaccount_set()/user_multiaccount_autoenable() (multiaccount_enabled), app/profile.php profile_update()/profile_avatar_store()/profile_avatar_delete() (display_name, phone_private, phone_business, avatar_path), admin-support.php (failed_login_count, locked_until, Support-Entsperrung)  
 **Gelesen durch:** app/auth.php require_login() und praktisch jede Seite  
 **Löschung, Archivierung, Aufbewahrung:** nicht gefunden (keine DELETE-Anweisung fuer users im durchsuchten Code); organization_members hat ON DELETE CASCADE auf user_id, was auf eine vorgesehene, aber nicht lokalisierte Loeschroutine hindeutet  
 **Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Betraege: keine; Zeit: totp_confirmed_at, email_verified_at, last_login_at, locked_until, created_at/updated_at DATETIME; externe IDs: keine  
-**Migrationen:** Basistabelle vor Migrationszaehlung, 010_profile.sql (avatar_path), 015_multiaccount_registration.sql (multiaccount_enabled), 021_mail_pending.sql (welcome_mail_pending)  
+**Migrationen:** Basistabelle vor Migrationszaehlung, 010_profile.sql (avatar_path), 015_multiaccount_registration.sql (multiaccount_enabled), 021_mail_pending.sql (welcome_mail_pending), 027_platform_roles.sql  
 **Besonderheiten:** totp_secret_encrypted verschluesselt ueber app/crypto.php (AES-256-GCM, encrypt_value()/decrypt_value()); password_hash mit PHP password_hash(); *_token_hash-Spalten speichern laut Projektkonvention nur den SHA-256-Hash des Links, nie den Klartext.  
 
 ## user_recovery_codes
@@ -1634,6 +1636,34 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 **Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: accepted_at UTC (UTC_TIMESTAMP()); keine Beträge; keine externen IDs; keine IP  
 **Migrationen:** 025_consent_records.sql  
 **Besonderheiten:** Fassungen als Konstanten AGB_VERSION/DATENSCHUTZ_VERSION in app/consent.php, Archiv in docs/einwilligungen.md; idempotent je Benutzer, Gegenstand, Fassung.  
+
+## platform_roles
+
+**Zweck:** Rollen des Adminbereichs (Plattform-Benutzer und Rechte, Version 4.37): je Rolle eine Liste von Berechtigungscodes aus dem festen Katalog PLATFORM_PERMISSIONS in app/platform.php, oder ["*"] für Vollzugriff. Systemrollen admin, support, staff werden mit Migration 027 angelegt.  
+**Modul:** Konten und Firmen / Plattform-Administration  
+**Mandantenzuordnung:** keine (plattformweit)  
+**Primärschlüssel:** code  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| code | VARCHAR(32) | nein |  | Rollencode, 2 bis 32 Zeichen, Kleinbuchstaben, Ziffern, - und _ [PK; PRIMARY KEY] |
+| eigene | Rollen | nein |  |  |
+| description | VARCHAR(255) | ja |  |  |
+| permissions | TEXT | nein |  | JSON-Array von Berechtigungscodes (z. B. support.sessions) oder ["*"] |
+| is_system | TINYINT(1) | nein | 0 | Systemrolle ja/nein |
+| admin | nicht | nein | UTC_TIMESTAMP() |  |
+| updated_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+
+**Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
+**Statuswerte und Übergänge:**  
+- `is_system`: 1 = Systemrolle (nicht löschbar; admin zusätzlich nicht editierbar), 0 = eigene Rolle
+**Erzeugt durch:** sql/migrations/027_platform_roles.sql und sql/schema.sql (INSERT IGNORE der Systemrollen), app/platform.php platform_role_save() aus admin-users.php (eigene Rollen)  
+**Verändert durch:** app/platform.php platform_role_save() (Name, Beschreibung, Berechtigungen; admin unveränderlich)  
+**Gelesen durch:** app/platform.php platform_roles(), platform_can(), platform_access() bei jeder Rechteprüfung (require_platform, Navigation, Support-Modus, Dokumentationszugriff)  
+**Löschung, Archivierung, Aufbewahrung:** platform_role_delete() nur für eigene Rollen ohne zugewiesene Benutzer; Systemrollen nie  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: created_at, updated_at UTC (UTC_TIMESTAMP()); keine Beträge; keine externen IDs  
+**Migrationen:** 027_platform_roles.sql  
+**Besonderheiten:** users.platform_role verweist ohne Fremdschlüssel auf code (Rollen mit Benutzern sind nicht löschbar, Prüfung im Code). Fehlt die Tabelle (Migration noch nicht gelaufen), liefert platform_roles() die Systemrollen aus PLATFORM_SYSTEM_ROLES als Rückfall. Jede Änderung im audit_log (platform_role_created/changed/deleted).  
 
 ## Offene Beschreibungen
 

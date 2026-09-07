@@ -18,7 +18,7 @@ grep -q "professional_secrecy" "$ROOT/php-ionos/sql/schema.sql" && ok "organizat
 grep -q "legal_accept(\$ctx" "$ROOT/php-ionos/rechtliches.php" && grep -q "can_manage_settings" "$ROOT/php-ionos/rechtliches.php" && ok "Zustimmung nur ueber legal_accept, Rechtepruefung" || bad "rechtliches.php"
 grep -q "accept_avv" "$ROOT/php-ionos/register.php" && grep -q "legal_active_documents()\['avv'\]" "$ROOT/php-ionos/register.php" && ok "Registrierung: AVV-Checkbox nur bei veroeffentlichter Fassung" || bad "register.php"
 grep -q "'registration'" "$ROOT/php-ionos/register.php" && ok "Registrierung schreibt Nachweis (Weg registration)" || bad "Nachweis Registrierung"
-grep -q "require_superadmin" "$ROOT/php-ionos/admin-legal.php" && grep -q "require_recent_totp" "$ROOT/php-ionos/admin-legal.php" && ok "Adminseite: Superadmin und 2FA" || bad "admin-legal.php Schutz"
+grep -q "require_platform('legal.view')" "$ROOT/php-ionos/admin-legal.php" && grep -q "legal.manage" "$ROOT/php-ionos/admin-legal.php" && grep -q "require_recent_totp" "$ROOT/php-ionos/admin-legal.php" && ok "Adminseite: Plattformrecht legal.view/legal.manage und 2FA" || bad "admin-legal.php Schutz"
 sed -n "/action === 'publish' || \$action === 'retire'/,/elseif/p" "$ROOT/php-ionos/admin-legal.php" | grep -q require_recent_totp && ok "Veroeffentlichen und Zurueckziehen verlangen den 2FA-Code" || bad "publish/retire ohne 2FA"
 ! sed -n "/action === 'import_draft'/,/elseif/p" "$ROOT/php-ionos/admin-legal.php" | grep -q require_recent_totp && ok "Vorlage uebernehmen ohne 2FA-Code (Entwurf ohne Aussenwirkung, seit 4.36)" || bad "import_draft verlangt noch 2FA"
 grep -q "\[Platzhalter" "$ROOT/php-ionos/app/legal.php" && ok "Veroeffentlichung mit Platzhaltern gesperrt" || bad "Platzhalter-Sperre"

@@ -109,14 +109,16 @@
       "Basistabelle vor Migrationszaehlung",
       "010_profile.sql (avatar_path)",
       "015_multiaccount_registration.sql (multiaccount_enabled)",
-      "021_mail_pending.sql (welcome_mail_pending)"
+      "021_mail_pending.sql (welcome_mail_pending)",
+      "027_platform_roles.sql"
     ],
     "besonderheiten": "totp_secret_encrypted verschluesselt ueber app/crypto.php (AES-256-GCM, encrypt_value()/decrypt_value()); password_hash mit PHP password_hash(); *_token_hash-Spalten speichern laut Projektkonvention nur den SHA-256-Hash des Links, nie den Klartext.",
     "spalten_erlaeuterung": {
       "session_epoch": "wird bei Sicherheitsereignissen erhoeht, um bestehende Sitzungen serverseitig ungueltig zu machen (user_revoke_sessions())",
       "welcome_mail_pending": "Willkommensmail mit Bestaetigungslink konnte nicht erzeugt werden und steht aus (Migration 021), wird durch Wartung nachgesendet",
       "totp_last_step": "letzter verwendeter TOTP-Zeitschritt, verhindert Wiederverwendung desselben Codes",
-      "multiaccount_enabled": "manuell aktiviert (Migration 015) oder automatisch wirksam, sobald der Benutzer mehreren Firmen angehoert"
+      "multiaccount_enabled": "manuell aktiviert (Migration 015) oder automatisch wirksam, sobald der Benutzer mehreren Firmen angehoert",
+      "platform_role": "Plattformrolle (platform_roles.code) für den Adminbereich; NULL = kein Adminzugang. is_superadmin = 1 bleibt Vollzugriff (Migration 027 setzt dazu die Rolle admin)."
     }
   },
   "user_recovery_codes": {
@@ -1248,6 +1250,35 @@
       "version": "Fassung, z. B. agb-2026-09",
       "method": "registration | backend | import",
       "source_url": "Seite, deren Text akzeptiert wurde"
+    }
+  },
+  "platform_roles": {
+    "zweck": "Rollen des Adminbereichs (Plattform-Benutzer und Rechte, Version 4.37): je Rolle eine Liste von Berechtigungscodes aus dem festen Katalog PLATFORM_PERMISSIONS in app/platform.php, oder [\"*\"] für Vollzugriff. Systemrollen admin, support, staff werden mit Migration 027 angelegt.",
+    "modul": "Konten und Firmen / Plattform-Administration",
+    "mandant": "keine (plattformweit)",
+    "statuswerte": {
+      "is_system": "1 = Systemrolle (nicht löschbar; admin zusätzlich nicht editierbar), 0 = eigene Rolle"
+    },
+    "erzeugt_durch": [
+      "sql/migrations/027_platform_roles.sql und sql/schema.sql (INSERT IGNORE der Systemrollen)",
+      "app/platform.php platform_role_save() aus admin-users.php (eigene Rollen)"
+    ],
+    "veraendert_durch": [
+      "app/platform.php platform_role_save() (Name, Beschreibung, Berechtigungen; admin unveränderlich)"
+    ],
+    "gelesen_durch": [
+      "app/platform.php platform_roles(), platform_can(), platform_access() bei jeder Rechteprüfung (require_platform, Navigation, Support-Modus, Dokumentationszugriff)"
+    ],
+    "loeschung": "platform_role_delete() nur für eigene Rollen ohne zugewiesene Benutzer; Systemrollen nie",
+    "geld_zeit_extern": "Zeit: created_at, updated_at UTC (UTC_TIMESTAMP()); keine Beträge; keine externen IDs",
+    "migrationen": [
+      "027_platform_roles.sql"
+    ],
+    "besonderheiten": "users.platform_role verweist ohne Fremdschlüssel auf code (Rollen mit Benutzern sind nicht löschbar, Prüfung im Code). Fehlt die Tabelle (Migration noch nicht gelaufen), liefert platform_roles() die Systemrollen aus PLATFORM_SYSTEM_ROLES als Rückfall. Jede Änderung im audit_log (platform_role_created/changed/deleted).",
+    "spalten_erlaeuterung": {
+      "code": "Rollencode, 2 bis 32 Zeichen, Kleinbuchstaben, Ziffern, - und _",
+      "permissions": "JSON-Array von Berechtigungscodes (z. B. support.sessions) oder [\"*\"]",
+      "is_system": "Systemrolle ja/nein"
     }
   }
 }

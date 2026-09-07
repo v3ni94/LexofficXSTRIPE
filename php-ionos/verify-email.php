@@ -20,9 +20,10 @@ if ($token !== '') {
 }
 
 $ctx = require_login();
+$homeAfterVerify = !empty($ctx['platform_only']) ? platform_home_url() : 'dashboard.php';
 $user = user_load($ctx['user_id']);
 if (!mail_enabled() || !empty($user['email_verified_at'])) {
-    redirect('dashboard.php');
+    redirect($homeAfterVerify);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

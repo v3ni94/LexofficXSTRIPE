@@ -1418,7 +1418,8 @@ function monitor_incident_publish(array $ctx, string $id, bool $publish): void
 /** Darf dieser Plattformadministrator Überwachungseinstellungen ändern und Meldungen veröffentlichen? */
 function monitor_can_edit(array $ctx): bool
 {
-    if (!(int)($ctx['is_superadmin'] ?? 0)) {
+    require_once __DIR__ . '/platform.php';
+    if (!platform_can($ctx, 'monitoring.edit')) {
         return false;
     }
     $editors = monitor_config()['editors'];

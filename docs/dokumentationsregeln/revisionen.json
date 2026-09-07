@@ -1,13 +1,13 @@
 {
   "unternehmen": {
-    "revision": "r2",
+    "revision": "r3",
     "date": "07.09.2026",
-    "summary": "Funktionsübersicht: Zweitbestätigung nur für Wichtiges (4.36), Störungsmeldungen und Rechtsdokumente."
+    "summary": "Funktionsübersicht: Plattform-Benutzer und Rechte (4.37), Voraussetzungen als Berechtigungen."
   },
   "entwickler": {
-    "revision": "r5",
+    "revision": "r6",
     "date": "07.09.2026",
-    "summary": "Geltungsbereich der Zweitbestätigung (2FA) nach Vorstandsbeschluss, QUEUE_MONEY_TYPES, Schnittstellenübersicht, Jobaktionen im Betrieb."
+    "summary": "Plattform-Benutzer und Rechte (Migration 027, app/platform.php): Rollen, Berechtigungskatalog, Plattformkontext, Einladung, Schutzregeln; Schnittstellen und Datenwörterbuch."
   },
   "kunden": {
     "revision": "r2",
