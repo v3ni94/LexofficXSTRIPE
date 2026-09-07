@@ -65,6 +65,32 @@ Zusätzlich setzt der Workflow für alle SSH-/rsync-Aufrufe dieses Jobs einheitl
 instabile Netzwerkverbindung seltener zum Abbruch führt. Das ersetzt die serverseitige Entkopplung
 nicht, sondern ergänzt sie: Auch mit Keepalive kann eine einzelne SSH-Verbindung abbrechen.
 
+### Statusdatei, Polling-Skript und Recovery (Version 4.11)
+
+Die Warte-/Polling-Logik des zweiten Schritts liegt in `.github/scripts/vps-wait-status.sh` (aus der
+Workflow-Datei ausgelagert; Entscheidungslogik success/failed/Frist/sha unverändert, ergänzt um die
+Ausgabe jedes Phasen-/Schrittwechsels, das Feld `step` und einen Recovery-Hinweis; mit
+`tools/github-poll-check.sh` regressionsgeprüft). Sie fragt `/opt/smarteinzug/deploy/.deploy-status.json`
+über `deploy-status.sh` ab: unmittelbar nach dem Auslösen `running` mit dem neuen `sha` (vom
+Vordergrundteil des Runners vorbelegt, damit nie der Stand des vorherigen Laufs gelesen wird; `pid`,
+`started_at`, `log_file` folgen sofort), während des Laufs `running` mit dem
+aktuellen Schritt (`step`, z. B. `candidate`, `migration`, `cutover`), am Ende `success` mit
+`exit_code 0` oder `failed` mit dem Exitcode; jede Änderung wird im Workflow-Protokoll ausgegeben.
+Die Datei wird stets atomar geschrieben. Ein früherer Fehler, bei dem `deploy.sh` die Statusdatei per
+`rsync --delete` löschte und GitHub 12 Minuten `unknown` sah, ist behoben (`docs/vps/06-betrieb.md`,
+Abschnitt „Statusdatei und Status-Lifecycle“).
+
+Bricht der GitHub-Job ab oder läuft er in die Frist, läuft der serverseitige Deploy davon unberührt
+weiter (`deploy-runner.sh`, eigene Sitzung per `setsid`, Sperre bleibt gehalten) und endet mit
+`success`, `failed` oder automatischem Rollback. Vorgehen: Stand auf dem Server prüfen
+(`bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 80`); zeigt er `success` für den
+erwarteten `sha`, ist nichts weiter zu tun (der Workflow-Lauf kann erneut ausgeführt werden, er wartet
+dann nur oder wird mit `REJECTED` auf einen noch laufenden Deploy hingewiesen). Ein normaler Deploy
+benötigt wenige Minuten (mit Image-Build etwa drei Minuten mehr); einmalig beim ersten Deployment ab
+Version 4.11 kommt der Vorab-Stopp der noch mit SIGQUIT/660 s laufenden Container hinzu (höchstens 90 s
+statt 11 Minuten, `docs/vps/06-betrieb.md`, „Übergang beim ersten Deployment ab Version 4.11“). Die Frist
+von 12 Minuten bleibt.
+
 ## Secrets und Variablen im Überblick
 
 GitHub-Repository > Settings > Secrets and variables > Actions. Zwei getrennte Bereiche: Secrets
@@ -206,7 +232,7 @@ versucht wird.
 | Job „deploy-vps“ läuft gar nicht | `VPS_DEPLOY_ENABLED` nicht `true`, oder weder `app` noch `vps` als geändert erkannt | Variable prüfen; bei gezieltem Test `workflow_dispatch` verwenden (gilt als „alles geändert“) |
 | „deploy.sh: Release-Ordner fehlt“ | rsync-Schritt vor `deploy.sh` fehlgeschlagen oder `GITHUB_SHA` weicht ab | Log des Schritts „Anwendung per rsync übertragen“ prüfen |
 | „REJECTED“ im Schritt „Deployment auf dem VPS auslösen“ | Es lief bereits ein Deployment oder Rollback auf dem Server (Sperre `deploy/.deploy.lock` belegt), kein Fehler dieses Laufs | Nächster Schritt wartet automatisch auf den Abschluss des laufenden Vorgangs; Status manuell mit `deploy-status.sh` prüfen |
-| Zeitüberschreitung im Schritt „Auf Abschluss des Deployments warten“ | Deployment auf dem Server läuft ungewöhnlich lange oder die Statusdatei ist nicht erreichbar | `bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 80` direkt auf dem Server ausführen |
+| Zeitüberschreitung im Schritt „Auf Abschluss des Deployments warten“ | Deployment auf dem Server läuft ungewöhnlich lange oder die Statusdatei ist nicht erreichbar. Der serverseitige Deploy läuft unabhängig weiter und endet mit `success`, `failed` oder Rollback | `bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 80` direkt auf dem Server ausführen; bei `success` für den erwarteten `sha` ist nichts nachzuholen, sonst Protokoll unter `/opt/smarteinzug/logs/` prüfen |
 | Health-Check „HTTP 000“ oder Timeout | DNS zeigt noch nicht auf den VPS, oder Firewall/Caddy blockiert | bei aktivem Cutover: DNS prüfen (`docs/vps/05-dns-ssl.md`); vor dem Cutover: `VPS_HEALTH_STRICT=false` lassen |
 | „Health-Check-Antwort enthält kein "php":true“ | `health.php` liefert unerwarteten Inhalt (Anwendungsfehler, falsche Konfiguration) | `docker compose logs php`, `bin/healthcheck.php --all` direkt auf dem Server |
 

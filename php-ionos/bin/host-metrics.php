@@ -12,6 +12,12 @@ define('LOG_SERVICE', 'metrics');
 require __DIR__ . '/_cli.php';
 require_once dirname(__DIR__) . '/app/monitor.php';
 require_once dirname(__DIR__) . '/app/redis.php';
+require_once dirname(__DIR__) . '/app/worker_signals.php';
+
+// Stop-Signale SIGTERM/SIGINT/SIGQUIT: die Messschleife endet nach dem aktuellen Durchlauf bzw. sofort
+// waehrend des Wartens (sleep wird durch das Signal unterbrochen). Ohne Handler wuerde PID 1 das Signal
+// verworfen bekommen und der Container bis zur Grace-Period weiterlaufen (siehe app/worker_signals.php).
+worker_signals_install();
 
 $opts = cli_opts($argv);
 $interval = max(15, (int)($opts['interval'] ?? 60));
@@ -34,6 +40,9 @@ $prevQ = null;
 metrics_heartbeat_touch();
 while (true) {
     sleep($interval);
+    if (worker_stop_requested()) {
+        break;
+    }
     try {
         $cur = cpu_sample($proc);
         if ($prev && $cur && $cur['total'] > $prev['total']) {
@@ -82,9 +91,12 @@ while (true) {
     // fehlschlagen (z.B. Datenbank kurz nicht erreichbar). Es belegt "die Schleife laeuft", nicht "alle
     // Messwerte liegen vor".
     metrics_heartbeat_touch();
-    if (isset($opts['once'])) {
+    if (isset($opts['once']) || worker_stop_requested()) {
         break;
     }
+}
+if (worker_stop_requested()) {
+    cli_out('Metrik-Sammler beendet (' . worker_stop_signal_name() . ').');
 }
 
 /** Lebenszeichen des Sammlers schreiben (Fehler werden bewusst ignoriert, sie duerfen den Lauf nicht stoppen). */

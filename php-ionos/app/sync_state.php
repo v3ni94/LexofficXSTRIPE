@@ -193,6 +193,16 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
         job_run_finish($runId, 'success', $jobMetrics);
         return ['done' => $step['done'], 'skipped' => false, 'result' => $step['result']];
     } catch (Throwable $e) {
+        if (class_exists('WorkerShutdownException') && $e instanceof WorkerShutdownException) {
+            // Notbremse des Worker-Shutdowns (app/worker_signals.php): kein Fehler dieses Schritts. Nur die
+            // Sperre freigeben; Status, Cursor und last_error bleiben unverändert, die Fortsetzung wiederholt
+            // den Schritt ab dem letzten gespeicherten Cursor (idempotente Upserts). Kein failed-Lauf, keine
+            // api_errors, kein Eintrag in der Sync-Historie; job_execute() verbucht die Fortsetzung.
+            $pdo->prepare('UPDATE sync_state SET lock_until = NULL, lock_owner = NULL WHERE tenant_id = ? AND lock_owner = ?')
+                ->execute([$tenantId, $owner]);
+            job_run_finish($runId, 'unknown', [], 'worker_shutdown');
+            throw $e;
+        }
         // Im Worker bleibt der Lauf mit Cursor bestehen, damit der nächste Versuch am Checkpoint fortsetzt;
         // im Browser-/Cron-Pfad endet der Lauf mit Fehler. Fehlertexte werden bereinigt gespeichert.
         $newStatus = defined('IN_WORKER') ? 'running' : 'error';

@@ -15,6 +15,11 @@ require_once dirname(__DIR__) . '/app/jobs.php';
 $opts = cli_opts($argv);
 $once = isset($opts['once']);
 $interval = max(10, (int)($opts['interval'] ?? 30));
+// Stop-Signale SIGTERM/SIGINT/SIGQUIT (app/worker_signals.php): Schleife endet nach dem laufenden Tick,
+// die 1-Sekunden-Warteschleife unten prueft das Signal jede Sekunde. Installation VOR dem ersten
+// Datenbankzugriff (queue_available, GET_LOCK): Als PID 1 wuerde ein SIGTERM ohne Handler verworfen,
+// waehrend der Verbindungsaufbau bei nicht erreichbarer Datenbank blockiert.
+worker_signals_install();
 if (!queue_available()) {
     fwrite(STDERR, "Warteschlange nicht verfügbar (Migration 018 fehlt).\n");
     exit(3);
@@ -30,18 +35,11 @@ $st->closeCursor();
 
 $workerId = 'scheduler-' . substr((string)gethostname(), 0, 20) . '-' . getmypid();
 $heartbeatFile = (string)(getenv('WORKER_HEARTBEAT_FILE') ?: sys_get_temp_dir() . '/smarteinzug-scheduler-heartbeat');
-$stopping = false;
-if (function_exists('pcntl_async_signals')) {
-    pcntl_async_signals(true);
-    foreach ([SIGTERM, SIGINT] as $sig) {
-        pcntl_signal($sig, function () use (&$stopping) { $stopping = true; });
-    }
-}
 worker_register($workerId, 'scheduler');
 cli_out("Scheduler $workerId gestartet (Intervall $interval s)");
 $ticks = 0;
 $maintenanceLogged = false;
-while (!$stopping) {
+while (!worker_stop_requested()) {
     try {
         // Wartungsmodus (Cutover): keine neuen Jobs einreihen, Heartbeat weiter schreiben.
         if (maintenance_active()) {
@@ -70,9 +68,9 @@ while (!$stopping) {
     if ($once) {
         break;
     }
-    for ($i = 0; $i < $interval && !$stopping; $i++) {
+    for ($i = 0; $i < $interval && !worker_stop_requested(); $i++) {
         sleep(1);
     }
 }
 worker_stop($workerId);
-cli_out('Scheduler beendet.');
+cli_out('Scheduler beendet.' . (worker_stop_requested() ? ' (' . worker_stop_signal_name() . ')' : ''));

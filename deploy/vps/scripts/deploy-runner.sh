@@ -87,7 +87,9 @@ if [[ "${1:-}" == "--worker" ]]; then
         exit 1
     fi
 
-    if SMARTEINZUG_LOCK_HELD=1 bash "$RELEASE_SH" "$SHA"; then
+    # SMARTEINZUG_STATUS_FILE: deploy.sh aktualisiert darin nur "step"/"updated_at" (atomar, siehe dort
+    # deploy_step()); phase/sha/pid/exit_code schreibt ausschliesslich dieser Runner.
+    if SMARTEINZUG_LOCK_HELD=1 SMARTEINZUG_STATUS_FILE="$STATUS_FILE" bash "$RELEASE_SH" "$SHA"; then
         deploy_status success 0 "Deployment abgeschlossen"
         rc=0
     else
@@ -111,6 +113,15 @@ TS="$(date -u +%Y%m%d-%H%M%S)"
 RUNNER_LOG="$LOG_DIR/deploy-runner-$TS-$SHA.log"
 find "$LOG_DIR" -maxdepth 1 -name 'deploy-runner-*.log' -mtime +90 -delete 2>/dev/null || true
 
+# Statusdatei SOFORT (noch im Vordergrund, unter der bereits gehaltenen Sperre) mit "running" fuer DIESEN
+# Lauf vorbelegen: Die Datei ueberlebt seit Version 4.11 jeden Lauf, beim Ausloesen steht also noch das
+# Ergebnis des VORHERIGEN Laufs darin (success/failed mit altem sha). Ohne Vorbelegung koennte das
+# GitHub-Polling in den ersten Sekunden diesen alten Stand lesen und als Ergebnis dieses Laufs missdeuten
+# (alter sha -> "falsches Release", alter Fehlstatus -> sofortiger Abbruch). pid bleibt null, bis der
+# Hintergrundprozess seine eigene PID eintraegt.
+STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+deploy_status running null "Deployment angenommen, Hintergrundprozess startet"
+
 # setsid startet dieses Skript im Modus "--worker" in einer NEUEN Sitzung (kein Bezug mehr zur
 # SSH-Sitzung, kein SIGHUP bei deren Abbruch). "9<&9" vererbt den bereits gehaltenen Sperr-Deskriptor
 # explizit an den neuen Prozess; volle Umleitung von stdin/stdout/stderr verhindert SIGPIPE, wenn der
@@ -119,10 +130,10 @@ SMARTEINZUG_RUNNER_LOG="$RUNNER_LOG" setsid bash "$0" --worker "$SHA" \
     9<&9 </dev/null >>"$RUNNER_LOG" 2>&1 &
 disown
 
-# Kurze Wartezeit, damit die Statusdatei mit "running" existiert, bevor sich dieser (Vordergrund-)
-# Prozess beendet - rein informativ fuer den Aufrufer, keine Voraussetzung fuer die Korrektheit.
+# Kurz warten, bis der Hintergrundprozess seine PID in die Statusdatei geschrieben hat; rein informativ fuer
+# den Aufrufer ("running" fuer diesen sha steht seit der Vorbelegung oben bereits in der Datei).
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-    [[ -f "$STATUS_FILE" ]] && grep -q '"running"\|"success"\|"failed"' "$STATUS_FILE" 2>/dev/null && break
+    grep -q '"pid":[0-9]' "$STATUS_FILE" 2>/dev/null && break
     sleep 0.3
 done
 

@@ -204,6 +204,11 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
             $GLOBALS['mail_last_error'] = null;
             return true;
         } catch (Throwable $e) {
+            if (class_exists('WorkerShutdownException') && $e instanceof WorkerShutdownException) {
+                // Notbremse des Worker-Shutdowns (app/worker_signals.php): kein Transportfehler, keine
+                // Monitoring-Zählung, kein Circuit-Breaker-Fehlschlag; unverändert nach oben durchreichen.
+                throw $e;
+            }
             error_log('mail_send: SMTP-Versand fehlgeschlagen, Empfänger ' . mail_addr_ref($to) . ': ' . (function_exists('log_sanitize') ? log_sanitize($e->getMessage()) : $e->getMessage()));
             $msg = $e->getMessage();
             // Endgültige Ablehnung des Empfängers oder der Nachricht (5xx auf RCPT TO oder DATA) ist kein Transportproblem

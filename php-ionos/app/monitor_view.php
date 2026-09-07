@@ -20,7 +20,7 @@ function monitor_category_label(?string $c): string
         return '';
     }
     $map = [
-        'timeout' => 'Zeitüberschreitung', 'dns' => 'Namensauflösung', 'tls' => 'TLS-Verbindung', 'auth' => 'Anmeldung/Schlüssel abgelehnt',
+        'timeout' => 'Zeitüberschreitung', 'dns' => 'Namensauflösung', 'tls' => 'TLS-Verbindung', 'auth' => 'Anmeldung/Schlüssel abgelehnt', 'connection_refused' => 'Verbindung abgelehnt', 'network_unreachable' => 'Netz nicht erreichbar', 'redis_protected_mode' => 'Redis protected mode', 'protocol' => 'Protokollfehler (unerwartete Antwort)', 'loading' => 'Redis lädt Daten', 'busy' => 'Redis beschäftigt/nicht bereit', 'alias_missing' => 'DNS-Alias fehlt', 'alias_ambiguous' => 'DNS-Alias mehrdeutig', 'network_mismatch' => 'Falsches Netz',
         'throttled' => 'Drosselung (429)', 'http_5xx' => 'Serverfehler (5xx)', 'http_4xx' => 'Clientfehler (4xx)', 'redirect' => 'Unerwartete Weiterleitung',
         'connection' => 'Verbindungsfehler', 'database' => 'Datenbankfehler', 'other' => 'Sonstiger Fehler', 'slow' => 'Langsam (über Schwelle)',
         'not_dynamic' => 'Keine dynamische PHP-Antwort', 'stale_response' => 'Antwort mit veraltetem Zeitstempel', 'health_db' => 'PHP läuft, Datenbank laut health.php nicht lesbar',

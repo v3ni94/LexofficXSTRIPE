@@ -649,7 +649,7 @@ function circuit_success(string $api): void
 /** Technischen Fehler melden (Kategorien timeout, dns, tls, connection, http_5xx, throttled). Fachliche Fehler nicht melden. */
 function circuit_failure(string $api, string $category): void
 {
-    if (!circuit_available() || !in_array($category, ['timeout', 'dns', 'tls', 'connection', 'http_5xx', 'throttled', 'other'], true)) {
+    if (!circuit_available() || !in_array($category, ['timeout', 'dns', 'tls', 'connection', 'connection_refused', 'protocol', 'http_5xx', 'throttled', 'other'], true)) {
         return;
     }
     $cfg = circuit_config();

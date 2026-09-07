@@ -26,12 +26,29 @@ function redis_last_error(): ?string
  */
 function redis_effective_host(): string
 {
+    $cfg = (array)config('redis', []);
+    if (!$cfg) {
+        return '';
+    }
     $env = trim((string)getenv('SMARTEINZUG_REDIS_HOST'));
     if ($env !== '') {
         return $env;
     }
-    $cfg = (array)config('redis', []);
     return trim((string)($cfg['host'] ?? ''));
+}
+
+/**
+ * Fehlermeldung fuer Protokoll/Diagnose bereinigen: konfiguriertes Passwort und jedes "AUTH <wert>" maskieren,
+ * Leerraum verdichten, kuerzen. Eigenstaendig testbar (tools/healthcheck-redis-check.php).
+ */
+function redis_sanitize_message(string $message, ?string $password): string
+{
+    if ($password !== null && $password !== '') {
+        $message = str_replace($password, '***', $message);
+    }
+    $message = preg_replace('/\bAUTH\s+\S+/i', 'AUTH ***', $message) ?? $message;
+    $message = preg_replace('/\s+/', ' ', trim($message)) ?? $message;
+    return mb_substr($message, 0, 300);
 }
 
 /**
@@ -50,8 +67,8 @@ function redis_client(bool $forceRetry = false): ?Redis
     }
     $tried = true;
     $cfg = (array)config('redis', []);
-    $host = $cfg ? redis_effective_host() : '';
-    if (!$cfg || $host === '') {
+    $host = redis_effective_host();
+    if ($host === '') {
         $GLOBALS['redis_last_error'] = 'nicht konfiguriert';
         return null;
     }
@@ -61,7 +78,9 @@ function redis_client(bool $forceRetry = false): ?Redis
     }
     try {
         $r = new Redis();
-        if (!$r->connect($host, (int)($cfg['port'] ?? 6379), 1.5)) {
+        // 1.5 s Verbindungs- UND Lese-Timeout (6. Parameter): eine Gegenstelle, die verbindet, aber nie
+        // antwortet, blockiert PING sonst fuer default_socket_timeout (60 s).
+        if (!$r->connect($host, (int)($cfg['port'] ?? 6379), 1.5, null, 0, 1.5)) {
             $GLOBALS['redis_last_error'] = 'connection_refused';
             $GLOBALS['redis_last_message'] = 'connect() lieferte false';
             $client = null;
@@ -95,10 +114,17 @@ function redis_ip_in_cidr(string $ip, string $cidr): bool
         return false;
     }
     [$net, $bits] = explode('/', $cidr, 2);
+    // Nur ein reines Dezimalpraefix und ein gueltiges IPv4-Netz zulassen: "abc", "" oder "24x" wuerden
+    // per (int) zu 0 bzw. 24 und die Netzpruefung stillschweigend abschalten. IPv6 wird hier nicht
+    // bewertet (false); redis_probe() ueberspringt die Netzpruefung dann ausdruecklich.
+    if (!ctype_digit($bits) || filter_var($net, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false
+        || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+        return false;
+    }
     $ipL = ip2long($ip);
     $netL = ip2long($net);
     $bits = (int)$bits;
-    if ($ipL === false || $netL === false || $bits < 0 || $bits > 32) {
+    if ($ipL === false || $netL === false || $bits > 32) {
         return false;
     }
     $mask = $bits === 0 ? 0 : (~0 << (32 - $bits)) & 0xFFFFFFFF;
@@ -123,20 +149,12 @@ function redis_ip_in_cidr(string $ip, string $cidr): bool
 function redis_probe(): array
 {
     $cfg = (array)config('redis', []);
-    $host = $cfg ? redis_effective_host() : '';
+    $host = redis_effective_host();
     $port = (int)($cfg['port'] ?? 6379);
     $cidr = trim((string)getenv('SMARTEINZUG_REDIS_EXPECTED_CIDR'));
     $res = ['ok' => false, 'category' => 'other', 'stage' => 'resolve', 'host' => $host, 'port' => $port,
             'resolved' => [], 'expected_cidr' => $cidr !== '' ? $cidr : null, 'message' => ''];
-    $sanitize = static function (string $m) use ($cfg): string {
-        $pw = (string)($cfg['password'] ?? '');
-        if ($pw !== '') {
-            $m = str_replace($pw, '***', $m);
-        }
-        $m = preg_replace('/\bAUTH\s+\S+/i', 'AUTH ***', $m) ?? $m;
-        $m = preg_replace('/\s+/', ' ', trim($m)) ?? $m;
-        return mb_substr($m, 0, 300);
-    };
+    $sanitize = static fn(string $m): string => redis_sanitize_message($m, (string)($cfg['password'] ?? ''));
     if ($host === '') {
         $res['category'] = 'nicht konfiguriert';
         return $res;
@@ -145,9 +163,13 @@ function redis_probe(): array
         $res['category'] = 'php-redis-Erweiterung fehlt';
         return $res;
     }
+    // Unix-Socket (phpredis: Pfad als Host, Port < 1): keine Aufloesung, kein Netz, kein TCP - direkt Protokoll.
+    $unixSocket = str_starts_with($host, '/');
 
     // 1. Aufloesung
-    if (filter_var($host, FILTER_VALIDATE_IP)) {
+    if ($unixSocket) {
+        $ips = [];
+    } elseif (filter_var($host, FILTER_VALIDATE_IP)) {
         $ips = [$host];
     } else {
         $ips = @gethostbynamel($host);
@@ -160,10 +182,11 @@ function redis_probe(): array
     }
     $res['resolved'] = $ips;
 
-    // 2. Netzpruefung
+    // 2. Netzpruefung (nur IPv4; IPv6-Adressen werden von der CIDR-Pruefung ausgenommen, siehe redis_ip_in_cidr)
     $res['stage'] = 'network';
-    if ($cidr !== '') {
-        $outside = array_values(array_filter($ips, static fn(string $ip): bool => !redis_ip_in_cidr($ip, $cidr)));
+    if ($cidr !== '' && !$unixSocket) {
+        $ipv4 = array_values(array_filter($ips, static fn(string $ip): bool => filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false));
+        $outside = array_values(array_filter($ipv4, static fn(string $ip): bool => !redis_ip_in_cidr($ip, $cidr)));
         if ($outside) {
             $res['category'] = 'network_mismatch';
             $res['message'] = 'Hostname "' . $host . '" loest nach ' . implode(',', $outside) . ' auf, erwartet wurde eine Adresse in ' . $cidr
@@ -176,13 +199,15 @@ function redis_probe(): array
         $res['message'] = 'Hostname "' . $host . '" loest nach mehreren Adressen auf (' . implode(',', $ips) . '), es wird genau eine erwartet';
         return $res;
     }
-    $ip = $ips[0];
 
-    // 3. TCP
+    // 3. TCP (IPv6-Adressen in eckigen Klammern; Unix-Socket ueberspringt diese Stufe)
     $res['stage'] = 'tcp';
     $errno = 0;
     $errstr = '';
-    $sock = @stream_socket_client('tcp://' . $ip . ':' . $port, $errno, $errstr, 1.5);
+    $ip = $ips[0] ?? '';
+    $target = str_contains($ip, ':') ? '[' . $ip . ']' : $ip;
+    $sock = $unixSocket ? @stream_socket_client('unix://' . $host, $errno, $errstr, 1.5)
+                        : @stream_socket_client('tcp://' . $target . ':' . $port, $errno, $errstr, 1.5);
     if ($sock === false) {
         $low = mb_strtolower($errstr);
         if ($errno === 111 || str_contains($low, 'refused')) {
@@ -194,7 +219,7 @@ function redis_probe(): array
         } else {
             $res['category'] = monitor_category($errstr !== '' ? $errstr : 'connection');
         }
-        $res['message'] = $sanitize('TCP ' . $ip . ':' . $port . ' fehlgeschlagen (' . $errno . '): ' . $errstr);
+        $res['message'] = $sanitize(($unixSocket ? 'Unix-Socket ' . $host : 'TCP ' . $target . ':' . $port) . ' fehlgeschlagen (' . $errno . '): ' . $errstr);
         return $res;
     }
     fclose($sock);

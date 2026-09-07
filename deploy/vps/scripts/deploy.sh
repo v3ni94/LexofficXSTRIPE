@@ -120,6 +120,28 @@ set_current() {
     mv -Tf "$CURRENT_LINK.tmp" "$CURRENT_LINK"
 }
 
+# Fortschritt in der Statusdatei des Deploy-Runners: Wird dieses Skript von deploy-runner.sh gestartet,
+# uebergibt der den Pfad seiner Statusdatei (SMARTEINZUG_STATUS_FILE, /opt/smarteinzug/deploy/
+# .deploy-status.json). Hier werden nur die Felder "step" und "updated_at" ATOMAR (Zwischendatei + mv)
+# aktualisiert; phase/sha/pid/started_at/log_file bleiben unveraendert und gehoeren dem Runner. Rein
+# informativ fuer das GitHub-Polling (zeigt an, in welchem Schritt das Deployment steht); ein Fehler hier
+# darf das Deployment nie beeinflussen. Keine Geheimnisse: nur ein Schrittname und ein Zeitstempel.
+deploy_step() {
+    local step="$1" f="${SMARTEINZUG_STATUS_FILE:-}" tmp
+    [[ -n "$f" && -f "$f" ]] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    tmp="$f.tmp.$$"
+    # "jq -c": einzeilig und ohne Leerzeichen, im selben Format wie deploy-runner.sh (deploy-status.sh --tail
+    # liest log_file daraus; ein mehrzeilig formatiertes JSON fand es waehrend des Laufs nicht). Auch ein
+    # fehlgeschlagenes mv darf das Deployment nicht beenden (set -e gilt in diesem Zweig).
+    if jq -c --arg s "$step" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.step = $s | .updated_at = $t' "$f" > "$tmp" 2>/dev/null; then
+        mv -f "$tmp" "$f" 2>/dev/null || rm -f "$tmp"
+    else
+        rm -f "$tmp"
+    fi
+    return 0
+}
+
 # Vorheriges Release fuer ein moegliches Rollback merken, BEVOR der Symlink umgestellt wird.
 PREV_SHA=""
 if [[ -L "$CURRENT_LINK" ]]; then
@@ -155,9 +177,16 @@ if [[ -f "$PHP_IMAGE_HASH_FILE" ]] && [[ "$(cat "$PHP_IMAGE_HASH_FILE")" == "$PH
     NEEDS_BUILD=0
 fi
 
+deploy_step "release-uebernehmen"
 echo "Uebernehme deploy/vps aus dem Release nach $DEPLOY_DIR ..."
-rsync -a --delete --exclude '.env' --exclude '.deploy.lock' --exclude '.php-image.sha256' \
-    --exclude '.release_history' --exclude '.previous_sha' \
+# Laufzeitdateien des Deploy-Ordners NIE mitloeschen: Die Muster /.deploy* (Sperre, PID-Datei,
+# Statusdatei .deploy-status.json samt ihrer .tmp-Zwischendatei), /.release* (.release_history,
+# .release.env), /.previous_sha, /.php-image.sha256 und /.env liegen NICHT im Release und wuerden von
+# "--delete" sonst entfernt. Genau das war die Ursache fuer "phase=unknown" waehrend eines laufenden
+# Deployments (Version 4.11): deploy-runner.sh hatte die Statusdatei bereits mit "running" geschrieben,
+# dieser rsync loeschte sie Sekunden spaeter, deploy-status.sh fand bis zum Ende nichts mehr.
+rsync -a --delete --exclude '/.env' --exclude '/.deploy*' --exclude '/.php-image.sha256' \
+    --exclude '/.release*' --exclude '/.previous_sha' \
     "$RELEASE_DIR/deploy/vps/" "$DEPLOY_DIR/"
 
 cd "$DEPLOY_DIR"
@@ -199,6 +228,7 @@ echo "Zustand vor dem Start (Projekt smarteinzug):"
 "${COMPOSE[@]}" ps -a --format '{{.Name}}\t{{.State}}\t{{.Health}}' 2>/dev/null || echo "  (noch keine Container vorhanden)"
 
 if [[ "$NEEDS_BUILD" -eq 1 ]]; then
+    deploy_step "image-build"
     echo "deploy/vps/php hat sich geaendert, baue Image neu ..."
     "${COMPOSE[@]}" build php
     echo "$PHP_IMAGE_HASH" > "$PHP_IMAGE_HASH_FILE"
@@ -219,6 +249,31 @@ REDIS_CONF_CHANGED=1
 if [[ -n "$PREV_SHA" && -f "$RELEASES_DIR/$PREV_SHA/$REDIS_CONF_REL" ]] \
     && cmp -s "$RELEASES_DIR/$PREV_SHA/$REDIS_CONF_REL" "$RELEASE_DIR/$REDIS_CONF_REL"; then
     REDIS_CONF_CHANGED=0
+fi
+# Zweite Aenderungsquelle: die Compose-DIENSTDEFINITION von redis selbst (Image, Kommando, Netze/Aliase,
+# Umgebung). Compose bildet daraus einen Konfigurations-Hash und speichert ihn am Container als Label
+# com.docker.compose.config-hash; "docker compose config --hash redis" berechnet denselben Wert fuer die
+# neue Konfiguration. Weicht er vom laufenden Container ab (oder gibt es noch keinen), muss redis ebenfalls
+# VOR der Candidate-Pruefung kontrolliert neu erzeugt werden, sonst pruefte der Candidate gegen einen Redis
+# mit alter Definition (z.B. ohne den Alias smarteinzug-redis) und scheiterte deterministisch mit
+# alias_missing, obwohl der spaetere Cutover ihn ohnehin neu erzeugt haette.
+# "|| true" in den Zuweisungen: Unter "set -euo pipefail" beendete ein fehlschlagender Compose-Aufruf in
+# einer Pipeline das Skript sonst STILL (kein ::error::, kein Rollback); ein leerer Wert wird unten regulaer
+# behandelt ("kein Hash lesbar" bzw. "kein Container").
+REDIS_DEF_CHANGED=0
+REDIS_NEW_HASH="$("${COMPOSE[@]}" config --hash redis 2>/dev/null | awk '$1=="redis"{print $2}' | head -n1 || true)"
+REDIS_RUNNING_ID="$("${COMPOSE[@]}" ps -q redis 2>/dev/null | head -n1 || true)"
+if [[ -n "$REDIS_NEW_HASH" ]]; then
+    if [[ -z "$REDIS_RUNNING_ID" ]]; then
+        REDIS_DEF_CHANGED=1
+        echo "redis: kein laufender Container (Erststart oder frueher Abbruch), Dienst wird kontrolliert erzeugt."
+    else
+        REDIS_RUNNING_HASH="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.config-hash" }}' "$REDIS_RUNNING_ID" 2>/dev/null || true)"
+        if [[ "$REDIS_RUNNING_HASH" != "$REDIS_NEW_HASH" ]]; then
+            REDIS_DEF_CHANGED=1
+            echo "redis: Compose-Dienstdefinition geaendert (Konfigurations-Hash laufend=${REDIS_RUNNING_HASH:-?} neu=$REDIS_NEW_HASH)."
+        fi
+    fi
 fi
 
 # Sicherheitsvoraussetzung fuer "protected-mode no" (siehe redis.conf, Kopfkommentar): kein
@@ -254,11 +309,18 @@ redis_wait_healthy() {
     # Docker-Daemon relevant, um den Zeitueberschreitungs-Pfad in wenigen Sekunden statt 90s zu pruefen;
     # im echten Betrieb bleibt es bei 90s (Vorgabewert).
     local deadline=$((SECONDS + ${REDIS_WAIT_HEALTHY_SECONDS:-90})) unhealthy
+    local lines
     while true; do
-        unhealthy="$("${COMPOSE[@]}" ps redis --format '{{.Name}} {{.Health}}' 2>/dev/null | awk '$2!="" && $2!="healthy"{print $1"="$2}')"
-        if [[ -z "$unhealthy" ]]; then
+        # "ps -a": auch ein beendeter/abgestuerzter Container erscheint (sonst wuerde ihn Compose ausblenden
+        # und eine LEERE Ausgabe faelschlich wie "alles gesund" wirken). Gesund heisst: mindestens eine
+        # Zeile UND jede Zeile mit Health "healthy".
+        lines="$("${COMPOSE[@]}" ps -a redis --format '{{.Name}} {{.Health}}' 2>/dev/null)"
+        unhealthy="$(printf '%s\n' "$lines" | awk 'NF{ if ($2!="healthy") print $1"="($2==""?"kein-healthcheck":$2) }')"
+        if [[ -n "$lines" && -z "$unhealthy" ]]; then
             return 0
         fi
+        [[ -z "$lines" ]] && unhealthy="kein-redis-container"
+        
         if (( SECONDS > deadline )); then
             echo "::error:: Zeitueberschreitung beim Warten auf gesundes Redis: $unhealthy"
             "${COMPOSE[@]}" logs redis --tail=80 || true
@@ -302,14 +364,17 @@ if ! redis_isolation_ok; then
     exit 1
 fi
 
-if [[ "$REDIS_CONF_CHANGED" -eq 0 ]]; then
-    echo "redis.conf unveraendert gegenueber dem laufenden Release (${PREV_SHA:-keins}), Redis wird nicht angefasst."
+if [[ "$REDIS_CONF_CHANGED" -eq 0 && "$REDIS_DEF_CHANGED" -eq 0 ]]; then
+    echo "redis.conf und Compose-Definition von redis unveraendert gegenueber dem laufenden Stand (${PREV_SHA:-keins}), Redis wird nicht angefasst."
 else
-    echo "redis.conf hat sich gegenueber dem laufenden Release geaendert (oder es gibt kein vorheriges Release)."
+    deploy_step "redis-infrastruktur"
+    if [[ "$REDIS_CONF_CHANGED" -eq 1 ]]; then
+        echo "redis.conf hat sich gegenueber dem laufenden Release geaendert (oder es gibt kein vorheriges Release)."
+    fi
     echo "Aktualisiere ausschliesslich den Redis-Dienst kontrolliert, VOR der Candidate-Pruefung ..."
 
     echo "Validiere die neue redis.conf vorab in einem eigenstaendigen Wegwerfcontainer (kein Compose-Projekt, kein Netz) ..."
-    REDIS_IMAGE="$("${COMPOSE[@]}" config --images redis 2>/dev/null | head -n1)"
+    REDIS_IMAGE="$("${COMPOSE[@]}" config --images redis 2>/dev/null | head -n1 || true)"
     set +e
     VALIDATE_OUT="$(timeout -k 1 3 docker run --rm --entrypoint redis-server \
         -v "$DEPLOY_DIR/redis/redis.conf:/redis.conf:ro" "$REDIS_IMAGE" /redis.conf --port 16399 2>&1)"
@@ -362,11 +427,17 @@ else
             RESTORE_RC=$?
             set -e
             if [[ "$RESTORE_RC" -eq 0 ]] && redis_wait_healthy; then
-                echo "Redis-Infrastruktur TECHNISCH erfolgreich auf die vorherige Konfiguration zurueckgesetzt (redis.conf wiederhergestellt, Dienst neu erzeugt, healthy)."
+                if [[ "$REDIS_CONF_CHANGED" -eq 1 ]]; then
+                    echo "Redis-Infrastruktur TECHNISCH erfolgreich auf die vorherige Konfiguration zurueckgesetzt (redis.conf wiederhergestellt, Dienst neu erzeugt, healthy)."
+                else
+                    # Nur die Compose-DEFINITION hatte sich geaendert: Sie stammt aus den Compose-Dateien des neuen
+                    # Release im Deploy-Ordner und wird von diesem Skript nicht zurueckgebaut. Ehrlich melden.
+                    echo "Redis-Dienst neu erzeugt und healthy. HINWEIS: redis.conf war unveraendert; die geaenderte Compose-Definition von redis kann dieses Skript nicht zurueckbauen, Redis laeuft mit der NEUEN Definition. Erreichen die laufenden Container Redis damit nicht, stellt 'rollback.sh ${PREV_SHA}' auch die Compose-Definition wieder her."
+                fi
                 if redis_network_probe; then
                     echo "Redis ist mit der vorherigen Konfiguration aus einem anderen Container erreichbar."
                 else
-                    echo "::warning:: Redis ist mit der vorherigen Konfiguration aus einem anderen Container weiterhin NICHT nutzbar (bekannter Altzustand, siehe DIAGNOSE-Zeile oben). Der Rollback selbst ist technisch erfolgreich; die Anwendung arbeitet wie zuvor mit dem Datenbank-Fallback ohne Redis."
+                    echo "::warning:: Redis ist mit der vorherigen Konfiguration aus einem anderen Container weiterhin NICHT nutzbar (Ursache: siehe DIAGNOSE-Zeile oben; entspricht dem Zustand VOR diesem Deployment). Der Rollback selbst ist technisch erfolgreich; die Anwendung arbeitet wie zuvor mit dem Datenbank-Fallback ohne Redis."
                 fi
             else
                 echo "::error:: Wiederherstellung der vorherigen Redis-Konfiguration TECHNISCH fehlgeschlagen (Recreate-Exitcode $RESTORE_RC oder Dienst nicht healthy). Manuelle Pruefung auf dem Server erforderlich (docker compose logs redis)."
@@ -396,6 +467,7 @@ fi
 # die Produktionskonfiguration, falls Staging jemals auf demselben Host wie Produktion mit derselben
 # config.php eingerichtet wuerde (siehe docs/vps/06-betrieb.md, Abschnitt "Staging- und
 # Produktionsisolation").
+deploy_step "candidate"
 echo "Pruefe den Candidaten isoliert (eigener Container, ohne die laufende Anwendung zu beruehren) ..."
 CANDIDATE_CMD="docker compose run --rm --no-deps -T php php bin/healthcheck.php --db --redis --expect-env=$DEPLOY_ENV"
 set +e
@@ -409,6 +481,7 @@ if [[ "$CANDIDATE_RC" -ne 0 ]]; then
     exit 1
 fi
 
+deploy_step "migration"
 echo "Spiele Datenbankmigrationen isoliert mit dem neuen Code ein (noch VOR dem Cutover) ..."
 MIGRATE_CMD='docker compose run --rm --no-deps -T php php bin/migrate.php'
 set +e
@@ -424,12 +497,43 @@ if [[ "$MIGRATE_RC" -ne 0 ]]; then
 fi
 
 # --- Cutover: laufende Container auf das geprüfte, bereits migrierte Release umstellen ---------------
+deploy_step "cutover"
+# Uebergangshilfe fuer Container mit VERALTETER Stop-Konfiguration (wirksam beim ersten Deployment ab
+# Version 4.11 und nach jedem Rollback auf ein aelteres Release, sonst ohne Wirkung): Docker stoppt einen
+# Container beim Neuerzeugen durch "up -d" mit StopSignal und StopTimeout des LAUFENDEN Containers, nicht
+# mit den Werten der neuen Definition. Die Container der Versionen bis 4.10 tragen STOPSIGNAL SIGQUIT (aus
+# dem Basisimage) und StopTimeout 660 s; ihr Code behandelt SIGQUIT nicht, der Cutover haette damit nochmals
+# bis zu 11 Minuten gedauert und die 12-Minuten-Frist des GitHub-Pollings gerissen. Solche Container werden
+# deshalb vorab gezielt mit SIGTERM (vom alten Code behandelt: kein neuer Job, Ende nach dem laufenden Job)
+# und einer Frist von 90 s beendet; ein danach noch laufender Job wird ueber heartbeat_ttl regulaer
+# freigegeben. "docker stop" verhindert zugleich den sofortigen Neustart durch "restart: unless-stopped";
+# "up -d" erzeugt die Dienste anschliessend mit der neuen Stop-Konfiguration (SIGTERM, 75 s bzw. 20 s).
+# php-fpm, Caddy und Redis sind bewusst nicht betroffen (ihre Stop-Signale sind korrekt).
+LEGACY_STOP_IDS=()
+for svc in scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail worker-maintenance metrics; do
+    cid="$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null | head -n1 || true)"
+    [[ -n "$cid" ]] || continue
+    stopcfg="$(docker inspect --format '{{.Config.StopSignal}} {{.Config.StopTimeout}}' "$cid" 2>/dev/null || true)"
+    stopsig="${stopcfg%% *}"; stoptmo="${stopcfg#* }"
+    # Leeres Signal = Docker-Vorgabe SIGTERM; StopTimeout "<nil>" = Docker-Vorgabe 10 s.
+    [[ "$stoptmo" =~ ^[0-9]+$ ]] || stoptmo=10
+    if [[ -n "$stopsig" && "$stopsig" != "SIGTERM" && "$stopsig" != "TERM" && "$stopsig" != "15" ]] || (( stoptmo > 120 )); then
+        echo "  $svc: veraltete Stop-Konfiguration (Signal ${stopsig:-SIGTERM}, Frist ${stoptmo} s), wird vorab kontrolliert mit SIGTERM beendet."
+        LEGACY_STOP_IDS+=("$cid")
+    fi
+done
+if (( ${#LEGACY_STOP_IDS[@]} > 0 )); then
+    echo "Beende ${#LEGACY_STOP_IDS[@]} Hintergrund-Container mit veralteter Stop-Konfiguration vorab (SIGTERM, Frist 90 s) ..."
+    docker stop --signal SIGTERM --timeout 90 "${LEGACY_STOP_IDS[@]}" >/dev/null \
+        || echo "::warning:: Vorab-Stopp der Container mit veralteter Stop-Konfiguration schlug fehl; 'up -d' beendet sie mit ihrer alten Konfiguration (der Cutover kann entsprechend laenger dauern)."
+fi
 echo "Migrationen abgeschlossen. Aktiviere Release $SHA (Cutover: Container werden neu erzeugt) ..."
 "${COMPOSE[@]}" up -d --remove-orphans
 
 echo "Zustand nach dem Start:"
 "${COMPOSE[@]}" ps -a --format '{{.Name}}\t{{.State}}\t{{.Health}}' 2>/dev/null || true
 
+deploy_step "warte-healthy"
 echo "Warte auf gesunde Container (bis zu 180 Sekunden) ..."
 DEADLINE=$((SECONDS + 180))
 while true; do
@@ -452,24 +556,60 @@ done
 # Werkzeuge wie readlink/db-import.sh, siehe Kopfkommentar; fuer die Korrektheit der Container ohne
 # Bedeutung, da deren working_dir bereits ueber RELEASE_SHA an dieses Release gebunden ist). Solange
 # dieser Schritt nicht erreicht ist, zeigt "current" weiterhin auf das zuletzt bekannte GUTE Release.
+deploy_step "aktivierung"
 echo "Aktiviere Release $SHA (Symlink $CURRENT_LINK, Buchfuehrung) ..."
 set_current "$SHA"
 
 echo "$(date -u +%FT%TZ) deploy $SHA" >> "$DEPLOY_DIR/.release_history"
 [[ -n "$PREV_SHA" ]] && echo "$PREV_SHA" > "$DEPLOY_DIR/.previous_sha"
 
-echo "Lade php-fpm neu (SIGUSR2, uebernimmt neuen Code ohne Verbindungsabbruch) ..."
+# php-fpm-Reload (SIGUSR2): Nach dem Cutover ist der php-Container bereits mit dem neuen Release neu
+# erzeugt; der Reload ist dann wirkungslos, aber sofort erledigt und ohne Risiko. Er bleibt fuer den Fall,
+# dass derselbe SHA erneut ausgerollt wird (kein Recreate, z.B. nach einer Aenderung an shared/config.php):
+# dann uebernimmt php-fpm geaenderte Konfiguration/OPcache ohne Verbindungsabbruch.
+echo "Lade php-fpm neu (SIGUSR2, ohne Verbindungsabbruch) ..."
 "${COMPOSE[@]}" exec -T php kill -USR2 1
 
-# Worker und Scheduler erhalten SIGTERM und bis zu 660 s Zeit (stop_grace_period), damit ein laufender
-# Sync-Abschnitt (max. 600 s) sauber abgeschlossen und der Job freigegeben wird.
-echo "Starte Scheduler und Worker kontrolliert neu (SIGTERM, laufender Job wird zu Ende gebracht) ..."
-BACKGROUND_SERVICES=(scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance)
+# KEIN zweiter Neustart von Scheduler und Workern mehr (frueher "restart -t 660", das waren bis zu
+# 11 Minuten je Neustart, Version 4.11). Beweis der Entbehrlichkeit: working_dir jedes PHP-Containers ist
+# /opt/smarteinzug/releases/${RELEASE_SHA} (docker-compose.yml, x-php-common) und damit Teil der
+# Compose-Dienstdefinition und ihres Konfigurations-Hash (Label com.docker.compose.config-hash). Aendert
+# sich RELEASE_SHA, erzeugt "docker compose up -d" den Container zwingend neu, mit dem neuen Code als
+# working_dir; laeuft er bereits mit genau diesem Release (Wiederholung desselben SHA), gibt es nichts, was
+# ein Neustart laden koennte. Statt blind neu zu starten, wird die Release-Bindung deshalb VERIFIZIERT:
+# Jeder Container aus dem PHP-Image muss laufen und working_dir dieses Release tragen, sonst Rollback.
+echo "Verifiziere die Release-Bindung aller PHP-Container (working_dir = $RELEASES_DIR/$SHA) ..."
+RELEASE_BOUND_SERVICES=(php scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance metrics)
 if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx worker-lexware-2; then
-    BACKGROUND_SERVICES+=(worker-lexware-2)
+    RELEASE_BOUND_SERVICES+=(worker-lexware-2)
 fi
-"${COMPOSE[@]}" restart -t 660 "${BACKGROUND_SERVICES[@]}"
+BINDING_ERRORS=0
+for svc in "${RELEASE_BOUND_SERVICES[@]}"; do
+    # "|| true": ein fehlschlagender Compose-Aufruf darf das Skript hier (nach dem Cutover!) nicht still
+    # beenden, sondern muss als "kein Container" in den Rollback-Pfad unten laufen.
+    cid="$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null | head -n1 || true)"
+    if [[ -z "$cid" ]]; then
+        echo "::error:: Dienst $svc: kein Container gefunden."
+        BINDING_ERRORS=$((BINDING_ERRORS + 1))
+        continue
+    fi
+    wd="$(docker inspect --format '{{.Config.WorkingDir}}' "$cid" 2>/dev/null || true)"
+    state="$(docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null || true)"
+    if [[ "$wd" != "$RELEASES_DIR/$SHA" || "$state" != "running" ]]; then
+        echo "::error:: Dienst $svc: working_dir=${wd:-?} Zustand=${state:-?}, erwartet $RELEASES_DIR/$SHA und running."
+        BINDING_ERRORS=$((BINDING_ERRORS + 1))
+    else
+        echo "  $svc: $wd ($state)"
+    fi
+done
+if (( BINDING_ERRORS > 0 )); then
+    deploy_fail_report "release-bindung" "docker inspect --format {{.Config.WorkingDir}} ($BINDING_ERRORS Dienste abweichend)" ""
+    echo "::error:: Nicht alle PHP-Container laufen mit dem neuen Release. Automatisches Rollback."
+    run_rollback || true
+    exit 1
+fi
 
+deploy_step "health-check"
 echo "Health-Check nach der Aktivierung ..."
 sleep 5
 set +e
@@ -506,6 +646,7 @@ else
     echo "::warning:: HTTPS-Health-Check ueber Caddy fehlgeschlagen (HEALTH_STRICT=false, nur Hinweis; vor dem Cutover erwartbar, solange kein Zertifikat vorliegt)."
 fi
 
+deploy_step "bereinigung"
 echo "Bereinige alte Releases (behalte die letzten 5) ..."
 mapfile -t OLD_RELEASES < <(ls -1dt "$RELEASES_DIR"/*/ 2>/dev/null | grep -v '/current/$' | tail -n +6 || true)
 for old in "${OLD_RELEASES[@]}"; do

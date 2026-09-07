@@ -35,8 +35,10 @@
 #    deploy/.env, Backups und Logs, die kein Anwendungscontainer lesen darf).
 #  - worker-lexware-2 (zweiter Lexware-Worker) ist hier definiert, wird aber in Staging ueber ein
 #    Profil deaktiviert (docker-compose.staging.yml); Produktion setzt nur Ressourcenlimits.
-#  - stop_grace_period 660 s fuer Scheduler und Worker: ein laufender Sync-Abschnitt darf bis zu 600 s
-#    dauern (jobs.sync_attempt_seconds), SIGTERM beendet ihn kontrolliert und gibt den Job frei.
+#  - stop_signal SIGTERM und stop_grace_period 75 s fuer Scheduler und Worker: Nach dem Signal wird kein
+#    neuer Job angenommen, ein laufender Job erreicht innerhalb weniger Sekunden einen kooperativen
+#    Abbruchpunkt (Fortsetzung eingeplant, kein Fehlversuch) oder wird nach 30 s kontrolliert
+#    unterbrochen; Begruendung am Anker x-php-background und in docs/vps/06-betrieb.md.
 
 name: smarteinzug
 
@@ -116,7 +118,27 @@ x-php-common: &php-common
 # (--metrics), siehe Dienst "metrics" weiter unten.
 x-php-background: &php-background
   <<: *php-common
-  stop_grace_period: 660s
+  # Stop-Signal ausdruecklich SIGTERM: Das Basisimage php:*-fpm setzt STOPSIGNAL SIGQUIT (fuer php-fpm
+  # richtig), das gilt aber fuer JEDEN Container aus diesem Image, also auch fuer Scheduler und Worker.
+  # bin/worker.php/bin/scheduler.php behandelten nur SIGTERM/SIGINT; ein SIGQUIT an PID 1 ohne Handler
+  # wird vom Kernel verworfen (Init eines PID-Namensraums ignoriert Signale mit Standardaktion), der
+  # Container lief bis zum Ablauf der Grace-Period weiter und wurde dann hart beendet ("Container failed
+  # to exit within 11m0s of signal 3 - using the force", Version 4.11). Die PHP-Prozesse behandeln jetzt
+  # zusaetzlich SIGQUIT, das Stop-Signal ist trotzdem eindeutig SIGTERM, und "command:" startet php
+  # direkt als PID 1 (kein "sh -c"-Wrapper, der Signale nicht weiterreichen muesste).
+  stop_signal: SIGTERM
+  # Grace-Period abgeleitet aus der Job-Architektur (siehe docs/vps/06-betrieb.md, "Signalmodell der
+  # Worker"): Nach dem Stop-Signal nimmt ein Worker keinen neuen Job mehr an; ein laufender Job endet am
+  # naechsten kooperativen Abbruchpunkt (Fortsetzung eingeplant, kein Fehlversuch); fuer unterbrechbare
+  # Jobtypen zieht nach WORKER_STOP_JOB_SECONDS (30 s) zusaetzlich eine Notbremse (SIGALRM -> kontrollierte
+  # Fortsetzung). 75 s = 30 s Notbremse + 30 s laengster einzelner externer Aufruf (Stripe) + 15 s Reserve
+  # fuer Heartbeat/Abmeldung. Das deckt den Normalfall ab (ein Einzug: ein Lexware- und mehrere
+  # Stripe-Aufrufe bei normaler Latenz); bei gestoerter Anbindung kann ein Geldfluss-Job seinen
+  # kooperativen Punkt spaeter erreichen und wird dann hart beendet, Versuchsjournal und
+  # queue_release_stale() fangen das ab. Frueher 660 s (Zeitbudget eines ganzen Sync-Versuchs), das war
+  # die 11-Minuten-Wartezeit. Beim ERSTEN Deployment ab 4.11 tragen die laufenden Container noch die
+  # alte Konfiguration (SIGQUIT, 660 s); deploy.sh beendet sie vor dem Cutover gezielt mit SIGTERM.
+  stop_grace_period: 75s
   healthcheck: &heartbeat-healthcheck
     test: ["CMD", "php", "bin/healthcheck.php", "--heartbeat"]
     interval: 30s
@@ -203,26 +225,28 @@ services:
   # --- Worker --------------------------------------------------------------------------------
   # memory_limit der Worker kommt bewusst per CLI-Flag (nicht ueber php.ini), damit ein Wert
   # (WORKER_MEMORY_MB) fuer alle Pools gilt, ohne das Web-php.ini zu beeinflussen (dort 256M fest).
+  # php laeuft direkt als PID 1 (Listenform, kein "sh -c"): Nur so erreicht das Stop-Signal den
+  # PHP-Prozess sicher; ein Shell-Wrapper als PID 1 reicht Signale nicht an sein Kind weiter.
   worker-lexware-1:
     <<: *php-background
-    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=lexware"]
+    command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=lexware"]
 
   # Zweiter Lexware-Worker. In Staging ueber docker-compose.staging.yml (profiles) abgeschaltet.
   worker-lexware-2:
     <<: *php-background
-    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=lexware"]
+    command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=lexware"]
 
   worker-stripe:
     <<: *php-background
-    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=stripe"]
+    command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=stripe"]
 
   worker-mail:
     <<: *php-background
-    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=mail"]
+    command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=mail"]
 
   worker-maintenance:
     <<: *php-background
-    command: ["sh", "-c", "php -d memory_limit=${WORKER_MEMORY_MB:-512}M bin/worker.php --pool=maintenance"]
+    command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=maintenance"]
 
   # --- Host-Metriken (Auftrag II/III: admin-system.php, Reiter Server) -----------------------
   # Laeuft wie alle Anwendungscontainer ohne Root und OHNE das Wurzeldateisystem des Hosts.
@@ -234,6 +258,10 @@ services:
     restart: unless-stopped
     user: "${APP_UID:-33}:${APP_GID:-33}"
     command: ["php", "bin/host-metrics.php", "--interval=60"]
+    # Wie Scheduler/Worker: eindeutiges Stop-Signal statt des geerbten STOPSIGNAL SIGQUIT; der Sammler
+    # beendet sich beim Signal sofort (sleep wird unterbrochen), 20 s Grace sind reichlich.
+    stop_signal: SIGTERM
+    stop_grace_period: 20s
     networks: [coolify, smarteinzug_internal]
     environment:
       TZ: ${TZ:-Europe/Berlin}

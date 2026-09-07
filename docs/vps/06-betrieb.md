@@ -163,8 +163,9 @@ Container `php`/`scheduler`/`worker-*` nicht berührt:
 Image bauen (falls nötig) → Candidate isoliert prüfen (`bin/healthcheck.php --db --redis` mit dem
 neuen Code, laufende Anwendung unberührt) → Migrationen isoliert mit dem neuen Code einspielen →
 erst danach der eigentliche Cutover (`docker compose up -d`) → auf gesunde Container warten →
-`current`-Symlink umstellen (Buchführung) → php-fpm neu laden → Worker/Scheduler kontrolliert neu
-starten → Health-Check → bei einem Fehler ab dem Cutover automatisches Rollback.
+`current`-Symlink umstellen (Buchführung) → php-fpm neu laden → Release-Bindung aller PHP-Container
+per `docker inspect` verifizieren (kein zweiter Worker-Neustart, siehe Version 4.11) → Health-Check →
+bei einem Fehler ab dem Cutover automatisches Rollback.
 
 Schlagen Candidate-Prüfung oder Migration fehl, wurde an den laufenden Containern nichts verändert;
 ein Rollback ist dann nicht nötig, die alte Version läuft mit dem alten Code und dem alten
@@ -339,12 +340,12 @@ der beiden Release-Ordner, nicht Compose's eigene, für Bind-Mounts unzureichend
   unveränderte `redis.conf` → kein Recreate; geänderte `redis.conf` mit erfolgreichem Netzwerktest →
   Candidate/Migration/Cutover laufen durch; `healthy`, aber über das Netz blockiert → Abbruch mit
   bestätigtem Rollback der Redis-Infrastruktur, keine Migration, kein Cutover; ungültige neue `redis.conf`
-  → schon die Vorab-Validierung bricht ab, der laufende Redis-Dienst bleibt unberührt; verletzte
+  → schon die Vorab-Validierung bricht ab, die ungültige Konfiguration wird nie aktiv (der Dienst wird über den Rollback-Pfad einmal mit der alten, unveränderten Konfiguration neu erzeugt); verletzte
   Netzwerk-Isolationsvorgaben → Abbruch vor jeder Änderung; eine Wiederholung bleibt idempotent.
   `tools/staging-isolation-check.py` bestätigt zusätzlich, dass Redis in Produktion UND Staging jeweils
   keinen Host-Port hat, ausschließlich am internen Netz hängt und keine Traefik-Labels trägt.
 
-### Nachtrag (Version 4.10): Redis-Alias-Kollision mit Coolifys eigenem Redis – die tatsächliche Root Cause
+### Nachtrag (Version 4.10): Redis-Alias-Kollision mit Coolifys eigenem Redis, die tatsächliche Root Cause
 
 **Symptom (Run #43):** Der neue Redis-Dienst wurde mit `protected-mode no` gestartet und war `healthy`,
 trotzdem scheiterte der netzwerkbasierte Test aus einem anderen Container weiterhin, jetzt mit
@@ -399,7 +400,7 @@ deshalb korrekt und notwendig. Er war aber **nicht** die Ursache der beobachtete
   `network_unreachable`), Redis-Protokoll (`redis_protected_mode`, `auth`, `protocol`). Bei einem
   Fehlschlag steht eine `DIAGNOSE redis: host=… aufgeloest=… erwartet=… stufe=… kategorie=… meldung="…"`-Zeile
   im Deployment-Protokoll (Passwörter maskiert, Originalmeldung gekürzt). Nur transiente Stufen werden
-  wiederholt; `auth`, `network_mismatch`, `protected_mode`, `protocol` sofort gemeldet.
+  wiederholt; `auth`, `network_mismatch`, `redis_protected_mode`, `protocol` sofort gemeldet.
 - `deploy.sh` führt den netzwerkbasierten Redis-Test jetzt **immer mit dem Code des neuen Release** aus
   (nur er kennt `SMARTEINZUG_REDIS_HOST` und liefert die DIAGNOSE-Zeile); ein älteres Release würde
   weiter den mehrdeutigen Namen `redis` verwenden und damit erneut Coolifys Redis treffen.
@@ -412,7 +413,7 @@ deshalb korrekt und notwendig. Er war aber **nicht** die Ursache der beobachtete
 **Was auf dem VPS nach dem Deployment zu erwarten ist:** Die Candidate-Prüfung und der Netzwerktest
 melden `OK`; `docker compose … exec php getent hosts smarteinzug-redis` liefert eine Adresse aus
 `172.28.0.0/24`, während `getent hosts redis` aus einem PHP-Container weiterhin Coolifys Redis liefern
-kann – das ist jetzt unerheblich, weil kein Code diesen Namen mehr verwendet.
+kann; das ist inzwischen unerheblich, weil kein Code diesen Namen mehr verwendet.
 
 **Regressionstests (was echt ist und was simuliert):** `tools/healthcheck-redis-check.php` Teil 9 prüft
 gegen **echte** lokale Redis-Server: passwortgeschütztes fremdes Redis ohne Passwort → `auth`
@@ -428,7 +429,151 @@ erfolgreichem** Rollback auf den bekannt defekten Altzustand (nur Warnung), Netz
 `--no-deps`, Reihenfolge Recreate → Netzwerktest → Candidate → Migration → Cutover. **Nicht** lokal
 prüfbar (kein Docker-Daemon in der Entwicklungsumgebung): die tatsächliche Docker-DNS-Auflösung des
 Alias und die Netzmitgliedschaft eines echten `compose run`-Containers; beides ist über die zitierten
-Primärquellen belegt und wird beim nächsten Deployment durch die DIAGNOSE-Zeile sichtbar.
+Primärquellen belegt; die DIAGNOSE-Zeile (seit Version 4.11 auch bei Erfolg mit `kategorie=ok` und der aufgelösten Adresse) macht beim nächsten Deployment im Protokoll sichtbar, welche Gegenstelle tatsächlich erreicht wurde.
+
+## Deploymentstatus, Signalmodell der Worker und GitHub-Polling (Version 4.11)
+
+Der Deploy von Release `aadefb8` lief serverseitig vollständig durch (Redis-Aktualisierung,
+Cross-Container-Test, Candidate, Migration `0 eingespielt, 0 offen`, Cutover, Healthchecks, Symlink,
+Reload, finaler Healthcheck, HTTPS-Check, Bereinigung). Zwei Mängel des Mechanismus blieben und sind
+hier behoben: GitHub sah während des gesamten Laufs `phase=unknown` und brach nach 12 Minuten ab, und
+die Worker-Container brauchten beim Stoppen bis zu 11 Minuten.
+
+### Statusdatei und Status-Lifecycle
+
+- **Pfad:** `/opt/smarteinzug/deploy/.deploy-status.json` (zusätzlich `.deploy.pid`, `.deploy.lock`),
+  Protokolle unter `/opt/smarteinzug/logs/deploy-runner-<zeit>-<sha>.log`.
+- **Schreiber:** Nur `deploy-runner.sh` schreibt `phase`, `sha`, `pid`, `started_at`, `exit_code`,
+  `log_file`, `message`; `deploy.sh` aktualisiert während des Laufs ausschließlich `step` und
+  `updated_at` (`deploy_step()`, Schritte `release-uebernehmen`, `image-build`, `redis-infrastruktur`,
+  `candidate`, `migration`, `cutover`, `warte-healthy`, `aktivierung`, `health-check`, `bereinigung`).
+- **Atomar:** Jeder Schreibvorgang geht über eine Zwischendatei im selben Ordner und `mv`; ein Leser
+  (`deploy-status.sh`, GitHub) sieht nie teilweise geschriebenes JSON.
+- **Lifecycle:** Unmittelbar nach dem Auslösen `running` mit dem neuen `sha` (der Vordergrundteil des
+  Runners belegt die Datei noch unter der Sperre vor, damit GitHub nie den Stand des vorherigen Laufs
+  liest; `pid` trägt der Hintergrundprozess Sekundenbruchteile später ein), während des Laufs `running`
+  mit wechselndem `step`, am Ende `success` mit `exit_code 0` oder `failed` mit dem Exitcode von
+  `deploy.sh`. Die finale Datei enthält kein `step` mehr (der Runner schreibt sie vollständig neu).
+  `deploy_step()` schreibt kompakt (`jq -c`), `deploy-status.sh --tail` findet das Protokoll deshalb auch
+  während des Laufs (ein mehrzeilig formatiertes JSON hatte es zuvor nicht gefunden).
+- **Keine Geheimnisse:** Nur Schrittname, Zeitstempel, sha, pid, Dateiname und eine kurze Meldung.
+
+**Ursache von `phase=unknown` (bestätigt):** `deploy.sh` und `rollback.sh` übernehmen `deploy/vps` per
+`rsync -a --delete` nach `/opt/smarteinzug/deploy`. Ausgeschlossen waren nur `.env`, `.deploy.lock`,
+`.php-image.sha256`, `.release_history` und `.previous_sha`; `.deploy-status.json` und `.deploy.pid`
+fehlten in der Liste. Der Runner schrieb `running`, Sekunden später löschte der rsync die Datei,
+`deploy-status.sh` fand bis zum Ende nichts mehr und meldete `unknown`; erst nach dem Ende schrieb der
+Runner `success`. Die Excludes lauten jetzt `/.env`, `/.deploy*`, `/.php-image.sha256`, `/.release*`,
+`/.previous_sha`; `tools/compose-check.py` erzwingt sie, `tools/deploy-runner-check.sh` prüft mit der
+echten `deploy.sh`, dass der Status während des Laufs `running` bleibt.
+
+### Signalmodell der Worker
+
+**Ursache der 11 Minuten (bestätigt an Primärquellen):** Das Basisimage `php:8.4-fpm-alpine`
+(offizielles Dockerfile, `8.4/alpine3.24/fpm/Dockerfile`) setzt `STOPSIGNAL SIGQUIT`, weil php-fpm
+darauf sauber herunterfährt. Das gilt für **jeden** Container aus diesem Image, also auch Scheduler,
+Worker und Metrik-Sammler. Deren PHP-Prozesse behandelten nur SIGTERM/SIGINT. Ein PID-1-Prozess
+ohne Handler für ein Signal bekommt dieses vom Kernel verworfen (Init eines PID-Namensraums ignoriert
+Signale mit Standardaktion; nur SIGKILL/SIGSTOP wirken). Docker wartete daher die volle
+`stop_grace_period` von 660 s ab und beendete hart („Container failed to exit within 11m0s of signal 3
+- using the force“). Zusätzlich starteten die Worker mit `sh -c "php …"`, also mit einer Shell als
+PID 1, die Signale nicht weiterreicht, und `deploy.sh` startete die Worker nach dem Cutover nochmals mit
+`restart -t 660` neu, sodass die Wartezeit ein zweites Mal anfiel.
+
+**Neues Modell (`app/worker_signals.php`, `docker-compose.yml`):**
+
+| Aspekt | Vorher | Jetzt |
+|---|---|---|
+| Stop-Signal | STOPSIGNAL SIGQUIT (geerbt) | `stop_signal: SIGTERM` (Scheduler, Worker, Metrik-Sammler) |
+| Behandelte Signale | SIGTERM, SIGINT | SIGTERM, SIGINT, SIGQUIT (SIGQUIT als zweite Sicherung) |
+| PID 1 | `sh -c "php …"` | `php` direkt (Listenform in `command:`) |
+| `stop_grace_period` | 660 s | 75 s (Metrik-Sammler 20 s) |
+| Neuer Job nach Signal | ja, bis zum Loop-Ende | nein (`worker_stop_requested()`) |
+| Laufender Job | bis zum Ende des Versuchs (bis 600 s) | bis zum nächsten kooperativen Abbruchpunkt, dann Fortsetzung ohne Fehlversuch |
+| Notbremse | keine | SIGALRM nach `WORKER_STOP_JOB_SECONDS` (30 s) für unterbrechbare Typen |
+| Zweiter Worker-Neustart im Deploy | `restart -t 660` | entfällt; Verifikation der Release-Bindung |
+
+**Ableitung der Grace-Period (75 s):** Kooperative Abbruchpunkte liegen nach jedem Synchronisationsschritt
+(`job_sync_run`), zwischen zwei Einzügen (`process_scheduled_collections`), vor jedem Stripe-Aufruf der
+Klärung (`collection_attempts_resolve`, `job_unclear_attempts`) und zwischen zwei Wartungsaufgaben
+(`job_maintenance`). Für unterbrechbare Typen (`sync_run`, `alerts`, `mandate_reminders`,
+`monitor_collect`, `maintenance`) wirft die Notbremse nach 30 s eine `WorkerShutdownException`
+(Unterklasse von `JobRequeueException`): `job_execute()` rollt eine offene Transaktion zurück und plant den
+Job als Fortsetzung ein (kein Fehlversuch, Cursor in `sync_state` bleibt). Nicht unterbrechbar sind die
+geldbewegenden Typen (`collections_due`, `unclear_attempts`) und der Mailversand (`mail`): Kein
+Stripe-Aufruf darf zwischen „gesendet“ und „verbucht“, kein SMTP-Dialog zwischen Annahme und Rückkehr
+abbrechen (Doppeleinzug, Doppelzustellung; Versuchsjournal `docs/payment-safety.md`); sie enden
+ausschließlich am kooperativen Punkt. 75 s = 30 s Notbremse + 30 s längster einzelner externer Aufruf
+(Stripe; Lexware 20 s) + 15 s Reserve für Heartbeat und Abmeldung. Das deckt den Normalfall ab: Ein
+Einzug besteht aus einem Lexware- und mehreren Stripe-Aufrufen bei normaler Latenz; bei gestörter
+Anbindung kann ein Geldfluss-Job seinen kooperativen Punkt später erreichen und wird dann nach 75 s hart
+beendet (SIGKILL). Sein Job bleibt höchstens `heartbeat_ttl` (120 bis 1800 s je Typ, `queue.php`)
+reserviert und wird von `queue_release_stale()` als Fehlversuch wieder freigegeben: kein Verlust, keine
+dauerhafte Sperre; das Versuchsjournal sichert den Geldfluss unabhängig davon. `WORKER_STOP_JOB_SECONDS`
+ist auf höchstens 30 begrenzt, damit die Notbremse nie hinter Dockers SIGKILL fällt.
+
+**Umgedeutete Notbremse:** Die `WorkerShutdownException` durchquert auf dem Weg nach oben fremde
+`catch (Throwable)`-Blöcke (`sync_state_step()`, `mail_send_direct()`, Teilaufgaben der Wartung), die
+sie in einen anderen Fehler umdeuten können; bei `sync_run` zählte ein unterbrochener Schritt so als
+Fehlversuch mit Backoff (bis zu 1 h Verzögerung je Deployment) und schrieb einen `last_error`. Jetzt
+reichen diese Stellen die Ausnahme durch (`sync_state_step` gibt nur die Sperre frei, kein
+`last_error`, kein fehlgeschlagener Lauf), und `worker_job_exception_outcome()` stuft jede Ausnahme
+nach einer ausgelösten Notbremse (`worker_shutdown_interrupted()`) als Fortsetzung ein, unabhängig davon,
+wie sie umgedeutet wurde. Restrisiko im Mikrosekundenbereich: Fällt die Notbremse genau zwischen die
+letzte Datenänderung eines Jobs und `worker_job_end()`, wird ein fertiger Job erneut ausgeführt; deshalb
+sind nur Typen mit unschädlicher Wiederholung unterbrechbar (Sync: idempotente Upserts; Wartung und
+Monitoring: idempotente Bereinigungen; Alarme und Mandatserinnerungen: im schlimmsten Fall eine doppelte
+Benachrichtigung, das kleinere Übel gegenüber einem SIGKILL mit bis zu 30 Minuten Reservierung).
+
+**Verhalten eines laufenden Jobs beim Deploy:** Der Worker erhält SIGTERM (Cutover per `up -d`),
+nimmt keinen neuen Job mehr an, führt den laufenden bis zum Abbruchpunkt (Sync: aktueller Schritt,
+Einzüge: aktueller Einzug, Klärung: aktueller Versuch, Wartung: aktuelle Teilaufgabe) und reiht ihn als
+Fortsetzung ein; der neue Worker-Container setzt ihn fort. Ein hängender externer Aufruf endet
+spätestens mit dem Timeout des Clients (20 bzw. 30 s); ein hängender Job eines unterbrechbaren Typs wird
+nach 30 s kontrolliert unterbrochen. Ein hängender Geldfluss- oder Mail-Job blockiert das Deployment
+höchstens 75 s (Docker-Grace), danach greift die Heartbeat-Freigabe. Die Signalhandler werden vor dem
+ersten Datenbankzugriff installiert; ein Signal während eines blockierten Verbindungsaufbaus wird
+deshalb nicht verworfen.
+
+**Übergang beim ersten Deployment ab Version 4.11:** Docker stoppt einen Container beim Neuerzeugen mit
+`StopSignal` und `StopTimeout` des **laufenden** Containers, nicht mit den Werten der neuen Definition.
+Die Container der Versionen bis 4.10 tragen SIGQUIT und 660 s; der Cutover hätte damit nochmals bis zu
+11 Minuten gedauert. `deploy.sh` prüft deshalb vor dem Cutover per `docker inspect` die
+Stop-Konfiguration aller Hintergrund-Container (Scheduler, Worker, Metrik-Sammler) und beendet Container
+mit veralteter Konfiguration vorab gezielt mit `docker stop --signal SIGTERM --timeout 90` (der alte Code
+behandelt SIGTERM; ein danach noch laufender Job wird über `heartbeat_ttl` regulär freigegeben). Der
+Schritt ist idempotent und danach wirkungslos; er greift erneut nach einem Rollback auf ein älteres
+Release. php-fpm, Caddy und Redis sind nicht betroffen.
+
+**Kein zweiter Worker-Neustart mehr (Beweis):** `working_dir` jedes PHP-Containers ist
+`/opt/smarteinzug/releases/${RELEASE_SHA}` und damit Teil der Compose-Dienstdefinition und ihres
+Konfigurations-Hash (Label `com.docker.compose.config-hash`). Ändert sich `RELEASE_SHA`, erzeugt
+`docker compose up -d` den Container zwingend neu, mit dem neuen Code als `working_dir`; läuft er bereits
+mit diesem Release (Wiederholung desselben SHA), gibt es nichts nachzuladen. `deploy.sh` und
+`rollback.sh` verifizieren deshalb nach dem Cutover per `docker inspect`, dass jeder Container aus dem
+PHP-Image läuft und das Ziel-Release als `working_dir` trägt; bei Abweichung Rollback bzw. Abbruch. Der
+php-fpm-Reload (SIGUSR2) bleibt als kostenlose Sicherung für den Fall identischer SHA.
+
+### GitHub-Polling und Recovery
+
+- Die Polling-Logik liegt in `.github/scripts/vps-wait-status.sh` (aus dem Workflow ausgelagert;
+  Entscheidungslogik success/failed/Frist/sha unverändert, ergänzt um die Ausgabe jedes
+  Phasen-/Schrittwechsels, das Feld `step` und einen Recovery-Hinweis bei Zeitüberschreitung): Abfrage von
+  `deploy-status.sh` alle 10 s über kurze, unabhängige SSH-Verbindungen, Frist 12 Minuten, `failed` lädt
+  die letzten 80 Protokollzeilen nach, ein einzelner SSH-Ausfall oder `unknown` beendet das Warten nicht.
+- **Erwartete Dauer:** Ohne Image-Build wenige Minuten (Redis-Prüfung, Candidate, Migration, Cutover mit
+  Stopps von wenigen Sekunden, Healthchecks bis 3 Minuten); mit Image-Build zusätzlich etwa 3 Minuten.
+  Einmalig beim ersten Deployment ab 4.11 (und nach einem Rollback auf ein älteres Release) kommt der
+  Vorab-Stopp der Container mit alter Stop-Konfiguration hinzu: wenige Sekunden bei Leerlauf, höchstens
+  90 s, statt der bisherigen 11 Minuten. Die 12 Minuten bleiben deshalb unverändert; sie waren nur wegen
+  des verschwundenen Status und des 11-Minuten-Stopps zu knapp.
+- **GitHub-Abbruch oder -Timeout:** Der serverseitige Runner läuft unabhängig weiter (`setsid`, eigene
+  Sitzung, Sperre bleibt gehalten) und schließt den Deploy ab oder rollt zurück; nichts bleibt halb
+  fertig. Stand prüfen: `bash /opt/smarteinzug/deploy/scripts/deploy-status.sh --tail 80`. Ein erneuter
+  Workflow-Lauf, während der Server noch arbeitet, wird vom Runner mit `REJECTED` abgelehnt und wartet nur
+  (`EXPECT_SHA=false`); nach `success` ist ein erneuter Lauf sofort möglich.
+- **SSH-Abbruch:** Beim Auslösen wird ein unklares Ergebnis nicht als Fehler gewertet, sondern der
+  tatsächliche Stand abgefragt; beim Polling ist jede Abfrage unabhängig (Keepalive zentral gesetzt).
 
 ## Staging- und Produktionsisolation
 
@@ -491,7 +636,8 @@ Maßnahmen sind zusätzliche, technisch erzwungene Sicherheitsnetze für den Fal
 ## Worker skalieren und neu starten
 
 ```bash
-# Einen einzelnen Worker neu starten (SIGTERM, laufender Job wird zu Ende gebracht):
+# Einen einzelnen Worker neu starten (SIGTERM, Grace 75 s: kein neuer Job; der laufende Job endet am
+# kooperativen Abbruchpunkt bzw. nach 30 s Notbremse und wird fortgesetzt, siehe "Signalmodell der Worker"):
 docker compose -f docker-compose.yml -f docker-compose.prod.yml restart worker-stripe
 
 # Zusätzliche Worker eines Pools kurzfristig hochskalieren:

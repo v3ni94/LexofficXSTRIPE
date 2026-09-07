@@ -30,6 +30,12 @@ Geprueft wird:
   10. deploy/vps/scripts/deploy.sh haelt die Reihenfolge Candidate-Pruefung -> Migration -> Cutover
       ("up -d") ein, und weder die Candidate-Pruefung noch die Migration fassen ueber "docker compose
       run --rm --no-deps" hinaus die laufenden Container an (kein "up"/"restart" in diesen Bloecken).
+  11. Scheduler, Worker und Metrik-Sammler: stop_signal SIGTERM, begrenzte stop_grace_period (Worker 60 bis
+      120 s, Metrik-Sammler 5 bis 60 s), php direkt als PID 1 ohne "sh -c"-Wrapper (Ursache der 11 Minuten
+      Wartezeit beim Container-Stopp, Version 4.11).
+  12. deploy.sh/rollback.sh schliessen beim rsync nach /opt/smarteinzug/deploy alle Laufzeitdateien
+      (/.deploy*, /.release*, /.previous_sha, /.php-image.sha256, /.env) aus, enthalten kein "restart -t"
+      mehr und verifizieren die Release-Bindung der Container per docker inspect.
 
 Aufruf:  python3 tools/compose-check.py        Exit 0 = in Ordnung, 1 = Fehler
 """
@@ -238,6 +244,73 @@ def check_deploy_sh_candidate_order() -> None:
                  f"Einwegcontainer zu verwenden.")
 
 
+def check_background_stop_config(path: pathlib.Path) -> None:
+    """
+    Scheduler, Worker und Metrik-Sammler: stop_signal MUSS SIGTERM sein (das Basisimage php:*-fpm setzt
+    STOPSIGNAL SIGQUIT, das die PHP-Prozesse frueher nicht behandelten -> "Container failed to exit within
+    11m0s of signal 3"), stop_grace_period muss gesetzt und begrenzt sein (60 bis 120 s; 660 s waren die
+    11-Minuten-Wartezeit), und "command:" muss php DIREKT als PID 1 starten (kein "sh -c"-Wrapper, der
+    Signale nicht weiterreicht). php-fpm (Web), Redis und Caddy werden hier bewusst nicht bewertet.
+    """
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    for name, service in (data.get("services") or {}).items():
+        if not isinstance(service, dict) or service.get("image") != PHP_IMAGE:
+            continue
+        cmd = command_text(service)
+        if not any(needle in cmd for needle in ("bin/worker.php", "bin/scheduler.php", "bin/host-metrics.php")):
+            continue
+        raw = service.get("command")
+        first = raw[0] if isinstance(raw, list) and raw else (str(raw).split()[0] if raw else "")
+        if first in ("sh", "bash", "/bin/sh", "/bin/bash"):
+            fail(f"{path.name}: Dienst '{name}' startet ueber einen Shell-Wrapper ('{first}'). php muss direkt "
+                 f"PID 1 sein, sonst erreicht das Stop-Signal den PHP-Prozess nicht zuverlaessig.")
+        if str(service.get("stop_signal", "")).upper() != "SIGTERM":
+            fail(f"{path.name}: Dienst '{name}' hat kein 'stop_signal: SIGTERM' (erbt sonst STOPSIGNAL SIGQUIT "
+                 f"des php-fpm-Basisimages; Worker liefen damit bis zur Grace-Period weiter).")
+        grace = str(service.get("stop_grace_period", "")).strip()
+        m = re.fullmatch(r"(\d+)(s|m)?", grace)
+        seconds = int(m.group(1)) * (60 if m.group(2) == "m" else 1) if m else None
+        if seconds is None:
+            fail(f"{path.name}: Dienst '{name}' hat keine (auswertbare) stop_grace_period ('{grace}').")
+        elif "bin/host-metrics.php" in cmd:
+            if not 5 <= seconds <= 60:
+                fail(f"{path.name}: Dienst '{name}' (Metrik-Sammler) stop_grace_period={seconds}s, erwartet 5 bis 60 s.")
+        elif not 60 <= seconds <= 120:
+            fail(f"{path.name}: Dienst '{name}' stop_grace_period={seconds}s, erwartet 60 bis 120 s (abgeleitet: "
+                 f"Notbremse 30 s + laengster externer Aufruf 30 s + Reserve; 660 s waren die 11-Minuten-Wartezeit).")
+
+
+def check_deploy_scripts_runtime_state() -> None:
+    """
+    deploy.sh und rollback.sh kopieren deploy/vps per "rsync --delete" nach /opt/smarteinzug/deploy; die
+    Laufzeitdateien dort (.deploy.lock, .deploy.pid, .deploy-status.json, .release_history, .release.env,
+    .previous_sha, .php-image.sha256, .env) liegen NICHT im Release und muessen ausgeschlossen bleiben.
+    Fehlt "/.deploy*", loescht der rsync die vom Runner gerade geschriebene Statusdatei, deploy-status.sh
+    meldet waehrend des gesamten Deployments "phase=unknown" (Ursache des GitHub-Timeouts, Version 4.11).
+    Ausserdem darf kein Skript mehr "restart -t" auf die Hintergrunddienste anwenden (redundanter zweiter
+    Neustart, frueher bis zu 11 Minuten); stattdessen wird die Release-Bindung per docker inspect verifiziert.
+    """
+    for name in ("deploy.sh", "rollback.sh"):
+        text = (ROOT / "deploy" / "vps" / "scripts" / name).read_text(encoding="utf-8")
+        rsyncs = [l for l in text.splitlines() if "rsync -a --delete" in l and "$RELEASE_DIR/deploy/vps/" in "".join(text.splitlines()[text.splitlines().index(l):text.splitlines().index(l) + 3])]
+        if not rsyncs:
+            fail(f"{name}: rsync von deploy/vps nach dem Deploy-Ordner nicht gefunden.")
+        for l in rsyncs:
+            idx = text.splitlines().index(l)
+            block = " ".join(text.splitlines()[idx:idx + 3])
+            for pattern in ("--exclude '/.deploy*'", "--exclude '/.release*'", "--exclude '/.previous_sha'",
+                            "--exclude '/.php-image.sha256'", "--exclude '/.env'"):
+                if pattern not in block:
+                    fail(f"{name}: rsync nach dem Deploy-Ordner ohne {pattern}; die Laufzeitdatei wuerde durch "
+                         f"'--delete' entfernt (Statusdatei -> phase=unknown waehrend des Deployments).")
+        code_lines = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+        if re.search(r"restart\s+-t\s+\d+", code_lines):
+            fail(f"{name}: enthaelt noch 'restart -t' (zweiter Worker-Neustart nach dem Cutover ist redundant und "
+                 f"wartete frueher bis zu 660 s je Dienst).")
+        if "{{.Config.WorkingDir}}" not in text:
+            fail(f"{name}: verifiziert die Release-Bindung der Container nicht (docker inspect .Config.WorkingDir).")
+
+
 def check_no_mutable_current_path(path: pathlib.Path) -> None:
     """working_dir/root/Bind-Mount-Ziele duerfen nicht mehr auf den mutable Symlink "current" zeigen."""
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -268,8 +341,10 @@ def main() -> int:
         check_release_sha_required(path)
         check_no_removed_services(path)
         check_no_mutable_current_path(path)
+        check_background_stop_config(path)
 
     check_deploy_sh_candidate_order()
+    check_deploy_scripts_runtime_state()
 
     healthcheck_php = (ROOT / "php-ionos" / "bin" / "healthcheck.php").read_text(encoding="utf-8")
     for _, flag in COMMAND_TO_FLAG + [("", DEFAULT_FLAG)]:

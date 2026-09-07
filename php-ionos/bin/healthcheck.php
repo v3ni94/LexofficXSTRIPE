@@ -57,10 +57,13 @@ if ($all || isset($opts['redis'])) {
             usleep(700_000);
             $probe = redis_probe();
         }
+        // Die DIAGNOSE-Zeile wird auch bei Erfolg geschrieben (kategorie=ok, aufgeloeste Adresse, erwartetes
+        // Netz): Sie belegt im Deployment-Protokoll, WELCHE Gegenstelle erreicht wurde, nicht nur dass eine
+        // erreicht wurde (Hintergrund: Alias-Kollision mit Coolifys Redis, Version 4.10).
+        fwrite(STDERR, redis_probe_describe($probe) . "\n");
         if ($probe['ok']) {
             return true;
         }
-        fwrite(STDERR, redis_probe_describe($probe) . "\n");
         return $probe['category'];
     });
 }

@@ -17,6 +17,9 @@ require_once __DIR__ . '/alerts.php';
 require_once __DIR__ . '/support.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/mailer.php';
+// Signalmodell der Worker (Stop-Signale, kooperativer Abbruch, Notbremse); definiert
+// WorkerShutdownException als Sonderfall von JobRequeueException (queue.php ist bereits geladen).
+require_once __DIR__ . '/worker_signals.php';
 
 /** Worker-Pools und die Jobtypen, die sie bearbeiten. */
 function jobs_pools(): array
@@ -119,6 +122,10 @@ function job_sync_run(array $job, string $workerId): array
         } catch (CircuitOpenException $e) {
             queue_heartbeat($job, null, 'Warte auf Lexware Office, automatischer neuer Versuch läuft');
             throw new JobRetryException($e->getMessage(), 0, $e);
+        } catch (JobRequeueException $e) {
+            // Fortsetzung oder Notbremse (WorkerShutdownException) aus dem Schritt: unverändert nach oben,
+            // damit job_execute() sie als Fortsetzung ohne Fehlversuch verbucht (nicht als JobRetryException).
+            throw $e;
         } catch (Throwable $e) {
             $cat = monitor_category($e);
             if ($cat === 'auth') {
@@ -132,6 +139,9 @@ function job_sync_run(array $job, string $workerId): array
                 throw new JobRequeueException('Sperre der Firma anderweitig belegt, Fortsetzung später');
             }
             sleep(2);
+            if (worker_stop_requested()) {
+                throw new JobRequeueException('Worker wird beendet, Fortsetzung eingeplant');
+            }
             $st = sync_state_get($tenantId);
             if (!$st || $st['status'] !== 'running') {
                 break; // anderweitig abgeschlossen oder abgebrochen
@@ -148,6 +158,11 @@ function job_sync_run(array $job, string $workerId): array
             $r = $step['result'];
             $pdo->prepare("UPDATE sync_state SET status = 'idle' WHERE tenant_id = ? AND status = 'done'")->execute([$tenantId]);
             return ['status' => 'completed', 'result' => ['synced' => (int)($r['synced'] ?? 0), 'new' => (int)($r['new'] ?? 0), 'updated' => (int)($r['updated'] ?? 0), 'removed' => (int)($r['removed'] ?? 0), 'steps' => $steps, 'api_calls' => (int)($r['metrics']['api_calls'] ?? 0)]];
+        }
+        // Kooperativer Abbruchpunkt nach jedem abgeschlossenen Schritt: Stop-Signal des Workers (Deployment)
+        // -> Fortsetzung ohne Fehlversuch, der Cursor in sync_state bleibt erhalten (app/worker_signals.php).
+        if (worker_stop_requested()) {
+            throw new JobRequeueException('Worker wird beendet, Fortsetzung eingeplant');
         }
         if (microtime(true) >= $deadline || $steps >= $cfg['sync_max_steps_attempt']) {
             throw new JobRequeueException('Zeitbudget je Versuch erreicht, Fortsetzung eingeplant');
@@ -191,16 +206,29 @@ function job_unclear_attempts(array $job): array
     $tenantIds = $job['tenant_id'] ? [(string)$job['tenant_id']] : db()->query("SELECT DISTINCT tenant_id FROM collection_attempts WHERE status IN ('unknown','pending') AND updated_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)")->fetchAll(PDO::FETCH_COLUMN);
     $sum = ['checked' => 0, 'recovered' => 0, 'cleared' => 0, 'pending' => 0, 'errors' => 0];
     foreach ($tenantIds as $tid) {
+        // Kooperativer Abbruchpunkt zwischen zwei Firmen (Worker-Shutdown, app/worker_signals.php): Dieser
+        // Typ wird nie erzwungen unterbrochen (Stripe-Lesezugriff und Nachbuchung gehören zusammen), deshalb
+        // endet er hier bzw. zwischen zwei Versuchen (collection_attempts_resolve) und wird fortgesetzt.
+        if (worker_stop_requested()) {
+            throw new JobRequeueException('Worker wird beendet, Klärung wird fortgesetzt');
+        }
+        $stopped = false;
         try {
             $r = collection_attempts_resolve((string)$tid, ['user_id' => null, 'email' => 'worker']);
             foreach (['checked', 'recovered', 'cleared', 'pending'] as $k) {
                 $sum[$k] += (int)($r[$k] ?? 0);
             }
+            $stopped = !empty($r['stopped']);
+        } catch (JobRequeueException $e) {
+            throw $e;
         } catch (Throwable $e) {
             $sum['errors']++;
             app_log('warning', 'Klärung unklarer Versuche fehlgeschlagen', ['company_id' => (string)$tid, 'job_id' => $job['id'], 'error_code' => monitor_category($e)]);
         }
         queue_heartbeat($job);
+        if ($stopped) {
+            throw new JobRequeueException('Worker wird beendet, Klärung wird fortgesetzt');
+        }
     }
     return ['status' => $sum['errors'] > 0 ? 'partially_completed' : 'completed', 'result' => $sum];
 }
@@ -254,8 +282,15 @@ function job_maintenance(array $job): array
         'stale_jobs_released' => fn() => queue_release_stale(),
         'workers_pruned' => fn() => workers_prune(),
     ] as $k => $fn) {
+        // Kooperativer Abbruchpunkt zwischen zwei Teilaufgaben (Worker-Shutdown): Rest folgt im nächsten Lauf
+        // (alle Teilaufgaben sind idempotente Bereinigungen, der Scheduler reiht den Typ stündlich neu ein).
+        if (worker_stop_requested()) {
+            throw new JobRequeueException('Worker wird beendet, restliche Wartungsaufgaben folgen in der Fortsetzung');
+        }
         try {
             $r[$k] = $fn() ?? true;
+        } catch (JobRequeueException $e) {
+            throw $e; // Notbremse (WorkerShutdownException) nicht als Fehler der Teilaufgabe verschlucken
         } catch (Throwable $e) {
             $r[$k] = 'fehler:' . monitor_category($e);
         }
@@ -396,24 +431,44 @@ function job_execute(array $job, string $workerId): string
     $runId = job_run_start('queue:' . $job['type'], (string)$job['id'], $job['tenant_id'] ?? null, PHP_SAPI === 'cli' ? 'worker' : 'cron');
     $t0 = microtime(true);
     try {
-        $out = job_handle($job, $workerId);
+        // Nur waehrend job_handle() darf die Notbremse (SIGALRM, app/worker_signals.php) eine
+        // WorkerShutdownException werfen; die anschliessenden Statusaenderungen des Jobs laufen ungestoert.
+        worker_job_begin($job);
+        try {
+            $out = job_handle($job, $workerId);
+        } finally {
+            worker_job_end();
+        }
         $status = (string)($out['status'] ?? 'completed');
         queue_complete($job, $status, (array)($out['result'] ?? []), !empty($out['prune']));
         job_run_finish($runId, 'success', ['items' => (int)($out['result']['synced'] ?? ($out['result']['submitted'] ?? 0)), 'api_calls' => (int)($out['result']['api_calls'] ?? 0)]);
         return $status;
-    } catch (JobRequeueException $e) {
-        queue_requeue($job, 0, $e->getMessage());
-        job_run_finish($runId, 'success', [], 'requeued');
-        return 'requeued';
-    } catch (JobFailedException $e) {
-        $st = queue_fail($job, $e->getMessage(), 'business', false);
-        job_run_finish($runId, 'failed', [], 'business');
-        return $st;
-    } catch (CircuitOpenException $e) {
-        $st = queue_fail($job, $e->getMessage(), 'circuit_open', true);
-        job_run_finish($runId, 'failed', [], 'circuit_open');
-        return $st;
     } catch (Throwable $e) {
+        worker_db_rollback_if_open();
+        // Ergebnisklasse zentral bestimmen (app/worker_signals.php): Eine JobRequeueException, auch die
+        // WorkerShutdownException der Notbremse, ist eine Fortsetzung ohne Fehlversuch. Hat die Notbremse
+        // geworfen und eine Zwischenschicht (catch Throwable in sync_state_step, mail_send_direct usw.) die
+        // Ausnahme in einen anderen Fehler umgedeutet, bleibt es trotzdem eine Fortsetzung: Sonst zaehlte ein
+        // Deployment einen Fehlversuch mit Backoff (bis zu 1 h) fuer einen Job, der fehlerfrei lief.
+        $outcome = worker_job_exception_outcome($e);
+        if ($outcome === 'requeued') {
+            $msg = $e instanceof JobRequeueException
+                ? $e->getMessage()
+                : 'Worker wird beendet, Job wird kontrolliert unterbrochen und fortgesetzt (Meldung unterwegs umgedeutet: ' . $e->getMessage() . ')';
+            queue_requeue($job, 0, $msg);
+            job_run_finish($runId, 'success', [], 'requeued');
+            return 'requeued';
+        }
+        if ($outcome === 'business') {
+            $st = queue_fail($job, $e->getMessage(), 'business', false);
+            job_run_finish($runId, 'failed', [], 'business');
+            return $st;
+        }
+        if ($outcome === 'circuit_open') {
+            $st = queue_fail($job, $e->getMessage(), 'circuit_open', true);
+            job_run_finish($runId, 'failed', [], 'circuit_open');
+            return $st;
+        }
         $cat = $e instanceof JobRetryException && $e->getPrevious() ? monitor_category($e->getPrevious()) : monitor_category($e);
         $st = queue_fail($job, $e->getMessage(), $cat, true);
         job_run_finish($runId, 'failed', ['api_errors' => 1], $cat);

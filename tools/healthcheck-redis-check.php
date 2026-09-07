@@ -43,6 +43,12 @@
  *      derselbe Zugriffsweg mit protected-mode no (wie im ausgelieferten redis.conf) gelingt.
  *   8. deploy/vps/redis/redis.conf enthaelt tatsaechlich "protected-mode no" (Regression gegen genau
  *      diesen Fehler).
+ *   9. Alias-Kollision mit Coolifys Redis nachgestellt (echter passwortgeschuetzter Redis, wir senden kein
+ *      Passwort): Kategorie "auth", DIAGNOSE stufe=redis mit NOAUTH, Passwortwert nirgends in der Ausgabe;
+ *      korrektes Passwort -> OK; passendes Netz -> OK mit DIAGNOSE der erreichten Adresse;
+ *      SMARTEINZUG_REDIS_HOST hat Vorrang vor config.php. Ohne Server (Teil 3b): redis_sanitize_message()
+ *      maskiert, redis_ip_in_cidr() lehnt ungueltige Praefixe ab, alias_missing (einteiliger Name) und
+ *      network_mismatch (Stufe network, kein TCP-Versuch) werden vor jeder Verbindung erkannt.
  *
  * Aufruf: php tools/healthcheck-redis-check.php     Exit 0 = in Ordnung, 1 = Fehler
  */
@@ -140,10 +146,38 @@ if ($rc === 0) {
     fail($errors, "healthcheck.php --redis gegen einen nicht aufloesbaren Hostnamen meldete faelschlich Erfolg.");
 } elseif (str_contains($out, 'redis: other') || str_contains($out, 'redis: nicht erreichbar')) {
     fail($errors, "healthcheck.php --redis gegen einen nicht aufloesbaren Hostnamen lieferte weiterhin eine unbrauchbare Diagnose: " . trim($out));
-} elseif (!preg_match('/redis: \S+/', $out)) {
-    fail($errors, "healthcheck.php --redis gegen einen nicht aufloesbaren Hostnamen lieferte keine erkennbare Kategorie: " . trim($out));
+} elseif (!str_contains($out, 'redis: dns') || !str_contains($out, 'stufe=resolve')) {
+    fail($errors, "healthcheck.php --redis gegen einen nicht aufloesbaren FQDN lieferte nicht 'dns' (Stufe resolve): " . trim($out));
 } else {
-    echo "nicht aufloesbarer Hostname: eindeutige Diagnose (" . trim($out) . ")\n";
+    echo "nicht aufloesbarer Hostname (FQDN): redis: dns, DIAGNOSE stufe=resolve\n";
+}
+
+// --- Teil 3b (ohne Redis-Server): Sanitizer, alias_missing, network_mismatch, Env-Vorrang ----------------
+require_once $phpIonos . '/app/redis.php';
+$secret = 'geheimwert-' . getmypid();
+$san = redis_sanitize_message("ERR AUTH $secret failed for   user default; retry AUTH   $secret now", $secret);
+if (str_contains($san, $secret) || !str_contains($san, '***') || preg_match('/\s{2,}/', $san)) {
+    fail($errors, "redis_sanitize_message() maskiert das Passwort nicht vollstaendig: '$san'");
+} else {
+    echo "redis_sanitize_message(): Passwort und AUTH-Argumente maskiert\n";
+}
+foreach ([['172.28.0.0/abc', false], ['172.28.0.0/', false], ['172.28.0.0/24x', false], ['garbage', false], ['172.28.0.0/24', true], ['172.28.1.0/24', false], ['999.1.1.1/8', false]] as [$cidr, $want]) {
+    if (redis_ip_in_cidr('172.28.0.5', $cidr) !== $want) {
+        fail($errors, "redis_ip_in_cidr('172.28.0.5', '$cidr') lieferte " . var_export(!$want, true) . ", erwartet " . var_export($want, true));
+    }
+}
+echo "redis_ip_in_cidr(): ungueltige Praefixe/Netze werden abgelehnt, gueltige korrekt bewertet\n";
+[$o, $rc] = runHealthcheckRedis($phpIonos, ['host' => 'smarteinzug-redis-alias-fehlt', 'port' => 1, 'password' => null, 'prefix' => 'se:']);
+if ($rc === 0 || !str_contains($o, 'redis: alias_missing') || !str_contains($o, 'stufe=resolve')) {
+    fail($errors, "Fehlender einteiliger Alias lieferte nicht 'alias_missing': " . trim($o));
+} else {
+    echo "fehlender Docker-Alias (einteiliger Name): redis: alias_missing (DIAGNOSE stufe=resolve)\n";
+}
+[$o, $rc] = runHealthcheckRedis($phpIonos, ['host' => '127.0.0.1', 'port' => 1, 'password' => null, 'prefix' => 'se:'], ['SMARTEINZUG_REDIS_EXPECTED_CIDR' => '172.28.0.0/24']);
+if ($rc === 0 || !str_contains($o, 'redis: network_mismatch') || !str_contains($o, 'stufe=network')) {
+    fail($errors, "Aufloesung in ein fremdes Netz lieferte nicht 'network_mismatch' (vor jedem TCP-Versuch): " . trim($o));
+} else {
+    echo "Aufloesung ausserhalb des erwarteten Netzes: redis: network_mismatch (DIAGNOSE stufe=network, kein TCP-Versuch)\n";
 }
 
 // --- Teil 4: erreichbarer Host, aber geschlossener Port (Verbindung abgelehnt) ------------------------
@@ -177,6 +211,8 @@ if ($dur3 > 0.5) {
 echo "kein Redis konfiguriert: weiterhin sofortiges OK ohne Wiederholungen\n";
 
 // --- Teil 6: redis_client() ohne forceRetry bleibt genau ein Versuch je Prozess (normale Aufrufer) ----
+putenv('SMARTEINZUG_REDIS_HOST');          // ohne Stack-Variable entscheidet config('redis')['host']
+putenv('SMARTEINZUG_REDIS_EXPECTED_CIDR');
 require_once $phpIonos . '/app/redis.php';
 $GLOBALS['config']['redis'] = ['host' => 'no-such-host-smarteinzug-test.invalid', 'port' => 6379, 'password' => null, 'prefix' => 'se:'];
 // Zwei aufeinanderfolgende redis_client()-Aufrufe OHNE forceRetry duerfen den Verbindungsversuch nicht
@@ -268,7 +304,7 @@ if (@shell_exec('command -v redis-server 2>/dev/null') === null || trim((string)
             fail($errors, "Konnte temporaeren Redis-Server (protected-mode no) fuer Teil 7 nicht starten.");
         } else {
             [$outO, $rcO] = runHealthcheckRedis($phpIonos, ['host' => $hostIp, 'port' => $portOpen, 'password' => null, 'prefix' => 'se:']);
-            if ($rcO !== 0 || trim($outO) !== 'OK') {
+            if ($rcO !== 0 || !str_contains($outO, 'OK') || !str_contains($outO, 'kategorie=ok')) {
                 fail($errors, "protected-mode no + kein Passwort + Nicht-Loopback-Zugriff (wie im ausgelieferten redis.conf) schlug fehl: " . trim($outO));
             } else {
                 echo "echter Redis, protected-mode no, Nicht-Loopback-Zugriff: OK (bestaetigt die Wirkung der redis.conf-Aenderung)\n";
@@ -292,7 +328,11 @@ if (trim((string)@shell_exec('command -v redis-server 2>/dev/null')) !== '') {
     $portAuth = 17600 + (getmypid() % 300);
     $portOpen = $portAuth + 1;
     $pw = 'nur-lokaler-testwert-' . getmypid();
-    if (!startTempRedis($tmpDir9, $portAuth, false, $pw) || !startTempRedis($tmpDir9, $portOpen, false)) {
+    $authStarted = startTempRedis($tmpDir9, $portAuth, false, $pw);
+    $openStarted = $authStarted && startTempRedis($tmpDir9, $portOpen, false);
+    if (!$authStarted || !$openStarted) {
+        if ($authStarted) { stopTempRedis($portAuth, $pw); }
+        if ($openStarted) { stopTempRedis($portOpen); }
         fail($errors, 'Konnte temporaere Redis-Server fuer Teil 9 nicht starten.');
     } else {
         // 9a: fremdes Redis mit Passwort, wir senden keins (Coolify-Fall) -> "auth", Stufe redis, NOAUTH sichtbar,
@@ -308,42 +348,26 @@ if (trim((string)@shell_exec('command -v redis-server 2>/dev/null')) !== '') {
         }
         // 9b: dasselbe Redis mit korrektem Passwort -> gesund, Passwort nicht in der Ausgabe.
         [$o, $rc] = runHealthcheckRedis($phpIonos, ['host' => '127.0.0.1', 'port' => $portAuth, 'password' => $pw, 'prefix' => 'se:']);
-        if ($rc !== 0 || trim($o) !== 'OK') {
+        if ($rc !== 0 || !str_contains($o, 'OK') || !str_contains($o, 'kategorie=ok')) {
             fail($errors, "Redis mit Passwort und korrektem Passwort schlug fehl: " . trim($o));
         } else {
-            echo "Redis mit Passwort + korrektes Passwort: OK\n";
+            echo "Redis mit Passwort + korrektes Passwort: OK (DIAGNOSE kategorie=ok)\n";
         }
         if (str_contains($o, $pw)) {
             fail($errors, 'Passwortwert erschien in der Healthcheck-Ausgabe (Geheimnis geleakt).');
         }
-        // 9c: Hostname loest in ein ANDERES Netz auf als vom Stack erwartet -> "network_mismatch", Stufe network,
-        //     kein TCP-/Protokollversuch gegen die fremde Gegenstelle.
-        [$o, $rc] = runHealthcheckRedis($phpIonos, ['host' => '127.0.0.1', 'port' => $portOpen, 'password' => null, 'prefix' => 'se:'],
-            ['SMARTEINZUG_REDIS_EXPECTED_CIDR' => '172.28.0.0/24']);
-        if ($rc === 0 || !str_contains($o, 'redis: network_mismatch') || !str_contains($o, 'stufe=network')) {
-            fail($errors, "Aufloesung in ein fremdes Netz lieferte nicht 'network_mismatch': " . trim($o));
-        } else {
-            echo "Aufloesung ausserhalb des erwarteten Netzes: redis: network_mismatch (DIAGNOSE stufe=network)\n";
-        }
-        // 9d: passendes Netz -> gesund.
+        // 9d: passendes Netz -> gesund (network_mismatch selbst wird ohne Server in Teil 3b geprueft).
         [$o, $rc] = runHealthcheckRedis($phpIonos, ['host' => '127.0.0.1', 'port' => $portOpen, 'password' => null, 'prefix' => 'se:'],
             ['SMARTEINZUG_REDIS_EXPECTED_CIDR' => '127.0.0.0/8']);
-        if ($rc !== 0 || trim($o) !== 'OK') {
+        if ($rc !== 0 || !str_contains($o, 'OK') || !str_contains($o, 'kategorie=ok') || !str_contains($o, 'aufgeloest=127.0.0.1')) {
             fail($errors, "Aufloesung im erwarteten Netz schlug fehl: " . trim($o));
         } else {
-            echo "Aufloesung im erwarteten Netz: OK\n";
-        }
-        // 9e: einteiliger Docker-Alias fehlt -> "alias_missing" (Stufe resolve), im Unterschied zu "dns" fuer FQDN (Teil 3).
-        [$o, $rc] = runHealthcheckRedis($phpIonos, ['host' => 'smarteinzug-redis-alias-fehlt', 'port' => $portOpen, 'password' => null, 'prefix' => 'se:']);
-        if ($rc === 0 || !str_contains($o, 'redis: alias_missing') || !str_contains($o, 'stufe=resolve')) {
-            fail($errors, "Fehlender einteiliger Alias lieferte nicht 'alias_missing': " . trim($o));
-        } else {
-            echo "fehlender Docker-Alias: redis: alias_missing (DIAGNOSE stufe=resolve)\n";
+            echo "Aufloesung im erwarteten Netz: OK, DIAGNOSE belegt die erreichte Adresse\n";
         }
         // 9f: SMARTEINZUG_REDIS_HOST (vom Stack) hat Vorrang vor config('redis')['host'].
         [$o, $rc] = runHealthcheckRedis($phpIonos, ['host' => 'smarteinzug-redis-alias-fehlt', 'port' => $portOpen, 'password' => null, 'prefix' => 'se:'],
             ['SMARTEINZUG_REDIS_HOST' => '127.0.0.1']);
-        if ($rc !== 0 || trim($o) !== 'OK') {
+        if ($rc !== 0 || !str_contains($o, 'OK') || !str_contains($o, 'host=127.0.0.1')) {
             fail($errors, "SMARTEINZUG_REDIS_HOST hatte keinen Vorrang vor config.php: " . trim($o));
         } else {
             echo "SMARTEINZUG_REDIS_HOST hat Vorrang vor config('redis')['host']: OK\n";

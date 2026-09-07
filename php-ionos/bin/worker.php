@@ -4,8 +4,10 @@
  *
  *   php bin/worker.php --pool=lexware|stripe|mail|maintenance|all [--max-jobs=500] [--max-memory-mb=256] [--once] [--sleep=1]
  *
- * Beendet sich sauber bei SIGTERM/SIGINT (laufender Job wird zu Ende gebracht), nach --max-jobs Jobs oder
- * wenn der Speicher die Grenze überschreitet; Docker startet den Container dann neu (restart: always).
+ * Beendet sich sauber bei SIGTERM/SIGINT/SIGQUIT (kein neuer Job; laufender Job bis zum kooperativen
+ * Abbruchpunkt, dann Fortsetzung ohne Fehlversuch; Notbremse nach WORKER_STOP_JOB_SECONDS, siehe
+ * app/worker_signals.php), nach --max-jobs Jobs oder wenn der Speicher die Grenze überschreitet; Docker
+ * startet den Container dann neu (restart: unless-stopped).
  * Schreibt je Durchlauf einen Heartbeat in die Datenbank und in eine Datei für den Docker-Healthcheck.
  */
 define('LOG_SERVICE', 'worker');
@@ -20,10 +22,6 @@ if (!isset($pools[$pool])) {
     fwrite(STDERR, "Unbekannter Pool '$pool'. Erlaubt: " . implode(', ', array_keys($pools)) . "\n");
     exit(2);
 }
-if (!queue_available()) {
-    fwrite(STDERR, "Warteschlange nicht verfügbar (Migration 018 fehlt).\n");
-    exit(3);
-}
 $types = $pools[$pool];
 $maxJobs = max(1, (int)($opts['max-jobs'] ?? 500));
 $maxMemory = max(64, (int)($opts['max-memory-mb'] ?? 256)) * 1048576;
@@ -32,15 +30,20 @@ $once = isset($opts['once']);
 $workerId = sprintf('%s-%s-%d-%s', $pool, substr((string)gethostname(), 0, 20), getmypid(), substr(bin2hex(random_bytes(3)), 0, 6));
 $heartbeatFile = (string)(getenv('WORKER_HEARTBEAT_FILE') ?: sys_get_temp_dir() . '/smarteinzug-worker-heartbeat');
 
-$stopping = false;
-if (function_exists('pcntl_async_signals')) {
-    pcntl_async_signals(true);
-    foreach ([SIGTERM, SIGINT] as $sig) {
-        pcntl_signal($sig, function () use (&$stopping, $workerId) {
-            $stopping = true;
-            app_log('info', 'Worker beendet nach dem aktuellen Job (Signal)', ['worker' => $workerId]);
-        });
-    }
+// Stop-Signale SIGTERM/SIGINT/SIGQUIT und Notbremse (app/worker_signals.php): Nach dem Signal wird kein
+// neuer Job reserviert; ein laufender Job endet am naechsten kooperativen Abbruchpunkt als Fortsetzung
+// (kein Fehlversuch), spaetestens nach WORKER_STOP_JOB_SECONDS kontrolliert unterbrochen (nie bei
+// Geldfluss- und Mail-Jobs). Die Signale kommen als PID 1 direkt an (docker-compose.yml startet php ohne
+// Shell). Installation VOR dem ersten Datenbankzugriff (queue_available): Ein PID-1-Prozess ohne Handler
+// verwirft SIGTERM, waehrend der Verbindungsaufbau bei nicht erreichbarer Datenbank blockiert; der
+// Container wuerde dann erst nach der Grace-Period hart beendet.
+worker_signals_install(function (int $signo) use ($workerId): void {
+    app_log('info', 'Worker beendet nach dem aktuellen Job (Signal)', ['worker' => $workerId, 'signal' => worker_stop_signal_name()]);
+});
+
+if (!queue_available()) {
+    fwrite(STDERR, "Warteschlange nicht verfügbar (Migration 018 fehlt).\n");
+    exit(3);
 }
 
 worker_register($workerId, $pool);
@@ -59,7 +62,7 @@ $beat = function (string $status, ?string $jobId) use ($workerId, &$done, &$fail
 };
 
 $maintenanceLogged = false;
-while (!$stopping) {
+while (!worker_stop_requested()) {
     // Wartungsmodus (Cutover): keine Jobs reservieren (kein Einzug, kein Sync, keine Mail gegen die
     // Datenbank, die gerade gesichert oder umgezogen wird); Heartbeat weiter schreiben.
     if (maintenance_active()) {
@@ -113,5 +116,5 @@ while (!$stopping) {
     }
 }
 worker_stop($workerId);
-cli_out("Worker $workerId beendet: $done erledigt, $failed fehlgeschlagen");
+cli_out("Worker $workerId beendet: $done erledigt, $failed fehlgeschlagen" . (worker_stop_requested() ? ' (' . worker_stop_signal_name() . ')' : ''));
 exit(0);

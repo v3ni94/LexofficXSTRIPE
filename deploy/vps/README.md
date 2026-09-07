@@ -25,8 +25,10 @@ diesen Stack nicht ersetzt, solange die Migration nicht abgeschlossen ist.
 | `scripts/db-verify.php` | Tabellen, Zeilenzahlen, CHECKSUM TABLE als JSON (Alt/Neu-Abgleich) |
 | `scripts/maintenance.sh` | Wartungsmodus (`app/storage/maintenance.flag`) ein-/ausschalten |
 | `backup/restore-test.sh` | Wiederherstellungstest eines Coolify-Dumps in einer temporaeren Datenbank (Client-Container im Coolify-Netz); `backup.sh`/`Dockerfile` nur Ausweichloesung ohne Coolify, nicht im Stack |
-| `tools/compose-check.py` (liegt unter `tools/`, nicht unter diesem Ordner, gehoert aber zur Pruefung dieses Ordners) | Prueft die Compose-Dateien und `php/Dockerfile` ohne laufenden Docker-Daemon: jeder Dienst aus dem PHP-Image hat einen eigenen, zum Prozess passenden Healthcheck, kein Healthcheck enthaelt ein unescaptes "$", Variablen haben einen Vorgabewert oder stehen in `.env.example`, Candidate-Pruefung vor Migration vor Cutover |
-| `tools/staging-isolation-check.py` (liegt unter `tools/`) | Prueft anhand von `docker compose ... config` (kein Docker-Daemon noetig), dass Produktion und Staging eigene Projekt-/Volume-/Netz-/Traefik-Namen erhalten, redis in beiden Umgebungen keinen Host-Port/kein Coolify-Netz/keine Traefik-Labels hat und der `--expect-env`-Schutz vorhanden ist |
+| `tools/compose-check.py` (liegt unter `tools/`, nicht unter diesem Ordner, gehoert aber zur Pruefung dieses Ordners) | Prueft die Compose-Dateien und `php/Dockerfile` ohne laufenden Docker-Daemon: jeder Dienst aus dem PHP-Image hat einen eigenen, zum Prozess passenden Healthcheck, kein Healthcheck enthaelt ein unescaptes "$", Variablen haben einen Vorgabewert oder stehen in `.env.example`, Candidate-Pruefung vor Migration vor Cutover; seit 4.11 zusaetzlich: Scheduler/Worker/Metrik-Sammler mit `stop_signal: SIGTERM` und begrenzter `stop_grace_period`, php direkt als PID 1 (kein `sh -c`), rsync-Excludes fuer alle Laufzeitdateien des Deploy-Ordners, kein `restart -t` mehr, Verifikation der Release-Bindung per `docker inspect` in `deploy.sh` und `rollback.sh` |
+| `tools/staging-isolation-check.py` (liegt unter `tools/`) | Prueft anhand von `docker compose ... config` (kein Docker-Daemon noetig), dass Produktion und Staging eigene Projekt-/Volume-/Netz-/Traefik-Namen erhalten, redis in beiden Umgebungen keinen Host-Port/kein Coolify-Netz/keine Traefik-Labels hat, den Alias `smarteinzug-redis` ausschliesslich im internen Netz traegt (mit passendem `SMARTEINZUG_REDIS_HOST`/`SMARTEINZUG_REDIS_EXPECTED_CIDR` in allen PHP-Diensten) und der `--expect-env`-Schutz vorhanden ist |
+| `tools/github-poll-check.sh` (liegt unter `tools/`) | Prueft die Polling-Logik des GitHub-Workflows (`.github/scripts/vps-wait-status.sh`) gegen ein Fake-ssh: running/success/failed/unknown/SSH-Abbruch/sha-Abweichung/Frist |
+| `tools/worker-signal-check.sh` (liegt unter `tools/`) | Signalmodell der Worker mit echten PHP-Prozessen und echter `bin/worker.php` gegen eine temporaere MariaDB (Stop-Signale, kein neuer Job, Notbremse, Geldfluss-Jobs, Queue-Semantik) |
 | `tools/redis-deploy-check.sh` (liegt unter `tools/`) | Simuliert `/opt/smarteinzug` mit einem Fake-"docker" und fuehrt die tatsaechliche `deploy.sh` aus: prueft die kontrollierte Aktualisierung/das Rollback der Redis-Infrastruktur VOR der Candidate-Pruefung (kein Docker-Daemon noetig, aber `jq` erforderlich, siehe `scripts/setup-vps.sh`) |
 
 ## Start
@@ -150,7 +152,9 @@ Logs eines Dienstes ansehen (alle Dienste: json-file mit Rotation 20 MB / 5 Date
 docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f worker-lexware-1
 ```
 
-Einen einzelnen Worker neu starten (SIGTERM, laufender Job wird zu Ende gebracht):
+Einen einzelnen Worker neu starten (SIGTERM, Grace 75 s: kein neuer Job, der laufende Job endet am
+kooperativen Abbruchpunkt bzw. nach 30 s Notbremse und wird fortgesetzt; siehe `docs/vps/06-betrieb.md`,
+"Signalmodell der Worker"):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml restart worker-stripe
@@ -231,8 +235,15 @@ wertet X-Forwarded-Proto und X-Forwarded-For dann von rechts aus.
 - `worker-lexware-2` ist in der Basis-Datei definiert und wird in `docker-compose.staging.yml` ueber
   ein nie aktiviertes Profil abgeschaltet; Produktion setzt nur Ressourcenlimits. Die Anzahl der
   Lexware-Worker unterscheidet sich damit allein durch die verwendete Override-Datei.
-- Scheduler und Worker haben `stop_grace_period: 660s`; `deploy.sh` und `rollback.sh` starten sie mit
-  `restart -t 660`, damit ein laufender Sync-Abschnitt (bis 600 s) sauber beendet wird.
+- Scheduler und Worker laufen als php PID 1 mit `stop_signal: SIGTERM` und `stop_grace_period: 75s`
+  (Metrik-Sammler 20 s): Nach dem Signal kein neuer Job, laufender Job bis zum kooperativen Abbruchpunkt
+  (Fortsetzung ohne Fehlversuch), Notbremse nach 30 s fuer unterbrechbare Jobtypen; Geldfluss- und
+  Mail-Jobs werden nie mitten im Ablauf unterbrochen. Kein zweiter Worker-Neustart nach dem Cutover mehr
+  (frueher `restart -t 660`, bis zu 11 Minuten): `deploy.sh`/`rollback.sh` verifizieren stattdessen die
+  Release-Bindung per `docker inspect`. Container, die noch mit der alten Stop-Konfiguration laufen
+  (SIGQUIT, 660 s; erstes Deployment ab 4.11 oder nach einem Rollback), beendet `deploy.sh` vor dem
+  Cutover gezielt mit SIGTERM (Frist 90 s), weil Docker beim Neuerzeugen sonst die alten Werte anwendet.
+  Details: `docs/vps/06-betrieb.md`, "Signalmodell der Worker".
 - Die statische Statusseite (`websites/status.smart-einzug.de`) wird vom GitHub-Workflow je Release
   unter `releases/<git-sha>/status/` abgelegt; Caddy liefert `releases/${RELEASE_SHA}/status` aus (siehe
   Caddyfile, `{$RELEASE_SHA}`). Sie gehoert damit zum Release und wechselt mit ihm (auch beim Rollback).
@@ -330,7 +341,20 @@ bash tools/deploy-runner-check.sh
 php tools/healthcheck-redis-check.php
 python3 tools/staging-isolation-check.py
 bash tools/redis-deploy-check.sh
+bash tools/github-poll-check.sh
+bash tools/worker-signal-check.sh
 ```
+
+`tools/deploy-runner-check.sh` fuehrt seit Version 4.11 zusaetzlich die ECHTE `deploy.sh` unter dem
+Runner aus (Fake-"docker", tools/lib/deploy-sandbox.sh): Status unmittelbar `running` mit sha/pid,
+bleibt es waehrend des Laufs (insbesondere nach dem rsync von deploy/vps, der die Statusdatei frueher
+loeschte), gueltiges JSON bei jeder Abfrage, Feld `step`, am Ende `success`/`failed` mit Exitcode, `--tail`,
+keine Geheimnisse aus deploy/.env. `tools/github-poll-check.sh` prueft `.github/scripts/vps-wait-status.sh`
+gegen ein Fake-ssh (running/success/failed/unknown/SSH-Abbruch/sha-Abweichung/Frist).
+`tools/worker-signal-check.sh` prueft das Signalmodell mit echten PHP-Prozessen (SIGTERM/SIGQUIT/SIGINT,
+Notbremse, Geldfluss-Jobs unangetastet) und die echte `bin/worker.php` gegen eine temporaere MariaDB
+(Leerlauf-Stopp, kein neuer Job nach dem Signal, Queue-Semantik eines unterbrochenen und eines hart
+beendeten Jobs).
 
 `tools/deploy-runner-check.sh` prueft `deploy-runner.sh` gegen ein simuliertes `/opt/smarteinzug` in
 einem temporaeren Ordner (kein echter Server, kein Docker noetig): Sperre wird bei einem parallelen
@@ -342,7 +366,10 @@ wieder moeglich (idempotent).
 `python3 tools/compose-check.py` prueft zusaetzlich statisch (per Textsuche in `deploy.sh`, kein
 Docker noetig), dass die Reihenfolge Candidate-Pruefung vor Migration vor Cutover eingehalten wird
 und beide isolierten Schritte ausschliesslich ueber `docker compose run --rm --no-deps` laufen (nie
-`up`/`restart`, ruehren also nie die laufenden Container an). `tools/healthcheck-redis-check.php`
+`up`/`restart`, ruehren also nie die laufenden Container an); seit 4.11 ausserdem die
+Stop-Konfiguration der Hintergrunddienste (SIGTERM, Grace 60 bis 120 s bzw. 5 bis 60 s fuer den
+Metrik-Sammler, php als PID 1), die rsync-Excludes der Laufzeitdateien, das Fehlen von `restart -t` und
+die Verifikation der Release-Bindung in `deploy.sh`/`rollback.sh`. `tools/healthcheck-redis-check.php`
 prueft `monitor_category()` gegen glibc- und musl-typische Fehlertexte (Hintergrund: das PHP-Image
 ist Alpine/musl-basiert, siehe `docs/vps/06-betrieb.md`, Abschnitt "Candidate-Pruefung meldet
 `redis: other`") sowie `bin/healthcheck.php --redis` gegen einen tatsaechlich nicht aufloesbaren

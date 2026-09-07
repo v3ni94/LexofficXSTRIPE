@@ -256,17 +256,21 @@ function monitor_category($e): string
     // zu redis.conf. Muss VOR der generischen "connection"-Kategorie geprueft werden, da die Meldung
     // auch "connections"/"connect" enthaelt.
     if (preg_match('/protected mode|no password is set for the default user/', $msg)) return 'redis_protected_mode';
-    if (preg_match('/noauth|wrongpass|invalid password|401|403|unauthori|forbidden|api key|api-schl|ungültiger schl/', $msg)) return 'auth';
-    // Gegenstelle antwortet, aber nicht wie erwartet (kein Redis, anderes Protokoll, unbekannter Befehl):
-    // typische phpredis-Meldungen "protocol error, got 'x' as reply type byte", "ERR unknown command".
-    if (preg_match('/protocol error|reply type byte|unknown command|unexpected response|malformed/', $msg)) return 'protocol';
-    if (preg_match('/429|rate limit|too many|drossel/', $msg)) return 'throttled';
+    if (preg_match('/noauth|wrongpass|noperm|invalid password|401|403|unauthori|forbidden|api key|api-schl|ungültiger schl/', $msg)) return 'auth';
+    // Redis-Serverzustaende (Gegenstelle erreichbar, aber vorerst nicht nutzbar): eigene Kategorien statt "other".
+    if (preg_match('/^loading\b|is loading the dataset/', $msg)) return 'loading';
+    if (preg_match('/^busy\b|^masterdown\b|^misconf\b/', $msg)) return 'busy';
+    if (preg_match('/429|rate limit|too many requests|drossel/', $msg)) return 'throttled';
     if (preg_match('/50\d|gateway|unavailable/', $msg)) return 'http_5xx';
     if (preg_match('/refused|no route to host|network is unreachable/', $msg)) return 'connection_refused';
     // Vom Server geschlossene/zurueckgesetzte Verbindungen (u. a. typische phpredis-Meldungen wie "went
     // away", die weder "connect" noch "connection" als Teilwort enthalten).
     if (preg_match('/went away|reset by peer|broken pipe|read error|socket error|not connected|end of file|connect|connection|verbindung/', $msg)) return 'connection';
     if (preg_match('/sqlstate|database|datenbank|deadlock/', $msg)) return 'database';
+    // Gegenstelle antwortet, aber nicht im erwarteten Protokoll (kein Redis am Port, unbekannter Befehl):
+    // typische phpredis-Meldungen "protocol error, got 'x' as reply type byte", "ERR unknown command". Bewusst
+    // NACH database/connection, damit z.B. "SQLSTATE ... Malformed packet" weiterhin "database" bleibt.
+    if (preg_match('/protocol error|reply type byte|unknown command/', $msg)) return 'protocol';
     return 'other';
 }
 

@@ -646,57 +646,18 @@ jobs:
           echo "expect_sha=false" >> "$GITHUB_OUTPUT"
           exit 0
 
+      # Die Warte-/Polling-Logik liegt in .github/scripts/vps-wait-status.sh (Entscheidungslogik
+      # success/failed/Frist/sha unveraendert ausgelagert, ergaenzt um Fortschrittsausgabe und Recovery-Hinweis,
+      # damit sie mit tools/github-poll-check.sh gegen ein Fake-ssh regressionsgeprueft werden kann):
+      # Frist 12 Minuten, Abfrage alle 10 s, Phase/Schritt werden bei jeder Aenderung protokolliert,
+      # "failed" zeigt die letzten 80 Protokollzeilen des Servers, ein kurzer SSH-Ausfall ist unkritisch.
       - name: Auf Abschluss des Deployments warten
         id: vps_deploy
         timeout-minutes: 15
         shell: bash
-        run: |
-          set -uo pipefail
-          DEADLINE=$((SECONDS + 12 * 60))
-          STATUS=""
-          while (( SECONDS < DEADLINE )); do
-            # shellcheck disable=SC2086
-            STATUS="$(ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
-              "bash '$VPS_DEPLOY_PATH/deploy/scripts/deploy-status.sh'" 2>/dev/null)"
-            # Eine einzelne fehlgeschlagene Abfrage (z.B. kurzer Verbindungsabbruch) beendet das Warten
-            # NICHT: der naechste Versuch nach der Wartezeit unten prueft erneut. Das laufende
-            # Deployment auf dem Server ist davon vollstaendig unabhaengig (siehe deploy-runner.sh).
-            PHASE="$(printf '%s' "$STATUS" | jq -r '.phase // empty' 2>/dev/null || true)"
-            SHA_SEEN="$(printf '%s' "$STATUS" | jq -r '.sha // empty' 2>/dev/null || true)"
-            case "$PHASE" in
-              success)
-                echo "Deployment abgeschlossen (Status: success, sha=$SHA_SEEN)."
-                break
-                ;;
-              failed)
-                echo "::error::Deployment fehlgeschlagen. Status: $STATUS"
-                # shellcheck disable=SC2086
-                ssh $SSH_OPTS "$VPS_SSH_USER@$VPS_HOST" \
-                  "bash '$VPS_DEPLOY_PATH/deploy/scripts/deploy-status.sh' --tail 80" 2>/dev/null || true
-                exit 1
-                ;;
-              running) : ;;
-              *) : ;;  # Statusdatei kurzzeitig nicht lesbar/noch nicht vorhanden: einfach weiter warten
-            esac
-            sleep 10
-          done
-          if [[ "$(printf '%s' "$STATUS" | jq -r '.phase // empty' 2>/dev/null)" != "success" ]]; then
-            echo "::error::Zeitueberschreitung beim Warten auf den Abschluss des Deployments. Letzter Status: $STATUS"
-            exit 1
-          fi
-          if [[ "${{ steps.vps_deploy_trigger.outputs.expect_sha }}" == "true" ]]; then
-            SHA_SEEN="$(printf '%s' "$STATUS" | jq -r '.sha // empty' 2>/dev/null)"
-            if [[ "$SHA_SEEN" != "$GITHUB_SHA" ]]; then
-              echo "::error::Der erfolgreich abgeschlossene Deploy betraf sha=$SHA_SEEN, nicht $GITHUB_SHA."
-              echo "Dieser Lauf hatte selbst ausgeloest, das Ergebnis gehoert aber zu einem anderen Release."
-              echo "Bitte diesen Workflow-Lauf erneut ausfuehren (workflow_dispatch oder erneuter Push)."
-              exit 1
-            fi
-          else
-            echo "::notice::Dieser Lauf hat selbst kein Deployment ausgeloest (Sperre war belegt), sondern nur"
-            echo "::notice::auf ein bereits laufendes gewartet. Bitte pruefen, ob sha=$GITHUB_SHA tatsaechlich"
-            echo "::notice::aktiviert wurde (Reiter Server/Versionen im Adminbereich, oder erneut ausloesen)."
-          fi
+        env:
+          EXPECT_SHA: ${{ steps.vps_deploy_trigger.outputs.expect_sha }}
+        run: bash .github/scripts/vps-wait-status.sh
 
       - name: Health-Check von aussen
         id: health

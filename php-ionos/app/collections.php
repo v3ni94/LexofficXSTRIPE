@@ -725,7 +725,8 @@ function collection_attempt_recover(string $tenantId, array $attempt, array $pi,
  *  - "succeeded" ohne Einzugsdatensatz (verwaist): PaymentIntent direkt per ID
  *    abrufen und Einzug nachtragen.
  *
- * @return array{checked:int,recovered:int,cleared:int,pending:int}
+ * @return array{checked:int,recovered:int,cleared:int,pending:int,stopped?:bool}
+ *         stopped = true: Worker-Shutdown, restliche Versuche wurden nicht geprüft (Fortsetzung durch den Job)
  */
 function collection_attempts_resolve(string $tenantId, ?array $actor = null): array
 {
@@ -737,6 +738,12 @@ function collection_attempts_resolve(string $tenantId, ?array $actor = null): ar
     }
     $stripe = _get_stripe_client($tenantId);
     foreach ($open as $a) {
+        // Kooperativer Abbruchpunkt VOR jedem Stripe-Aufruf (Worker-Shutdown, app/worker_signals.php): Ein
+        // begonnener Versuch (Lesen bei Stripe, dann Nachbuchen) wird nie mitten im Ablauf unterbrochen.
+        if (function_exists('worker_stop_requested') && worker_stop_requested()) {
+            $result['stopped'] = true;
+            break;
+        }
         $ageSec = time() - (int)strtotime($a['created_at']);
         if ($a['status'] === 'pending' && $ageSec < 15 * 60) {
             $result['pending']++;
@@ -1750,7 +1757,11 @@ function process_scheduled_collections(?string $tenantId = null, ?array $actor =
     $skipIds = array_flip(array_map('strval', (array)($options['skip_ids'] ?? [])));
     $result['handled_ids'] = [];
     foreach ($due as $index => $collection) {
-        if ($deadline !== null && microtime(true) >= $deadline) {
+        // Kooperativer Abbruchpunkt: Zeitbudget erreicht ODER der Worker wurde zum Beenden aufgefordert
+        // (app/worker_signals.php). Nur ZWISCHEN zwei Einzuegen, nie mitten in einem Stripe-Aufruf; die
+        // verbleibenden Einzuege uebernimmt die eingeplante Fortsetzung (siehe job_collections_due()).
+        if (($deadline !== null && microtime(true) >= $deadline)
+            || (function_exists('worker_stop_requested') && worker_stop_requested())) {
             $result['remaining'] = count($due) - $index;
             break;
         }

@@ -112,16 +112,27 @@ export RELEASE_SHA="$TARGET"
 printf 'RELEASE_SHA=%s\n' "$TARGET" > "$DEPLOY_DIR/.release.env"
 
 # Schutz gegen einen versehentlichen Staging-Rollback gegen die Produktionskonfiguration (dieselbe
-# Absicherung wie in deploy.sh, siehe dort "Candidate pruefen"; hier ueber den bereits laufenden
-# Container, da ein Rollback keinen eigenen Candidate-Container verwendet).
-if ! "${COMPOSE[@]}" exec -T php php bin/healthcheck.php --expect-env="$DEPLOY_ENV" 2>&1; then
+# Absicherung wie in deploy.sh, siehe dort "Candidate pruefen"). Normalerweise ueber den bereits laufenden
+# php-Container (exec). Laeuft er nicht (z.B. automatischer Rollback aus deploy.sh, weil genau der
+# php-Container nach dem Cutover nicht startete), wuerde "exec" scheitern und der Rollback unterbleiben;
+# dann laeuft die Pruefung stattdessen in einem isolierten Wegwerfcontainer des Zielrelease
+# (run --rm --no-deps, wie die Candidate-Pruefung in deploy.sh). shared/config.php ist releaseunabhaengig.
+PHP_CID="$("${COMPOSE[@]}" ps -q php 2>/dev/null | head -n1 || true)"
+PHP_STATE="$([[ -n "$PHP_CID" ]] && docker inspect --format '{{.State.Status}}' "$PHP_CID" 2>/dev/null || true)"
+if [[ "$PHP_STATE" == "running" ]]; then
+    PHP_RUNNER=(exec -T php)
+else
+    echo "php-Container laeuft nicht (Zustand: ${PHP_STATE:-keiner}); Umgebungs- und Migrationspruefung in einem isolierten Wegwerfcontainer des Zielrelease."
+    PHP_RUNNER=(run --rm --no-deps -T php)
+fi
+if ! "${COMPOSE[@]}" "${PHP_RUNNER[@]}" php bin/healthcheck.php --expect-env="$DEPLOY_ENV" 2>&1; then
     echo "::error:: Umgebungspruefung fehlgeschlagen (config('environment') passt nicht zu DEPLOY_ENV=$DEPLOY_ENV). Kein Rollback."
     exit 1
 fi
 
 # Vertraeglichkeit mit dem Datenbankschema pruefen: Alle eingespielten Migrationen muessen im
 # Zielrelease vorhanden sein, sonst wuerde aelterer Code auf ein neueres Schema treffen.
-APPLIED="$("${COMPOSE[@]}" exec -T php php bin/migrate.php --status 2>/dev/null | awk '$2=="applied"{print $1}' || true)"
+APPLIED="$("${COMPOSE[@]}" "${PHP_RUNNER[@]}" php bin/migrate.php --status 2>/dev/null | awk '$2=="applied"{print $1}' || true)"
 if [[ -z "$APPLIED" ]]; then
     echo "::warning:: Migrationsstand konnte nicht gelesen werden (php-Container nicht erreichbar?). Vertraeglichkeitspruefung uebersprungen."
 else
@@ -146,8 +157,14 @@ else
 fi
 
 echo "Uebernehme deploy/vps aus dem Zielrelease nach $DEPLOY_DIR ..."
-rsync -a --delete --exclude '.env' --exclude '.deploy.lock' --exclude '.php-image.sha256' \
-    --exclude '.release_history' --exclude '.previous_sha' \
+# Laufzeitdateien des Deploy-Ordners NIE mitloeschen: Die Muster /.deploy* (Sperre, PID-Datei,
+# Statusdatei .deploy-status.json samt ihrer .tmp-Zwischendatei), /.release* (.release_history,
+# .release.env), /.previous_sha, /.php-image.sha256 und /.env liegen NICHT im Release und wuerden von
+# "--delete" sonst entfernt. Genau das war die Ursache fuer "phase=unknown" waehrend eines laufenden
+# Deployments (Version 4.11): deploy-runner.sh hatte die Statusdatei bereits mit "running" geschrieben,
+# dieser rsync loeschte sie Sekunden spaeter, deploy-status.sh fand bis zum Ende nichts mehr.
+rsync -a --delete --exclude '/.env' --exclude '/.deploy*' --exclude '/.php-image.sha256' \
+    --exclude '/.release*' --exclude '/.previous_sha' \
     "$RELEASE_DIR/deploy/vps/" "$DEPLOY_DIR/"
 
 # Image neu bauen, wenn das Zielrelease einen anderen Stand von deploy/vps/php hat; die Pruefsumme wird
@@ -185,11 +202,32 @@ if [[ -n "$FROM_SHA" && "$FROM_SHA" != "$TARGET" && -d "$RELEASES_DIR/$FROM_SHA"
 fi
 
 "${COMPOSE[@]}" exec -T php kill -USR2 1
-BACKGROUND_SERVICES=(scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance)
+
+# Kein zweiter Neustart von Scheduler/Workern (frueher "restart -t 660"): "up -d" oben hat sie wegen des
+# geaenderten working_dir (RELEASE_SHA=$TARGET, Teil des Compose-Konfigurations-Hash) bereits neu erzeugt.
+# Stattdessen wird die Release-Bindung verifiziert (siehe deploy.sh).
+echo "Verifiziere die Release-Bindung aller PHP-Container (working_dir = $RELEASES_DIR/$TARGET) ..."
+RELEASE_BOUND_SERVICES=(php scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance metrics)
 if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx worker-lexware-2; then
-    BACKGROUND_SERVICES+=(worker-lexware-2)
+    RELEASE_BOUND_SERVICES+=(worker-lexware-2)
 fi
-"${COMPOSE[@]}" restart -t 660 "${BACKGROUND_SERVICES[@]}"
+BINDING_ERRORS=0
+for svc in "${RELEASE_BOUND_SERVICES[@]}"; do
+    # "|| true": ein fehlschlagender Compose-Aufruf darf den Rollback hier nicht still beenden (set -e).
+    cid="$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null | head -n1 || true)"
+    wd="$([[ -n "$cid" ]] && docker inspect --format '{{.Config.WorkingDir}}' "$cid" 2>/dev/null || true)"
+    state="$([[ -n "$cid" ]] && docker inspect --format '{{.State.Status}}' "$cid" 2>/dev/null || true)"
+    if [[ -z "$cid" || "$wd" != "$RELEASES_DIR/$TARGET" || "$state" != "running" ]]; then
+        echo "::error:: Dienst $svc: working_dir=${wd:-?} Zustand=${state:-?}, erwartet $RELEASES_DIR/$TARGET und running."
+        BINDING_ERRORS=$((BINDING_ERRORS + 1))
+    else
+        echo "  $svc: $wd ($state)"
+    fi
+done
+if (( BINDING_ERRORS > 0 )); then
+    echo "::error:: Nicht alle PHP-Container laufen mit dem Zielrelease. Manuelle Pruefung auf dem Server erforderlich."
+    exit 1
+fi
 
 sleep 5
 if ! "${COMPOSE[@]}" exec -T php php bin/healthcheck.php --all; then

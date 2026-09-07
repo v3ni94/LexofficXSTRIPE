@@ -25,7 +25,13 @@ echo
 
 if [[ "${1:-}" == "--tail" ]]; then
     N="${2:-50}"
-    LOG_NAME="$(sed -n 's/.*"log_file":"\([^"]*\)".*/\1/p' "$STATUS_FILE" | head -n1)"
+    # Protokollname aus der Statusdatei: bevorzugt per jq (formatunabhaengig), sonst per sed mit Toleranz fuer
+    # Leerraum nach dem Doppelpunkt (die Datei kann kompakt vom Runner oder per jq von deploy.sh stammen).
+    if command -v jq >/dev/null 2>&1; then
+        LOG_NAME="$(jq -r '.log_file // empty' "$STATUS_FILE" 2>/dev/null || true)"
+    else
+        LOG_NAME="$(sed -n 's/.*"log_file":[[:space:]]*"\([^"]*\)".*/\1/p' "$STATUS_FILE" | head -n1)"
+    fi
     if [[ -n "$LOG_NAME" && -f "$LOG_DIR/$LOG_NAME" ]]; then
         echo "--- letzte $N Zeilen von $LOG_NAME ---"
         tail -n "$N" "$LOG_DIR/$LOG_NAME"
