@@ -24,6 +24,8 @@ FONT_REG = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
 DOMAINS = {
     'lexware-einzug.de': ('SEPA-Lastschrift für Lexware Office', 'Offene Rechnungen aus Lexware Office per Lastschrift einziehen'),
     'lexoffice-einzug.de': ('Für lexoffice-Nutzer, heute Lexware Office', 'Offene Rechnungen per SEPA-Lastschrift einziehen'),
+    'sevdesk-einzug.de': ('SEPA-Lastschrift für sevdesk, in Vorbereitung', 'Vormerken für den geplanten Einzug aus sevdesk'),
+    'sevdesk-sepa.de': ('SEPA-Lastschrift verstehen, für sevdesk-Nutzer', 'Mandat, Gläubiger-ID, Vorabankündigung, Rücklastschrift'),
 }
 
 

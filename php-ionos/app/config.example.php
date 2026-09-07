@@ -124,7 +124,7 @@ return [
     ],
 
     // --- Erlaubte Herkunftsdomains für die Registrierung (signup_domain) ---
-    'signup_domains' => ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de'],
+    'signup_domains' => ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'sevdesk-einzug.de', 'sevdesk-sepa.de'],
 
     // --- Registrierung neuer Firmen erlauben? ---
     'allow_registration' => true,

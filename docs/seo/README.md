@@ -9,7 +9,7 @@ Stand: 07.09.2026. Dieser Ordner bündelt die Arbeitsergebnisse zum Masterprompt
 | `02-faktenregister.md` | Faktenregister: belegte Tatsachen über die Software mit Quelle, Status (bestätigt, geplant, ungeklärt, veraltet) und zulässiger Formulierung | in Arbeit |
 | `03-aussagenpruefung.md` | Abgleich der Werbeaussagen je Domain mit Verdikt, Korrektur und Verifikation | in Arbeit |
 | `keyword-map.json`, `04-keyword-map.md` | Gemeinsame Themen- und URL-Zuordnung über alle Domains (SEO_KEYWORD_MAP), geprüft durch `tools/seo-map-check.py` | in Arbeit |
-| `05-massnahmenplan.md` | Größere Eingriffe, die eine Freigabe der Geschäftsführung brauchen (Zusammenführungen, Weiterleitungen, Indexierung, AGB, Preisdarstellung, vierte Domain) | in Arbeit |
+| `05-massnahmenplan.md` | Größere Eingriffe, Entscheidungen (DETM, sevdesk-Domains), die eine Freigabe der Geschäftsführung brauchen (Zusammenführungen, Weiterleitungen, Indexierung, AGB, Preisdarstellung, vierte Domain) | in Arbeit |
 | `06-mess-und-pflegekonzept.md` | Erfolgskette, Ereignisse, Datenlücken, Redaktions- und Prüfplan, Freigabezustände | in Arbeit |
 
 ## Werkzeuge

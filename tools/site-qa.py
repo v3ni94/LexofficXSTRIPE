@@ -21,7 +21,7 @@ import importlib
 asset_version = importlib.import_module('asset-version')
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'websites')
-DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de']
+DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de', 'sevdesk-einzug.de', 'sevdesk-sepa.de']
 NOINDEX_FILES = {'404.html'}
 import itertools
 SIM_WARN, SIM_FAIL = 0.35, 0.50

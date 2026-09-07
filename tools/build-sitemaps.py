@@ -19,7 +19,7 @@ import subprocess
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, '..'))
 ROOT = os.path.join(REPO, 'websites')
-DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de']
+DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de', 'sevdesk-einzug.de', 'sevdesk-sepa.de']
 today = datetime.date.today().isoformat()
 
 
