@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.13';
+const APP_VERSION = '4.14';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.14', 'date' => '07.09.2026', 'title' => 'Einführungspreis mit rollierendem Stichtag',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Der Einführungspreis des Tarifs UNLIMITED START gilt nicht mehr bis zum festen 31.12.2026, sondern für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden; der Stichtag verschiebt sich damit von selbst (am 30.09. lautet er 30.09.2026, am 01.10. bereits 31.10.2026). Ein bereits angelegter Account behält seinen Preis unverändert, solange das Abonnement läuft. Grundlage bleibt die Tabelle plans, hier ist kein Preis hinterlegt.'],
+            ['type' => 'Neu', 'text' => 'app/pricing.php berechnet den Stichtag (intro_price_deadline, intro_price_deadline_sentence) ohne Datenbank; das Hilfe-Center nennt den konkreten Tag, die statischen Marketingseiten (14 Seiten auf vier Domains, einschließlich AGB und FAQ) nennen die gleichlautende Regel ohne Datum, damit dort kein Datum von Hand gepflegt werden muss. Die FAQ-Frage "Was passiert nach dem 31.12.2026?" heißt jetzt "Was passiert, wenn der Einführungspreis endet?" und verweist auf den dann veröffentlichten Preis für neu angelegte Accounts.'],
+            ['type' => 'Neu', 'text' => 'tools/pricing-check.php prüft den Stichtag über Monats-, Jahres- und Schaltjahresgrenzen, verbietet ein festes Ablaufdatum in Preisangaben (Muster "bis TT.MM.JJJJ angelegt/registriert" in HTML und PHP) und hält Marketingseiten und Anwendung auf derselben Aussage.'],
+         ]],
         ['version' => '4.13', 'date' => '07.09.2026', 'title' => 'Betriebs- und Migrationsdokumentation im Adminbereich',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Die interne Betriebs- und Migrationsdokumentation der Müller Holding AG (Dokument-ID MHAG-SE-OPS-20260907, Version 1.0, 45 Kapitel mit Architektur, Containerinventar, Netzen, Deploymentablauf, Störungsanalysen, Backups, Runbooks und Entscheidungsregister) steht im Adminbereich unter System, Dokumentation zur Verfügung: als Kapitel der technischen Dokumentation (HTML und Sammel-PDF, mit Tabellen, Textdiagrammen und Befehlsblöcken) und zusätzlich als unveränderte Originalfassung im PDF. Auslieferung wie bisher ausschließlich über admin-doc.php an Plattformadministratoren, jeder Abruf im Audit.'],

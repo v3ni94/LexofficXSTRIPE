@@ -1,8 +1,7 @@
 # Plattform-Abrechnung scharf schalten (Abonnement der Firmen)
 
 Betreiber: Müller Holding AG. Diese Anleitung beschreibt die Inbetriebnahme des Abonnements, mit dem
-Firmenaccounts SmartEinzug bezahlen (Tarif UNLIMITED START, Einführungspreis 25,00 EUR netto je 4 Wochen
-für bis zum 31.12.2026 angelegte Accounts, alle Preise netto zzgl. USt.). Sie ist getrennt von den
+Firmenaccounts SmartEinzug bezahlen (Tarif UNLIMITED START, Einführungspreis 25,00 EUR netto je 4 Wochen für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden, alle Preise netto zzgl. USt.; der Stichtag rollt monatlich weiter, siehe `php-ionos/app/pricing.php` und `tools/pricing-check.php`). Sie ist getrennt von den
 Stripe-Konten der Firmen, über die diese ihre eigenen SEPA-Einzüge abwickeln.
 
 Rechtliche und steuerliche Fragen (Umsatzsteuer, Reverse Charge, AGB, Widerruf) sind mit Steuerberater

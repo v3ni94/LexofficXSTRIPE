@@ -1,6 +1,12 @@
 <?php
 /** Hilfetexte des Hilfe-Centers (hilfe.php). Reines Inhaltsarray, HTML nur mit p, h3, ol, ul, li, strong, a, code. */
 declare(strict_types=1);
+
+// Stichtag des Einführungspreises rollierend berechnen (Ende des laufenden Kalendermonats), damit die
+// Hilfetexte kein festes Datum nennen, das nach seinem Ablauf falsch wäre (siehe app/pricing.php).
+require_once __DIR__ . '/pricing.php';
+$introDeadline = intro_price_deadline();
+
 return [
     'topics' => [
         [
@@ -199,7 +205,7 @@ return [
             'title' => 'Abonnement und Abrechnung',
             'summary' => 'Tarif, Preis und Kündigung des Abonnements.',
             'html' => '<h3>Tarif</h3>'
-                . '<p>SmartEinzug wird im Tarif UNLIMITED START angeboten. Für bis zum 31.12.2026 angelegte Firmenaccounts gilt ein Einführungspreis von 25,00 EUR netto je 4 Wochen (bisher 50,00 EUR). Alle Preise verstehen sich netto zuzüglich der gesetzlichen Umsatzsteuer.</p>'
+                . '<p>SmartEinzug wird im Tarif UNLIMITED START angeboten. Für Firmenaccounts, die bis zum ' . $introDeadline . ' angelegt werden (Ende des laufenden Kalendermonats), gilt ein Einführungspreis von 25,00 EUR netto je 4 Wochen (bisher 50,00 EUR); für diese Accounts bleibt er bestehen, solange das Abonnement läuft. Alle Preise verstehen sich netto zuzüglich der gesetzlichen Umsatzsteuer.</p>'
                 . '<h3>Tarifwechsel</h3>'
                 . '<p>Sobald mehrere Tarife angeboten werden, kann der Inhaber unter <a href="subscription.php#tarif">Abonnement</a> den Tarif wechseln. Ein Upgrade gilt sofort; die anteilige Differenz bis zum Periodenende wird sofort berechnet und über die hinterlegte Zahlungsmethode eingezogen. Ein Downgrade gilt ebenfalls sofort, die anteilige Gutschrift erscheint auf der nächsten Rechnung; es ist nur möglich, wenn die aktuelle Benutzerzahl in den kleineren Tarif passt. Beim Erreichen des Benutzerlimits oder ab 80 Prozent des Einzugskontingents zeigt die Anwendung den nächsthöheren passenden Tarif an.</p>'
                 . '<h3>Abrechnung</h3>'
@@ -234,7 +240,7 @@ return [
         ['topic' => 'einzug-ablauf', 'q' => 'Was passiert bei einer Teilzahlung?', 'a' => '<p>SmartEinzug prüft den Restbetrag vor der Einreichung live bei Lexware Office. Wurde bereits ein Teilbetrag gezahlt, wird nur der verbleibende Restbetrag eingezogen.</p>'],
         ['topic' => 'kunden-iban-mandate', 'q' => 'Warum steht auf dem Kontoauszug des Kunden eine andere Gläubiger-ID?', 'a' => '<p>Da der technische Einzug über Stripe läuft, erscheint auf dem Kontoauszug des Kunden in der Regel die Gläubiger-Identifikationsnummer von Stripe und nicht die eigene Gläubiger-ID der Firma. Die interne Mandatsreferenz und die Stripe-Referenz werden in SmartEinzug getrennt angezeigt.</p>'],
         ['topic' => 'kunden-iban-mandate', 'q' => 'Brauche ich eine Gläubiger-Identifikationsnummer?', 'a' => '<p>Die Angabe unter <a href="team.php">Firmendaten</a> ist freiwillig. Für den Einzug über Stripe verwendet Stripe seine eigene Gläubiger-ID.</p>'],
-        ['topic' => 'abo-abrechnung', 'q' => 'Was kostet SmartEinzug?', 'a' => '<p>Im Tarif UNLIMITED START gilt für bis zum 31.12.2026 angelegte Firmenaccounts ein Einführungspreis von 25,00 EUR netto je 4 Wochen (bisher 50,00 EUR), zuzüglich gesetzlicher Umsatzsteuer.</p>'],
+        ['topic' => 'abo-abrechnung', 'q' => 'Was kostet SmartEinzug?', 'a' => '<p>Im Tarif UNLIMITED START gilt für Firmenaccounts, die bis zum ' . $introDeadline . ' angelegt werden (Ende des laufenden Kalendermonats), ein Einführungspreis von 25,00 EUR netto je 4 Wochen (bisher 50,00 EUR), zuzüglich gesetzlicher Umsatzsteuer.</p>'],
         ['topic' => 'rollen-sicherheit', 'q' => 'Wie viele Benutzer kann ich anlegen?', 'a' => '<p>Das Sitzlimit richtet sich nach Ihrem Tarif. Bestandskunden des Starttarifs behalten in der Regel eine unbegrenzte Zahl an Benutzern, solange der Tarif administrativ nicht geändert wird.</p>'],
         ['topic' => 'ruecklastschrift-erstattung', 'q' => 'Was passiert bei einer Rücklastschrift?', 'a' => '<p>Stripe meldet die Rücklastschrift über den Webhook. SmartEinzug markiert die betroffene Rechnung zur Klärung. Ein neuer Einzug wird nicht automatisch ausgelöst, sondern erst nach abgeschlossener Klärung.</p>'],
         ['topic' => 'stripe-verbindung', 'q' => 'Muss jeder Kunde einen Webhook anlegen?', 'a' => '<p>Nein. Der Webhook liegt im Stripe-Konto Ihrer Firma und wird einmalig eingerichtet, nicht je Kunde.</p>'],
