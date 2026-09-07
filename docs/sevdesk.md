@@ -29,7 +29,9 @@ Eine Anwendung, eine Codebasis, getrennte Buchhaltungsadapter. Die Wahl des Buch
 (`integrations.invoice_source`), nicht zum Benutzer und nicht zur Herkunftsseite. Zum ersten sevdesk-Release genau eine
 aktive Rechnungsquelle je Firma; die Datenstruktur (Registry, Adaptergrenze) lässt spätere Erweiterung zu, ohne sie
 freizuschalten. Zahlungsdienst, Mandatsprüfung, Einzugsfreigabe und Historie bleiben gemeinsam. Marketing je
-Rechnungssystem getrennt (eigene Landingpage, optional Leaddomain), Herkunft über `signup_domain` messbar.
+Rechnungssystem getrennt (eigene Landingpage, optional Leaddomain), Herkunft über `signup_domain` messbar. Der Wechsel
+des Systems je Firma (Einstellungen, Vier-Wochen-Sperre, gleiche Tarife) ist in `docs/integrations.md`, Abschnitt „Eine
+Rechnungsquelle je Firma“, beschrieben.
 
 ## 3. Freigabeschalter (Masterplan 12)
 

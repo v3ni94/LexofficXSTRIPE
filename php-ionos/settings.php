@@ -34,7 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $integration = integration_load($tenantId);
 
     try {
-        if ($action === 'save_lexoffice') {
+        if ($action === 'switch_invoice_source') {
+            require_once __DIR__ . '/app/invoice_source_switch.php';
+            if (($_POST['confirm'] ?? '') !== '1') {
+                throw new RuntimeException('Bitte bestätigen Sie den Wechsel des Buchhaltungssystems.');
+            }
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            $target = (string)($_POST['target'] ?? '');
+            invoice_source_switch($ctx, $target, (string)($_POST['reason'] ?? ''));
+            flash_set('success', 'Buchhaltungssystem gewechselt zu ' . invoice_source_label($target) . '. Die bisherige Verbindung wurde getrennt; der nächste Wechsel ist frühestens in vier Wochen möglich.');
+        } elseif ($action === 'save_lexoffice') {
             support_guard();
             $key = trim($_POST['lexoffice_api_key'] ?? '');
             if ($key === '') {
@@ -133,6 +142,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $integration = integration_load($tenantId);
+require_once __DIR__ . '/app/invoice_source_switch.php';
+$isrc = invoice_source_current($tenantId);
+$isrcLock = invoice_source_lock($tenantId);
+$isrcTargets = [];
+foreach (INVOICE_SOURCE_CODES as $c) {
+    if ($c !== $isrc['code']) {
+        $isrcTargets[$c] = ['label' => invoice_source_label($c), 'blocker' => invoice_source_switch_blocker($tenantId, $c)];
+    }
+}
 $webhookUrl = app_base_url() . '/stripe-webhook.php';
 $productName = product_name();
 
@@ -142,6 +160,41 @@ layout_header('Einstellungen', $ctx);
 <p class="page-sub">API-Verbindungen für <?= e($ctx['org_name']) ?><?= $canEdit ? '' : ' (nur Ansicht; Änderungen durch Inhaber oder Administrator)' ?>
     · Firmendaten, Gläubiger-ID und SEPA-Regeln unter <a href="team.php">Firmendaten</a></p>
 
+<div class="card" id="buchhaltungssystem">
+    <h2>Buchhaltungssystem <span class="badge badge-info"><?= e($isrc['label']) ?></span></h2>
+    <p>Jede Firma arbeitet mit genau einem Buchhaltungssystem. Das Abonnement ist für beide Systeme gleich; bei der Registrierung wird das System vorgewählt, hier kann es gewechselt werden.
+       Nach einem Wechsel gilt eine Sperre von vier Wochen. Beim Wechsel wird die Verbindung zum bisherigen System getrennt; Rechnungen, Kunden, Mandate und Einzüge bleiben als Historie erhalten.
+       Wer zwei Buchhaltungen dauerhaft parallel führt, legt dafür einen zweiten Firmenaccount an.</p>
+    <?php if ($isrc['changed_at']): ?>
+        <p class="hint">Letzter Wechsel: <?= e(format_datetime($isrc['changed_at'])) ?> (<?= (int)$isrc['switches'] ?> Wechsel insgesamt)<?= $isrcLock['locked'] ? ', nächster Wechsel möglich ab ' . e(format_date($isrcLock['until'])) : '' ?>.</p>
+    <?php endif; ?>
+    <?php if ($canEdit): ?>
+        <?php foreach ($isrcTargets as $code => $t): ?>
+        <details style="margin-top:8px">
+            <summary>Wechseln zu <?= e($t['label']) ?><?= $t['blocker'] ? ' (derzeit nicht möglich)' : '' ?></summary>
+            <?php if ($t['blocker']): ?>
+                <p class="hint"><?= e($t['blocker']) ?></p>
+                <?php if ($code === 'sevdesk'): ?><p class="hint"><a href="<?= e(marketing_url('/integrationen/sevdesk/#vormerken')) ?>" target="_blank" rel="noopener">Zur unverbindlichen Vormerkung für sevdesk</a></p><?php endif; ?>
+            <?php else: ?>
+            <form method="post">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="switch_invoice_source">
+                <input type="hidden" name="target" value="<?= e($code) ?>">
+                <label>Grund (optional) <input type="text" name="reason" maxlength="200"></label>
+                <label class="checkbox-label"><input type="checkbox" name="confirm" value="1" required>
+                    <span>Ich wechsle das Buchhaltungssystem dieser Firma zu <?= e($t['label']) ?>. Die Verbindung zu <?= e($isrc['label']) ?> wird getrennt, der nächste Wechsel ist frühestens in vier Wochen möglich.</span></label>
+                <label>2FA-Code <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" style="width:110px"></label>
+                <button type="submit" class="btn btn-danger">Jetzt wechseln</button>
+            </form>
+            <?php endif; ?>
+        </details>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <p class="hint">Wechseln können Inhaber und Administratoren.</p>
+    <?php endif; ?>
+</div>
+
+<?php if ($isrc['code'] === 'lexware_office'): ?>
 <div class="card">
     <h2>Lexware Office
         <?= (int)$integration['lexoffice_connected']
@@ -199,6 +252,12 @@ layout_header('Einstellungen', $ctx);
         </form>
     <?php endif; ?>
 </div>
+<?php else: ?>
+<div class="card">
+    <h2><?= e($isrc['label']) ?> <span class="badge badge-neutral">Verbindung folgt</span></h2>
+    <p class="hint">Die Verbindung zu <?= e($isrc['label']) ?> wird mit der Freigabe der Anbindung freigeschaltet. Bis dahin werden keine Rechnungen abgerufen; Stripe können Sie bereits verbinden.</p>
+</div>
+<?php endif; ?>
 
 <div class="card">
     <h2>Stripe

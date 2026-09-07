@@ -113,6 +113,7 @@ function audit_action_label(string $action): string
     static $map = [
         'login_success'            => 'Anmeldung',
         'audit_exported'           => 'Protokoll exportiert',
+        'invoice_source_switched'  => 'Buchhaltungssystem gewechselt',
         'legal_accepted'           => 'Vertragsdokument akzeptiert',
         'legal_secrecy_set'        => 'Angabe Verschwiegenheitspflicht geändert',
         'legal_document_created'   => 'Rechtsdokument angelegt (Betreiber)',

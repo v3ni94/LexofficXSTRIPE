@@ -802,6 +802,9 @@ INSERT IGNORE INTO integration_providers (code, name, kind, status, capabilities
 -- Eine aktive Rechnungsquelle je Firma (integrations bleibt die Verbindungs-Tabelle)
 ALTER TABLE integrations
     ADD COLUMN IF NOT EXISTS invoice_source VARCHAR(32) NOT NULL DEFAULT 'lexware_office' AFTER tenant_id;
+ALTER TABLE integrations
+    ADD COLUMN IF NOT EXISTS invoice_source_changed_at DATETIME NULL AFTER invoice_source,           -- letzter Wechsel (Migration 024)
+    ADD COLUMN IF NOT EXISTS invoice_source_switches   INT      NOT NULL DEFAULT 0 AFTER invoice_source_changed_at;
 
 -- ===========================================================================
 -- Ergänzungen aus Migration 007 (Erstattungen, Klärungsbedarf, Alarmierung).

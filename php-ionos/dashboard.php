@@ -74,7 +74,8 @@ $alerts = alerts_for_tenant($tenantId);
 layout_header('Dashboard', $ctx);
 ?>
 <h1>Dashboard</h1>
-<p class="page-sub"><?= e($ctx['org_name']) ?> · Lexware Office: <?= (int)$integration['lexoffice_connected'] ? 'verbunden' : 'nicht verbunden' ?>
+<?php require_once __DIR__ . '/app/invoice_source_switch.php'; $isrc = invoice_source_current($tenantId); ?>
+<p class="page-sub"><?= e($ctx['org_name']) ?> · <?= e($isrc['label']) ?>: <?= $isrc['code'] === 'lexware_office' ? ((int)$integration['lexoffice_connected'] ? 'verbunden' : 'nicht verbunden') : 'Verbindung folgt mit der Freigabe' ?>
     · Stripe: <?= (int)$integration['stripe_connected'] ? 'verbunden' : 'nicht verbunden' ?>
     · letzte Synchronisation: <?= format_datetime($integration['lexoffice_last_sync']) ?>
     <?php if ($syncRunning): ?> · <a href="invoices.php?syncing=1">Synchronisation läuft</a><?php endif; ?></p>

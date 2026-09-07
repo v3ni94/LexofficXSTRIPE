@@ -35,6 +35,7 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.31 | Buchhaltungssystem je Firma: Anzeige, Vorauswahl bei Registrierung, Wechsel in Einstellungen mit Vier-Wochen-Sperre, Trennung der alten Verbindung, Audit (Migration 024) | siehe git log | invoice-source-check 42/0 |
 | 4.30 | Rechtsdokumente (AVV, Verschwiegenheit § 203 StGB) mit Zustimmungsnachweis, Registrierung, Dashboard, Adminverwaltung, Entwurfstexte mit Datenanlage aus Codeinventur; Protokoll 20 Zeilen/Export/90 Tage | siehe git log | legal-check 56/0 |
 | 4.28 | `restart-workers.sh` mit Deploy-Sperre (`.deploy.lock`), kein Zusammentreffen mit Deployments mehr | siehe git log | bash -n, interest-check |
 | 4.27 | Gegenprobe in `restart-workers.sh` über `bin/mail-check.php` statt Direktaufruf von `config.php` (Forbidden) | siehe git log | bash -n |
@@ -66,6 +67,7 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 | `bash tools/deploy-runner-check.sh` | 35 / 0 |
 | `bash tools/scheduler-sync-check.sh` | 35 / 0 |
 | `bash tools/worker-signal-check.sh` | 17 / 0 |
+| `bash tools/invoice-source-check.sh` | 42 / 0 (temporäre MariaDB) |
 | `bash tools/legal-check.sh` | 56 / 0 (temporäre MariaDB) |
 | `bash tools/interest-check.sh` | 133 / 0 (statische Prüfung „keine stille Bestätigung“ seit 4.24 fälschlich rot, weil sie den lesenden Vergleich `=== 'confirmed'` traf; Muster auf schreibende Zuweisung eingegrenzt) (temporäre MariaDB, Fassung 4.24) |
 | `php tools/mail-ci-check.php` | 32 / 0 |
@@ -140,6 +142,8 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
    Ablauf: `docs/rechtsdokumente.md`.
 1d. **Geschäftsführung:** Konzeptpapier Produkt 2 (`docs/anlagen/MHAG_Konzept_Produkt2-sevdesk-x-Stripe_2026-09-07.pdf`) prüfen:
    Entscheidung zu Testkonto und Kombitarif für Mandanten mit zwei Buchhaltungen (zwei Firmenaccounts, Multiaccount).
+1e. Offen zum Systemwechsel: Adminaktion zum Aufheben der Vier-Wochen-Sperre (derzeit nur per Datenbank), Verbindungsseite für
+   sevdesk nach Freigabe des Adapters.
 1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
 1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
    E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll

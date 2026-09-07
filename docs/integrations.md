@@ -38,7 +38,17 @@ Statuswerte: `planned` (nur Absicht), `development` (Adapter in Arbeit, nicht w�
 
 ## Eine Rechnungsquelle je Firma
 
-`integrations` bleibt die Verbindungs-Tabelle (Schlüssel verschlüsselt, Prüfzeitpunkte, Kontodaten). Neue Spalte `integrations.invoice_source VARCHAR(32) DEFAULT 'lexware_office'`. Ein Wechsel der Quelle ist nur vorgesehen, wenn keine Rechnung im Einzug ist, und ist derzeit nicht in der Oberfläche.
+`integrations` bleibt die Verbindungs-Tabelle (Schlüssel verschlüsselt, Prüfzeitpunkte, Kontodaten). Spalte `integrations.invoice_source VARCHAR(32) DEFAULT 'lexware_office'`, seit Migration 024 dazu `invoice_source_changed_at` und `invoice_source_switches`.
+
+**Anzeige und Wechsel (Version 4.31, `app/invoice_source_switch.php`):** Der Kunde sieht immer genau das System seiner Firma (Dashboard, Einstellungen); Lexware Office und sevdesk erscheinen nie nebeneinander. Bei der Registrierung wird das System über `register.php?integration=` vorgewählt (sevdesk nur, wenn `sevdesk_connect` gesetzt ist, sonst Vorregistrierung). In den Einstellungen, Abschnitt Buchhaltungssystem, können Inhaber und Administratoren mit 2FA-Code wechseln. Regeln:
+
+- Das Abonnement ist für beide Systeme identisch (Tabelle `plans`); ein Wechsel ändert nichts am Tarif.
+- Nach einem Wechsel gilt eine Sperre von vier Wochen (`INVOICE_SOURCE_LOCK_DAYS = 28`, entspricht der Abrechnungsperiode). Damit lässt sich nicht mit einem Abonnement zwischen zwei Buchhaltungen hin- und herschalten; wer zwei Buchhaltungen führt, legt einen zweiten Firmenaccount an.
+- Gesperrt ist der Wechsel außerdem, solange Einzüge vorgemerkt, terminiert oder in Verarbeitung sind (`stripe_status` scheduled, submitting, processing), eine Synchronisation läuft oder das Zielsystem nicht freigegeben ist.
+- Wirkung: Die Verbindung zum bisherigen System wird getrennt (Schlüssel gelöscht, `lexoffice_connected = 0`, damit der Scheduler keine Synchronisation mehr einreiht). Rechnungen, Kunden, Mandate und Einzüge bleiben als Historie erhalten. Audit `invoice_source_switched` mit Herkunft, Ziel, Grund.
+- Betreiber: Die Sperre lässt sich derzeit nur direkt in der Datenbank aufheben (`invoice_source_changed_at = NULL`); eine Adminaktion ist offen.
+
+Prüfung: `bash tools/invoice-source-check.sh`.
 
 ## Freigabekriterien sevdesk
 

@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.30';
+const APP_VERSION = '4.31';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.31', 'date' => '07.09.2026', 'title' => 'Buchhaltungssystem je Firma: Anzeige, Vorauswahl und Wechsel mit Vier-Wochen-Sperre',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Jede Firma sieht genau ihr Buchhaltungssystem (Lexware Office oder sevdesk), nie beide nebeneinander. Bei der Registrierung wird es vorgewählt (sevdesk erst nach Freigabe). In den Einstellungen können Inhaber und Administratoren mit 2FA-Code wechseln; danach gilt eine Sperre von vier Wochen, damit nicht mit einem Abonnement zwei Buchhaltungen abwechselnd bedient werden. Das Abonnement bleibt beim Wechsel unverändert.'],
+            ['type' => 'Neu', 'text' => 'Ein Wechsel ist gesperrt, solange Einzüge vorgemerkt, terminiert oder in Verarbeitung sind, eine Synchronisation läuft oder das Zielsystem nicht freigegeben ist. Beim Wechsel wird die Verbindung zum bisherigen System getrennt (Schlüssel gelöscht); Rechnungen, Kunden, Mandate und Einzüge bleiben als Historie. Jeder Wechsel wird protokolliert (Migration 024).'],
+         ]],
         ['version' => '4.30', 'date' => '07.09.2026', 'title' => 'Rechtsdokumente mit Zustimmungsnachweis, Protokoll mit Aufbewahrung',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Vertragsdokumente mit Nachweis je Firma und Fassung (Migration 023): Vereinbarung zur Auftragsverarbeitung nach Art. 28 DSGVO und Verpflichtung zur Verschwiegenheit für Berufsgeheimnisträger (§ 203 StGB). Firmen sehen unter Rechtliches Status, Volltext und „Akzeptiert am ... durch ...“, akzeptieren dürfen Inhaber und Administratoren; jede Zustimmung wird protokolliert. Firmen geben dort ihre Verschwiegenheitspflicht an, dann wird die Verschwiegenheitsvereinbarung zur Pflicht.'],

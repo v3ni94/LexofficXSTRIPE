@@ -1094,6 +1094,9 @@ function _auth_register_create(PDO $pdo, string $email, string $password, string
 
         $pdo->prepare('INSERT INTO integrations (id, tenant_id) VALUES (?, ?)')
             ->execute([uuid4(), $orgId]);
+        // Bei der Registrierung vorgewaehltes Buchhaltungssystem (feste Liste, sevdesk nur bei Freigabe), Migration 024
+        require_once __DIR__ . '/invoice_source_switch.php';
+        invoice_source_apply_signup($orgId, $_SESSION['signup']['integration'] ?? null);
 
         $pdo->commit();
     } catch (Throwable $e) {
