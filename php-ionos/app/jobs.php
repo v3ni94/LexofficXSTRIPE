@@ -378,6 +378,16 @@ function scheduler_auto_sync(array $cfg, int $now): array
             }
             db()->prepare("UPDATE sync_state SET status = 'error', lock_until = NULL, lock_owner = NULL, finished_at = NOW(), last_error = 'Lauf ohne Fortschritt vom Scheduler geschlossen' WHERE tenant_id = ? AND status = 'running'")->execute([$tid]);
             sync_run_finish($tid, 'failed', [], 'Lauf ohne Fortschritt vom Scheduler geschlossen', 'stale');
+            // Fortsetzung SOFORT einplanen, nicht erst zur naechsten regulaeren Faelligkeit: Der geschlossene
+            // Lauf hat unfertige Arbeit und (falls vorhanden) einen Cursor, an dem job_sync_run wieder
+            // ansetzt. Ohne diese Zeile blieb die Firma nach einem abgebrochenen Lauf (z.B. hart beendeter
+            // Worker) bis zu auto_sync_hours Stunden ohne Synchronisation, was im Monitoring als dauerhaft
+            // "wartende Aufgabe" erschien. Der dedupe_key verhindert Doppeleintraege.
+            $r = queue_push('sync_run', ['triggered_by' => 'stale-fortsetzung'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
+            if ($r['created']) {
+                $queued[] = 'sync_run:fortsetzung:' . $tid;
+            }
+            continue;
         }
         $ageSeconds = $o['age_seconds'] !== null ? (int)$o['age_seconds'] : null;
         $fullMark = monitor_mark_get('sched_full_' . $tid);

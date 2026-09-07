@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.14';
+const APP_VERSION = '4.15';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.15', 'date' => '07.09.2026', 'title' => 'Abgebrochene Synchronisation wird sofort fortgesetzt',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Im Monitoring blieb nach einem hart beendeten Worker dauerhaft "Wartende Aufgaben (1 Sync)" stehen. Ursache: Der Scheduler schloss den verwaisten Lauf zwar als Fehler, reihte die Fortsetzung aber erst zur nächsten regulären Fälligkeit ein (auto_sync_hours, Vorgabe 6 Stunden). Jetzt wird die Fortsetzung sofort eingereiht; der Lauf setzt am gespeicherten Cursor an. Ein Doppeleintrag ist über den dedupe_key ausgeschlossen, eine pausierte Firma und ein Lauf mit Fortschritt bleiben unberührt.'],
+            ['type' => 'Neu', 'text' => 'tools/scheduler-sync-check.sh prüft den automatischen Synchronisationsplan gegen eine echte temporäre MariaDB: verwaister Lauf wird geschlossen und sofort fortgesetzt, frischer Lauf bleibt unberührt, kein zweiter Job bei bereits vorhandenem, pausierte Firma unangetastet. Zusätzlich ist festgehalten, dass das Einreichfenster für Lastschriften (Vorgabe 23:00 bis 06:00) ausschließlich das Einreichen von Einzügen begrenzt: Synchronisation, Klärung unklarer Versuche, Monitoring und Statusabrufe laufen rund um die Uhr, und app/jobs.php prüft das Fenster nicht.'],
+            ['type' => 'Geändert', 'text' => 'Der Prüfstand mit temporärer MariaDB liegt jetzt gemeinsam in tools/lib/mariadb-sandbox.sh und wird von tools/worker-signal-check.sh und tools/scheduler-sync-check.sh genutzt (ein Aufbau, ein Aufräumweg).'],
+         ]],
         ['version' => '4.14', 'date' => '07.09.2026', 'title' => 'Einführungspreis mit rollierendem Stichtag',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Der Einführungspreis des Tarifs UNLIMITED START gilt nicht mehr bis zum festen 31.12.2026, sondern für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden; der Stichtag verschiebt sich damit von selbst (am 30.09. lautet er 30.09.2026, am 01.10. bereits 31.10.2026). Ein bereits angelegter Account behält seinen Preis unverändert, solange das Abonnement läuft. Grundlage bleibt die Tabelle plans, hier ist kein Preis hinterlegt.'],

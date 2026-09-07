@@ -39,24 +39,19 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SIM="$ROOT/tools/lib/worker-signal-sim.php"
+# Temporaere MariaDB fuer Teil B (gemeinsam mit tools/scheduler-sync-check.sh)
+# shellcheck source=lib/mariadb-sandbox.sh
+source "$ROOT/tools/lib/mariadb-sandbox.sh"
 PASS=0
 FAIL=0
 ok() { PASS=$((PASS + 1)); echo "  OK    $1"; }
 bad() { FAIL=$((FAIL + 1)); echo "  FAIL  $1"; }
 T="$(mktemp -d)"
-MDB_PID=""
 # Aufraeumen in der richtigen Reihenfolge: ERST die temporaere MariaDB ueber ihren Socket herunterfahren (der
 # Socket liegt in $T; wuerde $T zuerst geloescht, bliebe je Testlauf ein mariadbd mit geloeschtem Datadir
 # und belegtem Port zurueck), dann verbliebene Kindprozesse (Simulationen, Worker) beenden, zuletzt $T loeschen.
 cleanup() {
-    if [[ -n "${MDB_SOCK:-}" && -S "$MDB_SOCK" ]]; then
-        mariadb --socket="$MDB_SOCK" -uroot -e "SHUTDOWN" >/dev/null 2>&1 || true
-    fi
-    if [[ -n "$MDB_PID" ]]; then
-        for _ in $(seq 1 50); do kill -0 "$MDB_PID" 2>/dev/null || break; sleep 0.1; done
-        kill -TERM "$MDB_PID" 2>/dev/null || true
-        wait "$MDB_PID" 2>/dev/null || true
-    fi
+    mariadb_sandbox_stop          # erst den Server beenden (Socket liegt in $T), dann loeschen
     pkill -TERM -P $$ 2>/dev/null || true
     rm -rf "$T"
 }
@@ -140,33 +135,10 @@ else
 fi
 
 echo "B) Echte bin/worker.php gegen eine temporaere lokale MariaDB"
-if command -v mariadbd >/dev/null 2>&1 && command -v mariadb-install-db >/dev/null 2>&1 && command -v mariadb >/dev/null 2>&1; then
-    MDB="$T/mdb"; install -d "$MDB"
-    MDB_SOCK="$MDB/sock"; MDB_PORT=$((23000 + RANDOM % 1000))
-    mariadb-install-db --datadir="$MDB/data" --user="$(id -un)" --auth-root-authentication-method=normal >"$MDB/install.log" 2>&1 || bad "mariadb-install-db fehlgeschlagen: $(tail -3 "$MDB/install.log")"
-    mariadbd --datadir="$MDB/data" --socket="$MDB_SOCK" --port="$MDB_PORT" --bind-address=127.0.0.1 --pid-file="$MDB/pid" --log-error="$MDB/err.log" --user="$(id -un)" >/dev/null 2>&1 &
-    MDB_PID=$!
-    for _ in $(seq 1 100); do mariadb --socket="$MDB_SOCK" -uroot -e 'SELECT 1' >/dev/null 2>&1 && break; sleep 0.2; done
-    if ! mariadb --socket="$MDB_SOCK" -uroot -e 'SELECT 1' >/dev/null 2>&1; then
-        bad "Temporaere MariaDB startete nicht: $(tail -3 "$MDB/err.log" 2>/dev/null)"
+if mariadb_sandbox_available; then
+    if ! mariadb_sandbox_start "$T/mdb"; then
+        bad "Temporaere MariaDB startete nicht"
     else
-        mariadb --socket="$MDB_SOCK" -uroot -e "CREATE DATABASE se_sig CHARACTER SET utf8mb4; CREATE USER 'se_sig'@'127.0.0.1' IDENTIFIED BY 'se-sig-pw'; GRANT ALL ON se_sig.* TO 'se_sig'@'127.0.0.1';"
-        mariadb --socket="$MDB_SOCK" -uroot se_sig < "$ROOT/php-ionos/sql/schema.sql"
-        CFG="$T/config.php"
-        cat > "$CFG" <<EOF
-<?php
-declare(strict_types=1);
-if (get_included_files()[0] === __FILE__) { http_response_code(403); exit('Forbidden'); }
-return [
-    'timezone' => 'Europe/Berlin', 'environment' => 'prod',
-    'app_secret' => str_repeat('a', 64), 'cron_token' => str_repeat('b', 32),
-    'db' => ['host' => '127.0.0.1', 'port' => $MDB_PORT, 'name' => 'se_sig', 'user' => 'se_sig', 'pass' => 'se-sig-pw', 'charset' => 'utf8mb4'],
-    'redis' => null,
-    'storage_dir' => '$T/storage',
-];
-EOF
-        install -d "$T/storage"
-        export SMARTEINZUG_CONFIG="$CFG"
         QSIM="$ROOT/tools/lib/worker-queue-sim.php"
 
         echo "B1) Leerlauf-Worker: SIGTERM/SIGQUIT -> Exit 0 innerhalb von 3 s, Status stopped"
@@ -200,13 +172,12 @@ EOF
         else
             bad "Job wurde trotz Stop-Signal angefasst oder Worker haengt: Exit $RC, $JSTATE, $(tail -2 "$WOUT" | tr '\n' ' ')"
         fi
-        mariadb --socket="$MDB_SOCK" -uroot se_sig -e "UPDATE jobs SET status='cancelled' WHERE id='$JID'" 2>/dev/null
+        mariadb --socket="$MDB_SOCK" -uroot "$MDB_DB" -e "UPDATE jobs SET status='cancelled' WHERE id='$JID'" 2>/dev/null
 
         echo "B3) Queue-Semantik: Fortsetzung ohne Fehlversuch; hart beendeter Worker -> Freigabe nach heartbeat_ttl"
         # Der CLI-Logger schreibt JSON-Protokollzeilen auf stdout; das Ergebnis steht in der letzten Zeile.
         R="$(php "$QSIM" "$ROOT" requeue 2>&1 | tail -n1)"; [[ "$R" == "OK requeue" ]] && ok "Unterbrochener Job: queued, attempts unveraendert, locked_by leer, erneut reservierbar" || bad "$R"
         R="$(php "$QSIM" "$ROOT" stale 2>&1 | tail -n1)"; [[ "$R" == "OK stale" ]] && ok "Hart beendeter Worker: Job nach heartbeat_ttl als retry freigegeben (heartbeat_stale), keine dauerhafte Sperre" || bad "$R"
-        unset SMARTEINZUG_CONFIG
     fi
 else
     echo "  (uebersprungen: mariadbd/mariadb-install-db nicht verfuegbar)"
