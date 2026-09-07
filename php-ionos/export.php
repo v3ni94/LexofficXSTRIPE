@@ -14,6 +14,34 @@ $ctx = require_login();
 $tenantId = $ctx['org_id'];
 $pdo = db();
 
+if ((string)($_GET['typ'] ?? '') === 'protokoll') {
+    // Protokoll-Export (Audit) der eigenen Firma, nur Inhaber; innerhalb der Aufbewahrungsdauer.
+    if (!is_owner($ctx)) {
+        forbidden_page($ctx, 'Das Protokoll darf nur der Inhaber des Firmenaccounts exportieren.');
+    }
+    $rows = audit_all($tenantId);
+    audit_log($tenantId, $ctx, 'audit_exported', 'organization', $tenantId, ['rows' => count($rows)]);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="protokoll-' . date('Y-m-d') . '.csv"');
+    header('Cache-Control: no-store');
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    $q = static function (?string $v): string {
+        $v = str_replace(["\r", "\n"], ' ', (string)$v);
+        if ($v !== '' && in_array($v[0], ['=', '+', '-', '@', "\t"], true)) { $v = "'" . $v; }
+        return '"' . str_replace('"', '""', $v) . '"';
+    };
+    fwrite($out, implode(';', array_map($q, ['Zeitpunkt', 'Person', 'Aktion', 'Aktion (Code)', 'Zielobjekt', 'Zielkennung', 'Details'])) . "\r\n");
+    foreach ($rows as $a) {
+        fwrite($out, implode(';', array_map($q, [
+            format_datetime($a['created_at']), (string)($a['user_email'] ?? 'System'), audit_action_label((string)$a['action']), (string)$a['action'],
+            (string)($a['target_type'] ?? ''), (string)($a['target_id'] ?? ''), (string)($a['details_json'] ?? ''),
+        ])) . "\r\n");
+    }
+    fclose($out);
+    exit;
+}
+
 $filter = (string)($_GET['status'] ?? '');
 $allowed = ['scheduled', 'processing', 'succeeded', 'refunded', 'failed', 'disputed', 'cancelled'];
 $where = 'pc.tenant_id = ?';

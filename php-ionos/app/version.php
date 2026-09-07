@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.28';
+const APP_VERSION = '4.30';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.30', 'date' => '07.09.2026', 'title' => 'Rechtsdokumente mit Zustimmungsnachweis, Protokoll mit Aufbewahrung',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Vertragsdokumente mit Nachweis je Firma und Fassung (Migration 023): Vereinbarung zur Auftragsverarbeitung nach Art. 28 DSGVO und Verpflichtung zur Verschwiegenheit für Berufsgeheimnisträger (§ 203 StGB). Firmen sehen unter Rechtliches Status, Volltext und „Akzeptiert am ... durch ...“, akzeptieren dürfen Inhaber und Administratoren; jede Zustimmung wird protokolliert. Firmen geben dort ihre Verschwiegenheitspflicht an, dann wird die Verschwiegenheitsvereinbarung zur Pflicht.'],
+            ['type' => 'Neu', 'text' => 'Registrierung schließt den Auftragsverarbeitungsvertrag ab, sobald eine Fassung veröffentlicht ist; das Dashboard mahnt offene Pflichtdokumente an. Adminbereich „Rechtsdokumente“: Vorlagen übernehmen, Fassungen anlegen, veröffentlichen und zurückziehen (2FA, Audit); Texte mit Platzhaltern lassen sich nicht veröffentlichen, veröffentlichte Fassungen werden nie gelöscht.'],
+            ['type' => 'Neu', 'text' => 'Entwurfstexte für die anwaltliche Prüfung mit Anlage 1 „Verarbeitete Daten“, aus dem Code erhoben: welche Felder aus Lexware Office nur lesend abgerufen und gespeichert werden, was an das Stripe-Konto der Firma gesendet und empfangen wird, eigene Erhebung, Löschfristen; Anlage 2 technische und organisatorische Maßnahmen, Anlage 3 Unterauftragsverarbeiter.'],
+            ['type' => 'Geändert', 'text' => 'Protokoll unter Firmendaten zeigt 20 Einträge, weitere aufklappbar, Export als CSV für den Inhaber. Protokolleinträge werden 90 Tage aufbewahrt und danach von der Wartung gelöscht (Datenminimierung); Einzüge, Mandate und Vertragszustimmungen bleiben unabhängig davon nachweisbar.'],
+         ]],
         ['version' => '4.28', 'date' => '07.09.2026', 'title' => 'restart-workers.sh respektiert die Deploy-Sperre',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'restart-workers.sh konnte parallel zu einem laufenden Deployment Container mit dem alten Release neu erzeugen (Lauf #63 scheiterte an der Release-Bindung). Das Skript nutzt jetzt dieselbe Sperre wie deploy-runner.sh: Es bricht ab, wenn ein Deployment läuft, und blockiert seinerseits den Start eines Deployments, solange es arbeitet.'],

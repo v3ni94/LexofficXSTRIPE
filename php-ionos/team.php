@@ -355,7 +355,7 @@ unset($_SESSION['invite_link_show']);
 
 $seatsUsed = seats_used($tenantId);
 $seatLimit = seats_limit($plan);
-$audit = $isOwner ? audit_recent($tenantId, 40) : [];
+$audit = $isOwner ? audit_recent($tenantId, 200) : [];
 
 layout_header('Firmendaten', $ctx);
 ?>
@@ -627,13 +627,14 @@ layout_header('Firmendaten', $ctx);
 
 <div class="card">
     <h2>Protokoll (letzte Einträge)</h2>
-    <p class="hint">Sicherheits- und geldrelevante Aktionen mit Person und Zeitpunkt. Einträge werden nie gelöscht.</p>
+    <p class="hint">Sicherheits- und geldrelevante Aktionen mit Person und Zeitpunkt. Aufbewahrung <?= (int)audit_retention_days() ?> Tage, ältere Einträge werden automatisch gelöscht; Einzüge, Mandate und Vertragszustimmungen bleiben unabhängig davon nachweisbar.
+        <a href="export.php?typ=protokoll">Protokoll als CSV exportieren</a></p>
     <div class="table-wrap">
         <table class="table-sm">
             <thead><tr><th>Zeitpunkt</th><th>Person</th><th>Aktion</th><th>Details</th></tr></thead>
             <tbody>
-            <?php foreach ($audit as $a): $d = $a['details_json'] ? json_decode($a['details_json'], true) : []; ?>
-                <tr>
+            <?php foreach ($audit as $idx => $a): $d = $a['details_json'] ? json_decode($a['details_json'], true) : []; ?>
+                <tr<?= $idx >= 20 ? ' class="audit-more" hidden' : '' ?>>
                     <td><?= format_datetime($a['created_at']) ?></td>
                     <td><?= e($a['user_email'] ?? 'System') ?></td>
                     <td><?= e(audit_action_label($a['action'])) ?></td>
@@ -652,6 +653,19 @@ layout_header('Firmendaten', $ctx);
             </tbody>
         </table>
     </div>
+    <?php if (count($audit) > 20): ?>
+    <p><button type="button" class="btn btn-secondary" data-audit-toggle>Weitere <?= count($audit) - 20 ?> Einträge anzeigen</button></p>
+    <script>
+    (function () {
+        var b = document.querySelector('[data-audit-toggle]'); if (!b) { return; }
+        b.addEventListener('click', function () {
+            var rows = document.querySelectorAll('tr.audit-more'), open = rows.length && rows[0].hidden;
+            rows.forEach(function (r) { r.hidden = !open; });
+            b.textContent = open ? 'Weniger anzeigen' : 'Weitere ' + rows.length + ' Einträge anzeigen';
+        });
+    })();
+    </script>
+    <?php endif; ?>
 </div>
 <?php else: ?>
 <div class="card">

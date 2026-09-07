@@ -89,6 +89,10 @@ layout_header('Dashboard', $ctx);
     </ul>
 </div>
 <?php endif; ?>
+<?php require_once __DIR__ . '/app/legal.php'; $legalPending = legal_pending_for_org($tenantId); if ($legalPending): ?>
+<div class="flash flash-warn"><strong>Vertragsdokumente ausstehend.</strong> Für diese Firma liegt zu <?= count($legalPending) ?> Dokument(en) noch keine Zustimmung in der aktuellen Fassung vor
+    (<?= e(implode(', ', array_map(static fn($c) => LEGAL_CODES[$c] ?? $c, $legalPending))) ?>). <a href="rechtliches.php">Zu Rechtliches</a></div>
+<?php endif; ?>
 <?php if ($pauseReason): ?>
 <div class="flash flash-error"><strong>Not-Stopp aktiv.</strong> <?= e($pauseReason) ?>
     <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>

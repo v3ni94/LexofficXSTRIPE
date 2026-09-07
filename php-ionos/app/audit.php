@@ -3,7 +3,9 @@
  * Audit-Log und Funnel-Ereignisse.
  *
  * Jede sicherheits- oder geldrelevante Aktion wird mit Benutzer, Firma,
- * Zeitpunkt und IP-Adresse protokolliert. Einträge werden nie gelöscht,
+ * Zeitpunkt und IP-Adresse protokolliert. Einträge werden nach AUDIT_RETENTION_DAYS (90 Tage, config audit.retention_days)
+ * von der Wartung gelöscht (Datenminimierung); fachliche Nachweise (Einzüge, Mandate, Vertragszustimmungen) liegen in
+ * ihren eigenen Tabellen und sind davon unabhängig. Bis dahin
  * auch nicht, wenn Benutzer oder Firmen entfernt werden (keine
  * Fremdschlüssel auf audit_log). Fehler beim Protokollieren dürfen die
  * eigentliche Aktion nie abbrechen.
@@ -65,6 +67,36 @@ function audit_log(
     }
 }
 
+const AUDIT_RETENTION_DAYS = 90;
+
+/** Aufbewahrungsdauer in Tagen (config audit.retention_days, Vorgabe 90, Mindestwert 30). */
+function audit_retention_days(): int
+{
+    $cfg = $GLOBALS['config']['audit'] ?? [];
+    return max(30, (int)($cfg['retention_days'] ?? AUDIT_RETENTION_DAYS));
+}
+
+/** Einträge älter als die Aufbewahrungsdauer löschen (Wartung). Gibt die Anzahl gelöschter Zeilen zurück. */
+function audit_cleanup(?int $days = null): int
+{
+    $d = $days !== null ? max(30, $days) : audit_retention_days();
+    try {
+        $st = db()->prepare('DELETE FROM audit_log WHERE created_at < DATE_SUB(NOW(), INTERVAL ' . $d . ' DAY) LIMIT 5000');
+        $st->execute();
+        return $st->rowCount();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+/** Alle Audit-Einträge einer Firma innerhalb der Aufbewahrung (Export). */
+function audit_all(string $tenantId): array
+{
+    $stmt = db()->prepare('SELECT * FROM audit_log WHERE tenant_id = ? ORDER BY id DESC LIMIT 20000');
+    $stmt->execute([$tenantId]);
+    return $stmt->fetchAll();
+}
+
 /** Letzte Audit-Einträge einer Firma (für die Anzeige unter "Firma"). */
 function audit_recent(string $tenantId, int $limit = 50): array
 {
@@ -80,6 +112,13 @@ function audit_action_label(string $action): string
 {
     static $map = [
         'login_success'            => 'Anmeldung',
+        'audit_exported'           => 'Protokoll exportiert',
+        'legal_accepted'           => 'Vertragsdokument akzeptiert',
+        'legal_secrecy_set'        => 'Angabe Verschwiegenheitspflicht geändert',
+        'legal_document_created'   => 'Rechtsdokument angelegt (Betreiber)',
+        'legal_document_published' => 'Rechtsdokument veröffentlicht (Betreiber)',
+        'legal_document_retired'   => 'Rechtsdokument zurückgezogen (Betreiber)',
+        'legal_document_deleted'   => 'Rechtsdokument gelöscht (Betreiber)',
         'login_failed'             => 'Anmeldung fehlgeschlagen',
         'login_locked'             => 'Konto vorübergehend gesperrt',
         'logout'                   => 'Abmeldung',

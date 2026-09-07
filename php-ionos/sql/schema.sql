@@ -67,6 +67,8 @@ CREATE TABLE IF NOT EXISTS organizations (
     pre_notification_days           INT          NOT NULL DEFAULT 14,
     send_pre_notification           TINYINT(1)   NOT NULL DEFAULT 0,
     require_signed_mandate          TINYINT(1)   NOT NULL DEFAULT 1,
+    professional_secrecy            TINYINT(1)   NOT NULL DEFAULT 0,  -- berufliche Verschwiegenheitspflicht, § 203 StGB (Migration 023)
+    professional_secrecy_kind       VARCHAR(80)  NULL,
     deleted_at                      DATETIME     NULL,
     created_at                      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -129,7 +131,7 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     KEY ix_login_ip_time (ip, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Audit-Log: ohne Fremdschlüssel, damit Einträge erhalten bleiben. Wird nie gelöscht.
+-- Audit-Log: ohne Fremdschlüssel. Aufbewahrung 90 Tage (audit_cleanup, config audit.retention_days), danach gelöscht.
 CREATE TABLE IF NOT EXISTS audit_log (
     id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_id    CHAR(36)     NULL,
@@ -967,3 +969,37 @@ CREATE TABLE IF NOT EXISTS interest_registrations (
     KEY ix_interest_created (created_at),
     CONSTRAINT fk_interest_provider FOREIGN KEY (provider_code) REFERENCES integration_providers (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Rechtsdokumente mit Zustimmungsnachweis (Migration 023)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS legal_documents (
+    id             CHAR(36)     NOT NULL PRIMARY KEY,
+    code           VARCHAR(40)  NOT NULL,               -- avv | secrecy | ...
+    version        VARCHAR(40)  NOT NULL,               -- z. B. 2026-09-a
+    title          VARCHAR(200) NOT NULL,
+    summary        VARCHAR(500) NULL,
+    body_md        MEDIUMTEXT   NOT NULL,               -- eingeschraenktes Markdown (Ueberschriften, Absaetze, Listen)
+    required_for   ENUM('all','secrecy','none') NOT NULL DEFAULT 'all',
+    published_at   DATETIME     NULL,
+    retired_at     DATETIME     NULL,
+    created_by     VARCHAR(255) NULL,
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY ux_legal_code_version (code, version),
+    KEY ix_legal_code_published (code, published_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS legal_acceptances (
+    id              CHAR(36)     NOT NULL PRIMARY KEY,
+    organization_id CHAR(36)     NOT NULL,
+    document_id     CHAR(36)     NOT NULL,
+    user_id         CHAR(36)     NULL,
+    user_email      VARCHAR(255) NOT NULL,              -- Nachweis bleibt lesbar, auch wenn der Benutzer geloescht wird
+    method          ENUM('registration','backend','admin') NOT NULL DEFAULT 'backend',
+    accepted_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY ux_legal_acc_org_doc (organization_id, document_id),
+    KEY ix_legal_acc_org (organization_id),
+    KEY ix_legal_acc_doc (document_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

@@ -290,6 +290,7 @@ function job_maintenance(array $job): array
         'support_sessions' => fn() => support_sessions_expire(),
         'registration_requests' => fn() => registration_requests_cleanup(),
         'interest_pending_deleted' => fn() => interest_cleanup(),
+        'audit_pruned' => fn() => audit_cleanup(),
         'interest_mails_resent' => fn() => interest_send_pending(),
         'welcome_mails_resent' => fn() => auth_send_pending_welcome_mails(),
         'devices' => fn() => devices_cleanup(),

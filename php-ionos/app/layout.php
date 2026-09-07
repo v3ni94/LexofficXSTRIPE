@@ -117,6 +117,7 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                     <?php if (!on_admin_host()): ?>
                         <a href="team.php">Firmendaten</a>
                         <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Einstellungen</a><?php endif; ?>
+                        <a href="rechtliches.php">Rechtliches</a>
                         <a href="export.php" title="Einzugsjournal als CSV">Export</a>
                     <?php endif; ?>
                     <a href="security.php">Sicherheit</a>

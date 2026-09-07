@@ -28,6 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_SESSION['signup']['started']
     funnel_event($_SESSION['signup']['domain'] ?? null, 'registration_started');
 }
 
+require_once __DIR__ . '/app/legal.php';
+$avvDoc = legal_active_documents()['avv'] ?? null; // AVV nur abfragen, wenn eine Fassung veroeffentlicht ist
+
 $error = null;
 $existingSame = false; // bekannte E-Mail-Adresse und bereits zugeordnete Firma (Abschnitt 4.3)
 
@@ -37,6 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $orgName = trim((string)($_POST['org_name'] ?? ''));
     if (empty($_POST['accept_terms'])) {
         $error = 'Bitte bestätigen Sie die AGB und die Datenschutzerklärung.';
+    } elseif ($avvDoc && empty($_POST['accept_avv'])) {
+        $error = 'Bitte schließen Sie den Auftragsverarbeitungsvertrag ab; ohne ihn dürfen wir keine Kundendaten für Sie verarbeiten.';
     } elseif (($_POST['password'] ?? '') !== ($_POST['password2'] ?? '')) {
         $error = 'Die Passwörter stimmen nicht überein.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -55,6 +60,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['mandate_prefix'] ?? ''
             );
             if ($error === null) {
+                if ($avvDoc && !empty($_SESSION['org_id'])) {
+                    // Nachweis des bei der Registrierung abgeschlossenen Auftragsverarbeitungsvertrags (Fassung, Zeit, Benutzer)
+                    try {
+                        legal_accept(['org_id' => $_SESSION['org_id'], 'user_id' => $_SESSION['user_id'] ?? null, 'email' => $email, 'role' => 'owner'], (string)$avvDoc['id'], 'registration');
+                    } catch (Throwable $e) {
+                        error_log('register: AVV-Nachweis konnte nicht gespeichert werden: ' . $e->getMessage());
+                    }
+                }
                 // Weiter: E-Mail bestätigen (falls Mailversand aktiv), dann 2FA, dann Einrichtung
                 redirect('dashboard.php');
             }
@@ -180,6 +193,14 @@ layout_header('Firmenaccount registrieren');
                     <?php endif; ?>
                     zur Kenntnis genommen.</span>
             </label>
+            <?php if ($avvDoc): ?>
+            <label class="checkbox-label" style="margin-top: 10px;">
+                <input type="checkbox" name="accept_avv" value="1" required>
+                <span>Ich schließe im Namen der Firma den
+                    <a href="rechtliches.php?dok=<?= e($avvDoc['id']) ?>" target="_blank" rel="noopener">Auftragsverarbeitungsvertrag</a>
+                    (Fassung <?= e($avvDoc['version']) ?>) mit der Müller Holding AG ab. Er regelt die Verarbeitung der Rechnungs- und Kundendaten in unserem Auftrag.</span>
+            </label>
+            <?php endif; ?>
             <button type="submit" class="btn">Firmenaccount erstellen</button>
         </form>
         <p class="auth-links"><a href="login.php">Bereits registriert? Anmelden</a></p>

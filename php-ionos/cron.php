@@ -70,6 +70,7 @@ try { registration_requests_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt
 try { devices_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 016 */ }
 require_once __DIR__ . '/app/interest.php';
 try { interest_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 020 */ }
+try { audit_cleanup(); } catch (Throwable $e) { /* Aufbewahrung 90 Tage */ }
 try { interest_send_pending(); } catch (Throwable $e) { /* Spalte fehlt bis Migration 021 */ }
 try { auth_send_pending_welcome_mails(); } catch (Throwable $e) { /* Spalte fehlt bis Migration 021 */ }
 

@@ -63,6 +63,7 @@ CHAPTERS = [
     ('einwilligungen.md', None),
     ('sevdesk.md', None),
     ('mail-einrichtung.md', None),
+    ('rechtsdokumente.md', None),
 ]
 
 

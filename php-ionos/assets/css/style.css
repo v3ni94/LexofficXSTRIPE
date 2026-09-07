@@ -657,3 +657,14 @@ a.stat-card.stat-link:focus-visible { outline: 2px solid #E3AC48; outline-offset
     .table-wrap table { font-size: 13px; }
     .job-bar { min-width: 60px; }
 }
+
+/* Rechtsdokumente (rechtliches.php, admin-legal.php) */
+.legal-text h2 { font-size: 1.15rem; margin-top: 1.4em; }
+.legal-text h3 { font-size: 1.02rem; margin-top: 1.2em; }
+.legal-text h4 { font-size: 0.98rem; margin-top: 1em; }
+.legal-text p, .legal-text li { line-height: 1.55; }
+.legal-text mark.placeholder { background: var(--color-danger-bg); color: var(--color-danger); font-weight: 600; padding: 0 4px; }
+.legal-data { display: grid; grid-template-columns: minmax(120px, 160px) 1fr; gap: 6px 16px; margin: 12px 0; }
+.legal-data dt { color: var(--color-muted, #666); }
+.legal-data dd { margin: 0; }
+@media print { .site-header, .site-footer, .flash, .page-sub a { display: none !important; } .legal-text { box-shadow: none; border: 0; } }
