@@ -1,0 +1,6231 @@
+[
+ {
+  "domain": "smart-einzug.de",
+  "datei": "404.html",
+  "url": "https://smart-einzug.de/404",
+  "seitentyp": "fehlerseite",
+  "title": "Seite nicht gefunden | smart-einzug.de",
+  "title_laenge": 38,
+  "description": "",
+  "description_laenge": 0,
+  "h1": [
+   "Diese Seite gibt es nicht"
+  ],
+  "h2": [],
+  "canonical": "",
+  "canonical_self": false,
+  "robots_meta": "noindex, follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "",
+  "woerter_hauptinhalt": 64,
+  "jsonld_typen": [],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zur Startseite",
+    "href": "/"
+   }
+  ],
+  "pruefwoerter": {
+   "lexware_office": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "agb/index.html",
+  "url": "https://smart-einzug.de/agb/",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Allgemeine Geschäftsbedingungen | SmartEinzug",
+  "title_laenge": 45,
+  "description": "AGB von SmartEinzug: Vertragsgegenstand, Leistungsumfang, Preise und Abrechnung, Laufzeit und Kündigung sowie das Verhältnis zu Stripe und Lexware Office.",
+  "description_laenge": 154,
+  "h1": [
+   "Allgemeine Geschäftsbedingungen"
+  ],
+  "h2": [
+   "1. Vertragsgegenstand",
+   "2. Leistungsumfang",
+   "3. Registrierung und Firmenaccount",
+   "4. Mitarbeiterzugänge",
+   "5. Pflichten des Kunden",
+   "6. Verhältnis zu Stripe und Lexware Office",
+   "7. Preise und Abrechnung",
+   "8. Laufzeit und Kündigung",
+   "9. Verfügbarkeit",
+   "10. Haftung",
+   "11. Datenschutz",
+   "12. Änderungen dieser AGB",
+   "13. Schlussbestimmungen"
+  ],
+  "canonical": "https://smart-einzug.de/agb/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 610,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR",
+   "50,00 EUR"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 1,
+   "zwei_faktor": 1,
+   "lexware_office": 5,
+   "lexware_allgemein": 5,
+   "stripe_gebuehr": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 14,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "datenschutz/index.html",
+  "url": "https://smart-einzug.de/datenschutz/",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Datenschutzerklärung | SmartEinzug",
+  "title_laenge": 34,
+  "description": "Datenschutz von SmartEinzug: Verantwortlicher, Hosting, Kundenkonto, Zahlungsabwicklung über das eigene Stripe-Konto und Betroffenenrechte.",
+  "description_laenge": 139,
+  "h1": [
+   "Datenschutzerklärung"
+  ],
+  "h2": [
+   "1. Verantwortlicher",
+   "2. Hosting und Server-Logfiles",
+   "3. Kontaktaufnahme",
+   "3a. Vorregistrierung für angekündigte Integrationen",
+   "4. Registrierung und Kundenkonto der Anwendung",
+   "5. Zwei-Faktor-Authentifizierung",
+   "6. Zahlungsabwicklung über Ihr eigenes Stripe-Konto",
+   "7. Verarbeitung von Rechnungs- und Kundendaten aus Lexware Office",
+   "8. Cookielose, anonyme Reichweitenmessung",
+   "8a. Cookies und Einwilligung",
+   "8b. Google Analytics 4",
+   "8c. Google Ads Conversion-Messung",
+   "8d. Google Search Console",
+   "9. Sicherheits-E-Mails",
+   "10. Speicherdauer",
+   "11. Betroffenenrechte",
+   "12. Beschwerderecht bei einer Aufsichtsbehörde",
+   "13. Datenschutzbeauftragter"
+  ],
+  "canonical": "https://smart-einzug.de/datenschutz/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1172,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "zwei_faktor": 2,
+   "dsgvo": 5,
+   "sevdesk": 2,
+   "lexware_office": 1,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 1,
+   "einzug_datum_frist": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 16,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "funktionen/index.html",
+  "url": "https://smart-einzug.de/funktionen/",
+  "seitentyp": "produktseite",
+  "title": "Funktionen von SmartEinzug",
+  "title_laenge": 26,
+  "description": "SmartEinzug: Rechnungsabgleich mit Lexware Office, SEPA-Mandatsverwaltung, Einzug über das eigene Stripe-Konto und automatische Statusrückmeldung.",
+  "description_laenge": 146,
+  "h1": [
+   "SmartEinzug im Überblick: alle Funktionen"
+  ],
+  "h2": [
+   "Offene Forderungen im Griff",
+   "Mandatsverwaltung je Kunde",
+   "Sofort oder terminiert über Ihr Stripe-Konto",
+   "Rückmeldung ohne Handarbeit",
+   "Mitarbeiter mit persönlichem Zugang",
+   "Alle Funktionen im eigenen Account testen"
+  ],
+  "canonical": "https://smart-einzug.de/funktionen/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 305,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "1.475,20 €"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zu den Preisen",
+    "href": "/preise/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "testen_testphase": 1,
+   "automatisch": 3,
+   "ruecklastschrift": 2,
+   "vorabankuendigung": 1,
+   "glaeubiger_id": 1,
+   "mandat": 7,
+   "zwei_faktor": 1,
+   "lexware_office": 2,
+   "sofort_geld": 2,
+   "einzug_datum_frist": 5
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 14,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "hilfe/index.html",
+  "url": "https://smart-einzug.de/hilfe/",
+  "seitentyp": "produktseite",
+  "title": "Hilfe zu SmartEinzug",
+  "title_laenge": 20,
+  "description": "Hilfe-Übersicht zu SmartEinzug: Schnellstart in fünf Schritten, Integrationen, Funktionen, Preise, häufige Fragen und Kontaktmöglichkeiten.",
+  "description_laenge": 139,
+  "h1": [
+   "Hilfe und Anleitungen zu SmartEinzug"
+  ],
+  "h2": [
+   "So starten Sie in fünf Schritten",
+   "Webhook einrichten, damit Stripe den Status zurückmeldet",
+   "Weiterführende Seiten",
+   "Was beim Start häufig gefragt wird",
+   "Kontakt"
+  ],
+  "canonical": "https://smart-einzug.de/hilfe/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 405,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/integrationen/sevdesk/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "kostenlos": 1,
+   "mandat": 1,
+   "zwei_faktor": 1,
+   "sevdesk": 3,
+   "lexware_office": 5,
+   "lexware_allgemein": 3,
+   "tarif_xl_public_api": 1,
+   "stripe_gebuehr": 1,
+   "sofort_geld": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 14,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "impressum/index.html",
+  "url": "https://smart-einzug.de/impressum/",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Impressum | SmartEinzug",
+  "title_laenge": 23,
+  "description": "Impressum von SmartEinzug: Anbieterkennzeichnung der Müller Holding AG, Registereintrag, Kontaktdaten sowie Hinweise zu genannten Marken wie Lexware Office.",
+  "description_laenge": 156,
+  "h1": [
+   "Impressum"
+  ],
+  "h2": [
+   "Anbieter",
+   "Vertretungsberechtigt",
+   "Kontakt",
+   "Verantwortlich für den Inhalt",
+   "Betreiber der Anwendung SmartEinzug",
+   "Hinweis zu Marken"
+  ],
+  "canonical": "https://smart-einzug.de/impressum/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 192,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de",
+   "mueller-holding.ag"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "sevdesk": 2,
+   "lexoffice": 1,
+   "lexware_office": 2,
+   "lexware_allgemein": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 16,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "index.html",
+  "url": "https://smart-einzug.de/",
+  "seitentyp": "startseite",
+  "title": "SmartEinzug: SEPA-Lastschrift für Lexware Office",
+  "title_laenge": 48,
+  "description": "SmartEinzug verbindet Lexware Office, ehemals lexoffice, mit Ihrem eigenen Stripe-Konto und zieht offene Rechnungen per SEPA-Lastschrift ein.",
+  "description_laenge": 141,
+  "h1": [
+   "Lexware-Office-Rechnungen einfach per SEPA-Lastschrift einziehen."
+  ],
+  "h2": [
+   "Für Lexware-Office-Kunden gebaut, nicht für ein neues System",
+   "Rechnungen schreiben Sie in Lexware Office. Den Einzug erledigt bisher niemand automatisch.",
+   "Einrichtung in drei Schritten",
+   "Was SmartEinzug im Alltag übernimmt",
+   "Preise",
+   "Häufige Fragen",
+   "Bereit, Ihre Lexware-Office-Rechnungen automatisch einzuziehen?"
+  ],
+  "canonical": "https://smart-einzug.de/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 940,
+  "jsonld_typen": [
+   "Offer",
+   "Organization",
+   "PostalAddress",
+   "SoftwareApplication",
+   "WebSite"
+  ],
+  "jsonld_preise": [
+   "25.00 EUR"
+  ],
+  "jsonld_faq": false,
+  "preise_text": [
+   "1.475,20 €",
+   "25,00 EUR",
+   "312,50 €",
+   "50,00 EUR",
+   "64,90 €",
+   "890,00 €"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/integrationen/sevdesk/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert's",
+    "href": "/so-funktionierts/"
+   },
+   {
+    "text": "Jetzt Account erstellen",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lexware Office verbinden",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Alle Details ansehen",
+    "href": "/so-funktionierts/"
+   },
+   {
+    "text": "Für sevdesk vormerken",
+    "href": "/integrationen/sevdesk/"
+   },
+   {
+    "text": "Alle Funktionen ansehen",
+    "href": "/funktionen/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt zum Einführungspreis von 25,00 EUR starten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 4,
+   "ruecklastschrift": 1,
+   "vorabankuendigung": 1,
+   "mandat": 8,
+   "zwei_faktor": 3,
+   "sevdesk": 3,
+   "lexoffice": 1,
+   "lexware_office": 15,
+   "lexware_allgemein": 12,
+   "tarif_xl_public_api": 2,
+   "stripe_gebuehr": 3,
+   "sofort_geld": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 16,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "integrationen/index.html",
+  "url": "https://smart-einzug.de/integrationen/",
+  "seitentyp": "integration",
+  "title": "Integrationen von SmartEinzug",
+  "title_laenge": 29,
+  "description": "Integrationen von SmartEinzug: Lexware Office ist verfügbar, eine Anbindung an sevdesk befindet sich in Planung. Übersicht der unterstützten Rechnungssysteme.",
+  "description_laenge": 158,
+  "h1": [
+   "Integrationen von SmartEinzug"
+  ],
+  "h2": [
+   "Ihr eigenes Stripe-Konto",
+   "Lexware Office jetzt anbinden"
+  ],
+  "canonical": "https://smart-einzug.de/integrationen/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 128,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/integrationen/lexware-office/",
+   "https://smart-einzug.de/integrationen/sevdesk/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert's",
+    "href": "/so-funktionierts/"
+   }
+  ],
+  "pruefwoerter": {
+   "sevdesk": 3,
+   "lexware_office": 5,
+   "lexware_allgemein": 1,
+   "tarif_xl_public_api": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 14,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "integrationen/lexware-office/index.html",
+  "url": "https://smart-einzug.de/integrationen/lexware-office/",
+  "seitentyp": "integration",
+  "title": "Lexware-Office-Integration von SmartEinzug",
+  "title_laenge": 42,
+  "description": "Die Lexware-Office-Integration von SmartEinzug: Anbindung über die Public API, benötigter Tarif, synchronisierte Daten und der Weg zum ersten SEPA-Einzug.",
+  "description_laenge": 154,
+  "h1": [
+   "Lexware-Office-Integration von SmartEinzug"
+  ],
+  "h2": [
+   "Wie die Anbindung funktioniert",
+   "API-Schlüssel hinterlegen",
+   "Lexware Office jetzt verbinden"
+  ],
+  "canonical": "https://smart-einzug.de/integrationen/lexware-office/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 149,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Alle Integrationen",
+    "href": "/integrationen/"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "lexoffice": 1,
+   "lexware_office": 5,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 2,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "integrationen/sevdesk/index.html",
+  "url": "https://smart-einzug.de/integrationen/sevdesk/",
+  "seitentyp": "integration",
+  "title": "sevdesk SEPA-Lastschrift: Rechnungen per Stripe einziehen",
+  "title_laenge": 57,
+  "description": "SEPA-Lastschrift für sevdesk-Rechnungen: SmartEinzug plant die sevdesk-Anbindung mit Einzug über Ihr eigenes Stripe-Konto. Start Ende September 2026 geplant.",
+  "description_laenge": 157,
+  "h1": [
+   "sevdesk-Rechnungen künftig per SEPA-Lastschrift einziehen."
+  ],
+  "h2": [
+   "SEPA-Lastschrift für sevdesk-Rechnungen: Warum eine eigene Anbindung?",
+   "Lastschrifteinzug aus sevdesk in drei Schritten, so ist die Integration geplant",
+   "Bestehende sevdesk-Rechnungen einziehen, nicht Umsätze importieren",
+   "Für wen sich der Lastschrifteinzug aus sevdesk lohnt",
+   "SEPA-Lastschrift verstehen: Mandat, Vorabankündigung, Rücklastschrift",
+   "Zum Start der sevdesk-Anbindung informiert werden",
+   "Was Sie für die geplante sevdesk-Anbindung brauchen",
+   "Manueller Lastschrifteinzug heute gegenüber dem geplanten Ablauf",
+   "Abgrenzung zur Lexware-Office-Integration",
+   "Häufige Fragen zur sevdesk-Anbindung",
+   "Wie es bis zum Start weitergeht",
+   "Sie nutzen sevdesk? Jetzt unverbindlich vormerken."
+  ],
+  "canonical": "https://smart-einzug.de/integrationen/sevdesk/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1895,
+  "jsonld_typen": [
+   "Answer",
+   "BreadcrumbList",
+   "FAQPage",
+   "ListItem",
+   "Question"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": true,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/integrationen/lexware-office/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Heute schon starten mit Lexware Office",
+    "href": "/integrationen/lexware-office/"
+   }
+  ],
+  "pruefwoerter": {
+   "kostenlos": 4,
+   "partner_offiziell": 3,
+   "automatisch": 6,
+   "firmenlastschrift_b2b": 4,
+   "ruecklastschrift": 4,
+   "vorabankuendigung": 8,
+   "glaeubiger_id": 3,
+   "mandat": 18,
+   "rueckschreibung_buchhaltung": 3,
+   "mehrfirmen": 1,
+   "zwei_faktor": 2,
+   "verschluesselung": 2,
+   "sevdesk": 47,
+   "lexware_office": 8,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 1,
+   "einzug_datum_frist": 6
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "kontakt/index.html",
+  "url": "https://smart-einzug.de/kontakt/",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Kontakt zu SmartEinzug",
+  "title_laenge": 22,
+  "description": "Kontakt zu SmartEinzug: Fragen zu Einrichtung, Integrationen, Preisen oder Ihrem Firmenaccount per E-Mail an die Müller Holding AG.",
+  "description_laenge": 131,
+  "h1": [
+   "Kontakt zu SmartEinzug"
+  ],
+  "h2": [
+   "E-Mail"
+  ],
+  "canonical": "https://smart-einzug.de/kontakt/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 68,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zur Hilfe-Übersicht",
+    "href": "/hilfe/"
+   }
+  ],
+  "pruefwoerter": {},
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 14,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "lp/lexoffice-lastschrift/index.html",
+  "url": "https://smart-einzug.de/lp/lexoffice-lastschrift/",
+  "seitentyp": "kampagnenseite",
+  "title": "lexoffice-Rechnungen per Lastschrift, jetzt SmartEinzug",
+  "title_laenge": 55,
+  "description": "SmartEinzug zieht Ihre lexoffice-Rechnungen, heute Lexware Office, über Ihr eigenes Stripe-Konto per SEPA-Lastschrift ein. Einführungspreis 25,00 EUR je 4 Wochen.",
+  "description_laenge": 162,
+  "h1": [
+   "Ihre lexoffice-Rechnungen einfach per Lastschrift einziehen."
+  ],
+  "h2": [
+   "In drei Schritten startklar",
+   "Warum SmartEinzug",
+   "Preis",
+   "Kurz beantwortet",
+   "Jetzt Lexware Office und Stripe verbinden"
+  ],
+  "canonical": "https://smart-einzug.de/lp/lexoffice-lastschrift/",
+  "canonical_self": true,
+  "robots_meta": "noindex, follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "",
+  "woerter_hauptinhalt": 324,
+  "jsonld_typen": [],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "245,00 €",
+   "25,00 EUR",
+   "50,00 EUR",
+   "980,00 €"
+  ],
+  "preise_meta": [
+   "25,00 EUR"
+  ],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/impressum/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt zum Einführungspreis von 25,00 EUR starten",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 2,
+   "zwei_faktor": 1,
+   "lexoffice": 5,
+   "lexware_office": 8,
+   "lexware_allgemein": 6,
+   "tarif_xl_public_api": 1,
+   "stripe_gebuehr": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": true
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "lp/lexware-lastschrift/index.html",
+  "url": "https://smart-einzug.de/lp/lexware-lastschrift/",
+  "seitentyp": "kampagnenseite",
+  "title": "Lexware-Office-Lastschrift mit SmartEinzug",
+  "title_laenge": 42,
+  "description": "SmartEinzug zieht Ihre Lexware-Office-Rechnungen über Ihr eigenes Stripe-Konto per SEPA-Lastschrift ein. Einführungspreis 25,00 EUR netto je 4 Wochen.",
+  "description_laenge": 150,
+  "h1": [
+   "Lexware-Office-Rechnungen per SEPA-Lastschrift einziehen."
+  ],
+  "h2": [
+   "In drei Schritten startklar",
+   "Warum SmartEinzug",
+   "Preis",
+   "Kurz beantwortet",
+   "Jetzt Lexware Office und Stripe verbinden"
+  ],
+  "canonical": "https://smart-einzug.de/lp/lexware-lastschrift/",
+  "canonical_self": true,
+  "robots_meta": "noindex, follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "",
+  "woerter_hauptinhalt": 318,
+  "jsonld_typen": [],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "198,00 €",
+   "25,00 EUR",
+   "50,00 EUR",
+   "725,00 €"
+  ],
+  "preise_meta": [
+   "25,00 EUR"
+  ],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/impressum/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt zum Einführungspreis von 25,00 EUR starten",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 3,
+   "zwei_faktor": 1,
+   "lexware_office": 7,
+   "lexware_allgemein": 9,
+   "tarif_xl_public_api": 2,
+   "stripe_gebuehr": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": true
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "preise/index.html",
+  "url": "https://smart-einzug.de/preise/",
+  "seitentyp": "produktseite",
+  "title": "Preise von SmartEinzug",
+  "title_laenge": 22,
+  "description": "SmartEinzug kostet 25,00 EUR netto je 4 Wochen im Einführungstarif UNLIMITED START, ohne Jahresbindung und ohne Begrenzung der Einzüge.",
+  "description_laenge": 135,
+  "h1": [
+   "Preise von SmartEinzug"
+  ],
+  "h2": [
+   "Was im Preis steckt",
+   "Zwei Dinge brauchen Sie schon",
+   "Was Kunden vor der Registrierung wissen wollen"
+  ],
+  "canonical": "https://smart-einzug.de/preise/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 352,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR",
+   "50,00 EUR"
+  ],
+  "preise_meta": [
+   "25,00 EUR"
+  ],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "mandat": 2,
+   "lexware_office": 2,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 1,
+   "stripe_gebuehr": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 14,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "so-funktionierts/index.html",
+  "url": "https://smart-einzug.de/so-funktionierts/",
+  "seitentyp": "produktseite",
+  "title": "So funktioniert SmartEinzug",
+  "title_laenge": 27,
+  "description": "So funktioniert SmartEinzug: Account anlegen, Lexware Office und Stripe verbinden, Rechnungen mit gültigem Mandat freigeben und den SEPA-Einzug auslösen.",
+  "description_laenge": 153,
+  "h1": [
+   "So funktioniert SmartEinzug"
+  ],
+  "h2": [
+   "Die drei Schritte im Detail",
+   "Was nach der Einrichtung passiert",
+   "Jetzt Account anlegen und Konten verbinden"
+  ],
+  "canonical": "https://smart-einzug.de/so-funktionierts/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 276,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "128,40 €",
+   "540,00 €"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Funktionen ansehen",
+    "href": "/funktionen/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 3,
+   "mandat": 6,
+   "zwei_faktor": 1,
+   "lexware_office": 2,
+   "tarif_xl_public_api": 1,
+   "sofort_geld": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 14,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "vergleich/sepaheld-gocardless/index.html",
+  "url": "https://smart-einzug.de/vergleich/sepaheld-gocardless/",
+  "seitentyp": "vergleich",
+  "title": "SmartEinzug im Vergleich (Entwurf)",
+  "title_laenge": 34,
+  "description": "",
+  "description_laenge": 0,
+  "h1": [
+   "SmartEinzug im Vergleich zu SEPA-Held und GoCardless"
+  ],
+  "h2": [
+   "Struktur des geplanten Vergleichs",
+   "Mögliche Vergleichskriterien (Platzhalter)",
+   "Was SmartEinzug belegen kann"
+  ],
+  "canonical": "",
+  "canonical_self": false,
+  "robots_meta": "noindex, follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "",
+  "woerter_hauptinhalt": 144,
+  "jsonld_typen": [],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/so-funktionierts/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "zwei_faktor": 1,
+   "lexware_office": 1,
+   "wettbewerber": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": true
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "404.html",
+  "url": "https://lexoffice-einzug.de/404",
+  "seitentyp": "fehlerseite",
+  "title": "Seite nicht gefunden | lexoffice-einzug.de",
+  "title_laenge": 42,
+  "description": "",
+  "description_laenge": 0,
+  "h1": [
+   "Hier gibt es nichts zu sehen, aber wir helfen weiter"
+  ],
+  "h2": [],
+  "canonical": "",
+  "canonical_self": false,
+  "robots_meta": "noindex, follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "",
+  "woerter_hauptinhalt": 73,
+  "jsonld_typen": [],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-public-api-xl",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 1,
+   "mandat": 1,
+   "lexoffice": 2,
+   "lexware_office": 1,
+   "tarif_xl_public_api": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "agb.html",
+  "url": "https://lexoffice-einzug.de/agb",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "AGB | SmartEinzug",
+  "title_laenge": 17,
+  "description": "Allgemeine Geschäftsbedingungen von SmartEinzug: Leistungsumfang, Firmenaccount, Pflichten des Kunden, Preise, Laufzeit und Kündigung des Abonnements.",
+  "description_laenge": 150,
+  "h1": [
+   "Allgemeine Geschäftsbedingungen"
+  ],
+  "h2": [
+   "1. Vertragsgegenstand",
+   "2. Leistungsumfang",
+   "3. Registrierung und Firmenaccount",
+   "4. Mitarbeiterzugänge",
+   "5. Pflichten des Kunden",
+   "6. Verhältnis zu Stripe und Lexware Office",
+   "7. Preise und Abrechnung",
+   "8. Laufzeit und Kündigung",
+   "9. Verfügbarkeit",
+   "10. Haftung",
+   "11. Datenschutz",
+   "12. Änderungen dieser Bedingungen",
+   "13. Schlussbestimmungen"
+  ],
+  "canonical": "https://lexoffice-einzug.de/agb",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 530,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR",
+   "50,00 EUR"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 2,
+   "zwei_faktor": 1,
+   "lexoffice": 1,
+   "lexware_office": 7,
+   "lexware_allgemein": 1,
+   "tarif_xl_public_api": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 21,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "datenschutz.html",
+  "url": "https://lexoffice-einzug.de/datenschutz",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Datenschutz | SmartEinzug",
+  "title_laenge": 25,
+  "description": "Datenschutzerklärung von SmartEinzug: Hosting, Kundenkonto, Zwei-Faktor-Authentifizierung, Zahlungsabwicklung über Stripe und Reichweitenmessung ohne Cookie.",
+  "description_laenge": 157,
+  "h1": [
+   "Datenschutzerklärung"
+  ],
+  "h2": [
+   "Verantwortlicher",
+   "Hosting",
+   "Kontaktaufnahme",
+   "Registrierung und Kundenkonto der Anwendung",
+   "Zwei-Faktor-Authentifizierung",
+   "Zahlungsabwicklung des Abonnements über Stripe",
+   "Verarbeitung von Rechnungs- und Kundendaten aus Lexware Office",
+   "Cookielose anonyme Reichweitenmessung",
+   "Einwilligungsbanner und Speicherung Ihrer Auswahl",
+   "Google Analytics 4 (nur mit Einwilligung)",
+   "Google Search Console",
+   "Sicherheits-E-Mails",
+   "Speicherdauer",
+   "Betroffenenrechte",
+   "Beschwerderecht bei einer Aufsichtsbehörde",
+   "Datenschutzbeauftragter",
+   "Änderungen dieser Datenschutzerklärung"
+  ],
+  "canonical": "https://lexoffice-einzug.de/datenschutz",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 859,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "zwei_faktor": 2,
+   "dsgvo": 2,
+   "lexoffice": 1,
+   "lexware_office": 2,
+   "lexware_allgemein": 1,
+   "tarif_xl_public_api": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 22,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "impressum.html",
+  "url": "https://lexoffice-einzug.de/impressum",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Impressum | SmartEinzug",
+  "title_laenge": 23,
+  "description": "Impressum von SmartEinzug mit Anbieterkennzeichnung der Müller Holding AG, Anschrift, Registergericht, Vertretung sowie Kontaktdaten des Betreibers.",
+  "description_laenge": 148,
+  "h1": [
+   "Impressum"
+  ],
+  "h2": [
+   "Anbieter",
+   "Vertretung",
+   "Registereintrag",
+   "Umsatzsteuer-Identifikationsnummer",
+   "Kontakt",
+   "Verantwortlich für den Inhalt",
+   "Hinweis zu Marken",
+   "Streitschlichtung"
+  ],
+  "canonical": "https://lexoffice-einzug.de/impressum",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 141,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de",
+   "mueller-holding.ag"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "lexoffice": 1,
+   "lexware_office": 2,
+   "lexware_allgemein": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 22,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "index.html",
+  "url": "https://lexoffice-einzug.de/",
+  "seitentyp": "startseite",
+  "title": "Lexoffice Lastschrift einrichten: so funktioniert es",
+  "title_laenge": 52,
+  "description": "Sie nutzen Lexoffice und möchten Rechnungen per Lastschrift einziehen? Verständlich erklärt: Umbenennung in Lexware Office, Voraussetzungen, Einrichtung mit Stripe.",
+  "description_laenge": 164,
+  "h1": [
+   "Sie nutzen Lexoffice und möchten Rechnungen per Lastschrift einziehen?"
+  ],
+  "h2": [
+   "Nutzen Sie noch lexoffice?",
+   "Was brauche ich?",
+   "Ich nutze lexoffice und möchte Rechnungen per SEPA einziehen. Wie funktioniert das?",
+   "Was SmartEinzug für ehemalige lexoffice-Nutzer leistet",
+   "Ein Firmenaccount, mehrere gesicherte Zugänge",
+   "Ein Tarif für den gesamten SEPA-Einzug aus lexoffice",
+   "Häufige Fragen ehemaliger lexoffice-Nutzer",
+   "Von der lexoffice-Rechnung zum abgeschlossenen SEPA-Einzug."
+  ],
+  "canonical": "https://lexoffice-einzug.de/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1283,
+  "jsonld_typen": [
+   "Offer",
+   "Organization",
+   "PostalAddress",
+   "SoftwareApplication",
+   "WebSite"
+  ],
+  "jsonld_preise": [
+   "25.00 EUR"
+  ],
+  "jsonld_faq": false,
+  "preise_text": [
+   "1.234,56 €",
+   "1.480,00 €",
+   "145,00 €",
+   "25,00 EUR",
+   "50,00 EUR",
+   "620,25 €"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-public-api-xl",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung ansehen",
+    "href": "/lexoffice-lastschrift-einrichten"
+   },
+   {
+    "text": "Zur Schritt-für-Schritt-Anleitung",
+    "href": "/lexoffice-lastschrift-einrichten"
+   },
+   {
+    "text": "Public API nicht gefunden?",
+    "href": "/lexoffice-public-api-xl"
+   },
+   {
+    "text": "Jetzt einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Firmenaccount erstellen",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "automatisch": 1,
+   "ruecklastschrift": 5,
+   "mandat": 9,
+   "zwei_faktor": 3,
+   "lexoffice": 29,
+   "lexware_office": 24,
+   "lexware_allgemein": 5,
+   "tarif_xl_public_api": 5,
+   "stripe_gebuehr": 1,
+   "sofort_geld": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 22,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-heisst-jetzt-lexware-office.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+  "seitentyp": "keyword_landingpage",
+  "title": "lexoffice heißt jetzt Lexware Office | SmartEinzug",
+  "title_laenge": 50,
+  "description": "lexoffice wurde in Lexware Office umbenannt. Gleiche Software, gleiches Konto: Was sich geändert hat und wo Sie die API-Einstellungen heute finden.",
+  "description_laenge": 147,
+  "h1": [
+   "lexoffice heißt jetzt Lexware Office"
+  ],
+  "h2": [
+   "Was hat sich geändert?",
+   "Ist es dieselbe Software?",
+   "Muss ich mein Konto neu anlegen?",
+   "Wo finde ich heute die API-Einstellungen?",
+   "Gelten alte Anleitungen zu lexoffice noch?",
+   "Was bedeutet das für die Verbindung mit SmartEinzug?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 484,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-public-api-xl",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de",
+   "lexware-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert es",
+    "href": "/lexoffice-lastschrift-einrichten"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "lexoffice": 11,
+   "lexware_office": 9,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 5
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 21,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-lastschrift-einrichten.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+  "seitentyp": "anleitung",
+  "title": "SEPA-Lastschrift für lexoffice einrichten | SmartEinzug",
+  "title_laenge": 55,
+  "description": "Schritt für Schritt vom bestehenden lexoffice-Konto zum ersten SEPA-Einzug: Registrierung, Lexware Office und Stripe verbinden, Mandat, Einzug, Status.",
+  "description_laenge": 151,
+  "h1": [
+   "SEPA-Lastschrift für lexoffice einrichten"
+  ],
+  "h2": [
+   "Was tun, wenn ein Kunde noch keine IBAN hinterlegt hat?",
+   "Wie unterscheidet sich der sofortige vom terminierten Einzug?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 543,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-public-api-xl",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-sepa-mandat",
+   "https://lexoffice-einzug.de/lexoffice-stripe-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrifteinzug einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Ratgeber",
+    "href": "/ratgeber/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "mandat": 10,
+   "zwei_faktor": 1,
+   "verschluesselung": 1,
+   "lexoffice": 6,
+   "lexware_office": 4,
+   "lexware_allgemein": 3,
+   "tarif_xl_public_api": 4,
+   "sofort_geld": 5,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 21,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-lastschrift.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-lastschrift",
+  "seitentyp": "keyword_landingpage",
+  "title": "lexoffice Lastschriftverfahren erklärt | SmartEinzug",
+  "title_laenge": 52,
+  "description": "Wie funktioniert das SEPA-Lastschriftverfahren für Rechnungen aus lexoffice bzw. Lexware Office? Ablauf, Mandat und Rolle von Stripe im Überblick erklärt.",
+  "description_laenge": 154,
+  "h1": [
+   "Das SEPA-Lastschriftverfahren für lexoffice-Rechnungen"
+  ],
+  "h2": [
+   "Wie läuft das SEPA-Lastschriftverfahren technisch ab?",
+   "Welche Rolle spielt Lexware Office im Lastschriftverfahren?",
+   "Welche Rolle übernimmt Stripe im Einzug?",
+   "Was unterscheidet Erst- und Folgelastschriften?",
+   "Woran erkennen Sie den Status einer Lastschrift?",
+   "Welche Angaben braucht eine SEPA-Lastschrift zu einer lexoffice-Rechnung?",
+   "Wie unterscheidet sich das Lastschriftverfahren von einer Kartenzahlung?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-lastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 476,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-lastschrifteinzug",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-stripe-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Ablauf des Lastschrifteinzugs",
+    "href": "/lexoffice-lastschrifteinzug"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 1,
+   "mandat": 7,
+   "lexoffice": 7,
+   "lexware_office": 10,
+   "tarif_xl_public_api": 1,
+   "einzug_datum_frist": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 4,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-lastschrifteinzug.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-lastschrifteinzug",
+  "seitentyp": "keyword_landingpage",
+  "title": "lexoffice Lastschrifteinzug im Überblick | SmartEinzug",
+  "title_laenge": 54,
+  "description": "lexoffice-Lastschrifteinzug im Überblick: vom Rechnungsabgleich über die SEPA-Zuordnung bis zum Zahlungsstatus, inklusive Rücklastschriften und Status.",
+  "description_laenge": 151,
+  "h1": [
+   "Lastschrifteinzug für lexoffice-Rechnungen im Überblick"
+  ],
+  "h2": [
+   "Wie beginnt der Lastschrifteinzug für eine lexoffice-Rechnung?",
+   "Wie wählen Sie Rechnungen für einen Einzugslauf aus?",
+   "Was geschieht beim Auslösen des Einzugs?",
+   "Wie verfolgen Sie den Zahlungsstatus?",
+   "Wie gehen Sie mit einer Rücklastschrift um?",
+   "Warum lohnt sich ein zentraler Lastschrifteinzug gegenüber manueller Verfolgung?",
+   "Wie oft lässt sich ein Einzugslauf durchführen?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-lastschrifteinzug",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 414,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-sepa-mandat",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Lastschriftverfahren",
+    "href": "/lexoffice-lastschrift"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 2,
+   "mandat": 5,
+   "lexoffice": 4,
+   "lexware_office": 8,
+   "lexware_allgemein": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-public-api-xl.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-public-api-xl",
+  "seitentyp": "keyword_landingpage",
+  "title": "Public API in Lexware Office finden | SmartEinzug",
+  "title_laenge": 49,
+  "description": "Sie finden die Public API in Lexware Office nicht? Ein Blick auf Menüführung und Tarif Lexware Office XL erklärt, woran es meistens liegt.",
+  "description_laenge": 138,
+  "h1": [
+   "Warum finde ich die Public API in Lexware Office nicht?"
+  ],
+  "h2": [
+   "Wo liegt die Public API in Lexware Office?",
+   "Warum sehe ich den Menüpunkt nicht?",
+   "Wie prüfe ich meinen aktuellen Tarif?",
+   "Was tun, wenn der Menüpunkt fehlt?",
+   "Was, wenn ich bereits einen API-Schlüssel habe?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-public-api-xl",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 460,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de",
+   "lexware-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert es",
+    "href": "/lexoffice-lastschrift-einrichten"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "verschluesselung": 1,
+   "lexoffice": 4,
+   "lexware_office": 12,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 10
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 4,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-sepa-lastschrift.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+  "seitentyp": "keyword_landingpage",
+  "title": "lexoffice SEPA Zahlungen | SmartEinzug",
+  "title_laenge": 38,
+  "description": "lexoffice heißt heute Lexware Office. Erfahren Sie, wie SEPA-Lastschriften zu Ihren Rechnungen passen und wie SmartEinzug den Einzug für Sie organisiert.",
+  "description_laenge": 153,
+  "h1": [
+   "SEPA-Zahlungen für lexoffice-Rechnungen"
+  ],
+  "h2": [
+   "Was bedeutet SEPA-Zahlungsverkehr für ehemalige lexoffice-Nutzer?",
+   "Warum lohnt sich SEPA-Lastschrift statt Überweisung?",
+   "Wie verbindet SmartEinzug SEPA-Zahlungen mit Ihren lexoffice-Daten?",
+   "Was Sie vor dem ersten SEPA-Einzug prüfen sollten",
+   "Für welche lexoffice-Rechnungen eignet sich der SEPA-Einzug besonders?",
+   "Wie fügt sich der SEPA-Einzug in Ihren bestehenden Rechnungsworkflow ein?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 471,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-sepa-mandat",
+   "https://lexoffice-einzug.de/lexoffice-stripe-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Mehr zum SEPA-Mandat",
+    "href": "/lexoffice-sepa-mandat"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 7,
+   "rueckschreibung_buchhaltung": 3,
+   "lexoffice": 11,
+   "lexware_office": 11,
+   "tarif_xl_public_api": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 21,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-sepa-mandat.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-sepa-mandat",
+  "seitentyp": "keyword_landingpage",
+  "title": "lexoffice SEPA-Mandat verwalten | SmartEinzug",
+  "title_laenge": 45,
+  "description": "SEPA-Mandate für lexoffice-Rechnungen verwalten: Was ein Mandat ist, wofür Sie als Kunde verantwortlich bleiben und wie SmartEinzug es abbildet und ordnet.",
+  "description_laenge": 155,
+  "h1": [
+   "SEPA-Mandate für lexoffice-Kunden verwalten"
+  ],
+  "h2": [
+   "Was ist ein SEPA-Mandat?",
+   "Wer holt das Mandat bei Ihren Kunden ein?",
+   "Wie hinterlegen Sie ein Mandat in SmartEinzug?",
+   "Wie ordnen Sie ein Mandat einer lexoffice-Rechnung zu?",
+   "Was passiert bei einem widerrufenen Mandat?",
+   "Warum lohnt sich eine zentrale Mandatsverwaltung neben lexoffice?",
+   "Welche Angaben gehören zu einem vollständigen Mandatsdatensatz?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-sepa-mandat",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 466,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-lastschrifteinzug",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zu SEPA-Zahlungen für lexoffice",
+    "href": "/lexoffice-sepa-lastschrift"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 3,
+   "mandat": 29,
+   "lexoffice": 8,
+   "lexware_office": 8
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 5,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lexoffice-stripe-lastschrift.html",
+  "url": "https://lexoffice-einzug.de/lexoffice-stripe-lastschrift",
+  "seitentyp": "keyword_landingpage",
+  "title": "lexoffice mit Stripe verbinden | SmartEinzug",
+  "title_laenge": 44,
+  "description": "lexoffice mit Stripe verbinden: So übergibt SmartEinzug Rechnungsdaten aus Lexware Office an Stripe und organisiert damit den SEPA-Lastschrifteinzug.",
+  "description_laenge": 149,
+  "h1": [
+   "lexoffice und Stripe verbinden"
+  ],
+  "h2": [
+   "Warum benötigen ehemalige lexoffice-Nutzer eine Stripe-Verbindung?",
+   "Wie richten Sie die Verbindung zwischen Lexware Office und Stripe ein?",
+   "Welche Daten übergibt SmartEinzug an Stripe?",
+   "Wer trägt die Verantwortung für den Stripe-Account?",
+   "Was passiert, wenn Stripe einen Einzug ablehnt?",
+   "Welche Voraussetzungen sollte Ihr Stripe-Account erfüllen?",
+   "Bleiben Ihre Lexware-Office-Daten von der Stripe-Verbindung getrennt?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/lexoffice-stripe-lastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 427,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-lastschrifteinzug",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zu SEPA-Zahlungen für lexoffice",
+    "href": "/lexoffice-sepa-lastschrift"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 2,
+   "mandat": 1,
+   "lexoffice": 5,
+   "lexware_office": 10,
+   "lexware_allgemein": 3,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "lp/lastschrift-einrichten/index.html",
+  "url": "https://lexoffice-einzug.de/lp/lastschrift-einrichten/",
+  "seitentyp": "kampagnenseite",
+  "title": "Ihre lexoffice-Rechnungen einfach per Lastschrift einziehen",
+  "title_laenge": 59,
+  "description": "SmartEinzug verbindet Ihr lexoffice-Konto, heute Lexware Office, mit Ihrem eigenen Stripe-Konto: Rechnungen synchronisieren und per SEPA-Lastschrift einziehen.",
+  "description_laenge": 159,
+  "h1": [
+   "Ihre lexoffice-Rechnungen einfach per Lastschrift einziehen."
+  ],
+  "h2": [
+   "So richten Sie den Einzug in drei Schritten ein",
+   "Was SmartEinzug für ehemalige lexoffice-Nutzer leistet",
+   "Ein Tarif für den gesamten Lastschrifteinzug",
+   "Häufige Fragen ehemaliger lexoffice-Nutzer",
+   "Von der lexoffice-Rechnung zum abgeschlossenen SEPA-Einzug."
+  ],
+  "canonical": "https://lexoffice-einzug.de/lp/lastschrift-einrichten",
+  "canonical_self": false,
+  "robots_meta": "noindex,follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 641,
+  "jsonld_typen": [
+   "Offer",
+   "SoftwareApplication"
+  ],
+  "jsonld_preise": [
+   "25.00 EUR"
+  ],
+  "jsonld_faq": false,
+  "preise_text": [
+   "1.315,00 €",
+   "210,00 €",
+   "25,00 EUR",
+   "50,00 EUR",
+   "760,00 €"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 2,
+   "ruecklastschrift": 2,
+   "mandat": 4,
+   "lexoffice": 15,
+   "lexware_office": 10,
+   "lexware_allgemein": 4,
+   "tarif_xl_public_api": 2,
+   "stripe_gebuehr": 1,
+   "sofort_geld": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": true
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/index.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/",
+  "seitentyp": "ratgeber_uebersicht",
+  "title": "Ratgeber zu SEPA-Lastschrift und lexoffice | SmartEinzug",
+  "title_laenge": 56,
+  "description": "Praxisnahe Antworten für ehemalige lexoffice-Nutzer zu SEPA-Mandat, Rücklastschrift, Zahlungsstatus und Kundenzuordnung bei SmartEinzug.",
+  "description_laenge": 136,
+  "h1": [
+   "Ratgeber rund um SEPA-Lastschrift und lexoffice"
+  ],
+  "h2": [
+   "Für wen der Ratgeber gedacht ist",
+   "Alle Beiträge"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 439,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/kunden-und-rechnungen-richtig-zuordnen",
+   "https://lexoffice-einzug.de/ratgeber/lexoffice-lastschrift-oder-ueberweisung",
+   "https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden",
+   "https://lexoffice-einzug.de/ratgeber/warum-ist-eine-lastschrift-nicht-sofort-bezahlt",
+   "https://lexoffice-einzug.de/ratgeber/was-brauche-ich-fuer-eine-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift",
+   "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrifteinzug einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert es",
+    "href": "/lexoffice-lastschrift-einrichten"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 4,
+   "vorabankuendigung": 1,
+   "glaeubiger_id": 1,
+   "mandat": 5,
+   "rueckschreibung_buchhaltung": 1,
+   "lexoffice": 7,
+   "lexware_office": 5,
+   "lexware_allgemein": 1,
+   "sofort_geld": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 21,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/kunden-und-rechnungen-richtig-zuordnen.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/kunden-und-rechnungen-richtig-zuordnen",
+  "seitentyp": "ratgeber",
+  "title": "Kunden und Rechnungen richtig zuordnen | SmartEinzug Ratgeber",
+  "title_laenge": 61,
+  "description": "Kundennummer, Lexware-ID und Laufkunden-Sammelnummer: Wie SmartEinzug Kunden und Rechnungen aus Lexware Office korrekt zuordnet.",
+  "description_laenge": 128,
+  "h1": [
+   "Kunden und Rechnungen richtig zuordnen"
+  ],
+  "h2": [
+   "Warum ist die Zuordnung vor dem Einzug wichtig?",
+   "Wie erkennt SmartEinzug denselben Kunden wieder?",
+   "Ein Beispiel zur Deduplizierung",
+   "Was ist die Laufkunden-Sammelnummer?",
+   "Was sollten Sie in Lexware Office beachten?",
+   "Zusammengefasst"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/kunden-und-rechnungen-richtig-zuordnen",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 395,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 2,
+   "mandat": 5,
+   "lexoffice": 1,
+   "lexware_office": 7,
+   "lexware_allgemein": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 1,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/lexoffice-lastschrift-oder-ueberweisung.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/lexoffice-lastschrift-oder-ueberweisung",
+  "seitentyp": "ratgeber",
+  "title": "Lastschrift oder Überweisung bei lexoffice | SmartEinzug",
+  "title_laenge": 56,
+  "description": "Liquidität, Mahnaufwand, Rücklastschriftrisiko und Kundenakzeptanz: Wann sich SEPA-Lastschrift für Rechnungen aus Lexware Office, vormals lexoffice, lohnt.",
+  "description_laenge": 155,
+  "h1": [
+   "Lastschrift oder Überweisung: Was für lexoffice-Rechnungen sinnvoll ist"
+  ],
+  "h2": [
+   "Die Ausgangslage im kleinen Betrieb",
+   "Liquidität",
+   "Mahnaufwand",
+   "Rücklastschriftrisiko",
+   "Kundenakzeptanz",
+   "Aufwand bei der Einrichtung",
+   "Wann die Lastschrift passt",
+   "Wann die Überweisung sinnvoller bleibt",
+   "Übergang mit bestehenden Kunden",
+   "Einschätzung"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/lexoffice-lastschrift-oder-ueberweisung",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 761,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "18.000,00 EUR",
+   "89,00 EUR"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden",
+   "https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zur Anleitung",
+    "href": "/lexoffice-lastschrift-einrichten"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "ruecklastschrift": 3,
+   "glaeubiger_id": 1,
+   "mandat": 7,
+   "rueckschreibung_buchhaltung": 1,
+   "lexoffice": 2,
+   "lexware_office": 3,
+   "lexware_allgemein": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/sepa-mandat-einholen-bestandskunden.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden",
+  "seitentyp": "ratgeber",
+  "title": "SEPA-Mandat bei Bestandskunden einholen | SmartEinzug Ratgeber",
+  "title_laenge": 62,
+  "description": "Anschreiben, Mandatsformular, Unterschrift, Aufbewahrung und Vorabankündigung: So holen Sie SEPA-Mandate bei bestehenden Kunden ein, mit Formulierungsvorschlag.",
+  "description_laenge": 160,
+  "h1": [
+   "SEPA-Mandat bei Bestandskunden einholen"
+  ],
+  "h2": [
+   "Schritt 1: Kunden auswählen und ansprechen",
+   "Schritt 2: Mandatsformular aus SmartEinzug beilegen",
+   "Schritt 3: Unterschrift einholen",
+   "Schritt 4: Mandat aufbewahren",
+   "Schritt 5: Mandatsreferenz und Gläubiger-ID mitteilen",
+   "Schritt 6: Vorabankündigung vor dem ersten Einzug",
+   "Formulierungsvorschlag für das Anschreiben",
+   "Häufige Fehler"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 795,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [
+   "01.12.2026",
+   "15.11.2026"
+  ],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/lexoffice-lastschrift-oder-ueberweisung",
+   "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "vorabankuendigung": 2,
+   "glaeubiger_id": 4,
+   "mandat": 20,
+   "lexoffice": 2,
+   "lexware_office": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 4,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/warum-ist-eine-lastschrift-nicht-sofort-bezahlt.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/warum-ist-eine-lastschrift-nicht-sofort-bezahlt",
+  "seitentyp": "ratgeber",
+  "title": "Warum ist eine Lastschrift nicht sofort bezahlt? | Ratgeber",
+  "title_laenge": 59,
+  "description": "Zwischen Einzug und Gutschrift liegen bei SEPA-Lastschriften mehrere Bankarbeitstage. Warum der Status zunächst 'in Bearbeitung' lautet.",
+  "description_laenge": 136,
+  "h1": [
+   "Warum ist eine Lastschrift nicht sofort bezahlt?"
+  ],
+  "h2": [
+   "Der Weg vom Einzug zur Gutschrift",
+   "Ein Beispiel",
+   "Warum ist das so?",
+   "Wie erkenne ich den endgültigen Status?",
+   "Was bedeutet das für Ihre Buchhaltung?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/warum-ist-eine-lastschrift-nicht-sofort-bezahlt",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 324,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "ruecklastschrift": 4,
+   "lexoffice": 1,
+   "lexware_office": 1,
+   "sofort_geld": 2,
+   "einzug_datum_frist": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 2,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/was-brauche-ich-fuer-eine-sepa-lastschrift.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/was-brauche-ich-fuer-eine-sepa-lastschrift",
+  "seitentyp": "ratgeber",
+  "title": "Was brauche ich für eine SEPA-Lastschrift? | Ratgeber",
+  "title_laenge": 53,
+  "description": "Mandat, IBAN, Gläubiger-ID und Stripe-Verbindung: Diese Voraussetzungen benötigen Sie, um eine lexoffice-Rechnung per SEPA einzuziehen.",
+  "description_laenge": 135,
+  "h1": [
+   "Was brauche ich für eine SEPA-Lastschrift zu einer lexoffice-Rechnung?"
+  ],
+  "h2": [
+   "Ein gültiges SEPA-Lastschriftmandat",
+   "Die IBAN des Kunden",
+   "Eine offene oder überfällige Rechnung aus Lexware Office",
+   "Ihre Gläubiger-Identifikationsnummer und Firmenanschrift",
+   "Eine funktionierende Stripe-Verbindung",
+   "Zusammengefasst: die Checkliste vor dem ersten Einzug"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/was-brauche-ich-fuer-eine-sepa-lastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 322,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden",
+   "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "glaeubiger_id": 3,
+   "mandat": 13,
+   "lexoffice": 3,
+   "lexware_office": 5
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 2,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/was-passiert-bei-einer-ruecklastschrift.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift",
+  "seitentyp": "ratgeber",
+  "title": "Was passiert bei einer Rücklastschrift? | SmartEinzug Ratgeber",
+  "title_laenge": 62,
+  "description": "Rücklastschriften bei SEPA-Einzügen aus lexoffice-Rechnungen: Ursachen, Statusabgleich mit Stripe und praktisches Vorgehen im Anschluss.",
+  "description_laenge": 136,
+  "h1": [
+   "Was passiert bei einer Rücklastschrift?"
+  ],
+  "h2": [
+   "Was ist eine Rücklastschrift?",
+   "Ein Beispiel aus der Praxis",
+   "Wie erfährt SmartEinzug von einer Rücklastschrift?",
+   "Was sollten Sie nach einer Rücklastschrift tun?",
+   "Wie lässt sich das Risiko einer Rücklastschrift verringern?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 374,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-sepa-mandat",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/lexoffice-lastschrift-oder-ueberweisung",
+   "https://lexoffice-einzug.de/ratgeber/warum-ist-eine-lastschrift-nicht-sofort-bezahlt"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 3,
+   "ruecklastschrift": 12,
+   "mandat": 5,
+   "rueckschreibung_buchhaltung": 1,
+   "lexoffice": 1,
+   "sofort_geld": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexoffice-einzug.de",
+  "datei": "ratgeber/wie-funktioniert-ein-sepa-mandat.html",
+  "url": "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat",
+  "seitentyp": "ratgeber",
+  "title": "Wie funktioniert ein SEPA-Mandat? | SmartEinzug Ratgeber",
+  "title_laenge": 56,
+  "description": "Mandatsreferenz, Unterschrift, Widerruf und Verfall: So entsteht und funktioniert ein SEPA-Lastschriftmandat in SmartEinzug.",
+  "description_laenge": 124,
+  "h1": [
+   "Wie funktioniert ein SEPA-Mandat?"
+  ],
+  "h2": [
+   "Was ist ein SEPA-Mandat?",
+   "Wie erzeugt SmartEinzug ein Mandat?",
+   "Ein Beispiel",
+   "Kann ein Mandat widerrufen werden?",
+   "Was gehört zu einem vollständigen Mandat?",
+   "Ist eine Vorabankündigung notwendig?"
+  ],
+  "canonical": "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 319,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexoffice-einzug.de/",
+   "https://lexoffice-einzug.de/agb",
+   "https://lexoffice-einzug.de/datenschutz",
+   "https://lexoffice-einzug.de/impressum",
+   "https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office",
+   "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
+   "https://lexoffice-einzug.de/lexoffice-sepa-lastschrift",
+   "https://lexoffice-einzug.de/lexoffice-sepa-mandat",
+   "https://lexoffice-einzug.de/ratgeber/",
+   "https://lexoffice-einzug.de/ratgeber/was-brauche-ich-fuer-eine-sepa-lastschrift"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrift einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 3,
+   "vorabankuendigung": 2,
+   "glaeubiger_id": 2,
+   "mandat": 22,
+   "lexoffice": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 4,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "404.html",
+  "url": "https://lexware-einzug.de/404",
+  "seitentyp": "fehlerseite",
+  "title": "Seite nicht gefunden | lexware-einzug.de",
+  "title_laenge": 40,
+  "description": "",
+  "description_laenge": 0,
+  "h1": [
+   "Diese Seite gibt es nicht"
+  ],
+  "h2": [],
+  "canonical": "",
+  "canonical_self": false,
+  "robots_meta": "noindex, follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "",
+  "woerter_hauptinhalt": 63,
+  "jsonld_typen": [],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/anleitung/lexware-office-api",
+   "https://lexware-einzug.de/anleitung/stripe-verbinden",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zur Startseite",
+    "href": "/"
+   }
+  ],
+  "pruefwoerter": {
+   "lexware_office": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "agb.html",
+  "url": "https://lexware-einzug.de/agb",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Allgemeine Geschäftsbedingungen | SmartEinzug",
+  "title_laenge": 45,
+  "description": "AGB von SmartEinzug: Vertragsgegenstand, Leistungsumfang, Preise und Abrechnung, Laufzeit und Kündigung sowie das Verhältnis zu Stripe und Lexware Office.",
+  "description_laenge": 154,
+  "h1": [
+   "Allgemeine Geschäftsbedingungen"
+  ],
+  "h2": [
+   "1. Vertragsgegenstand",
+   "2. Leistungsumfang",
+   "3. Registrierung und Firmenaccount",
+   "4. Mitarbeiterzugänge",
+   "5. Pflichten des Kunden",
+   "6. Verhältnis zu Stripe und Lexware Office",
+   "7. Preise und Abrechnung",
+   "8. Laufzeit und Kündigung",
+   "9. Verfügbarkeit",
+   "10. Haftung",
+   "11. Datenschutz",
+   "12. Änderungen dieser AGB",
+   "13. Schlussbestimmungen"
+  ],
+  "canonical": "https://lexware-einzug.de/agb",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 573,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR",
+   "50,00 EUR"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 1,
+   "zwei_faktor": 1,
+   "lexware_office": 5,
+   "lexware_allgemein": 5,
+   "stripe_gebuehr": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 25,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "anleitung/lexware-office-api.html",
+  "url": "https://lexware-einzug.de/anleitung/lexware-office-api",
+  "seitentyp": "anleitung",
+  "title": "Lexware Office API-Schlüssel einrichten",
+  "title_laenge": 39,
+  "description": "Schritt für Schritt zum Public-API-Schlüssel in Lexware Office und zur Verbindung mit SmartEinzug, inklusive Hinweis zum benötigten Tarif.",
+  "description_laenge": 138,
+  "h1": [
+   "Lexware Office API-Schlüssel einrichten"
+  ],
+  "h2": [
+   "Schritt-für-Schritt-Anleitung",
+   "Kein API-Schlüssel erstellbar? Tarif prüfen",
+   "Verbindung in SmartEinzug herstellen"
+  ],
+  "canonical": "https://lexware-einzug.de/anleitung/lexware-office-api",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 258,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/anleitung/stripe-verbinden",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-api",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Hintergrund zur API",
+    "href": "/lexware-office-api"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "verschluesselung": 1,
+   "lexware_office": 8,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 5,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "anleitung/stripe-verbinden.html",
+  "url": "https://lexware-einzug.de/anleitung/stripe-verbinden",
+  "seitentyp": "anleitung",
+  "title": "Stripe mit SmartEinzug verbinden",
+  "title_laenge": 32,
+  "description": "Schritt für Schritt zum Stripe Secret Key, zur Anbindung an SmartEinzug und zur Einrichtung des Webhook-Endpunkts.",
+  "description_laenge": 114,
+  "h1": [
+   "Stripe mit SmartEinzug verbinden"
+  ],
+  "h2": [
+   "Schritt-für-Schritt-Anleitung",
+   "Testmodus und Livemodus",
+   "Verbindung prüfen oder trennen"
+  ],
+  "canonical": "https://lexware-einzug.de/anleitung/stripe-verbinden",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 262,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-lastschrift",
+   "https://lexware-einzug.de/lexware-office-stripe",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Hintergrund zu Stripe",
+    "href": "/lexware-office-stripe"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "lexware_office": 1,
+   "sofort_geld": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "datenschutz.html",
+  "url": "https://lexware-einzug.de/datenschutz",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Datenschutzerklärung | SmartEinzug",
+  "title_laenge": 34,
+  "description": "Datenschutzerklärung von SmartEinzug: Verantwortlicher, Hosting, Kundenkonto, Zahlungsabwicklung über Stripe, Lexware-Office-Daten und Betroffenenrechte.",
+  "description_laenge": 153,
+  "h1": [
+   "Datenschutzerklärung"
+  ],
+  "h2": [
+   "1. Verantwortlicher",
+   "2. Hosting und Server-Logfiles",
+   "3. Kontaktaufnahme",
+   "4. Registrierung und Kundenkonto der Anwendung",
+   "5. Zwei-Faktor-Authentifizierung",
+   "6. Zahlungsabwicklung des Abonnements über Stripe",
+   "7. Verarbeitung von Rechnungs- und Kundendaten aus Lexware Office",
+   "8. Cookielose, anonyme Reichweitenmessung",
+   "8a. Cookies und Einwilligung",
+   "8b. Google Analytics 4",
+   "8c. Google Ads Conversion-Messung",
+   "8d. Google Search Console",
+   "9. Sicherheits-E-Mails",
+   "10. Speicherdauer",
+   "11. Betroffenenrechte",
+   "12. Beschwerderecht bei einer Aufsichtsbehörde",
+   "13. Datenschutzbeauftragter"
+  ],
+  "canonical": "https://lexware-einzug.de/datenschutz",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1008,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "zwei_faktor": 2,
+   "dsgvo": 3,
+   "lexware_office": 1,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 26,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "faq.html",
+  "url": "https://lexware-einzug.de/faq",
+  "seitentyp": "produktseite",
+  "title": "Häufige Fragen zu SmartEinzug",
+  "title_laenge": 29,
+  "description": "Antworten auf elf häufige Fragen zu Lexware Office, Stripe, SEPA-Einzug, Datenspeicherung und Rücklastschriften bei SmartEinzug.",
+  "description_laenge": 128,
+  "h1": [
+   "Häufige Fragen zu SmartEinzug"
+  ],
+  "h2": [],
+  "canonical": "https://lexware-einzug.de/faq",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 374,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zur Hilfe-Übersicht",
+    "href": "/hilfe"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "ruecklastschrift": 2,
+   "verschluesselung": 1,
+   "lexware_office": 8,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 4,
+   "sofort_geld": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 25,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "funktionen.html",
+  "url": "https://lexware-einzug.de/funktionen",
+  "seitentyp": "produktseite",
+  "title": "Funktionen von SmartEinzug",
+  "title_laenge": 26,
+  "description": "Alle Funktionen von SmartEinzug im Überblick: Lexware-Office-Anbindung, Stripe, SEPA-Mandate, Einzugsarten, Statusabgleich, Team und Sicherheit.",
+  "description_laenge": 144,
+  "h1": [
+   "Funktionen von SmartEinzug"
+  ],
+  "h2": [
+   "Lexware Office und Stripe verbinden",
+   "Synchronisation und SEPA-Verwaltung",
+   "Lastschriften auslösen und verfolgen",
+   "Mitarbeiter, Protokoll und Verbindungen"
+  ],
+  "canonical": "https://lexware-einzug.de/funktionen",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 254,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Preise ansehen",
+    "href": "/preise"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "ruecklastschrift": 1,
+   "vorabankuendigung": 2,
+   "glaeubiger_id": 2,
+   "mandat": 6,
+   "zwei_faktor": 2,
+   "verschluesselung": 1,
+   "lexware_office": 5,
+   "lexware_allgemein": 1,
+   "sofort_geld": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 25,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "hilfe.html",
+  "url": "https://lexware-einzug.de/hilfe",
+  "seitentyp": "produktseite",
+  "title": "Hilfe zu SmartEinzug",
+  "title_laenge": 20,
+  "description": "Hilfe-Übersicht zu SmartEinzug: Anleitungen zu Lexware Office und Stripe, Funktionen, Preise, FAQ, Ratgeber und Kontakt.",
+  "description_laenge": 120,
+  "h1": [
+   "Hilfe zu SmartEinzug"
+  ],
+  "h2": [
+   "Wo finde ich was?",
+   "Die ersten fünf Schritte",
+   "Anleitungen",
+   "Funktionen, Preise und Sicherheit",
+   "FAQ und Ratgeber",
+   "Typische Fragen beim Start",
+   "Kontakt"
+  ],
+  "canonical": "https://lexware-einzug.de/hilfe",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 571,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR",
+   "50,00 EUR"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/anleitung/lexware-office-api",
+   "https://lexware-einzug.de/anleitung/stripe-verbinden",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-sepa-einzug",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "vorabankuendigung": 1,
+   "mandat": 2,
+   "zwei_faktor": 1,
+   "lexware_office": 11,
+   "lexware_allgemein": 4,
+   "sofort_geld": 1,
+   "einzug_datum_frist": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 25,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "impressum.html",
+  "url": "https://lexware-einzug.de/impressum",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Impressum | SmartEinzug",
+  "title_laenge": 23,
+  "description": "Impressum von SmartEinzug: Anbieterkennzeichnung der Müller Holding AG, Registereintrag, Kontaktdaten sowie Hinweise zu genannten Marken wie Lexware Office.",
+  "description_laenge": 156,
+  "h1": [
+   "Impressum"
+  ],
+  "h2": [
+   "Anbieter",
+   "Vertretungsberechtigt",
+   "Kontakt",
+   "Verantwortlich für den Inhalt",
+   "Betreiber der Anwendung SmartEinzug",
+   "Hinweis zu Marken"
+  ],
+  "canonical": "https://lexware-einzug.de/impressum",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 155,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de",
+   "mueller-holding.ag"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "lexoffice": 1,
+   "lexware_office": 2,
+   "lexware_allgemein": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 26,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "index.html",
+  "url": "https://lexware-einzug.de/",
+  "seitentyp": "startseite",
+  "title": "SEPA-Lastschriften mit Lexware Office | lexware-einzug.de",
+  "title_laenge": 57,
+  "description": "SEPA-Einzug für Lexware Office: Lexware Office und Stripe verbinden, offene Rechnungen auswählen und Lastschriften auslösen. Unabhängige Software, eine Oberfläche.",
+  "description_laenge": 163,
+  "h1": [
+   "SEPA-Lastschriften mit Lexware Office: in wenigen Minuten startklar."
+  ],
+  "h2": [
+   "Für Lexware-Office-Nutzer entwickelt",
+   "Sie schreiben Ihre Rechnungen in Lexware Office, aber wie ziehen Sie diese per SEPA ein?",
+   "In drei Schritten startklar",
+   "Ihre Rechnungen bleiben synchron",
+   "SEPA-Lastschriften aus Ihren Lexware-Office-Rechnungen",
+   "Gemeinsam im Rechnungswesen arbeiten",
+   "Zugang mit Zwei-Faktor-Authentifizierung",
+   "Preise",
+   "Häufige Fragen",
+   "Bereit für einen einfacheren SEPA-Einzug?"
+  ],
+  "canonical": "https://lexware-einzug.de/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1252,
+  "jsonld_typen": [
+   "Offer",
+   "Organization",
+   "PostalAddress",
+   "SoftwareApplication",
+   "WebSite"
+  ],
+  "jsonld_preise": [
+   "25.00 EUR"
+  ],
+  "jsonld_faq": false,
+  "preise_text": [
+   "1.250,00 €",
+   "2.140,00 €",
+   "25,00 EUR",
+   "480,50 €",
+   "50,00 EUR",
+   "96,00 €"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/anleitung/lexware-office-api",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-sepa-einzug",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt Account erstellen",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lexware Office verbinden",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Lastschrifteinzug einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung Lexware Office API",
+    "href": "/anleitung/lexware-office-api"
+   },
+   {
+    "text": "Einzug automatisieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Firmenaccount erstellen",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt zum Einführungspreis von 25,00 EUR starten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zum Login",
+    "href": "https://app.smart-einzug.de/login.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "automatisch": 7,
+   "ruecklastschrift": 4,
+   "vorabankuendigung": 2,
+   "mandat": 7,
+   "rueckschreibung_buchhaltung": 1,
+   "zwei_faktor": 5,
+   "lexware_office": 23,
+   "lexware_allgemein": 11,
+   "tarif_xl_public_api": 3,
+   "stripe_gebuehr": 2,
+   "sofort_geld": 2,
+   "einzug_datum_frist": 5
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 26,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lexware-office-api.html",
+  "url": "https://lexware-einzug.de/lexware-office-api",
+  "seitentyp": "keyword_landingpage",
+  "title": "Lexware Office Public API",
+  "title_laenge": 25,
+  "description": "Was die Lexware Office Public API ist, wofür SmartEinzug sie nutzt, welcher Tarif erforderlich ist und wie der API-Schlüssel geschützt wird.",
+  "description_laenge": 140,
+  "h1": [
+   "Die Lexware Office Public API und SmartEinzug"
+  ],
+  "h2": [
+   "Was die Public API ist",
+   "Wofür SmartEinzug die API benötigt",
+   "Voraussetzung: Tarif prüfen",
+   "Einrichtung in Kurzform",
+   "Sicherheit des API-Schlüssels",
+   "Lexware Office jetzt anbinden"
+  ],
+  "canonical": "https://lexware-einzug.de/lexware-office-api",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 272,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/anleitung/lexware-office-api",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zur Anleitung",
+    "href": "/anleitung/lexware-office-api"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "verschluesselung": 1,
+   "lexware_office": 11,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 7
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 1,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lexware-office-lastschrift.html",
+  "url": "https://lexware-einzug.de/lexware-office-lastschrift",
+  "seitentyp": "keyword_landingpage",
+  "title": "Lexware Office Lastschrift einziehen",
+  "title_laenge": 36,
+  "description": "Rechnungen aus Lexware Office per SEPA-Lastschrift einziehen: Voraussetzungen, Ablauf und die Rolle von Stripe bei SmartEinzug.",
+  "description_laenge": 127,
+  "h1": [
+   "Lexware Office Lastschrift: Rechnungen automatisiert einziehen"
+  ],
+  "h2": [
+   "Lastschrift direkt aus den Lexware-Office-Daten",
+   "Voraussetzungen für den Einzug",
+   "Ablauf in Kurzform",
+   "Abgrenzung: Wer macht was",
+   "Jetzt mit dem Einzug starten"
+  ],
+  "canonical": "https://lexware-einzug.de/lexware-office-lastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 334,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-sepa-mandat",
+   "https://lexware-einzug.de/lexware-office-stripe",
+   "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert es",
+    "href": "/hilfe"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 2,
+   "mandat": 4,
+   "lexware_office": 10,
+   "lexware_allgemein": 4,
+   "tarif_xl_public_api": 2,
+   "sofort_geld": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lexware-office-lastschrifteinzug.html",
+  "url": "https://lexware-einzug.de/lexware-office-lastschrifteinzug",
+  "seitentyp": "keyword_landingpage",
+  "title": "Lastschrifteinzug für Lexware Office automatisieren",
+  "title_laenge": 51,
+  "description": "So automatisieren Sie den wiederkehrenden Lastschrifteinzug für Ihre Lexware-Office-Rechnungen: Hintergrundsynchronisation, Auswahl, Terminierung und Status.",
+  "description_laenge": 157,
+  "h1": [
+   "Lastschrifteinzug für Lexware-Office-Rechnungen automatisieren"
+  ],
+  "h2": [
+   "Vom Rechnungsversand bis zum Einzug",
+   "Automatisiert im Hintergrund",
+   "Status und Rücklastschriften nachverfolgen",
+   "Wiederkehrenden Einzug einrichten"
+  ],
+  "canonical": "https://lexware-einzug.de/lexware-office-lastschrifteinzug",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 310,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-stripe",
+   "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Funktionen ansehen",
+    "href": "/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 4,
+   "ruecklastschrift": 2,
+   "lexware_office": 6,
+   "lexware_allgemein": 1,
+   "einzug_datum_frist": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": true
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lexware-office-sepa-lastschrift.html",
+  "url": "https://lexware-einzug.de/lexware-office-sepa-lastschrift",
+  "seitentyp": "keyword_landingpage",
+  "title": "Lexware Office SEPA-Lastschrift: Rechnungen einziehen",
+  "title_laenge": 53,
+  "description": "Wie Sie SEPA-Lastschriften zu Ihren Lexware-Office-Rechnungen einziehen: Datenabgleich, Stripe-Anbindung, Mandatsverwaltung und der Ablauf im Überblick.",
+  "description_laenge": 152,
+  "h1": [
+   "SEPA-Lastschrift zu Lexware-Office-Rechnungen einziehen"
+  ],
+  "h2": [
+   "Warum Lexware Office und SEPA-Lastschrift oft getrennte Systeme sind",
+   "Aufgabenteilung zwischen den drei Systemen",
+   "Voraussetzungen für den Einzug",
+   "Jetzt mit dem Einzug beginnen"
+  ],
+  "canonical": "https://lexware-einzug.de/lexware-office-sepa-lastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 338,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-sepa-mandat",
+   "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert es",
+    "href": "/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "mandat": 4,
+   "lexware_office": 7,
+   "lexware_allgemein": 6,
+   "tarif_xl_public_api": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 1,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lexware-office-sepa-mandat.html",
+  "url": "https://lexware-einzug.de/lexware-office-sepa-mandat",
+  "seitentyp": "keyword_landingpage",
+  "title": "SEPA-Mandat für Lexware-Office-Kunden verwalten",
+  "title_laenge": 47,
+  "description": "Wie SmartEinzug SEPA-Mandatsreferenzen zu Ihren Lexware-Office-Kunden verwaltet und warum Sie weiterhin selbst für gültige Mandate verantwortlich sind.",
+  "description_laenge": 151,
+  "h1": [
+   "SEPA-Mandate für Ihre Lexware-Office-Kunden verwalten"
+  ],
+  "h2": [
+   "Was ein SEPA-Lastschriftmandat bedeutet",
+   "Mandatsreferenzen in SmartEinzug",
+   "Zusammenspiel mit offenen Rechnungen",
+   "SEPA-Zuordnungen zentral pflegen"
+  ],
+  "canonical": "https://lexware-einzug.de/lexware-office-sepa-mandat",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 298,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-sepa-lastschrift",
+   "https://lexware-einzug.de/lexware-office-stripe",
+   "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "SEPA-Lastschrift im Überblick",
+    "href": "/lexware-office-sepa-lastschrift"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 13,
+   "lexware_office": 4,
+   "lexware_allgemein": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 6,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lexware-office-stripe.html",
+  "url": "https://lexware-einzug.de/lexware-office-stripe",
+  "seitentyp": "keyword_landingpage",
+  "title": "Lexware Office mit Stripe verbinden",
+  "title_laenge": 35,
+  "description": "Wie Lexware Office und Stripe über SmartEinzug zusammenarbeiten: eigenes Stripe-Konto, Datenfluss, Zahlungsverarbeitung und Rückmeldung des Einzugsstatus.",
+  "description_laenge": 154,
+  "h1": [
+   "Lexware Office und Stripe miteinander verbinden"
+  ],
+  "h2": [
+   "Drei Systeme, klar getrennte Aufgaben",
+   "Datenfluss beim Einzug",
+   "Voraussetzung für einen reibungslosen Einzug",
+   "Stripe-Konto jetzt anbinden"
+  ],
+  "canonical": "https://lexware-einzug.de/lexware-office-stripe",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 291,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-sepa-mandat",
+   "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Funktionen ansehen",
+    "href": "/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 1,
+   "mandat": 2,
+   "lexware_office": 7,
+   "lexware_allgemein": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 5,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lexware-sepa-einzug.html",
+  "url": "https://lexware-einzug.de/lexware-sepa-einzug",
+  "seitentyp": "keyword_landingpage",
+  "title": "Lexware SEPA Einzug: Lastschriften aus Lexware Office einziehen",
+  "title_laenge": 63,
+  "description": "Lexware SEPA Einzug: Rechnungen aus Lexware Office per SEPA-Lastschrift einziehen. Voraussetzungen, Ablauf mit Stripe und die Grenzen von Lexware Office.",
+  "description_laenge": 153,
+  "h1": [
+   "Lexware SEPA Einzug: Rechnungen aus Lexware Office per Lastschrift einziehen"
+  ],
+  "h2": [
+   "Was \"Lexware SEPA Einzug\" in der Praxis bedeutet",
+   "Drei Bausteine, eine Oberfläche",
+   "So läuft der SEPA-Einzug aus Lexware Office ab",
+   "Voraussetzungen und typische Stolpersteine",
+   "Kosten des SEPA-Einzugs",
+   "SEPA-Einzug für Lexware Office jetzt einrichten"
+  ],
+  "canonical": "https://lexware-einzug.de/lexware-sepa-einzug",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 538,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR",
+   "50,00 EUR"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/anleitung/lexware-office-api",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-sepa-mandat",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id",
+   "https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "SEPA-Einzug einrichten",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung ansehen",
+    "href": "/anleitung/lexware-office-api"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 2,
+   "vorabankuendigung": 2,
+   "glaeubiger_id": 3,
+   "mandat": 7,
+   "rueckschreibung_buchhaltung": 3,
+   "zwei_faktor": 1,
+   "verschluesselung": 1,
+   "lexware_office": 13,
+   "lexware_allgemein": 9,
+   "tarif_xl_public_api": 3,
+   "sofort_geld": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 2,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "lp/sepa-lastschrift/index.html",
+  "url": "https://lexware-einzug.de/lp/sepa-lastschrift/",
+  "seitentyp": "kampagnenseite",
+  "title": "Lexware-Office-Rechnungen per SEPA-Lastschrift einziehen",
+  "title_laenge": 56,
+  "description": "SmartEinzug verbindet Lexware Office und Ihr eigenes Stripe-Konto: Rechnungen synchronisieren, SEPA-Mandate zuordnen und per Lastschrift einziehen.",
+  "description_laenge": 147,
+  "h1": [
+   "Lexware-Office-Rechnungen per SEPA-Lastschrift einziehen."
+  ],
+  "h2": [
+   "In drei Schritten startklar",
+   "Was SmartEinzug für Lexware-Office-Nutzer leistet",
+   "Ein Tarif, alles enthalten",
+   "Häufige Fragen",
+   "Bereit für den SEPA-Einzug aus Lexware Office?"
+  ],
+  "canonical": "https://lexware-einzug.de/lp/sepa-lastschrift",
+  "canonical_self": false,
+  "robots_meta": "noindex,follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 599,
+  "jsonld_typen": [
+   "Offer",
+   "SoftwareApplication"
+  ],
+  "jsonld_preise": [
+   "25.00 EUR"
+  ],
+  "jsonld_faq": false,
+  "preise_text": [
+   "128,00 €",
+   "25,00 EUR",
+   "410,50 €",
+   "50,00 EUR",
+   "980,00 €"
+  ],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/impressum"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 5,
+   "lexware_office": 10,
+   "lexware_allgemein": 10,
+   "tarif_xl_public_api": 4,
+   "stripe_gebuehr": 2,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": true
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "offene-rechnungen-per-lastschrift-einziehen.html",
+  "url": "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
+  "seitentyp": "keyword_landingpage",
+  "title": "Offene Rechnungen aus Lexware Office für den Einzug nutzen",
+  "title_laenge": 58,
+  "description": "Wie offene Rechnungen aus Lexware Office erkannt, synchronisiert und für den SEPA-Einzug über Stripe bereitgestellt werden, inklusive Fälligkeit und Vorlauf.",
+  "description_laenge": 157,
+  "h1": [
+   "Offene Rechnungen aus Lexware Office für den SEPA-Einzug nutzen"
+  ],
+  "h2": [
+   "Offene Rechnungen als Ausgangspunkt",
+   "Synchronisation im Hintergrund",
+   "Von der offenen Rechnung zum Einzug",
+   "Offene Rechnungen jetzt synchronisieren"
+  ],
+  "canonical": "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 289,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-sepa-mandat",
+   "https://lexware-einzug.de/lexware-office-stripe",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Funktionen ansehen",
+    "href": "/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 3,
+   "lexware_office": 5,
+   "lexware_allgemein": 2,
+   "tarif_xl_public_api": 1,
+   "einzug_datum_frist": 5
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 5,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "preise.html",
+  "url": "https://lexware-einzug.de/preise",
+  "seitentyp": "produktseite",
+  "title": "Preise für SmartEinzug",
+  "title_laenge": 22,
+  "description": "Preis und Leistungen von SmartEinzug: UNLIMITED START für 25 Euro je 4 Wochen, unbegrenzte Einzüge und Mitarbeiter, Abrechnung und Kündigung im Überblick.",
+  "description_laenge": 154,
+  "h1": [
+   "Preise für SmartEinzug"
+  ],
+  "h2": [
+   "UNLIMITED START im Detail",
+   "Preis-FAQ"
+  ],
+  "canonical": "https://lexware-einzug.de/preise",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 325,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [
+   "25,00 EUR",
+   "50,00 EUR"
+  ],
+  "preise_meta": [
+   "25 Euro"
+  ],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 2,
+   "lexware_office": 1,
+   "lexware_allgemein": 1,
+   "stripe_gebuehr": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 25,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "ratgeber/index.html",
+  "url": "https://lexware-einzug.de/ratgeber/",
+  "seitentyp": "ratgeber_uebersicht",
+  "title": "Ratgeber zu Lexware Office und SEPA",
+  "title_laenge": 35,
+  "description": "Ratgeberartikel zu SEPA-Lastschrift, Vorabankündigung, Mandatsreferenz und Gläubiger-Identifikationsnummer im Zusammenhang mit Lexware Office und Stripe.",
+  "description_laenge": 153,
+  "h1": [
+   "Ratgeber zu Lexware Office und SEPA-Lastschrift"
+  ],
+  "h2": [
+   "Wofür dieser Ratgeber gedacht ist",
+   "Die SEPA-Basislastschrift im Unternehmenseinsatz",
+   "Alle Ratgeberartikel"
+  ],
+  "canonical": "https://lexware-einzug.de/ratgeber/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 427,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id",
+   "https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office",
+   "https://lexware-einzug.de/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten",
+   "https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Zur Hilfe-Übersicht",
+    "href": "/hilfe"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "vorabankuendigung": 1,
+   "glaeubiger_id": 2,
+   "mandat": 5,
+   "lexware_office": 9,
+   "lexware_allgemein": 1,
+   "tarif_xl_public_api": 1,
+   "einzug_datum_frist": 7
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 25,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "ratgeber/mandatsreferenz-glaeubiger-id.html",
+  "url": "https://lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id",
+  "seitentyp": "ratgeber",
+  "title": "Mandatsreferenz und Gläubiger-Identifikationsnummer",
+  "title_laenge": 51,
+  "description": "Was Mandatsreferenz und Gläubiger-Identifikationsnummer im SEPA-Mandat bedeuten und wie SmartEinzug beide Angaben verwaltet.",
+  "description_laenge": 124,
+  "h1": [
+   "Mandatsreferenz und Gläubiger-Identifikationsnummer"
+  ],
+  "h2": [
+   "Was ist die Mandatsreferenz?",
+   "Was ist die Gläubiger-Identifikationsnummer?",
+   "Wie beide Angaben zusammenwirken",
+   "Hinweis zum Kontoauszug"
+  ],
+  "canonical": "https://lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 274,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-sepa-mandat",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Weitere Ratgeberartikel",
+    "href": "/ratgeber/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "glaeubiger_id": 8,
+   "mandat": 17,
+   "lexware_office": 2,
+   "lexware_allgemein": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "ratgeber/sepa-lastschrift-buchen-lexware-office.html",
+  "url": "https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office",
+  "seitentyp": "ratgeber",
+  "title": "Eingezogene Lastschriften in Lexware Office verbuchen",
+  "title_laenge": 53,
+  "description": "Wie Zahlungseingänge aus Stripe-Lastschriften in Lexware Office als Rechnungszahlung erfasst werden: Auszahlungen, Sammelauszahlungen, Gebühren und Abstimmung.",
+  "description_laenge": 159,
+  "h1": [
+   "Eingezogene Lastschriften in Lexware Office verbuchen"
+  ],
+  "h2": [
+   "Zwei Systeme, ein Zahlungsvorgang",
+   "Wann gilt die Rechnung als bezahlt?",
+   "Die Stripe-Auszahlung auf dem Geschäftskonto",
+   "Sammelauszahlungen mehrerer Einzüge",
+   "Rücklastschriften in der Buchhaltung",
+   "Empfehlungen für die Abstimmung"
+  ],
+  "canonical": "https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 764,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-lastschrift",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Weitere Ratgeberartikel",
+    "href": "/ratgeber/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 3,
+   "rueckschreibung_buchhaltung": 6,
+   "lexware_office": 11,
+   "stripe_gebuehr": 2,
+   "einzug_datum_frist": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "ratgeber/sepa-lastschrift-fristen-vorlaufzeiten.html",
+  "url": "https://lexware-einzug.de/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten",
+  "seitentyp": "ratgeber",
+  "title": "Fristen und Vorlaufzeiten bei der SEPA-Basislastschrift",
+  "title_laenge": 55,
+  "description": "Einreichungsfristen bei Stripe, Vorabankündigung, Fälligkeit und Rückgabefristen der SEPA-Basislastschrift sowie die Planung terminierter Einzüge.",
+  "description_laenge": 146,
+  "h1": [
+   "Fristen und Vorlaufzeiten bei der SEPA-Basislastschrift"
+  ],
+  "h2": [
+   "Warum eine Lastschrift Zeit braucht",
+   "Vorlauf für die Vorabankündigung",
+   "Einreichungsfrist bei Stripe",
+   "Fälligkeit und Gutschrift",
+   "Rückgabefristen bei Widerspruch",
+   "Terminierte Einzüge in SmartEinzug planen"
+  ],
+  "canonical": "https://lexware-einzug.de/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 755,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office",
+   "https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Weitere Ratgeberartikel",
+    "href": "/ratgeber/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 3,
+   "automatisch": 2,
+   "ruecklastschrift": 1,
+   "vorabankuendigung": 7,
+   "mandat": 5,
+   "lexware_office": 2,
+   "sofort_geld": 1,
+   "einzug_datum_frist": 21
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "ratgeber/vorabankuendigung-sepa-lastschrift.html",
+  "url": "https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift",
+  "seitentyp": "ratgeber",
+  "title": "Vorabankündigung bei der SEPA-Lastschrift",
+  "title_laenge": 41,
+  "description": "Was die Vorabankündigung einer SEPA-Lastschrift ist, welche Frist üblich ist und wie SmartEinzug die Ankündigung unterstützt.",
+  "description_laenge": 125,
+  "h1": [
+   "Vorabankündigung bei der SEPA-Lastschrift"
+  ],
+  "h2": [
+   "Was ist die Vorabankündigung?",
+   "Standardfrist von 14 Kalendertagen",
+   "Wie SmartEinzug die Vorabankündigung unterstützt",
+   "Einordnung"
+  ],
+  "canonical": "https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 241,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-lastschrift",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id",
+   "https://lexware-einzug.de/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Weitere Ratgeberartikel",
+    "href": "/ratgeber/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "vorabankuendigung": 11,
+   "glaeubiger_id": 1,
+   "mandat": 2,
+   "lexware_office": 1,
+   "einzug_datum_frist": 4
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
+ },
+ {
+  "domain": "lexware-einzug.de",
+  "datei": "sicherheit.html",
+  "url": "https://lexware-einzug.de/sicherheit",
+  "seitentyp": "produktseite",
+  "title": "Sicherheit bei SmartEinzug",
+  "title_laenge": 26,
+  "description": "Wie SmartEinzug Zugangsdaten, Mandantentrennung, Protokoll und Zahlungsdaten schützt: 2FA-Pflicht, verschlüsselte Schlüssel, Webhook-Signaturprüfung.",
+  "description_laenge": 149,
+  "h1": [
+   "Sicherheit bei SmartEinzug"
+  ],
+  "h2": [
+   "Zugang mit Zwei-Faktor-Authentifizierung",
+   "Verschlüsselte Speicherung der Schlüssel",
+   "Mandantentrennung",
+   "Rollen, Protokoll und Sitzungsende",
+   "Webhook-Signaturprüfung und HTTPS",
+   "Einordnung"
+  ],
+  "canonical": "https://lexware-einzug.de/sicherheit",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 271,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lexware-einzug.de/",
+   "https://lexware-einzug.de/agb",
+   "https://lexware-einzug.de/datenschutz",
+   "https://lexware-einzug.de/faq",
+   "https://lexware-einzug.de/funktionen",
+   "https://lexware-einzug.de/hilfe",
+   "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/preise",
+   "https://lexware-einzug.de/ratgeber/",
+   "https://lexware-einzug.de/sicherheit"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Funktionen ansehen",
+    "href": "/funktionen"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 1,
+   "mandat": 1,
+   "zwei_faktor": 3,
+   "verschluesselung": 4,
+   "lexware_office": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 25,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "404.html",
+  "url": "https://lastschrift-einfach.de/404",
+  "seitentyp": "fehlerseite",
+  "title": "Seite nicht gefunden | Lastschrift einfach",
+  "title_laenge": 42,
+  "description": "",
+  "description_laenge": 0,
+  "h1": [
+   "Seite nicht gefunden"
+  ],
+  "h2": [],
+  "canonical": "",
+  "canonical_self": false,
+  "robots_meta": "noindex,follow",
+  "indexierbar_technisch": false,
+  "in_sitemap": false,
+  "og_image": "",
+  "woerter_hauptinhalt": 35,
+  "jsonld_typen": [],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Zur Startseite",
+    "href": "/"
+   }
+  ],
+  "pruefwoerter": {
+   "lexware_office": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 0,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "ablauf/index.html",
+  "url": "https://lastschrift-einfach.de/ablauf/",
+  "seitentyp": "wissen",
+  "title": "Ablauf einer SEPA-Lastschrift | Lastschrift einfach",
+  "title_laenge": 51,
+  "description": "So läuft eine SEPA-Lastschrift ab: Vorabinformation, Einreichung, Fälligkeit, Bankarbeitstage und wann eine Lastschrift als bezahlt gilt.",
+  "description_laenge": 137,
+  "h1": [
+   "Ablauf einer SEPA-Lastschrift: Von der Rechnung zum Zahlungseingang"
+  ],
+  "h2": [
+   "Vorabinformation an den Kunden",
+   "Einreichung bei der eigenen Bank",
+   "Fälligkeit und Bankarbeitstage",
+   "Zahlungsstatus zwischen Einreichung und Gutschrift",
+   "Wann eine Lastschrift als bezahlt gilt",
+   "Ein Beispiel aus der Praxis"
+  ],
+  "canonical": "https://lastschrift-einfach.de/ablauf/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 629,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "automatisch": 1,
+   "ruecklastschrift": 2,
+   "vorabankuendigung": 1,
+   "glaeubiger_id": 5,
+   "mandat": 4,
+   "rueckschreibung_buchhaltung": 3,
+   "lexware_office": 1,
+   "einzug_datum_frist": 17
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "datenschutz/index.html",
+  "url": "https://lastschrift-einfach.de/datenschutz/",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Datenschutzerklärung | Lastschrift einfach",
+  "title_laenge": 42,
+  "description": "Datenschutz von lastschrift-einfach.de: Verantwortlicher, Hosting, Kontaktaufnahme, Cookie-Einwilligung und Betroffenenrechte.",
+  "description_laenge": 126,
+  "h1": [
+   "Datenschutzerklärung"
+  ],
+  "h2": [
+   "1. Wer für diese Seite verantwortlich ist",
+   "2. Technischer Betrieb bei IONOS",
+   "3. Wenn Sie uns per E-Mail schreiben",
+   "4. Einwilligung und Cookie-Auswahl",
+   "5. Google Analytics 4, sobald aktiviert",
+   "6. Auswertung über die Google Search Console",
+   "7. Wie lange Daten bei uns bleiben",
+   "8. Ihre Rechte als betroffene Person",
+   "9. Beschwerde bei einer Aufsichtsbehörde",
+   "10. Datenschutzbeauftragter"
+  ],
+  "canonical": "https://lastschrift-einfach.de/datenschutz/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 499,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [],
+  "ctas": [],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "dsgvo": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "fuer-wen/index.html",
+  "url": "https://lastschrift-einfach.de/fuer-wen/",
+  "seitentyp": "wissen",
+  "title": "Für wen sich SEPA-Lastschrift lohnt | Lastschrift einfach",
+  "title_laenge": 57,
+  "description": "Wiederkehrende Leistungen, Vereine, Wartungsverträge, Praxen und Handwerk: für wen sich SEPA-Lastschrift lohnt und wann eher nicht.",
+  "description_laenge": 131,
+  "h1": [
+   "Für wen sich SEPA-Lastschrift lohnt und wann eher nicht"
+  ],
+  "h2": [
+   "Wiederkehrende Leistungen",
+   "Vereine mit Mitgliedsbeiträgen",
+   "Wartungsverträge",
+   "Praxen mit Ratenzahlungen",
+   "Handwerk mit Abschlagszahlungen",
+   "Dienstleister mit Paketpreisen",
+   "Wann eher nicht",
+   "Eine kurze Entscheidungshilfe"
+  ],
+  "canonical": "https://lastschrift-einfach.de/fuer-wen/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 572,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "glaeubiger_id": 1,
+   "mandat": 7,
+   "rueckschreibung_buchhaltung": 2,
+   "lexware_office": 1,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 2,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "glossar/index.html",
+  "url": "https://lastschrift-einfach.de/glossar/",
+  "seitentyp": "wissen",
+  "title": "SEPA-Lastschrift Glossar | Lastschrift einfach",
+  "title_laenge": 46,
+  "description": "Glossar zur SEPA-Lastschrift: 20 Begriffe von Basislastschrift bis Zahlungsdienstleister, alphabetisch mit kurzer Erklärung.",
+  "description_laenge": 124,
+  "h1": [
+   "Glossar: 20 Begriffe rund um die SEPA-Lastschrift"
+  ],
+  "h2": [],
+  "canonical": "https://lastschrift-einfach.de/glossar/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 671,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "partner_offiziell": 3,
+   "firmenlastschrift_b2b": 3,
+   "ruecklastschrift": 4,
+   "vorabankuendigung": 2,
+   "glaeubiger_id": 9,
+   "mandat": 15,
+   "lexware_office": 1,
+   "einzug_datum_frist": 5
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "grundlagen/index.html",
+  "url": "https://lastschrift-einfach.de/grundlagen/",
+  "seitentyp": "wissen",
+  "title": "SEPA-Basislastschrift: Grundlagen | Lastschrift einfach",
+  "title_laenge": 55,
+  "description": "SEPA-Basislastschrift verständlich erklärt: Unterschied zur Überweisung, zur Firmenlastschrift, Beteiligte und die wichtigsten Begriffe.",
+  "description_laenge": 136,
+  "h1": [
+   "SEPA-Basislastschrift: Grundlagen für Unternehmen"
+  ],
+  "h2": [
+   "Was eine SEPA-Basislastschrift ist",
+   "Unterschied zur Überweisung",
+   "Unterschied zur Firmenlastschrift, SEPA B2B",
+   "Wer ist am Verfahren beteiligt",
+   "Wichtige Begriffe kurz erklärt",
+   "Ein Beispiel aus der Praxis"
+  ],
+  "canonical": "https://lastschrift-einfach.de/grundlagen/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 604,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/fuer-wen/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "partner_offiziell": 3,
+   "firmenlastschrift_b2b": 7,
+   "ruecklastschrift": 1,
+   "vorabankuendigung": 1,
+   "glaeubiger_id": 6,
+   "mandat": 10,
+   "rueckschreibung_buchhaltung": 2,
+   "lexware_office": 1,
+   "einzug_datum_frist": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "impressum/index.html",
+  "url": "https://lastschrift-einfach.de/impressum/",
+  "seitentyp": "rechtliches_kontakt",
+  "title": "Impressum | Lastschrift einfach",
+  "title_laenge": 31,
+  "description": "Impressum von lastschrift-einfach.de: Anbieterkennzeichnung der Müller Holding AG, Registereintrag und Kontaktdaten.",
+  "description_laenge": 116,
+  "h1": [
+   "Impressum"
+  ],
+  "h2": [
+   "Betreibende Gesellschaft",
+   "Vertretung und Aufsicht",
+   "So erreichen Sie uns",
+   "Redaktionell verantwortlich",
+   "Charakter dieses Angebots",
+   "Genannte Marken Dritter"
+  ],
+  "canonical": "https://lastschrift-einfach.de/impressum/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 203,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "mueller-holding.ag"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "lexware_office": 1,
+   "lexware_allgemein": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "index.html",
+  "url": "https://lastschrift-einfach.de/",
+  "seitentyp": "startseite",
+  "title": "SEPA-Lastschrift einfach erklärt | Lastschrift einfach",
+  "title_laenge": 54,
+  "description": "Ratgeber zur SEPA-Lastschrift für kleine Unternehmen, Handwerk, Vereine und Dienstleister: Grundlagen, Mandat, Ablauf, Rücklastschrift und Glossar.",
+  "description_laenge": 147,
+  "h1": [
+   "SEPA-Lastschrift einfach erklärt"
+  ],
+  "h2": [
+   "Alle Themen im Überblick",
+   "Für wen dieser Ratgeber ist"
+  ],
+  "canonical": "https://lastschrift-einfach.de/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 599,
+  "jsonld_typen": [
+   "Organization",
+   "PostalAddress",
+   "WebSite"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/fuer-wen/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "firmenlastschrift_b2b": 1,
+   "ruecklastschrift": 4,
+   "glaeubiger_id": 3,
+   "mandat": 9,
+   "rueckschreibung_buchhaltung": 4,
+   "lexware_office": 1,
+   "lexware_allgemein": 1,
+   "einzug_datum_frist": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "mandat/index.html",
+  "url": "https://lastschrift-einfach.de/mandat/",
+  "seitentyp": "wissen",
+  "title": "Das SEPA-Mandat | Lastschrift einfach",
+  "title_laenge": 37,
+  "description": "SEPA-Mandat richtig einholen: Pflichtangaben, Erteilung auf Papier oder digital, Aufbewahrung, Gläubiger-ID und Mandatsreferenz.",
+  "description_laenge": 128,
+  "h1": [
+   "Das SEPA-Mandat: Pflichtangaben und Aufbewahrung"
+  ],
+  "h2": [
+   "Pflichtangaben eines vollständigen Mandats",
+   "Erteilung auf Papier",
+   "Erteilung auf digitalem Weg",
+   "Aufbewahrung des Mandats",
+   "Gläubiger-Identifikationsnummer",
+   "Mandatsreferenz",
+   "Verfall bei Nichtnutzung",
+   "Ein Beispiel aus der Praxis"
+  ],
+  "canonical": "https://lastschrift-einfach.de/mandat/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 632,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "glaeubiger_id": 8,
+   "mandat": 31,
+   "rueckschreibung_buchhaltung": 1,
+   "lexware_office": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ },
+ {
+  "domain": "lastschrift-einfach.de",
+  "datei": "ruecklastschrift/index.html",
+  "url": "https://lastschrift-einfach.de/ruecklastschrift/",
+  "seitentyp": "wissen",
+  "title": "Rücklastschrift: Gründe und Fristen | Lastschrift einfach",
+  "title_laenge": 57,
+  "description": "Rücklastschrift bei der SEPA-Lastschrift: häufige Gründe, geltende Fristen, Kosten und der richtige Umgang mit dem betroffenen Kunden.",
+  "description_laenge": 134,
+  "h1": [
+   "Rücklastschrift bei der SEPA-Lastschrift: Gründe und Fristen"
+  ],
+  "h2": [
+   "Was eine Rücklastschrift ist",
+   "Häufige Gründe",
+   "Fristen für die Erstattung",
+   "Kosten einer Rücklastschrift",
+   "Umgang mit dem betroffenen Kunden",
+   "Wiedervorlage",
+   "Prävention",
+   "Ein Beispiel aus der Praxis"
+  ],
+  "canonical": "https://lastschrift-einfach.de/ruecklastschrift/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://lastschrift-einfach.de/assets/img/og-image.png?v=20260905a",
+  "woerter_hauptinhalt": 624,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "WebPage"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 0,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://lastschrift-einfach.de/",
+   "https://lastschrift-einfach.de/ablauf/",
+   "https://lastschrift-einfach.de/datenschutz/",
+   "https://lastschrift-einfach.de/glossar/",
+   "https://lastschrift-einfach.de/grundlagen/",
+   "https://lastschrift-einfach.de/impressum/",
+   "https://lastschrift-einfach.de/mandat/",
+   "https://lastschrift-einfach.de/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "smart-einzug.de"
+  ],
+  "ctas": [],
+  "pruefwoerter": {
+   "partner_offiziell": 3,
+   "ruecklastschrift": 12,
+   "glaeubiger_id": 3,
+   "mandat": 7,
+   "rueckschreibung_buchhaltung": 1,
+   "lexware_office": 1,
+   "einzug_datum_frist": 6
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 10,
+  "verwaist": false
+ }
+]
