@@ -270,14 +270,17 @@ redis_wait_healthy() {
 
 # Netzwerkbasierter Redis-Test AUS EINEM ANDEREN CONTAINER ueber das interne Docker-Netz - ausdruecklich
 # NICHT "docker exec redis redis-cli ping": Dieser Befehl laeuft ueber Redis' EIGENE Loopback-Adresse und
-# haette genau das urspruengliche protected-mode-Problem verborgen (siehe Version 4.8). $1: RELEASE_SHA,
-# dessen Code fuer den Testcontainer verwendet wird - nach Moeglichkeit der BEKANNT GUTE, bereits laufende
-# alte Code, damit ein Fehlschlag hier eindeutig der Redis-Infrastruktur zuzuordnen ist und nicht einer
-# Regression im neuen Anwendungscode.
+# haette genau das urspruengliche protected-mode-Problem verborgen (siehe Version 4.8). Verwendet wird
+# IMMER der Code des NEUEN Release ($SHA, ueber das bereits exportierte RELEASE_SHA): Nur er kennt den vom
+# Stack gesetzten eindeutigen Hostnamen SMARTEINZUG_REDIS_HOST (ein aelteres Release wuerde weiter den
+# mehrdeutigen Namen "redis" verwenden und damit Coolifys Redis treffen, siehe Version 4.10) und liefert
+# die stufenweise DIAGNOSE-Zeile (Aufloesung, erwartetes Netz, TCP, Protokoll) ins Protokoll. Ein
+# Fehlschlag hier bedeutet: Redis ist fuer den neuen Code aus dem internen Netz nicht nutzbar - egal, ob
+# die Ursache in redis.conf, im Netz oder im Alias liegt; die DIAGNOSE-Zeile benennt die Stufe.
 redis_network_probe() {
-    local probe_sha="$1" rc
+    local rc
     set +e
-    RELEASE_SHA="$probe_sha" "${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --redis
+    "${COMPOSE[@]}" run --rm --no-deps -T php php bin/healthcheck.php --redis
     rc=$?
     set -e
     return "$rc"
@@ -334,9 +337,8 @@ else
             REDIS_UPDATE_FAILED=1
         else
             echo "Redis mit der neuen Konfiguration ist healthy. Pruefe den Zugriff aus einem ANDEREN Container ueber das interne Netz (nicht per docker exec/Loopback) ..."
-            PROBE_SHA="${PREV_SHA:-$SHA}"
-            if ! redis_network_probe "$PROBE_SHA"; then
-                echo "::error:: Redis ist zwar 'healthy', aber ueber das interne Docker-Netz aus einem anderen Container NICHT erreichbar (genau der Fehler, den 'docker exec redis redis-cli ping' verborgen haette)."
+            if ! redis_network_probe; then
+                echo "::error:: Redis ist zwar 'healthy', aber ueber das interne Docker-Netz aus einem anderen Container NICHT nutzbar (Stufe und Kategorie siehe DIAGNOSE-Zeile oben; genau der Fehler, den 'docker exec redis redis-cli ping' verborgen haette)."
                 REDIS_UPDATE_FAILED=1
             else
                 echo "Netzwerkbasierter Redis-Test aus einem anderen Container erfolgreich."
@@ -347,15 +349,27 @@ else
     if [[ "$REDIS_UPDATE_FAILED" -eq 1 ]]; then
         deploy_fail_report "redis-infrastruktur-aktualisierung" "docker compose up -d --no-deps --force-recreate redis" ""
         echo "Setze die Redis-Infrastruktur auf das vorherige Release zurueck ..."
+        # Bewertung des Rollbacks in zwei Stufen (siehe docs/vps/06-betrieb.md, Version 4.10):
+        #  - TECHNISCHE Wiederherstellung (harte Kriterien): alte redis.conf zurueckkopiert, redis-Dienst
+        #    neu erzeugt, redis-Dienst healthy. Nur wenn das fehlschlaegt, ist der Rollback gescheitert.
+        #  - FACHLICHE Erreichbarkeit aus einem anderen Container: nur eine WARNUNG. Der vorherige Zustand
+        #    kann den Netzwerktest bekanntermassen nicht bestehen (z.B. protected-mode yes oder der
+        #    mehrdeutige Hostname "redis"), genau deshalb wurde ja ein neues Release ausgeliefert. Das
+        #    ist der bekannte Altzustand, kein Fehlschlag der Wiederherstellung.
         if restore_redis_conf_from_prev; then
             set +e
             "${COMPOSE[@]}" up -d --no-deps --force-recreate redis
             RESTORE_RC=$?
             set -e
-            if [[ "$RESTORE_RC" -eq 0 ]] && redis_wait_healthy && redis_network_probe "${PREV_SHA:-$SHA}"; then
-                echo "Redis erfolgreich auf die vorherige Konfiguration zurueckgesetzt, der alte Anwendungscode erreicht Redis wieder."
+            if [[ "$RESTORE_RC" -eq 0 ]] && redis_wait_healthy; then
+                echo "Redis-Infrastruktur TECHNISCH erfolgreich auf die vorherige Konfiguration zurueckgesetzt (redis.conf wiederhergestellt, Dienst neu erzeugt, healthy)."
+                if redis_network_probe; then
+                    echo "Redis ist mit der vorherigen Konfiguration aus einem anderen Container erreichbar."
+                else
+                    echo "::warning:: Redis ist mit der vorherigen Konfiguration aus einem anderen Container weiterhin NICHT nutzbar (bekannter Altzustand, siehe DIAGNOSE-Zeile oben). Der Rollback selbst ist technisch erfolgreich; die Anwendung arbeitet wie zuvor mit dem Datenbank-Fallback ohne Redis."
+                fi
             else
-                echo "::error:: Auch die Wiederherstellung der vorherigen Redis-Konfiguration schlug fehl. Manuelle Pruefung auf dem Server erforderlich (docker compose logs redis)."
+                echo "::error:: Wiederherstellung der vorherigen Redis-Konfiguration TECHNISCH fehlgeschlagen (Recreate-Exitcode $RESTORE_RC oder Dienst nicht healthy). Manuelle Pruefung auf dem Server erforderlich (docker compose logs redis)."
             fi
         else
             echo "::error:: Kein vorheriges Release fuer eine Redis-Wiederherstellung bekannt (Ersteinrichtung?). Manuelle Pruefung erforderlich."

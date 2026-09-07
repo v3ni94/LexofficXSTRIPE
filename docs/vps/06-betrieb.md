@@ -344,6 +344,92 @@ der beiden Release-Ordner, nicht Compose's eigene, für Bind-Mounts unzureichend
   `tools/staging-isolation-check.py` bestätigt zusätzlich, dass Redis in Produktion UND Staging jeweils
   keinen Host-Port hat, ausschließlich am internen Netz hängt und keine Traefik-Labels trägt.
 
+### Nachtrag (Version 4.10): Redis-Alias-Kollision mit Coolifys eigenem Redis – die tatsächliche Root Cause
+
+**Symptom (Run #43):** Der neue Redis-Dienst wurde mit `protected-mode no` gestartet und war `healthy`,
+trotzdem scheiterte der netzwerkbasierte Test aus einem anderen Container weiterhin, jetzt mit
+„redis: other“. Der Redis-Rollback lief technisch korrekt durch (alte `redis.conf`, Dienst neu erzeugt,
+`healthy`, `CONFIG GET protected-mode` wieder `yes`), alle produktiven Container blieben `healthy`. Damit
+war klar: `protected-mode` allein erklärt den Fehler nicht.
+
+**Root Cause (aus Primärquellen belegt, adversarial gegengeprüft):** Der Hostname `redis` ist auf einem
+Coolify-Server **mehrdeutig**. Unsere PHP-Container hängen an zwei Netzen: `coolify` (Coolify-MariaDB,
+Internet) und `smarteinzug_internal` (Caddy, unser Redis). Coolifys eigener Stack
+(`coollabsio/coolify`, `docker-compose.yml` + `docker-compose.prod.yml`) definiert ebenfalls einen Dienst
+mit dem Namen `redis` (Container `coolify-redis`, Netz `coolify`, gestartet mit
+`redis-server … --requirepass ${REDIS_PASSWORD}`). Compose trägt den Dienstnamen als DNS-Alias in jedes
+Netz ein, das der Dienst nutzt, also existiert der Alias `redis` **in beiden** Netzen unserer
+PHP-Container. Dockers eingebetteter DNS (`moby/moby`, `daemon/libnetwork/sandbox.go`,
+`Sandbox.resolveName`) fragt die Netze eines Containers in einer festen Reihenfolge ab und liefert den
+**ersten Treffer**, ohne die anderen Netze noch zu betrachten. Die Reihenfolge (`Endpoint.Less`) sortiert
+Netze **ohne** `internal: true` vor internen Netzen; `coolify` (nicht intern) kommt damit vor
+`smarteinzug_internal` (intern). Ergebnis: `redis` löste aus jedem unserer PHP-Container zu **Coolifys**
+Redis auf. Die TCP-Verbindung gelang, der erste Befehl (`PING`) erhielt `NOAUTH Authentication required.`
+
+Das erklärt **alle** bisherigen Beobachtungen lückenlos und wurde lokal gegen einen echten,
+passwortgeschützten Redis nachgestellt:
+
+| Beobachtung | Erklärung |
+|---|---|
+| Run #39: „redis: other“ | `NOAUTH …` traf auf die damalige `monitor_category()` (kein `noauth`-Muster) → `other`. Die protected-mode-Meldung „DENIED …“ hätte dagegen wegen des Wortes „connections“ bereits damals `connection` ergeben, nie `other`. |
+| danach: „redis: auth“ | dieselbe `NOAUTH`-Meldung mit der erweiterten `monitor_category()` (Version 4.6) → `auth`. Die Klassifizierung war **richtig**: Die Gegenstelle verlangte tatsächlich ein Passwort, nur war es nicht unser Redis. |
+| Run #43: „redis: other“ trotz `protected-mode no` und `healthy` | Der netzwerkbasierte Test lief absichtlich mit dem **alten** Release-Code (`PREV_SHA`, dort noch die alte `monitor_category()`) → `NOAUTH` → `other`. Der neue Redis war nie die Gegenstelle. |
+| `docker exec smarteinzug-redis-1 redis-cli ping` → `PONG` | läuft im Redis-Container selbst, ohne DNS-Auflösung von `redis`; sagt nichts über die Auflösung aus anderen Containern aus. |
+| Datenbankprüfung immer unauffällig | Der Coolify-MariaDB-Containername ist eindeutig, es gibt keinen zweiten Träger dieses Namens. |
+
+**Was von Version 4.8 bestehen bleibt:** `protected-mode yes` ohne Passwort blockiert Zugriffe von
+Nicht-Loopback-Clients nachweislich (lokal reproduziert). Es war ein zweiter, latenter Fehler, der
+gegriffen hätte, sobald `redis` tatsächlich zu unserem Redis aufgelöst wäre; `protected-mode no` bleibt
+deshalb korrekt und notwendig. Er war aber **nicht** die Ursache der beobachteten Meldungen.
+
+**Behoben (Version 4.10):**
+
+- Unser Redis-Dienst trägt in `docker-compose.yml` zusätzlich den eindeutigen Alias `smarteinzug-redis`
+  (nur im internen Netz; Coolifys Container hängen dort nicht). Alle Dienste aus dem PHP-Image erhalten
+  `SMARTEINZUG_REDIS_HOST=smarteinzug-redis` und `SMARTEINZUG_REDIS_EXPECTED_CIDR=172.28.0.0/24` (Subnetz
+  von `smarteinzug_internal`) aus dem Stack. `app/redis.php` (`redis_effective_host()`) bevorzugt diese
+  Variable vor `config('redis')['host']`; **`shared/config.php` muss dafür nicht geändert werden**
+  (`'host' => 'redis'` bleibt als Fallback für IONOS/lokale Tests). Bewusst kein Verlass auf die
+  Sortierreihenfolge des Docker-DNS (etwa über `com.docker.network.priority`): Sie ist ein
+  Implementationsdetail, der eindeutige Alias ist ein dokumentierter Compose-Vertrag.
+- `bin/healthcheck.php --redis` diagnostiziert stufenweise (`redis_probe()`): Auflösung des Hostnamens
+  (`alias_missing` für einen fehlenden Docker-Alias, `dns` für einen voll qualifizierten Namen), Netz
+  (`network_mismatch`, wenn der Name in ein anderes Netz auflöst als vom Stack erwartet, genau der
+  Coolify-Fall; `alias_ambiguous` bei mehreren Adressen), TCP (`connection_refused`, `timeout`,
+  `network_unreachable`), Redis-Protokoll (`redis_protected_mode`, `auth`, `protocol`). Bei einem
+  Fehlschlag steht eine `DIAGNOSE redis: host=… aufgeloest=… erwartet=… stufe=… kategorie=… meldung="…"`-Zeile
+  im Deployment-Protokoll (Passwörter maskiert, Originalmeldung gekürzt). Nur transiente Stufen werden
+  wiederholt; `auth`, `network_mismatch`, `protected_mode`, `protocol` sofort gemeldet.
+- `deploy.sh` führt den netzwerkbasierten Redis-Test jetzt **immer mit dem Code des neuen Release** aus
+  (nur er kennt `SMARTEINZUG_REDIS_HOST` und liefert die DIAGNOSE-Zeile); ein älteres Release würde
+  weiter den mehrdeutigen Namen `redis` verwenden und damit erneut Coolifys Redis treffen.
+- **Rollback-Bewertung getrennt:** Technische Wiederherstellung (alte `redis.conf` zurückkopiert, Dienst
+  neu erzeugt, `healthy`) sind die harten Kriterien; der erneute Netzwerktest gegen den alten Zustand ist
+  nur eine **Warnung**, denn der alte Zustand kann bekanntermaßen scheitern (genau deshalb wurde ja
+  ausgeliefert). Der Rollback nach Run #43 war damit technisch erfolgreich; die Anwendung arbeitet in
+  diesem Zustand wie zuvor mit dem Datenbank-Fallback ohne Redis.
+
+**Was auf dem VPS nach dem Deployment zu erwarten ist:** Die Candidate-Prüfung und der Netzwerktest
+melden `OK`; `docker compose … exec php getent hosts smarteinzug-redis` liefert eine Adresse aus
+`172.28.0.0/24`, während `getent hosts redis` aus einem PHP-Container weiterhin Coolifys Redis liefern
+kann – das ist jetzt unerheblich, weil kein Code diesen Namen mehr verwendet.
+
+**Regressionstests (was echt ist und was simuliert):** `tools/healthcheck-redis-check.php` Teil 9 prüft
+gegen **echte** lokale Redis-Server: passwortgeschütztes fremdes Redis ohne Passwort → `auth`
+(DIAGNOSE `stufe=redis`, `NOAUTH`, Passwortwert nirgends in der Ausgabe), korrektes Passwort → `OK`,
+Auflösung außerhalb des erwarteten CIDR → `network_mismatch`, im CIDR → `OK`, fehlender einteiliger Alias
+→ `alias_missing`, `SMARTEINZUG_REDIS_HOST` schlägt `config.php`. `tools/staging-isolation-check.py`
+bestätigt per `docker compose config` für Produktion und Staging: Alias `smarteinzug-redis` nur im
+internen Netz, jeder PHP-Dienst mit passendem `SMARTEINZUG_REDIS_HOST` und CIDR, PHP-Dienste und Redis im
+selben internen Netz, kein Alias im Coolify-Netz. `tools/redis-deploy-check.sh` (Fake-`docker`, echte
+`deploy.sh`) prüft: fehlender Alias → Abbruch mit `alias_missing`-Diagnose und **technisch
+erfolgreichem** Rollback auf den bekannt defekten Altzustand (nur Warnung), Netzwerktest läuft mit
+`RELEASE_SHA` des neuen Release, alle Compose-Aufrufe treffen dasselbe Projekt, jeder `run` verwendet
+`--no-deps`, Reihenfolge Recreate → Netzwerktest → Candidate → Migration → Cutover. **Nicht** lokal
+prüfbar (kein Docker-Daemon in der Entwicklungsumgebung): die tatsächliche Docker-DNS-Auflösung des
+Alias und die Netzmitgliedschaft eines echten `compose run`-Containers; beides ist über die zitierten
+Primärquellen belegt und wird beim nächsten Deployment durch die DIAGNOSE-Zeile sichtbar.
+
 ## Staging- und Produktionsisolation
 
 Eine Prüfung auf dem produktiven VPS (`docker compose config`, ohne einen tatsächlichen Staging-Start)

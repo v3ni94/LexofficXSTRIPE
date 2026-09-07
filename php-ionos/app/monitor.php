@@ -257,6 +257,9 @@ function monitor_category($e): string
     // auch "connections"/"connect" enthaelt.
     if (preg_match('/protected mode|no password is set for the default user/', $msg)) return 'redis_protected_mode';
     if (preg_match('/noauth|wrongpass|invalid password|401|403|unauthori|forbidden|api key|api-schl|ungültiger schl/', $msg)) return 'auth';
+    // Gegenstelle antwortet, aber nicht wie erwartet (kein Redis, anderes Protokoll, unbekannter Befehl):
+    // typische phpredis-Meldungen "protocol error, got 'x' as reply type byte", "ERR unknown command".
+    if (preg_match('/protocol error|reply type byte|unknown command|unexpected response|malformed/', $msg)) return 'protocol';
     if (preg_match('/429|rate limit|too many|drossel/', $msg)) return 'throttled';
     if (preg_match('/50\d|gateway|unavailable/', $msg)) return 'http_5xx';
     if (preg_match('/refused|no route to host|network is unreachable/', $msg)) return 'connection_refused';

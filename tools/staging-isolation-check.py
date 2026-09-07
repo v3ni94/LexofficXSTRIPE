@@ -33,6 +33,11 @@ Konfiguration, nicht nur den Rohtext der YAML-Dateien):
      "protected-mode no" in redis.conf vertretbar ist (siehe redis.conf, Kopfkommentar, und
      docs/vps/06-betrieb.md, Abschnitt "Redis protected mode"). Belegt zugleich, dass Produktion und
      Staging getrennte Redis-Ressourcen verwenden (unterschiedliche Netz-Laufzeitnamen, siehe Punkt 3).
+ 10. redis traegt in beiden Umgebungen den eindeutigen Alias "smarteinzug-redis" AUSSCHLIESSLICH im
+     internen Netz; jeder Dienst aus dem PHP-Image setzt SMARTEINZUG_REDIS_HOST genau darauf und
+     SMARTEINZUG_REDIS_EXPECTED_CIDR auf das Subnetz des internen Netzes; PHP-Dienste und redis teilen
+     dasselbe interne Netz (Hintergrund: Alias-Kollision von "redis" mit Coolifys eigenem Redis im Netz
+     "coolify", siehe docs/vps/06-betrieb.md, Abschnitt "Redis-Alias-Kollision").
 
 Aufruf: python3 tools/staging-isolation-check.py     Exit 0 = in Ordnung, 1 = Fehler
 """
@@ -194,6 +199,52 @@ def main() -> int:
                  f"ueber den Coolify-Proxy erreichbar.")
         if not ports and nets == {"smarteinzug_internal"} and not redis_traefik:
             print(f"redis in {env_name}: kein Host-Port, ausschliesslich smarteinzug_internal, keine Traefik-Labels.")
+
+    # 10. Eindeutiger Redis-Alias und dazu passender Stack-Hostname (Version 4.10): Der Hostname "redis"
+    # kollidiert auf einem Coolify-Server mit Coolifys eigenem Redis im Netz "coolify". Unser Redis muss
+    # deshalb den Alias "smarteinzug-redis" AUSSCHLIESSLICH im internen Netz tragen, JEDER PHP-Container
+    # (php, scheduler, worker-*, metrics) muss SMARTEINZUG_REDIS_HOST genau auf diesen Alias setzen und
+    # SMARTEINZUG_REDIS_EXPECTED_CIDR muss dem Subnetz des internen Netzes entsprechen; kein Dienst darf
+    # den Alias im Coolify-Netz fuehren. PHP-Container und Redis muessen dasselbe interne Netz teilen.
+    for env_name, cfg in (("Produktion", prod), ("Staging", staging)):
+        services = cfg.get("services") or {}
+        redis_service = services.get("redis") or {}
+        redis_nets = redis_service.get("networks") or {}
+        internal = redis_nets.get("smarteinzug_internal") or {}
+        aliases = set(internal.get("aliases") or [])
+        if "smarteinzug-redis" not in aliases:
+            fail(f"redis traegt in {env_name} nicht den Alias 'smarteinzug-redis' im Netz smarteinzug_internal "
+                 f"(Aliase: {sorted(aliases)}). Ohne eindeutigen Alias loest 'redis' zu Coolifys Redis auf.")
+        subnet = None
+        try:
+            subnet = (((cfg.get("networks") or {}).get("smarteinzug_internal") or {}).get("ipam") or {}).get("config", [{}])[0].get("subnet")
+        except (AttributeError, IndexError, TypeError):
+            subnet = None
+        php_like = [n for n, s in services.items() if isinstance(s, dict) and s.get("image") == "smarteinzug-php:local"]
+        bad_host, bad_cidr, not_internal = [], [], []
+        for name in php_like:
+            s = services[name]
+            envs = s.get("environment") or {}
+            if envs.get("SMARTEINZUG_REDIS_HOST") != "smarteinzug-redis":
+                bad_host.append(f"{name}={envs.get('SMARTEINZUG_REDIS_HOST')!r}")
+            if envs.get("SMARTEINZUG_REDIS_EXPECTED_CIDR") != subnet:
+                bad_cidr.append(f"{name}={envs.get('SMARTEINZUG_REDIS_EXPECTED_CIDR')!r}")
+            if "smarteinzug_internal" not in (s.get("networks") or {}):
+                not_internal.append(name)
+        if bad_host:
+            fail(f"{env_name}: SMARTEINZUG_REDIS_HOST ist nicht ueberall 'smarteinzug-redis': {bad_host}")
+        if bad_cidr:
+            fail(f"{env_name}: SMARTEINZUG_REDIS_EXPECTED_CIDR passt nicht zum Subnetz {subnet!r} von "
+                 f"smarteinzug_internal: {bad_cidr}")
+        if not_internal:
+            fail(f"{env_name}: PHP-Dienste ohne Anbindung an smarteinzug_internal (koennen Redis nicht erreichen): {not_internal}")
+        alias_on_coolify = [n for n, s in services.items() if isinstance(s, dict)
+                            and "smarteinzug-redis" in set((((s.get("networks") or {}).get("coolify") or {}) or {}).get("aliases") or [])]
+        if alias_on_coolify:
+            fail(f"{env_name}: Alias 'smarteinzug-redis' im Coolify-Netz gefunden ({alias_on_coolify}); er darf nur im internen Netz existieren.")
+        if "smarteinzug-redis" in aliases and not bad_host and not bad_cidr and not not_internal and not alias_on_coolify:
+            print(f"{env_name}: redis-Alias 'smarteinzug-redis' nur im internen Netz, {len(php_like)} PHP-Dienste mit passendem "
+                  f"SMARTEINZUG_REDIS_HOST und CIDR {subnet}, alle im selben internen Netz wie redis.")
 
     print()
     if errors:

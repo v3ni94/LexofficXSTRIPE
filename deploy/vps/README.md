@@ -127,6 +127,21 @@ Kurzfassung (Details und die vollstaendige, sichere Vorgehensweise zur Ersteinri
   getrennten VPS mit eigener Coolify-MariaDB betreiben, niemals auf dem Produktions-VPS.
 - Regressionstest: `python3 tools/staging-isolation-check.py` (kein Docker-Daemon noetig).
 
+## Redis-Hostname im Stack (Alias-Kollision mit Coolify)
+
+Der Hostname `redis` ist auf einem Coolify-Server mehrdeutig: Coolifys eigener Stack fuehrt ebenfalls
+einen Dienst `redis` (Container `coolify-redis`, mit Passwort) im gemeinsam genutzten Netz `coolify`,
+an dem unsere PHP-Container fuer Datenbank und Internet haengen. Dockers DNS liefert den Alias aus dem
+Netz OHNE `internal: true` zuerst, also Coolifys Redis ("NOAUTH Authentication required"). Deshalb:
+
+- `redis` traegt in `docker-compose.yml` den eindeutigen Alias `smarteinzug-redis` (nur im internen Netz).
+- Jeder Dienst aus dem PHP-Image erhaelt `SMARTEINZUG_REDIS_HOST=smarteinzug-redis` und
+  `SMARTEINZUG_REDIS_EXPECTED_CIDR=172.28.0.0/24`; `app/redis.php` bevorzugt die Variable vor
+  `config('redis')['host']`. `shared/config.php` muss dafuer NICHT geaendert werden.
+- `bin/healthcheck.php --redis` meldet stufenweise (Aufloesung, Netz, TCP, Protokoll) und schreibt eine
+  `DIAGNOSE redis: ...`-Zeile ohne Geheimnisse ins Deployment-Protokoll.
+- Details und Belege: `docs/vps/06-betrieb.md`, Abschnitt "Redis-Alias-Kollision".
+
 ## Betrieb
 
 Logs eines Dienstes ansehen (alle Dienste: json-file mit Rotation 20 MB / 5 Dateien):
@@ -350,4 +365,11 @@ blockierter Redis-Dienst fuehrt zu einem bestaetigten Rollback der Redis-Infrast
 gesamten Releases) und einem Abbruch OHNE Migration/Cutover; eine ungueltige neue `redis.conf` wird
 bereits in der Vorab-Validierung erkannt, bevor der laufende Dienst angefasst wird; eine Verletzung
 der Netzwerk-Isolationsvorgaben (Host-Port, Coolify-Netz, Traefik-Labels) bricht vor jeder Aenderung
-ab; eine Wiederholung bleibt idempotent.
+ab; eine Wiederholung bleibt idempotent; ein fehlender Alias `smarteinzug-redis` fuehrt zum Abbruch mit
+`alias_missing`-Diagnose und einem TECHNISCH erfolgreichen Rollback auf den bekannt alten Zustand (nur
+Warnung fuer den dort erwartbar scheiternden Netzwerktest); der Netzwerktest laeuft mit dem Code des
+NEUEN Release, alle Compose-Aufrufe treffen dasselbe Projekt, jeder `run` nutzt `--no-deps`, und die
+Reihenfolge Redis-Recreate -> Netzwerktest -> Candidate -> Migration -> Cutover wird aus dem
+Aufrufprotokoll nachgewiesen. `tools/healthcheck-redis-check.php` (Teil 9) stellt die Alias-Kollision
+gegen einen echten passwortgeschuetzten Redis nach (`auth`, `NOAUTH`, kein Passwort in der Ausgabe) und
+prueft `network_mismatch`, `alias_missing` sowie den Vorrang von `SMARTEINZUG_REDIS_HOST`.

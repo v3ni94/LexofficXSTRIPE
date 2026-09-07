@@ -94,6 +94,19 @@ x-php-common: &php-common
     TZ: ${TZ:-Europe/Berlin}
     # Konfiguration und Speicher liegen ausserhalb der Releases (siehe app/bootstrap.php, storage_dir()).
     SMARTEINZUG_CONFIG: /opt/smarteinzug/shared/config.php
+    # Redis-Hostname kommt aus dem Stack, NICHT aus shared/config.php ('host' => 'redis'): Der Hostname
+    # "redis" ist auf einem Coolify-Server MEHRDEUTIG. Coolifys eigener Stack definiert ebenfalls einen
+    # Dienst "redis" (Container coolify-redis, mit Passwort) im gemeinsam genutzten Netz "coolify", an dem
+    # unsere PHP-Container fuer Datenbank und Internet ebenfalls haengen. Dockers eingebetteter DNS
+    # beantwortet "redis" dann aus dem Netz mit Gateway (coolify) ZUERST, d.h. mit Coolifys Redis - die
+    # Folge war "NOAUTH Authentication required" (gemeldet als "redis: other" bzw. "redis: auth"), obwohl
+    # unser Redis kein Passwort verlangt (siehe docs/vps/06-betrieb.md, Abschnitt "Redis-Alias-Kollision").
+    # Unser Redis traegt deshalb den eindeutigen Alias "smarteinzug-redis" (siehe Dienst redis unten), den
+    # es nur im internen Netz gibt; app/redis.php bevorzugt diese Variable vor config('redis')['host'].
+    SMARTEINZUG_REDIS_HOST: smarteinzug-redis
+    # Erwartetes Netz des Redis-Dienstes (Subnetz von smarteinzug_internal, siehe networks unten):
+    # bin/healthcheck.php --redis meldet "network_mismatch", wenn der Hostname in ein anderes Netz aufloest.
+    SMARTEINZUG_REDIS_EXPECTED_CIDR: 172.28.0.0/24
   volumes: *code-mounts
   logging: *default-logging
 
@@ -225,6 +238,9 @@ services:
     environment:
       TZ: ${TZ:-Europe/Berlin}
       SMARTEINZUG_CONFIG: /opt/smarteinzug/shared/config.php
+      # Siehe x-php-common-env: eindeutiger Redis-Alias statt des mehrdeutigen "redis".
+      SMARTEINZUG_REDIS_HOST: smarteinzug-redis
+      SMARTEINZUG_REDIS_EXPECTED_CIDR: 172.28.0.0/24
       HOST_PROC: /hostproc
       HOST_ROOT: /opt/smarteinzug/releases
       # Lokale Kopie der Coolify-Datenbankbackups (nur lesend): der Sammler meldet Zeitpunkt und Groesse der
@@ -271,7 +287,14 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    networks: [smarteinzug_internal]
+    # Eindeutiger DNS-Alias "smarteinzug-redis" zusaetzlich zum automatischen Alias "redis" (Dienstname).
+    # "redis" kollidiert auf einem Coolify-Server mit Coolifys eigenem Redis im Netz "coolify" (siehe
+    # x-php-common-env oben); der Alias existiert ausschliesslich im internen Netz, an dem Coolifys
+    # Container nicht haengen, und ist damit fuer unsere PHP-Container eindeutig. Staging erhaelt denselben
+    # Alias in seinem EIGENEN internen Netz (anderer Compose-Projektname), ohne Kollision mit Produktion.
+    networks:
+      smarteinzug_internal:
+        aliases: [smarteinzug-redis]
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     healthcheck:

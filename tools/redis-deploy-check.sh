@@ -101,10 +101,29 @@ make_fake_docker() {
 # reiner Formalwert).
 set -uo pipefail
 ARGS="$*"
-echo "$ARGS" >> "${FAKE_CALL_LOG:?FAKE_CALL_LOG nicht gesetzt}"
+# Jede Zeile traegt das RELEASE_SHA aus der Umgebung des Aufrufs: so laesst sich pruefen, mit welchem
+# Release-Code ein "docker compose run" (Netzwerktest, Candidate) tatsaechlich lief.
+echo "RELEASE_SHA=${RELEASE_SHA:-unset} $ARGS" >> "${FAKE_CALL_LOG:?FAKE_CALL_LOG nicht gesetzt}"
 
 redis_conf_ok() {
     grep -qx 'protected-mode no' "${FAKE_DEPLOY_DIR:?FAKE_DEPLOY_DIR nicht gesetzt}/redis/redis.conf" 2>/dev/null
+}
+
+# Netzwerktest aus einem anderen Container, stufenweise wie bin/healthcheck.php --redis: zuerst der
+# DNS-Alias (FAKE_ALIAS_MISSING=1 simuliert einen fehlenden Alias, z.B. Redis in einem anderen
+# Compose-Projekt/Netz), dann das Redis-Protokoll (haengt vom Inhalt der aktiven redis.conf ab).
+redis_probe_result() {
+    if [[ "${FAKE_ALIAS_MISSING:-0}" == "1" ]]; then
+        echo 'DIAGNOSE redis: host=smarteinzug-redis port=6379 aufgeloest=keine erwartet=172.28.0.0/24 stufe=resolve kategorie=alias_missing meldung="(fake)"' >&2
+        echo "UNGESUND: redis: alias_missing" >&2
+        return 1
+    fi
+    if redis_conf_ok; then
+        return 0
+    fi
+    echo 'DIAGNOSE redis: host=smarteinzug-redis port=6379 aufgeloest=172.28.0.5 erwartet=172.28.0.0/24 stufe=redis kategorie=redis_protected_mode meldung="DENIED (fake)"' >&2
+    echo "UNGESUND: redis: redis_protected_mode" >&2
+    return 1
 }
 
 case "$ARGS" in
@@ -136,10 +155,10 @@ case "$ARGS" in
         echo "(fake redis logs)"
         ;;
     *"bin/healthcheck.php --redis")
-        if redis_conf_ok; then exit 0; else echo "UNGESUND: redis: redis_protected_mode" >&2; exit 1; fi
+        redis_probe_result; exit $?
         ;;
     *"bin/healthcheck.php --db --redis --expect-env="*)
-        if redis_conf_ok; then exit 0; else echo "UNGESUND: redis: redis_protected_mode" >&2; exit 1; fi
+        redis_probe_result; exit $?
         ;;
     *"bin/migrate.php"*)
         exit 0
@@ -251,10 +270,20 @@ unset FAKE_REDIS_HEALTHY
 [[ "$(call_count "$S3" 'force-recreate redis')" -ge 2 ]] && ok "Redis wurde recreated (Versuch) UND erneut (Rollback)" || bad "Redis wurde nicht (auch) fuer den Rollback recreated: $(calls "$S3")"
 [[ "$(call_count "$S3" 'bin/migrate.php')" -eq 0 ]] && ok "Keine Migration vor erfolgreicher Redis-/Candidate-Pruefung" || bad "Migration wurde faelschlich ausgefuehrt"
 [[ "$(call_count "$S3" 'up -d --remove-orphans')" -eq 0 ]] && ok "Kein Cutover vor erfolgreicher Pruefung" || bad "Cutover wurde faelschlich ausgefuehrt"
-if output "$S3" | grep -q "erfolgreich auf die vorherige Konfiguration zurueckgesetzt"; then
-    ok "Redis-Infrastruktur erfolgreich auf die vorherige Konfiguration zurueckgesetzt (bestaetigt)"
+if output "$S3" | grep -q "TECHNISCH erfolgreich auf die vorherige Konfiguration zurueckgesetzt"; then
+    ok "Redis-Infrastruktur TECHNISCH erfolgreich auf die vorherige Konfiguration zurueckgesetzt (bestaetigt)"
 else
-    bad "Keine Bestaetigung des erfolgreichen Redis-Rollbacks im Protokoll: $(output "$S3")"
+    bad "Keine Bestaetigung des technisch erfolgreichen Redis-Rollbacks im Protokoll: $(output "$S3")"
+fi
+if output "$S3" | grep -q "mit der vorherigen Konfiguration aus einem anderen Container erreichbar" && ! output "$S3" | grep -q "::warning::"; then
+    ok "Alte (funktionierende) Konfiguration ist nach dem Rollback aus einem anderen Container erreichbar, keine Warnung"
+else
+    bad "Erreichbarkeit nach dem Rollback nicht bestaetigt oder unerwartete Warnung: $(output "$S3" | grep -E 'erreichbar|warning')"
+fi
+if output "$S3" | grep -q "DIAGNOSE redis:"; then
+    ok "DIAGNOSE-Zeile des fehlgeschlagenen Netzwerktests steht im Protokoll"
+else
+    bad "Keine DIAGNOSE-Zeile im Protokoll"
 fi
 if grep -qx 'protected-mode no' "$S3/deploy/redis/redis.conf" 2>/dev/null; then
     ok "redis.conf im Deploy-Ordner wieder auf die alte (funktionierende) Fassung zurueckgesetzt"
@@ -308,6 +337,62 @@ run_deploy "$S6" newsha; RC6A=$?
 run_deploy "$S6" newsha; RC6B=$?
 [[ "$RC6B" -eq 0 ]] && ok "Zweiter, wiederholter Lauf ebenfalls erfolgreich (idempotent)" || bad "Zweiter Lauf schlug fehl: $(output "$S6")"
 rm -rf "$S6"
+
+echo "7) Alias 'smarteinzug-redis' fehlt (z.B. Redis in anderem Compose-Projekt/Netz): Abbruch; Rollback auf bekannt alten, defekten Zustand ist TECHNISCH erfolgreich, fachlich nur Warnung"
+S7="$(new_sandbox)"
+make_release "$S7" prevsha "protected-mode yes"
+make_release "$S7" newsha "protected-mode no"
+set_current "$S7" prevsha
+make_fake_docker "$S7"
+export FAKE_ALIAS_MISSING=1
+run_deploy "$S7" newsha; RC7=$?
+unset FAKE_ALIAS_MISSING
+[[ "$RC7" -ne 0 ]] && ok "Deployment abgebrochen (Exitcode $RC7 != 0)" || bad "Deployment meldete faelschlich Erfolg trotz fehlendem Alias"
+output "$S7" | grep -q "kategorie=alias_missing" && ok "DIAGNOSE nennt die Ursache: kategorie=alias_missing (Stufe resolve)" || bad "Keine alias_missing-Diagnose im Protokoll: $(output "$S7" | grep DIAGNOSE)"
+[[ "$(call_count "$S7" 'force-recreate redis')" -eq 2 ]] && ok "Redis recreated (Versuch) und erneut recreated (Rollback)" || bad "Unerwartete Anzahl force-recreate-Aufrufe: $(call_count "$S7" 'force-recreate redis')"
+output "$S7" | grep -q "TECHNISCH erfolgreich auf die vorherige Konfiguration zurueckgesetzt" && ok "Rollback TECHNISCH erfolgreich bewertet (redis.conf zurueck, recreated, healthy)" || bad "Rollback nicht als technisch erfolgreich bewertet: $(output "$S7" | grep -i rollback)"
+output "$S7" | grep -q "::warning:: Redis ist mit der vorherigen Konfiguration aus einem anderen Container weiterhin NICHT nutzbar (bekannter Altzustand" && ok "Bekannter Altzustand nach dem Rollback nur als WARNUNG gemeldet, nicht als Fehlschlag der Wiederherstellung" || bad "Bekannter Altzustand wurde nicht als Warnung gemeldet"
+output "$S7" | grep -q "TECHNISCH fehlgeschlagen" && bad "Rollback wurde faelschlich als technisch fehlgeschlagen gemeldet" || ok "Kein 'TECHNISCH fehlgeschlagen' im Protokoll"
+grep -qx 'protected-mode yes' "$S7/deploy/redis/redis.conf" && ok "redis.conf im Deploy-Ordner auf die alte Fassung (protected-mode yes) zurueckgesetzt" || bad "redis.conf nicht zurueckgesetzt"
+[[ "$(call_count "$S7" 'bin/migrate.php')" -eq 0 ]] && ok "Keine Migration" || bad "Migration wurde faelschlich ausgefuehrt"
+[[ "$(call_count "$S7" 'up -d --remove-orphans')" -eq 0 ]] && ok "Kein Cutover" || bad "Cutover wurde faelschlich ausgefuehrt"
+rm -rf "$S7"
+
+echo "8) Netzwerktest laeuft mit dem NEUEN Release-Code, im selben Compose-Projekt wie alle anderen Aufrufe, immer mit --no-deps"
+S8="$(new_sandbox)"
+make_release "$S8" prevsha "protected-mode yes"
+make_release "$S8" newsha "protected-mode no"
+set_current "$S8" prevsha
+make_fake_docker "$S8"
+run_deploy "$S8" newsha; RC8=$?
+[[ "$RC8" -eq 0 ]] && ok "Deployment erfolgreich (Exitcode 0)" || bad "Deployment schlug fehl (Exitcode $RC8): $(output "$S8")"
+PROBE_LINE="$(calls "$S8" | grep 'bin/healthcheck\.php --redis$' | head -n1)"
+if [[ "$PROBE_LINE" == RELEASE_SHA=newsha* ]]; then
+    ok "Netzwerktest lief mit dem neuen Release (RELEASE_SHA=newsha), nicht mit dem alten Code"
+else
+    bad "Netzwerktest lief nicht mit dem neuen Release: ${PROBE_LINE:-<kein Aufruf>}"
+fi
+PROJECTS="$(calls "$S8" | grep -o 'compose -f [^ ]* -f [^ ]* --env-file [^ ]*' | sort -u)"
+if [[ "$(printf '%s\n' "$PROJECTS" | grep -c .)" -eq 1 && "$PROJECTS" == *"docker-compose.prod.yml"* ]]; then
+    ok "Alle Compose-Aufrufe (Recreate, Netzwerktest, Candidate, Migration, Cutover) treffen dasselbe Projekt: $PROJECTS"
+else
+    bad "Compose-Aufrufe treffen unterschiedliche Projekte/Dateien: $PROJECTS"
+fi
+RUNS_WITHOUT_NODEPS="$(calls "$S8" | grep ' run --rm ' | grep -v -- '--no-deps' | grep -vc 'run --rm --entrypoint redis-server' || true)"
+[[ "$RUNS_WITHOUT_NODEPS" -eq 0 ]] && ok "Jeder 'docker compose run' (Netzwerktest, Candidate, Migration) verwendet --no-deps" || bad "$RUNS_WITHOUT_NODEPS Compose-run-Aufrufe ohne --no-deps"
+[[ "$(call_count "$S8" 'force-recreate redis')" -eq 1 ]] && ok "Genau ein Redis-Recreate (kein Rollback noetig)" || bad "Unerwartete Anzahl force-recreate-Aufrufe"
+# Reihenfolge: Recreate -> Netzwerktest -> Candidate -> Migration -> Cutover (Zeilennummern im Aufrufprotokoll)
+L_RECREATE="$(calls "$S8" | grep -n 'force-recreate redis' | head -n1 | cut -d: -f1)"
+L_PROBE="$(calls "$S8" | grep -n 'bin/healthcheck\.php --redis$' | head -n1 | cut -d: -f1)"
+L_CAND="$(calls "$S8" | grep -n 'bin/healthcheck\.php --db --redis --expect-env=' | head -n1 | cut -d: -f1)"
+L_MIG="$(calls "$S8" | grep -n 'bin/migrate\.php' | head -n1 | cut -d: -f1)"
+L_CUT="$(calls "$S8" | grep -n 'up -d --remove-orphans' | head -n1 | cut -d: -f1)"
+if [[ -n "$L_RECREATE" && -n "$L_PROBE" && -n "$L_CAND" && -n "$L_MIG" && -n "$L_CUT" && "$L_RECREATE" -lt "$L_PROBE" && "$L_PROBE" -lt "$L_CAND" && "$L_CAND" -lt "$L_MIG" && "$L_MIG" -lt "$L_CUT" ]]; then
+    ok "Reihenfolge eingehalten: Redis-Recreate ($L_RECREATE) -> Netzwerktest ($L_PROBE) -> Candidate ($L_CAND) -> Migration ($L_MIG) -> Cutover ($L_CUT)"
+else
+    bad "Reihenfolge verletzt: recreate=$L_RECREATE probe=$L_PROBE candidate=$L_CAND migrate=$L_MIG cutover=$L_CUT"
+fi
+rm -rf "$S8"
 
 echo
 echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"

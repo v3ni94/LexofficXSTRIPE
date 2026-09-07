@@ -232,6 +232,12 @@ return [
         'circuit' => ['threshold' => 5, 'open_seconds' => 300, 'probe_seconds' => 60],
     ],
     // Redis (optional): Sperren, Ratenbegrenzung, Cache. Ohne Angabe läuft alles über MariaDB.
+    // Hostinger-VPS (Docker-Stack): Den Hostnamen liefert der Stack selbst ueber die Umgebungsvariable
+    // SMARTEINZUG_REDIS_HOST (= "smarteinzug-redis", deploy/vps/docker-compose.yml); sie hat Vorrang vor
+    // 'host' hier. Grund: "redis" ist auf einem Coolify-Server mehrdeutig, Coolifys eigener Redis (mit
+    // Passwort) heisst im gemeinsam genutzten Netz "coolify" ebenfalls "redis" und wurde von Dockers DNS
+    // zuerst geliefert ("NOAUTH Authentication required", siehe docs/vps/06-betrieb.md). 'password' bleibt
+    // null: unser Redis verlangt kein Passwort und ist nur im internen Docker-Netz erreichbar.
     'redis' => null, // z.B. ['host' => 'redis', 'port' => 6379, 'password' => null, 'prefix' => 'se:']
     // Strukturiertes Logging: 'stderr' (Docker), 'file' (app/storage/logs) oder 'error_log'
     'log' => ['target' => 'file'],

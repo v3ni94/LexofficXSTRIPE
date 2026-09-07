@@ -287,8 +287,12 @@ Auszufüllen, mit Besonderheiten gegenüber der Vorlage:
   (`mysql://benutzer:passwort@<containername>:3306/smarteinzug`) und ist auf dem Server mit
   `docker ps` sichtbar (siehe Schritt 5a). `db.port`: `3306`, `db.name`: `smarteinzug`, `db.user`
   und `db.pass`: wie in Coolify bei der Datenbankressource hinterlegt.
-- `redis`: `['host' => 'redis', 'port' => 6379, 'password' => null, 'prefix' => 'se:']` (Dienstname
-  im Docker-Netz).
+- `redis`: `['host' => 'redis', 'port' => 6379, 'password' => null, 'prefix' => 'se:']`. Hinweis: Den
+  tatsächlich verwendeten Hostnamen liefert der Stack über `SMARTEINZUG_REDIS_HOST=smarteinzug-redis`
+  (`deploy/vps/docker-compose.yml`), diese Variable hat Vorrang vor `host`. Der bloße Name `redis` ist
+  auf dem Coolify-Server mehrdeutig, weil Coolifys eigener Redis (mit Passwort) im Netz `coolify`
+  ebenfalls so heißt (siehe `docs/vps/06-betrieb.md`, Abschnitt „Redis-Alias-Kollision“). `password`
+  bleibt `null`, unser Redis ist nur im internen Docker-Netz erreichbar.
 - `migration_token`, `cron_token`: neu erzeugen (`openssl rand -hex 32`), auf dem VPS eigene,
   vom Webhosting unabhängige Werte verwenden; `migration_token` fließt zusätzlich in das
   GitHub-Secret bzw. wird beim VPS-Deployment gar nicht per HTTP aufgerufen (Migrationen laufen
