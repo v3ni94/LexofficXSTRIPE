@@ -13,6 +13,7 @@ require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/alerts.php';
 require_once __DIR__ . '/app/admin_charts.php';
 require_once __DIR__ . '/app/interest.php';
+require_once __DIR__ . '/app/mailer.php';
 require_once __DIR__ . '/app/integration_state.php';
 
 // Host-Prüfung: ist admin_base_url gesetzt, antwortet diese Seite nur auf dem
@@ -275,6 +276,14 @@ $interestSwitches = integration_switches('sevdesk');
 layout_header('Administration', $ctx);
 ?>
 <h1>Administration</h1>
+<?php if (!mail_enabled()): ?>
+    <div class="flash flash-warn">
+        <strong>Mailversand nicht aktiv</strong> (<code>mail.enabled</code> in shared/config.php). Die Anwendung sendet derzeit keine E-Mails: keine Willkommens- und
+        Bestätigungsmails, keine Einladungen, keine Sicherheits- oder Vorabankündigungsmails. Wartende Nachsendungen: <?= interest_pending_mail_count() ?> Vormerkungen,
+        <?= (int)$pdo->query('SELECT COUNT(*) FROM users WHERE welcome_mail_pending = 1')->fetchColumn() ?> Willkommensmails; sie werden nach der Aktivierung automatisch
+        durch die Wartung versendet. Anleitung: Dokumentation, Kapitel „Mailversand einrichten“; Prüfung mit <code>php bin/mail-check.php</code>.
+    </div>
+<?php endif; ?>
 <p class="page-sub">Plattform <?= e(product_name()) ?> · Betreiber <?= e((string)(config('operator')['name'] ?? 'Müller Holding AG')) ?></p>
 <nav class="admin-subnav" aria-label="Adminbereiche">
     <a href="#kennzahlen">Kennzahlen</a> · <a href="#diagramme">Diagramme</a> · <a href="#notstopp">Not-Stopp</a> · <a href="#tarife">Tarife</a> · <a href="#firmen">Firmen</a> · <a href="admin-support.php">Support</a> · <a href="admin-system.php" title="Technische Betriebsübersicht">System</a>

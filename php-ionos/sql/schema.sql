@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS users (
     totp_confirmed_at          DATETIME     NULL,
     totp_last_step             BIGINT       NULL,
     email_verified_at          DATETIME     NULL,
+    welcome_mail_pending       TINYINT(1)   NOT NULL DEFAULT 0,  -- Willkommensmail steht aus (Migration 021)
     email_verify_token_hash    CHAR(64)     NULL,
     email_verify_expires_at    DATETIME     NULL,
     password_reset_token_hash  CHAR(64)     NULL,
@@ -942,6 +943,8 @@ CREATE TABLE IF NOT EXISTS interest_registrations (
     consent_at       DATETIME     NULL,           -- Zeitpunkt der letzten Einwilligung (Absenden des Formulars, UTC)
     mail_count       SMALLINT UNSIGNED NOT NULL DEFAULT 0, -- Bestaetigungsmails im laufenden 24-Stunden-Fenster
     mail_window_at   DATETIME     NULL,           -- Beginn dieses Fensters (UTC)
+    mail_pending     TINYINT(1)   NOT NULL DEFAULT 0, -- Bestaetigungsmail steht aus (Migration 021), Wartung sendet nach
+    mail_pending_since DATETIME   NULL,
     token_hash       CHAR(64)     NULL,           -- Bestaetigungstoken (SHA-256), 7 Tage gueltig, nach Bestaetigung geloescht
     token_expires_at DATETIME     NULL,
     manage_token_hash CHAR(64)    NULL,           -- getrennter Token fuer Abmeldung und freiwillige Angaben (SHA-256)

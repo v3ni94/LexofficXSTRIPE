@@ -1117,8 +1117,40 @@ function _auth_register_create(PDO $pdo, string $email, string $password, string
         'signup_domain' => $attr['domain'] ?? null,
     ]);
     funnel_event($attr['domain'] ?? null, 'registration_completed', $orgId, $userId);
-    email_verification_send($user, $orgName);
+    if (!email_verification_send($user, $orgName)) {
+        // Mailversand nicht aktiv oder gestoert: Willkommensmail als wartend markieren, die Wartung sendet sie nach.
+        try {
+            $pdo->prepare('UPDATE users SET welcome_mail_pending = 1 WHERE id = ?')->execute([$userId]);
+        } catch (Throwable $e) {
+        }
+    }
     return null;
+}
+
+/**
+ * Wartung: wartende Willkommensmails nachsenden, sobald der Mailversand aktiv ist (nur Benutzer, deren
+ * E-Mail-Adresse noch nicht bestaetigt ist). @return int Anzahl nachgesendeter Mails
+ */
+function auth_send_pending_welcome_mails(int $limit = 50): int
+{
+    if (!mail_enabled()) {
+        return 0;
+    }
+    $pdo = db();
+    $rows = $pdo->query(
+        'SELECT u.*, (SELECT o.name FROM organization_members m JOIN organizations o ON o.id = m.organization_id
+                       WHERE m.user_id = u.id ORDER BY m.created_at ASC LIMIT 1) AS org_name
+           FROM users u WHERE u.welcome_mail_pending = 1 ORDER BY u.created_at ASC LIMIT ' . max(1, min(500, $limit))
+    )->fetchAll();
+    $n = 0;
+    foreach ($rows as $user) {
+        $ok = !empty($user['email_verified_at']) ? true : email_verification_send($user, (string)($user['org_name'] ?? 'Ihr Firmenaccount'));
+        if ($ok) {
+            $pdo->prepare('UPDATE users SET welcome_mail_pending = 0 WHERE id = ?')->execute([$user['id']]);
+            $n++;
+        }
+    }
+    return $n;
 }
 
 /**

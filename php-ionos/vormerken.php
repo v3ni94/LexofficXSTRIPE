@@ -184,11 +184,12 @@ if (!$r['ok']) {
     ];
     vormerken_page('Vormerkung nicht möglich', [$texte[$r['error']] ?? 'Die Anfrage konnte nicht verarbeitet werden.'], $back, 'Zurück zum Formular', null, $r['error'] === 'busy' ? 429 : 422);
 }
-if ($r['state'] === 'mail_failed') {
-    vormerken_page('E-Mail konnte nicht gesendet werden', [
-        'Die Bestätigungs-E-Mail konnte gerade nicht versendet werden. Ohne bestätigte E-Mail-Adresse wird keine Vormerkung wirksam.',
-        'Bitte versuchen Sie es in etwa zehn Minuten erneut.',
-    ], $back, 'Zurück zum Formular', null, 503);
+if ($r['state'] === 'mail_deferred') {
+    // Eintrag ist gespeichert; die Bestaetigungsmail wird von der Wartung nachgesendet, sobald der Versand verfuegbar ist.
+    vormerken_page('Vormerkung gespeichert, Bestätigungs-E-Mail folgt', [
+        'Ihre Angaben sind gespeichert. Die Bestätigungs-E-Mail konnte in diesem Moment nicht versendet werden und wird automatisch nachgesendet, sobald der Versand wieder verfügbar ist.',
+        'Erst mit dem Klick auf den Bestätigungslink wird die Vormerkung wirksam; der Link ist ab Versand 7 Tage gültig. Sie müssen nichts weiter tun.',
+    ], $back);
 }
 vormerken_page('Bitte bestätigen Sie Ihre E-Mail-Adresse', [
     'Wir haben Ihnen dazu einen Link geschickt. Erst mit der Bestätigung ist die Vormerkung wirksam; der Link ist 7 Tage gültig.',

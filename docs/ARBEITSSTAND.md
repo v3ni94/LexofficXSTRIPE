@@ -35,6 +35,7 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.22 | Nachsenden wartender Bestätigungs- und Willkommensmails (Migration 021), ehrlicher Seitentext, Adminwarnung | siehe git log | ja |
 | 4.21 | E-Mails im CI der Müller Holding AG mit Pflichtangaben, Willkommensmail bei Registrierung, Bestätigungsmail nach Vorregistrierung, `bin/mail-check.php`, `docs/mail-einrichtung.md`, Statusseite „seit Erfassungsbeginn“ | siehe git log | ja |
 
 Betroffene Dateien 4.17: `.github/workflows/deploy.yml`, `.github/scripts/vps-ssh-retry.sh`, `.github/scripts/vps-trigger.sh`,
@@ -93,7 +94,7 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 - Widerspruch: Der Masterplan verlangt eine Tarifaussage zu sevdesk (Buchhaltung Pro nach offizieller Hilfe); die
   frühere Regel „keine Aussagen zu sevdesk-Tarifen“ wurde deshalb auf genau diese belegte Formulierung geändert (CLAUDE.md).
 
-- **Produktion: `mail.enabled` steht auf `false`** (`shared/config.php` Zeile 73). Damit versendet die Anwendung keine E-Mails
+- **Produktion: `mail.enabled` steht auf `false`** (bestätigt durch die Kundenmeldung „E-Mail konnte nicht gesendet werden“ am 07.09.2026; seit 4.22 werden solche Einträge gespeichert und nachgesendet) (`shared/config.php` Zeile 73). Damit versendet die Anwendung keine E-Mails
   (Bestätigungen, Einladungen, Vorabankündigungen per Mail) und `vormerken.php` nimmt keine Vormerkung an (Antwort 503),
   weil ohne Bestätigungsmail kein Double-Opt-in möglich ist. Vor jeder Bewerbung der sevdesk-Seite muss ein Postfach
   angelegt und `mail` konfiguriert werden; Zugangsdaten gehören nur in `shared/config.php`.

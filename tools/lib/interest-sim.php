@@ -107,6 +107,18 @@ $out('csv_formel_entschaerft', str_contains($csv, '"\'=1+1"') ? 1 : 0);
 $out('csv_quote', str_contains($csv, '"Firma ""Q"""') ? 1 : 0);
 for ($i = 0; $i < INTEREST_MAX_PER_MINUTE; $i++) { $pdo->prepare("INSERT INTO interest_registrations (id, provider_code, email, status, consent_text, created_at) VALUES (?, 'sevdesk', ?, 'pending', 'v', UTC_TIMESTAMP())")->execute([uuid4(), "m$i@x.test"]); }
 $out('limit_error', (string)interest_register(['provider'=>'sevdesk','email'=>'neu@x.test','consent'=>'1'])['error']);
+// Nachsenden: Mailversand deaktivieren (Konfiguration im Prozess), eintragen, wieder aktivieren, Wartung laufen lassen
+$pdo->exec("DELETE FROM interest_registrations WHERE email IN ('spaeter@x.test')"); $pdo->exec("DELETE FROM interest_registrations WHERE created_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) AND email LIKE 'm%@x.test'");
+$mailsVor = $mails();
+$GLOBALS['config']['mail']['enabled'] = false;
+$rd = interest_register(['provider' => 'sevdesk', 'email' => 'spaeter@x.test', 'consent' => '1'], 'smart-einzug.de');
+$out('deferred_state', (string)$rd['state']); $rr = $row('spaeter@x.test'); $out('deferred_status', (string)$rr['status']); $out('deferred_flag', (int)$rr['mail_pending']); $out('deferred_mails', $mails() - $mailsVor);
+$out('resend_ohne', interest_send_pending());
+$GLOBALS['config']['mail']['enabled'] = true;
+$out('resend_mit', interest_send_pending());
+$rr = $row('spaeter@x.test'); $out('resend_flag', (int)$rr['mail_pending']);
+$tk2 = $tokens($rr); $out('resend_mail_tokens', ($tk2['a'] !== '' && $tk2['b'] !== '') ? 1 : 0);
+$mn = null; $out('resend_confirm', $tk2['a'] !== '' ? interest_confirm($tk2['a'], $mn) : 'kein-token');
 $erl = ['smart-einzug.de', 'lexware-einzug.de', 'app.smart-einzug.de'];
 $out('origin_ok', interest_origin_allowed('https://www.smart-einzug.de', null, $erl) ? 1 : 0);
 $out('origin_fremd', interest_origin_allowed('https://boese.example', 'https://smart-einzug.de/x', $erl) ? 1 : 0);

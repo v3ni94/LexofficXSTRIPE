@@ -45,6 +45,9 @@ if mariadb_sandbox_available; then
     erw "Suche E-Mail" suche_q 1; erw "Filter Status" suche_status 1; erw "Filter Herkunft" suche_source 1; erw "Filter gesperrt" suche_blocked 1
     erw "CSV mit BOM" csv_bom 1; erw "CSV: Formel entschaerft" csv_formel_entschaerft 1; erw "CSV: Anfuehrungszeichen verdoppelt" csv_quote 1
     erw "Obergrenze je Minute" limit_error busy
+    echo "5) Nachsenden bei nicht aktivem Mailversand"
+    erw "ohne Mailversand: Zustand mail_deferred (Eintrag gespeichert)" deferred_state mail_deferred; erw "Eintrag pending, nicht bestaetigt" deferred_status pending; erw "als wartend markiert" deferred_flag 1; erw "keine Mail erzeugt" deferred_mails 0
+    erw "Wartung ohne Mailversand sendet nichts" resend_ohne 0; erw "Wartung mit Mailversand sendet die wartende Mail" resend_mit 1; erw "Wartemarke geloescht" resend_flag 0; erw "Mail mit Token A und B" resend_mail_tokens 1; erw "Token aus der nachgesendeten Mail bestaetigt" resend_confirm confirmed
     erw "Herkunft: erlaubte Domain mit www" origin_ok 1; erw "Herkunft: fremder Origin abgelehnt" origin_fremd 0; erw "Herkunft: Referer allein reicht" origin_referer 1; erw "Herkunft: ohne Header zugelassen" origin_leer 1; erw "Herkunft: Origin null zugelassen" origin_null 1
 else
     echo "  (Datenbankteil uebersprungen: mariadbd nicht verfuegbar)"
@@ -62,7 +65,10 @@ grep -q 'id="vormerkung"' "$ROOT/websites/smart-einzug.de/datenschutz/index.html
 grep -q "form-action 'self' https://app.smart-einzug.de" "$ROOT/websites/smart-einzug.de/.htaccess" && ok "CSP erlaubt das Formularziel" || bad "CSP"
 ! grep -qiE "REMOTE_ADDR|client_ip\(" "$ROOT/php-ionos/vormerken.php" "$ROOT/php-ionos/app/interest.php" && ok "keine IP-Verarbeitung" || bad "IP-Zugriff"
 grep -q "interest_cleanup" "$ROOT/php-ionos/app/jobs.php" && grep -q "interest_cleanup" "$ROOT/php-ionos/cron.php" && ok "Wartung in beiden Betriebspfaden" || bad "Wartung"
-! grep -q "mail_enabled()" "$ROOT/php-ionos/app/interest.php" && ok "keine stille Bestaetigung ohne Mailversand" || bad "mail_enabled-Sonderpfad"
+! sed -n '/^function interest_register/,/^function interest_pending_mail_count/p' "$ROOT/php-ionos/app/interest.php" | grep -q "mail_enabled()\|'confirmed'" && grep -q "mail_deferred" "$ROOT/php-ionos/app/interest.php" && ok "keine stille Bestaetigung ohne Mailversand; nicht sendbare Mails werden als wartend markiert" || bad "interest_register bestaetigt still oder kennt kein mail_deferred"
+grep -q "interest_send_pending" "$ROOT/php-ionos/app/jobs.php" && grep -q "interest_send_pending" "$ROOT/php-ionos/cron.php" && grep -q "auth_send_pending_welcome_mails" "$ROOT/php-ionos/app/jobs.php" && grep -q "auth_send_pending_welcome_mails" "$ROOT/php-ionos/cron.php" && ok "Nachsenden in Wartung und Cron verdrahtet" || bad "Nachsenden nicht verdrahtet"
+grep -q "welcome_mail_pending = 1" "$ROOT/php-ionos/app/auth.php" && ok "Willkommensmail wird bei Fehlschlag als wartend markiert" || bad "welcome_mail_pending fehlt"
+grep -q "mail_pending" "$ROOT/php-ionos/sql/migrations/021_mail_pending.sql" && grep -q "welcome_mail_pending" "$ROOT/php-ionos/sql/schema.sql" && ok "Migration 021 und schema.sql" || bad "Migration 021"
 grep -q "'aktion' => 'bestaetigen'" "$ROOT/php-ionos/vormerken.php" && ok "Bestaetigung erst per Button (POST)" || bad "GET bestaetigt direkt"
 grep -q "vormerkung-v3" "$ROOT/docs/einwilligungen.md" && grep -q "INTEREST_CONSENT_VERSION = 'vormerkung-v3'" "$ROOT/php-ionos/app/interest.php" && ok "Einwilligungsfassung v3 archiviert" || bad "Einwilligungsfassung"
 grep -q "interest_block_id\|interest_invite_id" "$ROOT/php-ionos/admin.php" && grep -q "export=vormerkungen" "$ROOT/php-ionos/admin.php" && ok "Adminaktionen und CSV-Export" || bad "Adminaktionen"

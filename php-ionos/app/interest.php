@@ -4,8 +4,9 @@
  *
  * Eingang ist vormerken.php (Formular auf smart-einzug.de/integrationen/sevdesk/). Ablauf:
  *   1. interest_register(): prüfen, Zeile anlegen oder vorhandene verwenden, Bestätigungs-E-Mail mit
- *      Bestätigungslink (Token A, 7 Tage) und Abmeldelink (Token B, dauerhaft). Ohne funktionierenden
- *      Mailversand keine Vormerkung (mail_failed), niemals eine stille Bestätigung.
+ *      Bestätigungslink (Token A, 7 Tage) und Abmeldelink (Token B, dauerhaft). Kann die Mail nicht erzeugt werden
+ *      (Versand nicht aktiv oder gestört), bleibt der Eintrag pending und wird als wartend markiert (mail_deferred);
+ *      interest_send_pending() sendet sie in der Wartung nach. Niemals eine stille Bestätigung.
  *   2. interest_confirm():   nach Klick auf den Button der Bestätigungsseite (kein Auslösen per bloßem GET,
  *      damit Linkscanner keinen Einwilligungsnachweis vortäuschen). Token A wird danach gelöscht.
  *   3. interest_unsubscribe(): über Token B. Eine erneute Eintragung nach Abmeldung erzeugt eine neue
@@ -214,7 +215,52 @@ function interest_register(array $input, ?string $sourceDomain = null): array
     if (mail_send($v['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
         return ['ok' => true, 'error' => null, 'state' => 'mail_sent', 'id' => $id];
     }
-    return ['ok' => true, 'error' => null, 'state' => 'mail_failed', 'id' => $id];
+    // Versand nicht aktiv oder gestoert: Eintrag bleibt pending und wird als wartend markiert; die Wartung sendet die
+    // Bestaetigungsmail nach, sobald der Versand verfuegbar ist (interest_send_pending). Nichts geht verloren.
+    $pdo->prepare('UPDATE interest_registrations SET mail_pending = 1, mail_pending_since = COALESCE(mail_pending_since, UTC_TIMESTAMP()) WHERE id = ?')->execute([$id]);
+    return ['ok' => true, 'error' => null, 'state' => 'mail_deferred', 'id' => $id];
+}
+
+/** Anzahl wartender Bestaetigungsmails (Adminanzeige). */
+function interest_pending_mail_count(): int
+{
+    try {
+        return (int)db()->query("SELECT COUNT(*) FROM interest_registrations WHERE mail_pending = 1 AND status = 'pending' AND blocked_at IS NULL")->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+/**
+ * Wartung: wartende Bestaetigungsmails nachsenden, sobald der Mailversand aktiv ist. Token A und B werden neu
+ * erzeugt (die alten wurden nie verschickt), die Gueltigkeit von 7 Tagen beginnt mit dem tatsaechlichen Versand.
+ * @return int Anzahl nachgesendeter Mails
+ */
+function interest_send_pending(int $limit = 50): int
+{
+    if (!mail_enabled()) {
+        return 0;
+    }
+    $pdo = db();
+    $rows = $pdo->query("SELECT * FROM interest_registrations WHERE mail_pending = 1 AND status = 'pending' AND blocked_at IS NULL ORDER BY mail_pending_since ASC LIMIT " . max(1, min(500, $limit)))->fetchAll();
+    $n = 0;
+    foreach ($rows as $row) {
+        $provider = integration_provider((string)$row['provider_code']);
+        $token = bin2hex(random_bytes(32));
+        $manage = bin2hex(random_bytes(32));
+        $pdo->prepare('UPDATE interest_registrations SET token_hash = ?, token_expires_at = ?, manage_token_hash = ? WHERE id = ?')
+            ->execute([hash('sha256', $token), gmdate('Y-m-d H:i:s', time() + INTEREST_TOKEN_DAYS * 86400), hash('sha256', $manage), $row['id']]);
+        $tpl = mail_tpl_interest_confirm(
+            (string)($provider['name'] ?? $row['provider_code']),
+            app_base_url() . '/vormerken.php?token=' . $token,
+            app_base_url() . '/vormerken.php?abmelden=' . $manage
+        );
+        if (mail_send((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
+            $pdo->prepare('UPDATE interest_registrations SET mail_pending = 0, mail_pending_since = NULL, last_mail_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$row['id']]);
+            $n++;
+        }
+    }
+    return $n;
 }
 
 /** Zeile zu Token A (Bestätigung) oder null (auch abgelaufen). */

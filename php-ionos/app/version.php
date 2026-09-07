@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.21';
+const APP_VERSION = '4.22';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.22', 'date' => '07.09.2026', 'title' => 'Bestätigungs- und Willkommensmails werden nachgesendet',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Nach der Vorregistrierung erschien „E-Mail konnte nicht gesendet werden, bitte in zehn Minuten erneut versuchen“, obwohl die Ursache der nicht aktive Mailversand in Produktion war (mail.enabled = false). Der Eintrag wird jetzt gespeichert und als wartend markiert; die Seite sagt ehrlich „Vormerkung gespeichert, Bestätigungs-E-Mail folgt“. Die Wartung (Job maintenance stündlich, auf dem Webhosting cron.php) sendet die Bestätigungsmail automatisch nach, sobald der Versand aktiv ist; Token werden dabei neu erzeugt. Migration 021.'],
+            ['type' => 'Behoben', 'text' => 'Registrierung: Kann die Willkommensmail nicht erzeugt werden, wird sie als wartend markiert (users.welcome_mail_pending) und nachgesendet, solange die Adresse noch nicht bestätigt ist. Damit erhält jede Registrierung und jede Vorregistrierung eine E-Mail, sobald der Versand eingerichtet ist.'],
+            ['type' => 'Neu', 'text' => 'Adminbereich: Warnbanner, wenn der Mailversand nicht aktiv ist, mit der Anzahl wartender Nachsendungen und Verweis auf die Anleitung. Test tools/interest-check.sh um den Nachsende-Fall erweitert.'],
+         ]],
         ['version' => '4.21', 'date' => '07.09.2026', 'title' => 'E-Mails im Corporate Design, Willkommensmail, Bestätigung der Vormerkung, Mailprüfung',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Alle E-Mails (mail_layout) im Corporate Design der Müller Holding AG: Kopfnaht mit Goldsegment, Wortmarke SmartEinzug, Goldbalken, Fließtext Anthrazit, Gold nur als Akzent, Fußband mit den Pflichtangaben nach § 80 AktG (Sitz, Registergericht, HRB 104291, Vorstand, Aufsichtsratsvorsitzender), Zweitlink für Abmeldungen. Textfassung gleichwertig.'],

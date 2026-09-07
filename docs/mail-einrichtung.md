@@ -50,6 +50,20 @@ und zeigt das Corporate Design mit den Pflichtangaben der Müller Holding AG.
    „Vormerkungen“.
 3. Statusseite: „E-Mail-Benachrichtigungen“ wechselt nach dem nächsten Monitoringlauf (alle 240 s) auf betriebsbereit.
 
+## Nachsenden bei nicht aktivem Versand (seit 4.22)
+
+Kann eine Bestätigungsmail nicht erzeugt werden (Versand nicht aktiv oder gestört), geht nichts verloren:
+
+- Vorregistrierung: Der Eintrag bleibt `pending` und wird mit `mail_pending = 1` markiert. Die Seite meldet ehrlich
+  „Vormerkung gespeichert, Bestätigungs-E-Mail folgt“. `interest_send_pending()` (Wartungsjob und `cron.php`) sendet die
+  Mail nach, sobald `mail.enabled` gesetzt ist; Token werden dabei neu erzeugt, die 7 Tage beginnen mit dem Versand.
+- Registrierung: `users.welcome_mail_pending = 1`; `auth_send_pending_welcome_mails()` sendet die Willkommensmail mit
+  Bestätigungslink nach, solange die Adresse noch nicht bestätigt ist.
+- Der Adminbereich zeigt bei nicht aktivem Versand eine Warnung mit der Anzahl wartender Nachsendungen.
+
+Nach der Aktivierung des Versands genügt es also, den Wartungsjob abzuwarten (stündlich) oder ihn über den
+Adminbereich, System, Jobs anzustoßen.
+
 ## Gestaltung der E-Mails
 
 Alle E-Mails laufen durch `mail_layout()` (`app/mailer.php`): Kopfnaht mit Goldsegment, Wortmarke SmartEinzug, Goldbalken
