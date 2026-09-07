@@ -177,6 +177,17 @@ if [[ -f "$PHP_IMAGE_HASH_FILE" ]] && [[ "$(cat "$PHP_IMAGE_HASH_FILE")" == "$PH
     NEEDS_BUILD=0
 fi
 
+# Gemeinsamer Ordner der veroeffentlichten Statusdaten: Die Anwendung schreibt dorthin (config
+# status_publish.file), Caddy liefert /status.json von dort aus (Caddyfile, Status-Host). Der Ordner liegt
+# ausserhalb der Releases, damit die Datei einen Releasewechsel ueberlebt; auf Servern, die vor dieser
+# Version eingerichtet wurden, fehlt er noch. Ohne eine vorhandene Datei wuerde die Statusseite 404
+# liefern, deshalb wird der Platzhalter aus dem Release einmalig hineinkopiert (spaeter nie ueberschrieben).
+install -d -m 750 "$BASE/shared/status"
+if [[ ! -f "$BASE/shared/status/status.json" && -f "$RELEASE_DIR/status/status.json" ]]; then
+    install -m 640 "$RELEASE_DIR/status/status.json" "$BASE/shared/status/status.json"
+    echo "Platzhalter fuer die Statusseite nach shared/status/status.json kopiert (noch keine Statusdaten veroeffentlicht)."
+fi
+
 deploy_step "release-uebernehmen"
 echo "Uebernehme deploy/vps aus dem Release nach $DEPLOY_DIR ..."
 # Laufzeitdateien des Deploy-Ordners NIE mitloeschen: Die Muster /.deploy* (Sperre, PID-Datei,

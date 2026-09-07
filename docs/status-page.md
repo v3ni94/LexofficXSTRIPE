@@ -66,3 +66,39 @@ Cookies: Die Statusseite setzt keine Cookies. Sitzungscookies der Anwendung sind
 ## Grenzen
 
 Bis zur Einrichtung ist keine öffentliche Statusseite live und keine externe Prüfung aktiv. Der Snapshot spiegelt interne Messungen der Anwendung; fällt die Anwendung vollständig aus, bleibt der letzte Stand sichtbar und wird nach 15 Minuten als veraltet gekennzeichnet. Ein extern erhobener Erreichbarkeitsnachweis ist damit noch nicht Teil der Seite.
+
+## Veröffentlichung auf dem VPS (Version 4.16)
+
+Die Seite selbst liegt im Release (`websites/status.smart-einzug.de` wird beim Deployment nach
+`releases/<sha>/status/` übertragen und von Caddy unter dem Status-Host ausgeliefert). Die Daten stehen
+dagegen in `status.json`, und die kann nicht im Release liegen: Die Container binden Releases nur lesend
+ein, und ein Releasewechsel würde die Datei ersetzen. Deshalb:
+
+1. Die Anwendung schreibt `status.json` nach `/opt/smarteinzug/shared/status/status.json`
+   (`status_publish` in `shared/config.php`):
+
+   ```php
+   'status_publish' => ['file' => '/opt/smarteinzug/shared/status/status.json'],
+   ```
+
+2. `deploy/vps/docker-compose.yml` bindet diesen Ordner in die PHP-Container beschreibbar und in Caddy
+   **nur lesend** ein. Bewusst ein eigener Ordner und nicht `shared/storage`: Dort liegen
+   Mandatsdokumente und Profilbilder, die Caddy nicht sehen soll.
+
+3. `deploy/vps/Caddyfile` liefert `/status.json` aus diesem Ordner aus, alles andere aus dem Release.
+   `deploy.sh` legt den Ordner an und kopiert den Platzhalter des Release einmalig hinein, damit die Seite
+   auch vor der ersten Veröffentlichung lesbar bleibt; bereits veröffentlichte Daten werden nie
+   überschrieben.
+
+4. Geschrieben wird bei jedem Durchlauf von `monitor_collect()` (Jobtyp `monitor_collect`, alle vier
+   Minuten) sowie beim Veröffentlichen einer Störung und über „Jetzt übertragen“ im Adminbereich
+   (System, Störungen und Wartungen).
+
+**Solange `status_publish` nicht konfiguriert ist, zeigt die Seite dauerhaft „Status unbekannt (Daten
+veraltet)“ mit dem Platzhalterhinweis.** Das ist kein Fehler der Seite, sondern der fehlende letzte
+Schritt der Einrichtung. Prüfen lässt sich der Stand im Adminbereich unter System, Störungen und
+Wartungen, Abschnitt Statusveröffentlichung (Ziel, letzte erfolgreiche Übertragung, letzter Fehler).
+
+Wichtig zur Abgrenzung: Die Statusseite beschreibt die kundenrelevanten Funktionen der Anwendung auf dem
+VPS. Die Marketing- und Leadseiten liegen auf dem IONOS-Webhosting und werden von dieser Anwendung nicht
+gemessen; eine unabhängige Prüfung von außen (externer Dienst) ist weiterhin nicht eingerichtet.

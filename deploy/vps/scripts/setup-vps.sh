@@ -117,6 +117,7 @@ install -d -m 750 -o deploy -g deploy \
     /opt/smarteinzug/shared \
     /opt/smarteinzug/shared/storage \
     /opt/smarteinzug/shared/sessions \
+    /opt/smarteinzug/shared/status \
     /opt/smarteinzug/deploy \
     /opt/smarteinzug/logs \
     /opt/smarteinzug/backups

@@ -470,6 +470,81 @@ function queue_active_jobs(int $limit = 50): array
     return $st->fetchAll();
 }
 
+/**
+ * Wartende Jobs (noch nicht reserviert): Warteschlange und geplante Wiederholungen, mit Firma und der
+ * Person, die den Job ausgeloest hat (fehlt sie, war es der Scheduler). Fuer die Aufschluesselung der
+ * Kennzahl "Wartende Aufgaben" im Adminbereich.
+ */
+function queue_waiting_jobs(int $limit = 100): array
+{
+    if (!queue_available()) {
+        return [];
+    }
+    $st = db()->prepare("SELECT j.*, o.name AS org_name, u.display_name AS user_name, u.email AS user_email
+                         FROM jobs j
+                         LEFT JOIN organizations o ON o.id = j.tenant_id
+                         LEFT JOIN users u ON u.id = j.user_id
+                         WHERE j.status IN ('queued','retry')
+                         ORDER BY j.priority ASC, j.available_at ASC LIMIT " . (int)$limit);
+    $st->execute();
+    return $st->fetchAll();
+}
+
+/**
+ * Reservierte Jobs, deren Worker sich nicht mehr meldet (Heartbeat aelter als die Frist des Jobtyps).
+ * Sie werden von queue_release_stale() automatisch als Fehlversuch freigegeben; im Adminbereich sind sie
+ * sichtbar und lassen sich vorher ohne Fehlversuch freigeben (queue_release_one).
+ */
+function queue_stale_reservations(int $limit = 50): array
+{
+    if (!queue_available()) {
+        return [];
+    }
+    $st = db()->prepare("SELECT j.*, o.name AS org_name FROM jobs j LEFT JOIN organizations o ON o.id = j.tenant_id
+                         WHERE j.status = 'processing' ORDER BY j.heartbeat_at ASC LIMIT " . (int)$limit);
+    $st->execute();
+    $now = queue_now();
+    $out = [];
+    foreach ($st->fetchAll() as $j) {
+        $ttl = (int)queue_type_defaults((string)$j['type'])['heartbeat_ttl'];
+        $beat = queue_ts($j['heartbeat_at']);
+        if ($beat === null || $beat <= $now - $ttl) {
+            $j['heartbeat_ttl'] = $ttl;
+            $j['heartbeat_age'] = $beat === null ? null : $now - $beat;
+            $out[] = $j;
+        }
+    }
+    return $out;
+}
+
+/**
+ * Reservierung eines Jobs von Hand freigeben, dessen Worker sich nicht mehr meldet: zurueck in die
+ * Warteschlange OHNE Fehlversuch (der Job wurde nicht fachlich abgelehnt, sondern sein Worker verschwand;
+ * queue_release_stale() zaehlt dagegen automatisch einen Fehlversuch). Nur zulaessig, wenn der Heartbeat
+ * tatsaechlich abgelaufen ist, damit ein laufender Worker nicht bestohlen wird.
+ */
+function queue_release_one(string $id, ?array $actor): array
+{
+    $job = queue_get($id);
+    if (!$job || $job['status'] !== 'processing') {
+        return ['ok' => false, 'message' => 'Dieser Job ist nicht reserviert.'];
+    }
+    $ttl = (int)queue_type_defaults((string)$job['type'])['heartbeat_ttl'];
+    $beat = queue_ts($job['heartbeat_at']);
+    if ($beat !== null && $beat > queue_now() - $ttl) {
+        return ['ok' => false, 'message' => 'Der Worker meldet sich noch (Heartbeat frisch). Freigabe nur bei abgelaufenem Heartbeat.'];
+    }
+    $st = db()->prepare("UPDATE jobs SET status = 'queued', available_at = ?, locked_by = NULL, locked_at = NULL, heartbeat_at = NULL,
+                                last_error = 'Reservierung im Adminbereich freigegeben (Worker meldete sich nicht mehr)'
+                         WHERE id = ? AND status = 'processing'");
+    $st->execute([queue_utc(queue_now()), $id]);
+    if ($st->rowCount() !== 1) {
+        return ['ok' => false, 'message' => 'Der Job wurde inzwischen geaendert.'];
+    }
+    audit_log($job['tenant_id'], $actor, 'job_released', 'job', $id, ['type' => $job['type'], 'attempts' => (int)$job['attempts']]);
+    return ['ok' => true, 'message' => 'Reservierung freigegeben, der Job wartet wieder (kein Fehlversuch gezaehlt).'];
+}
+
 function queue_failed_jobs(int $limit = 50, bool $includeClosed = false): array
 {
     if (!queue_available()) {

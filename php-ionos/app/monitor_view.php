@@ -124,11 +124,22 @@ function monitor_render_head(): string
             </div>
         </div>
         <div class="card-grid stat-row mon-stats">
-            <div class="stat-card"><div class="stat-value"><?= (int)$stats['active_now'] ?></div><div class="stat-label">Aktive Jobs<span class="stat-sub">(laufend, Heartbeat frisch)</span></div></div>
-            <div class="stat-card"><div class="stat-value"><?= (int)$stats['unconfirmed_now'] ?></div><div class="stat-label">Ausführung unbestätigt<span class="stat-sub">(Heartbeat abgelaufen)</span></div></div>
-            <div class="stat-card"><div class="stat-value"><?= (int)$queue['sync_waiting'] + (int)$queue['collections_due'] ?></div><div class="stat-label">Wartende Aufgaben<span class="stat-sub">(<?= (int)$queue['sync_waiting'] ?> Sync, <?= (int)$queue['collections_due'] ?> fällige Einzüge<?= $queue['collections_oldest_age'] !== null ? ', älteste ' . e(mon_age_label((int)$queue['collections_oldest_age'])) : '' ?>)</span></div></div>
-            <div class="stat-card"><div class="stat-value"><?= count($warnings) ?></div><div class="stat-label">Warnungen<span class="stat-sub">(Komponenten nicht in Ordnung oder veraltet)</span></div></div>
-            <div class="stat-card"><div class="stat-value"><?= (int)$queue['incidents_open'] ?></div><div class="stat-label">Offene Störungen/Wartungen</div></div>
+            <?php
+            // Jede Kennzahl fuehrt auf die Liste, aus der sie stammt (Aufschluesselung mit Details und,
+            // wo sinnvoll, Aktionen). Ziel ist immer ein Abschnitt im Adminbereich System.
+            $statLinks = [
+                'aktiv'        => 'admin-system.php?tab=jobs#aktive-jobs',
+                'unbestaetigt' => 'admin-system.php?tab=aktivitaet#laufende',
+                'wartend'      => 'admin-system.php?tab=jobs#wartend',
+                'warnungen'    => 'admin-system.php?tab=dienste',
+                'stoerungen'   => 'admin-system.php?tab=stoerungen',
+            ];
+            ?>
+            <a class="stat-card stat-link" href="<?= e($statLinks['aktiv']) ?>" title="Liste der aktiven Jobs öffnen"><div class="stat-value"><?= (int)$stats['active_now'] ?></div><div class="stat-label">Aktive Jobs<span class="stat-sub">(laufend, Heartbeat frisch)</span></div></a>
+            <a class="stat-card stat-link" href="<?= e($statLinks['unbestaetigt']) ?>" title="Laufende und unbestätigte Ausführungen öffnen"><div class="stat-value"><?= (int)$stats['unconfirmed_now'] ?></div><div class="stat-label">Ausführung unbestätigt<span class="stat-sub">(Heartbeat abgelaufen)</span></div></a>
+            <a class="stat-card stat-link" href="<?= e($statLinks['wartend']) ?>" title="Wartende Aufgaben mit Details und Aktionen öffnen"><div class="stat-value"><?= (int)$queue['sync_waiting'] + (int)$queue['collections_due'] ?></div><div class="stat-label">Wartende Aufgaben<span class="stat-sub">(<?= (int)$queue['sync_waiting'] ?> Sync, <?= (int)$queue['collections_due'] ?> fällige Einzüge<?= $queue['collections_oldest_age'] !== null ? ', älteste ' . e(mon_age_label((int)$queue['collections_oldest_age'])) : '' ?>)</span></div></a>
+            <a class="stat-card stat-link" href="<?= e($statLinks['warnungen']) ?>" title="Dienste mit Zustand und letzter Prüfung öffnen"><div class="stat-value"><?= count($warnings) ?></div><div class="stat-label">Warnungen<span class="stat-sub">(Komponenten nicht in Ordnung oder veraltet)</span></div></a>
+            <a class="stat-card stat-link" href="<?= e($statLinks['stoerungen']) ?>" title="Störungen und Wartungen öffnen"><div class="stat-value"><?= (int)$queue['incidents_open'] ?></div><div class="stat-label">Offene Störungen/Wartungen</div></a>
         </div>
         <?php if ($warnings): ?>
             <ul class="mon-warnings"><?php foreach ($warnings as $w): ?><li>▲ <?= e($w) ?></li><?php endforeach; ?></ul>

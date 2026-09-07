@@ -144,8 +144,20 @@ http://{$DOMAIN_STATUS}:80 {
 	@status_html path *.html
 	header @status_html Cache-Control "public, max-age=300"
 
-	@denied_here path *.php *.phtml *.md *.log
-	respond @denied_here 403
+	# status.json kommt NICHT aus dem Release (dort liegt nur der Platzhalter), sondern aus dem
+	# gemeinsamen, nur lesend eingebundenen Ordner, in den die Anwendung sie schreibt (config
+	# status_publish.file, siehe app/monitor.php status_publish() und docs/status-page.md). deploy.sh
+	# legt dort beim Deployment den Platzhalter ab, falls noch keine Statusdaten veroeffentlicht wurden;
+	# die Seite ist damit immer lesbar und meldet notfalls ehrlich "Daten veraltet".
+	handle /status.json {
+		root * /opt/smarteinzug/shared/status
+		file_server
+	}
 
-	file_server
+	# Alles andere (index.html, Stylesheet, Symbole) kommt aus dem Release.
+	handle {
+		@denied_here path *.php *.phtml *.md *.log
+		respond @denied_here 403
+		file_server
+	}
 }

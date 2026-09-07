@@ -585,6 +585,35 @@ Release. Der php-fpm-Reload (SIGUSR2) bleibt als kostenlose Sicherung für den F
 - **SSH-Abbruch:** Beim Auslösen wird ein unklares Ergebnis nicht als Fehler gewertet, sondern der
   tatsächliche Stand abgefragt; beim Polling ist jede Abfrage unabhängig (Keepalive zentral gesetzt).
 
+## Kennzahlen im Adminbereich und ihre Aufschlüsselung
+
+Die fünf Kennzahlen der Übersicht (System, Übersicht) sind verlinkt und führen jeweils auf die Liste, aus
+der sie stammt:
+
+| Kennzahl | Ziel | Inhalt |
+|---|---|---|
+| Aktive Jobs | Jobs, Abschnitt Aktive Jobs | Firma, Typ, Fortschritt, Worker, Start, Laufzeit |
+| Ausführung unbestätigt | Aktivität, Laufende und unbestätigte Ausführungen | Läufe, deren Heartbeat älter als die Frist ist |
+| Wartende Aufgaben | Jobs, Abschnitt Wartende Aufgaben | Warteschlange, Reservierungen ohne Lebenszeichen, offene Synchronisationsläufe, fällige Einzüge |
+| Warnungen | Dienste | Zustand und letzte Prüfung je Komponente |
+| Offene Störungen/Wartungen | Störungen und Wartungen | Meldungen samt Verlauf und Veröffentlichung |
+
+Der Abschnitt „Wartende Aufgaben“ nennt je Job die einreichende Person (fehlt sie, war es der Scheduler),
+den Zeitpunkt, den nächsten Versuch und die Versuchszahl. Aktionen (je mit 2FA-Code):
+
+- **Jetzt ausführen** setzt einen wartenden oder auf Wiederholung stehenden Job auf sofort fällig.
+- **Abbrechen** beendet einen wartenden Job.
+- **Reservierung freigeben** gibt einen Job frei, dessen Worker sich nicht mehr meldet, und zwar OHNE
+  Fehlversuch. Bei frischem Heartbeat wird die Freigabe verweigert, damit einem laufenden Worker sein Job
+  nicht entzogen wird. Die automatische Freigabe über `queue_release_stale()` zählt dagegen einen
+  Fehlversuch.
+- **Fortsetzung einreihen** plant einen offenen Synchronisationslauf sofort ein; er setzt am gespeicherten
+  Zwischenstand an. Für pausierte Firmen ist die Aktion gesperrt.
+
+Der Abschnitt nennt außerdem den Zustand des Einreichfensters für Lastschriften samt nächster Öffnung,
+weil eine geschlossene Zeitspanne der häufigste Grund für wartende Einzüge ist. Synchronisation, Klärung,
+Statusabrufe, Monitoring und E-Mail laufen unabhängig davon rund um die Uhr.
+
 ## Staging- und Produktionsisolation
 
 Eine Prüfung auf dem produktiven VPS (`docker compose config`, ohne einen tatsächlichen Staging-Start)

@@ -255,6 +255,10 @@ return [
     // Veröffentlichung des Status-Snapshots (nur erlaubte Felder). Ziele optional:
     //   'file'   => absoluter Pfad zu status.json auf demselben Webspace (nicht unabhängig von IONOS)
     //   'github' => ['owner' => '', 'repo' => '', 'path' => 'status.json', 'branch' => 'main', 'token' => 'HIER-FINE-GRAINED-TOKEN-NUR-CONTENTS-WRITE']
+    // VPS: Die Anwendung schreibt die Statusdaten in den gemeinsamen Ordner, Caddy liefert sie unter
+    // dem Status-Host aus (siehe deploy/vps/Caddyfile und docker-compose.yml). Ohne diesen Eintrag
+    // bleibt die oeffentliche Statusseite dauerhaft auf "Status unbekannt (Daten veraltet)".
+    //   'status_publish' => ['file' => '/opt/smarteinzug/shared/status/status.json'],
     'status_publish' => [],
     'sync' => [
         'step_seconds'          => 8,

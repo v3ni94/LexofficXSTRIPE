@@ -78,6 +78,14 @@ x-code-mounts: &code-mounts
   - type: bind
     source: /opt/smarteinzug/shared/sessions
     target: /var/lib/php/sessions
+  # Veroeffentlichte Statusdaten der oeffentlichen Statusseite (status_publish in config.php schreibt
+  # hierher, Caddy liefert die Datei unter dem Status-Host aus). Bewusst ein EIGENER Ordner und nicht
+  # shared/storage: Caddy bindet ihn nur lesend ein und bekommt so keinen Zugriff auf Mandatsdokumente,
+  # Profilbilder und andere Kundendaten. Das Release selbst ist fuer die Container nur lesend, dort
+  # koennte die Anwendung die Datei also nicht ablegen.
+  - type: bind
+    source: /opt/smarteinzug/shared/status
+    target: /opt/smarteinzug/shared/status
 
 x-php-common: &php-common
   build: *php-build
@@ -199,6 +207,10 @@ services:
       # die Statusseite liegt im selben Release unter status/); kein Zugriff auf shared/, deploy/,
       # backups/, logs/.
       - /opt/smarteinzug/releases:/opt/smarteinzug/releases:ro
+      # Veroeffentlichte Statusdaten (status.json) der Anwendung, ausschliesslich lesend. Ohne diese
+      # Einbindung koennte Caddy nur den Platzhalter aus dem Release ausliefern, die Statusseite bliebe
+      # dauerhaft auf "Status unbekannt (Daten veraltet)".
+      - /opt/smarteinzug/shared/status:/opt/smarteinzug/shared/status:ro
     depends_on:
       php:
         condition: service_healthy

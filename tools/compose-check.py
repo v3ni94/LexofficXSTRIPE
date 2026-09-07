@@ -311,6 +311,38 @@ def check_deploy_scripts_runtime_state() -> None:
             fail(f"{name}: verifiziert die Release-Bindung der Container nicht (docker inspect .Config.WorkingDir).")
 
 
+def check_status_publish_path() -> None:
+    """
+    Weg der oeffentlichen Statusdaten: Die Anwendung schreibt status.json in den gemeinsamen Ordner
+    /opt/smarteinzug/shared/status (config status_publish.file), Caddy liefert genau diese Datei unter dem
+    Status-Host aus. Das Release ist fuer die Container nur lesend; ohne diesen Weg bliebe die Seite
+    dauerhaft auf "Status unbekannt (Daten veraltet)". Caddy darf den Ordner nur LESEND sehen (er enthaelt
+    keine Kundendaten, aber Schreibrechte braucht dort nur PHP), und shared/storage bleibt fuer Caddy
+    unsichtbar (dort liegen Mandatsdokumente und Profilbilder).
+    """
+    compose = (VPS / "docker-compose.yml").read_text(encoding="utf-8")
+    caddyfile = (VPS / "Caddyfile").read_text(encoding="utf-8")
+    deploy_sh = (ROOT / "deploy" / "vps" / "scripts" / "deploy.sh").read_text(encoding="utf-8")
+
+    if "/opt/smarteinzug/shared/status:/opt/smarteinzug/shared/status:ro" not in compose:
+        fail("docker-compose.yml: caddy bindet /opt/smarteinzug/shared/status nicht (nur lesend) ein; "
+             "die Statusseite koennte nur den Platzhalter aus dem Release ausliefern.")
+    if "source: /opt/smarteinzug/shared/status" not in compose:
+        fail("docker-compose.yml: die PHP-Container binden /opt/smarteinzug/shared/status nicht ein; "
+             "status_publish koennte die Datei nicht schreiben (Release ist read-only).")
+    if "shared/storage:/opt/smarteinzug/shared/storage" in compose:
+        fail("docker-compose.yml: caddy bindet shared/storage ein. Dort liegen Kundendaten "
+             "(Mandatsdokumente, Profilbilder); die Statusdaten gehoeren in shared/status.")
+    if "root * /opt/smarteinzug/shared/status" not in caddyfile or "handle /status.json" not in caddyfile:
+        fail("Caddyfile: /status.json wird nicht aus /opt/smarteinzug/shared/status ausgeliefert.")
+    if 'install -d -m 750 "$BASE/shared/status"' not in deploy_sh:
+        fail("deploy.sh legt /opt/smarteinzug/shared/status nicht an; auf aelter eingerichteten Servern "
+             "fehlt der Ordner und Caddy liefert 404 statt der Statusdaten.")
+    config_example = (ROOT / "php-ionos" / "app" / "config.example.php").read_text(encoding="utf-8")
+    if "shared/status/status.json" not in config_example:
+        fail("app/config.example.php nennt das Ziel status_publish.file nicht; die Einrichtung bliebe unklar.")
+
+
 def check_no_mutable_current_path(path: pathlib.Path) -> None:
     """working_dir/root/Bind-Mount-Ziele duerfen nicht mehr auf den mutable Symlink "current" zeigen."""
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -345,6 +377,7 @@ def main() -> int:
 
     check_deploy_sh_candidate_order()
     check_deploy_scripts_runtime_state()
+    check_status_publish_path()
 
     healthcheck_php = (ROOT / "php-ionos" / "bin" / "healthcheck.php").read_text(encoding="utf-8")
     for _, flag in COMMAND_TO_FLAG + [("", DEFAULT_FLAG)]:

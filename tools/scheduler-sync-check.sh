@@ -73,6 +73,44 @@ UNERWARTET="$(grep -rln "collections_window_open(" "$ROOT/php-ionos/app" 2>/dev/
 grep -q "collections_window_open" "$ROOT/php-ionos/app/jobs.php" && bad "app/jobs.php prueft das Einreichfenster (Sync und Klaerung wuerden nachts haengen)" \
     || ok "app/jobs.php prueft das Einreichfenster nicht (Sync, Klaerung, Monitoring laufen rund um die Uhr)"
 
+echo "7) Warteschlangenansicht: wartende Jobs erscheinen, reservierte nicht"
+OUT="$(run wartende-jobs)"
+[[ "$(feld "$OUT" wartend)" == "1" ]] && ok "genau der wartende Job in der Liste (der reservierte fehlt korrekt)" || bad "wartend=$(feld "$OUT" wartend), erwartet 1 ($OUT)"
+[[ "$(feld "$OUT" typen)" == "sync_run" ]] && ok "Typ des wartenden Jobs: sync_run" || bad "typen=$(feld "$OUT" typen)"
+[[ "$(feld "$OUT" reserviert)" == "maintenance" ]] && ok "der zweite Job wurde reserviert (maintenance)" || bad "reserviert=$(feld "$OUT" reserviert)"
+
+echo "8) Reservierung ohne Lebenszeichen: sichtbar, Freigabe ohne Fehlversuch, frischer Heartbeat schuetzt"
+OUT="$(run stale-reservierung)"
+[[ "$(feld "$OUT" frisch_gefunden)" == "0" ]] && ok "frisch reservierter Job erscheint NICHT als ohne Lebenszeichen" || bad "frisch_gefunden=$(feld "$OUT" frisch_gefunden), erwartet 0"
+[[ "$(feld "$OUT" freigabe_frisch)" == "nein" ]] && ok "Freigabe bei frischem Heartbeat abgelehnt (kein Diebstahl am laufenden Worker)" || bad "freigabe_frisch=$(feld "$OUT" freigabe_frisch)"
+[[ "$(feld "$OUT" stale_gefunden)" == "1" ]] && ok "nach Ablauf des Heartbeats in der Liste" || bad "stale_gefunden=$(feld "$OUT" stale_gefunden), erwartet 1"
+[[ "$(feld "$OUT" freigabe)" == "ja" ]] && ok "Freigabe erfolgreich" || bad "freigabe=$(feld "$OUT" freigabe)"
+[[ "$(feld "$OUT" status)" == "queued" ]] && ok "Job wartet danach wieder" || bad "status=$(feld "$OUT" status), erwartet queued"
+[[ "$(feld "$OUT" versuche_vorher)" == "$(feld "$OUT" versuche_nachher)" ]] && ok "kein Fehlversuch gezaehlt ($(feld "$OUT" versuche_vorher) -> $(feld "$OUT" versuche_nachher))" || bad "Versuche geaendert: $(feld "$OUT" versuche_vorher) -> $(feld "$OUT" versuche_nachher)"
+[[ "$(feld "$OUT" locked)" == "frei" ]] && ok "Reservierung entfernt" || bad "locked=$(feld "$OUT" locked)"
+
+echo "9) Offene Synchronisationslaeufe: haengend erkannt, mit Job nicht mehr"
+OUT="$(run offene-laeufe)"
+[[ "$(feld "$OUT" laeufe)" == "1" ]] && ok "ein offener Lauf gelistet" || bad "laeufe=$(feld "$OUT" laeufe)"
+[[ "$(feld "$OUT" haengt_vorher)" == "ja" ]] && ok "ohne Job als haengend gekennzeichnet" || bad "haengt_vorher=$(feld "$OUT" haengt_vorher)"
+[[ "$(feld "$OUT" haengt_nachher)" == "nein" ]] && ok "mit wartendem Job nicht mehr haengend" || bad "haengt_nachher=$(feld "$OUT" haengt_nachher)"
+[[ "$(feld "$OUT" firma)" == "Testfirma" ]] && ok "Firmenname fuer die Anzeige verknuepft" || bad "firma=$(feld "$OUT" firma)"
+
+echo "10) Statisch: Kennzahlen der Uebersicht sind verlinkt, Aktionen abgesichert"
+MV="$ROOT/php-ionos/app/monitor_view.php"; AS="$ROOT/php-ionos/admin-system.php"
+[[ "$(grep -c 'stat-card stat-link' "$MV")" -eq 5 ]] && ok "alle fuenf Kennzahlen sind anklickbar" || bad "$(grep -c 'stat-card stat-link' "$MV") von 5 Kennzahlen verlinkt"
+for ANKER in 'id="aktive-jobs"' 'id="wartend"' 'id="laufende"'; do
+    grep -q "$ANKER" "$AS" && ok "Zielabschnitt vorhanden: $ANKER" || bad "Zielabschnitt fehlt: $ANKER"
+done
+for AKTION in job_release sync_enqueue; do
+    if grep -q "action === '$AKTION'" "$AS" && sed -n "/action === '$AKTION'/,/elseif/p" "$AS" | grep -q require_recent_totp; then
+        ok "Aktion $AKTION verlangt einen 2FA-Code"
+    else
+        bad "Aktion $AKTION fehlt oder ohne 2FA-Pruefung"
+    fi
+done
+grep -q 'name="action" value="job_release"' "$AS" && grep -q 'csrf_field()' "$AS" && ok "Formulare mit CSRF-Feld vorhanden" || bad "Formular oder CSRF-Feld fehlt"
+
 echo
 echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"
 [[ "$FAIL" -eq 0 ]]

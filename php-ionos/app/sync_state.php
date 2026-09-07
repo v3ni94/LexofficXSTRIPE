@@ -433,6 +433,31 @@ function sync_run_finish(string $tenantId, string $status, array $result, ?strin
     }
 }
 
+/**
+ * Offene Synchronisationslaeufe aller Firmen (Status running): Grundlage der Kennzahl "Wartende Aufgaben,
+ * n Sync" im Adminbereich. "haengt" bedeutet: keine aktive Sperre und kein Job in der Warteschlange, der
+ * den Lauf fortsetzt; der Scheduler schliesst solche Laeufe und reiht die Fortsetzung ein.
+ */
+function sync_open_runs(int $limit = 50): array
+{
+    $st = db()->prepare(
+        "SELECT s.tenant_id, s.status, s.started_at, s.last_step_at, s.updated_at, s.lock_until, s.cursor_json,
+                s.last_error, o.name AS org_name, o.sync_paused,
+                TIMESTAMPDIFF(SECOND, s.updated_at, NOW()) AS state_age_seconds,
+                (s.lock_until IS NOT NULL AND s.lock_until >= NOW()) AS lock_active
+         FROM sync_state s LEFT JOIN organizations o ON o.id = s.tenant_id
+         WHERE s.status = 'running' ORDER BY s.updated_at ASC LIMIT " . (int)$limit
+    );
+    $st->execute();
+    $rows = $st->fetchAll();
+    foreach ($rows as &$r) {
+        $r['cursor'] = $r['cursor_json'] ? (json_decode((string)$r['cursor_json'], true) ?: []) : [];
+        $r['job'] = function_exists('queue_tenant_active') ? queue_tenant_active((string)$r['tenant_id'], 'sync_run') : null;
+        $r['stuck'] = empty($r['lock_active']) && $r['job'] === null;
+    }
+    return $rows;
+}
+
 /** Historie einer Firma (mandantengefiltert), neueste zuerst. */
 function sync_runs_list(string $tenantId, int $limit = 50): array
 {

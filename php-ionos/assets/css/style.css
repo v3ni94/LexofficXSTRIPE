@@ -562,6 +562,11 @@ body.theme-product th { background: #F3F1EC; color: #6B6B6B; }
 /* Kennzahlen (Dashboard): fünf Karten in einer Reihe, zweizeilige Beschriftung, Ampelfarben */
 .stat-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .stat-row .stat-card { display: flex; flex-direction: column; min-width: 0; }
+/* Anklickbare Kennzahl: fuehrt auf die Liste, aus der sie stammt (Adminbereich System). Optik bleibt
+   die einer Karte, nur Zeiger und Hervorhebung zeigen die Verlinkung. */
+a.stat-card.stat-link { text-decoration: none; color: inherit; cursor: pointer; transition: box-shadow .12s, transform .12s; }
+a.stat-card.stat-link:hover, a.stat-card.stat-link:focus-visible { box-shadow: 0 2px 10px rgba(0, 0, 0, .12); transform: translateY(-1px); }
+a.stat-card.stat-link:focus-visible { outline: 2px solid #E3AC48; outline-offset: 2px; }
 .stat-row .stat-value { font-size: 28px; line-height: 1.1; }
 .stat-row .stat-label { line-height: 1.35; }
 .stat-sub { display: block; color: var(--hvm-anthracite); font-weight: 600; margin-top: 2px; }

@@ -65,6 +65,8 @@
 #      "kill --signal SIGTERM" plus Warten aus; kein Aufruf von "stop --signal", Deployment laeuft durch.
 #  16. Ausweichweg, aber die Container enden nicht innerhalb der Frist: Warnung, danach regulaerer Stopp mit
 #      kurzer Frist, Deployment laeuft trotzdem durch (kein Warten auf die alten 660 s).
+#  17. Statusseite: deploy.sh legt /opt/smarteinzug/shared/status an und kopiert den Platzhalter des
+#      Release einmalig hinein; bereits veroeffentlichte Statusdaten ueberleben jedes Folgedeployment.
 #
 # Aufruf: bash tools/redis-deploy-check.sh        Exit 0 = alle Faelle bestanden
 set -uo pipefail
@@ -405,6 +407,25 @@ output "$S16" | grep -q "::warning:: Nicht alle Container endeten innerhalb von 
 [[ "$(call_count "$S16" 'stop --time 5')" -ge 1 ]] && ok "Regulaerer Stopp mit kurzer Frist (stop --time 5) als letzte Stufe" || bad "Kein 'stop --time 5': $(calls "$S16" | grep -i stop)"
 [[ "$(call_count "$S16" 'up -d --remove-orphans')" -ge 1 ]] && ok "Cutover wurde ausgefuehrt" || bad "Cutover fehlt"
 rm -rf "$S16"
+
+echo "17) Statusseite: gemeinsamer Ordner wird angelegt, Platzhalter einmalig kopiert, danach unberuehrt"
+S17="$(new_sandbox)"
+make_release "$S17" prevsha "protected-mode no"
+make_release "$S17" newsha "protected-mode no"
+make_release "$S17" newsha2 "protected-mode no"
+set_current "$S17" prevsha
+make_fake_docker "$S17"
+run_deploy "$S17" newsha; RC17=$?
+[[ "$RC17" -eq 0 ]] && ok "Deployment erfolgreich (Exitcode 0)" || bad "Deployment schlug fehl: $(output "$S17")"
+[[ -d "$S17/shared/status" ]] && ok "Ordner shared/status angelegt" || bad "shared/status fehlt"
+[[ -f "$S17/shared/status/status.json" ]] && ok "Platzhalter nach shared/status kopiert (Caddy kann /status.json ausliefern)" || bad "shared/status/status.json fehlt"
+output "$S17" | grep -q "Platzhalter fuer die Statusseite" && ok "Kopie im Protokoll vermerkt" || bad "Kein Protokolleintrag zur Kopie"
+# Veroeffentlichte Daten der Anwendung duerfen ein Folgedeployment NICHT verlieren.
+printf '{"schema":1,"overall":{"state":"ok"},"generated_at":"2026-09-07T10:00:00Z"}\n' > "$S17/shared/status/status.json"
+run_deploy "$S17" newsha2; RC17B=$?
+[[ "$RC17B" -eq 0 ]] && ok "Folgedeployment erfolgreich" || bad "Folgedeployment schlug fehl: $(output "$S17")"
+grep -q '"state":"ok"' "$S17/shared/status/status.json" && ok "veroeffentlichte Statusdaten ueberlebten das Deployment (Platzhalter nicht erneut kopiert)" || bad "Statusdaten wurden ueberschrieben: $(cat "$S17/shared/status/status.json")"
+rm -rf "$S17"
 
 echo
 echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"

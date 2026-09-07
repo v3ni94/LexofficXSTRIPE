@@ -81,6 +81,10 @@ make_release() {
     : > "$rel/docker-compose.yml"
     : > "$rel/docker-compose.prod.yml"
     : > "$rel/docker-compose.staging.yml"
+    # Statusseite des Release (Platzhalter), wie sie der GitHub-Workflow ablegt: deploy.sh kopiert sie
+    # einmalig nach shared/status, damit Caddy /status.json ausliefern kann.
+    install -d -m 750 "$sandbox/releases/$sha/status"
+    printf '{"schema":1,"overall":{"state":"unknown"}}\n' > "$sandbox/releases/$sha/status/status.json"
     printf '#!/usr/bin/env bash\nexit 0\n' > "$rel/scripts/rollback.sh"
     chmod +x "$rel/scripts/rollback.sh"
     cp "$DEPLOY_SH_SRC" "$rel/scripts/deploy.sh"

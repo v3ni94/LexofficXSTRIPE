@@ -105,7 +105,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $ok = queue_close($jobId, $ctx);
                 flash_set($ok ? 'success' : 'error', $ok ? 'Job dauerhaft geschlossen.' : 'Job konnte nicht geschlossen werden (falscher Status).');
             }
-            $back = 'admin-system.php?tab=jobs';
+            $back = 'admin-system.php?tab=jobs#wartend';
+        } elseif ($action === 'job_release') {
+            // Reservierung eines Jobs freigeben, dessen Worker sich nicht mehr meldet: zurueck in die
+            // Warteschlange OHNE Fehlversuch. Nur bei abgelaufenem Heartbeat zulaessig (siehe queue.php).
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            if (!queue_available()) {
+                throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
+            }
+            $r = queue_release_one((string)($_POST['job_id'] ?? ''), $ctx);
+            flash_set($r['ok'] ? 'success' : 'error', $r['message']);
+            $back = 'admin-system.php?tab=jobs#wartend';
+        } elseif ($action === 'sync_enqueue') {
+            // Offenen Synchronisationslauf fortsetzen: Job einreihen (dedupe_key verhindert Doppeleintraege).
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            if (!queue_available()) {
+                throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
+            }
+            $orgId = (string)($_POST['org_id'] ?? '');
+            $chk = db()->prepare('SELECT name, sync_paused FROM organizations WHERE id = ? AND deleted_at IS NULL');
+            $chk->execute([$orgId]);
+            $orgRow = $chk->fetch();
+            if (!$orgRow) {
+                throw new RuntimeException('Firma nicht gefunden.');
+            }
+            if ((int)$orgRow['sync_paused'] === 1) {
+                throw new RuntimeException('Für diese Firma ist die Synchronisation pausiert (Wartungsmodus).');
+            }
+            $r = queue_push('sync_run', ['triggered_by' => 'admin'], ['tenant_id' => $orgId, 'user_id' => $ctx['user_id'] ?? null, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $orgId]);
+            audit_log($orgId, $ctx, 'sync_enqueued_admin', 'organization', $orgId, ['job_id' => $r['id'], 'created' => (bool)$r['created']]);
+            flash_set('success', $r['created'] ? 'Fortsetzung der Synchronisation eingereiht.' : 'Für diese Firma ist bereits ein Synchronisationsjob aktiv.');
+            $back = 'admin-system.php?tab=jobs#wartend';
         } elseif ($action === 'org_sync_pause' || $action === 'org_sync_resume') {
             require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             $orgId = (string)($_POST['org_id'] ?? '');
@@ -231,17 +261,52 @@ layout_header('System', $ctx);
 </div>
 
 <div class="card">
-    <h2>Nicht verfügbare Messwerte</h2>
-    <table class="table-plain">
+    <h2>Herkunft und Grenzen der Messwerte</h2>
+    <p class="hint">Was gemessen wird, hängt von der Umgebung ab: Auf dem VPS liest der Metrik-Sammler
+    (<code>bin/host-metrics.php</code>) Kennzahlen des Hosts, auf dem IONOS Webhosting ist das ohne
+    Root-Zugang nicht möglich. Diese Übersicht sagt je Messwert, ob aktuell Daten vorliegen; die Werte
+    selbst stehen im Reiter <a href="admin-system.php?tab=server">Server</a>.</p>
+    <?php
+    // Je Zeile: vorhandene Messung (monitor_latest) entscheidet, ob der Messwert als erfasst gilt.
+    // "metric" leer bedeutet: technisch nicht erfassbar, unabhaengig von der Umgebung.
+    $messGrenzen = [
+        ['label' => 'CPU-Auslastung des Servers', 'metric' => 'host_cpu',
+         'da' => 'Erfasst vom Metrik-Sammler auf dem VPS (/proc/stat).',
+         'fehlt' => 'Keine Messung: nur auf dem VPS mit laufendem Metrik-Sammler verfügbar, auf dem IONOS Webhosting ohne Root-Zugang nicht bereitgestellt.'],
+        ['label' => 'Gesamt-RAM-Auslastung', 'metric' => 'host_mem',
+         'da' => 'Erfasst vom Metrik-Sammler auf dem VPS (/proc/meminfo).',
+         'fehlt' => 'Keine Messung: ohne Metrik-Sammler misst memory_get_peak_usage() nur den eigenen PHP-Job.'],
+        ['label' => 'Systemlast', 'metric' => 'host_load1',
+         'da' => 'Erfasst vom Metrik-Sammler auf dem VPS (/proc/loadavg, 1 Minute).',
+         'fehlt' => 'Keine Messung: nur auf dem VPS verfügbar.'],
+        ['label' => 'Festplatten- und Speicherbelegung', 'metric' => 'host_disk',
+         'da' => 'Erfasst vom Metrik-Sammler auf dem VPS (Dateisystem der Releases).',
+         'fehlt' => 'Keine Messung: das Webspace-Kontingent des Hostings wird nicht bereitgestellt; gemessen werden dann nur eigene Größen (Datenbank, Mandatsspeicher).'],
+        ['label' => 'Sicherungen (Zeitpunkt und Größe der neuesten Datenbanksicherung)', 'metric' => 'backup',
+         'da' => 'Erfasst aus der lokalen Kopie der Coolify-Sicherungen (backup-status.json). Der externe Upload nach Hetzner Object Storage und der Wiederherstellungstest werden in Coolify geprüft, nicht hier.',
+         'fehlt' => 'Keine Messung: ohne backup-status.json nicht eingerichtet.'],
+        ['label' => 'Belegte PHP-Worker und Prozesse', 'metric' => '',
+         'fehlt' => 'Technisch nicht erfassbar: php-fpm liefert der Anwendung keine belastbare aktuelle Anzahl, eine erlaubte Höchstzahl wäre keine Messung.'],
+        ['label' => 'Externe Erreichbarkeitsprüfung (Sicht von außen)', 'metric' => '',
+         'fehlt' => $cfg['publish']
+             ? 'Statusveröffentlichung ist konfiguriert; ein unabhängiger externer Prüfer ist damit noch nicht eingerichtet (siehe docs/status-page.md).'
+             : 'Nicht eingerichtet, und die Statusveröffentlichung ist noch nicht konfiguriert (siehe docs/status-page.md und docs/vps/06-betrieb.md).'],
+    ];
+    ?>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Messwert</th><th>Stand</th><th>Erläuterung</th></tr></thead>
         <tbody>
-        <tr><td>CPU-Auslastung des Servers</td><td>Vom Hosting nicht bereitgestellt (IONOS Webhosting ohne Root-Zugang, kein hostweiter Load-Wert als eigene Auslastung).</td></tr>
-        <tr><td>Gesamt-RAM-Auslastung</td><td>Vom Hosting nicht bereitgestellt. memory_get_peak_usage() misst nur den eigenen PHP-Job.</td></tr>
-        <tr><td>Belegte PHP-Worker / Prozesse</td><td>Vom Hosting nicht bereitgestellt. Eine erlaubte Höchstzahl wäre keine aktuelle Anzahl.</td></tr>
-        <tr><td>Webspace- und Datenbankkontingent</td><td>Vom Hosting nicht bereitgestellt; gemessen werden nur eigene Größen (Dienste).</td></tr>
-        <tr><td>Sicherungen / Wiederherstellungstest</td><td>Nicht überwacht (keine verifizierbare Quelle).</td></tr>
-        <tr><td>Externe Erreichbarkeitsprüfung</td><td><?= $cfg['publish'] ? 'Statusveröffentlichung konfiguriert; externer Prüfer siehe docs/status-page.md.' : 'Nicht eingerichtet (siehe docs/status-page.md).' ?></td></tr>
-        </tbody>
-    </table>
+        <?php foreach ($messGrenzen as $mg):
+            $latest = $mg['metric'] !== '' ? monitor_latest((string)$mg['metric']) : null;
+            $hat = $latest !== null;
+        ?>
+            <tr>
+                <td><?= e($mg['label']) ?></td>
+                <td><?= $hat ? monitor_state_badge('ok', 'erfasst') . ' <span class="hint">' . e(mon_age_label($now - (mon_ts($latest['checked_at']) ?? $now))) . '</span>' : monitor_state_badge('unknown', 'keine Messung') ?></td>
+                <td class="hint"><?= e((string)($hat ? ($mg['da'] ?? '') : $mg['fehlt'])) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
     <?php if ($cfg['tariff_limits']): ?>
     <h3 class="mon-h3">Manuell hinterlegte Tariflimits (Konfigurationswerte, keine Messung)</h3>
     <table class="table-plain"><tbody>
@@ -317,7 +382,7 @@ layout_header('System', $ctx);
         <?php endforeach; ?>
         </tbody></table></div>
 </div>
-<div class="card">
+<div class="card" id="laufende">
     <h2>Laufende und unbestätigte Ausführungen</h2>
     <?php $runs = $available ? $pdo->query("SELECT r.*, o.name AS org_name FROM job_runs r LEFT JOIN organizations o ON o.id = r.tenant_id WHERE r.status IN ('running','unknown') AND r.heartbeat_at >= '" . mon_utc($now - 86400) . "' ORDER BY r.started_at DESC LIMIT 50")->fetchAll() : []; ?>
     <div class="table-wrap"><table>
@@ -389,7 +454,7 @@ $queueGlobalOn = feature_enabled('queue');
         </tbody></table></div>
 </div>
 
-<div class="card">
+<div class="card" id="aktive-jobs">
     <h2>Aktive Jobs</h2>
     <div class="table-wrap"><table>
         <thead><tr><th>Firma</th><th>Typ</th><th>Fortschritt</th><th>Worker</th><th>Start</th><th>Laufzeit</th><th>Status</th></tr></thead>
@@ -453,6 +518,125 @@ $queueGlobalOn = feature_enabled('queue');
             </tr>
         <?php endforeach; ?>
         </tbody></table></div>
+</div>
+
+<div class="card" id="wartend">
+    <h2>Wartende Aufgaben</h2>
+    <p class="hint">Aufschlüsselung der Kennzahl aus der Übersicht: Jobs in der Warteschlange, Reservierungen
+    ohne Lebenszeichen des Workers, offene Synchronisationsläufe und fällige Einzüge. Die Aktionen wirken
+    nur auf die Warteschlange, sie lösen selbst keinen Einzug aus.</p>
+
+    <h3 class="mon-h3">Jobs in der Warteschlange</h3>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Firma</th><th>Typ</th><th>Eingereiht von</th><th>Eingereiht</th><th>Nächster Versuch</th><th>Versuche</th><th>Letzter Fehler</th><th>Aktionen</th></tr></thead>
+        <tbody>
+        <?php
+        $waitingJobs = queue_waiting_jobs(100);
+        if (!$waitingJobs): ?><tr><td colspan="8" class="hint">Keine wartenden Jobs.</td></tr><?php endif; ?>
+        <?php foreach ($waitingJobs as $j):
+            $avail = queue_ts($j['available_at']);
+            $created = queue_ts($j['created_at']);
+            // "Eingereiht von": Benutzer, sonst der Scheduler (automatische Aufgabe ohne Benutzerbezug).
+            $von = trim((string)($j['user_name'] ?? '')) !== '' ? (string)$j['user_name']
+                 : (trim((string)($j['user_email'] ?? '')) !== '' ? (string)$j['user_email'] : 'Automatisch (Scheduler)');
+        ?>
+            <tr>
+                <td><?= e($j['org_name'] ?? ($j['tenant_id'] ? (string)$j['tenant_id'] : 'Plattform')) ?></td>
+                <td><?= e(queue_type_label((string)$j['type'])) ?></td>
+                <td><?= e($von) ?></td>
+                <td><?= e(mon_local($j['created_at'])) ?><?= $created !== null ? ' <span class="hint">(' . e(mon_age_label($now - $created)) . ')</span>' : '' ?></td>
+                <td><?php if ($avail === null): ?>-<?php elseif ($avail <= $now): ?><span class="hint">sofort möglich</span><?php else: ?><?= e(mon_local($j['available_at'])) ?> <span class="hint">(in <?= e(mon_age_label($avail - $now)) ?>)</span><?php endif; ?></td>
+                <td><?= (int)$j['attempts'] ?> / <?= (int)$j['max_attempts'] ?><?= $j['status'] === 'retry' ? ' <span class="hint">(Wiederholung)</span>' : '' ?></td>
+                <td class="hint"><?= e((string)($j['last_error'] ?: '-')) ?></td>
+                <td>
+                    <?php if ($canEdit): ?>
+                    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_retry_now"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
+                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <button type="submit" class="btn btn-sm btn-secondary">Jetzt ausführen</button></form>
+                    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_cancel"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
+                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <button type="submit" class="btn btn-sm btn-secondary">Abbrechen</button></form>
+                    <?php else: ?><span class="hint">Nur mit Bearbeitungsrecht</span><?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+
+    <h3 class="mon-h3">Reservierungen ohne Lebenszeichen des Workers</h3>
+    <p class="hint">Der Job ist reserviert, sein Worker meldet sich aber länger als die Frist des Jobtyps nicht
+    mehr (Heartbeat). Die Wartung gibt solche Jobs automatisch als Fehlversuch frei; hier lassen sie sich
+    vorher ohne Fehlversuch freigeben.</p>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Firma</th><th>Typ</th><th>Worker</th><th>Start</th><th>Läuft seit</th><th>Letztes Lebenszeichen</th><th>Frist</th><th>Aktion</th></tr></thead>
+        <tbody>
+        <?php $staleJobs = queue_stale_reservations(50); if (!$staleJobs): ?><tr><td colspan="8" class="hint">Keine Reservierung ohne Lebenszeichen.</td></tr><?php endif; ?>
+        <?php foreach ($staleJobs as $j): $sStart = queue_ts($j['started_at']); ?>
+            <tr>
+                <td><?= e($j['org_name'] ?? ($j['tenant_id'] ? (string)$j['tenant_id'] : 'Plattform')) ?></td>
+                <td><?= e(queue_type_label((string)$j['type'])) ?></td>
+                <td><?= e((string)($j['locked_by'] ?: '-')) ?></td>
+                <td><?= $sStart !== null ? e(mon_local($j['started_at'])) : '-' ?></td>
+                <td><?= $sStart !== null ? e(mon_age_label($now - $sStart)) : '-' ?></td>
+                <td><?= $j['heartbeat_age'] === null ? '<span class="hint">nie</span>' : e(mon_age_label((int)$j['heartbeat_age'])) . ' <span class="hint">her</span>' ?></td>
+                <td><?= (int)$j['heartbeat_ttl'] ?> s</td>
+                <td>
+                    <?php if ($canEdit): ?>
+                    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_release"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
+                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <button type="submit" class="btn btn-sm btn-secondary">Reservierung freigeben</button></form>
+                    <?php else: ?><span class="hint">Nur mit Bearbeitungsrecht</span><?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+
+    <h3 class="mon-h3">Offene Synchronisationsläufe</h3>
+    <p class="hint">Ein Lauf gilt als offen, solange er nicht abgeschlossen ist. "Hängt" bedeutet: keine
+    aktive Sperre und kein Job, der ihn fortsetzt. Der Scheduler schließt solche Läufe und reiht die
+    Fortsetzung sofort ein; mit der Aktion geht das ohne Wartezeit. Die Fortsetzung beginnt am gespeicherten
+    Zwischenstand, nicht von vorn.</p>
+    <div class="table-wrap"><table>
+        <thead><tr><th>Firma</th><th>Gestartet</th><th>Letzter Schritt</th><th>Fortschritt</th><th>Zustand</th><th>Letzter Fehler</th><th>Aktion</th></tr></thead>
+        <tbody>
+        <?php $openRuns = sync_open_runs(50); if (!$openRuns): ?><tr><td colspan="7" class="hint">Kein offener Synchronisationslauf.</td></tr><?php endif; ?>
+        <?php foreach ($openRuns as $r): $prog = sync_progress($r); ?>
+            <tr>
+                <td><?= e($r['org_name'] ?? (string)$r['tenant_id']) ?><?= (int)($r['sync_paused'] ?? 0) === 1 ? ' <span class="hint">(pausiert)</span>' : '' ?></td>
+                <td><?= e(mon_local($r['started_at'])) ?></td>
+                <td><?= $r['last_step_at'] ? e(mon_local($r['last_step_at'])) : '<span class="hint">noch keiner</span>' ?><?= $r['state_age_seconds'] !== null ? ' <span class="hint">(' . e(mon_age_label((int)$r['state_age_seconds'])) . ' ohne Fortschritt)</span>' : '' ?></td>
+                <td><?= $prog['percent'] !== null ? (int)$prog['percent'] . ' %' : '<span class="hint">unbekannt</span>' ?><span class="stat-sub"><?= e((string)$prog['text']) ?></span></td>
+                <td><?php if (!empty($r['lock_active'])): ?><?= monitor_state_badge('ok', 'Wird bearbeitet') ?><?php elseif ($r['job'] !== null): ?><?= monitor_state_badge('ok', 'Job eingereiht') ?><?php else: ?><?= monitor_state_badge('unknown', 'Hängt (kein Job)') ?><?php endif; ?></td>
+                <td class="hint"><?= e((string)($r['last_error'] ?: '-')) ?></td>
+                <td>
+                    <?php if ($canEdit && $r['job'] === null && (int)($r['sync_paused'] ?? 0) !== 1): ?>
+                    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="sync_enqueue"><input type="hidden" name="org_id" value="<?= e((string)$r['tenant_id']) ?>">
+                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <button type="submit" class="btn btn-sm btn-secondary">Fortsetzung einreihen</button></form>
+                    <?php elseif ($r['job'] !== null): ?><span class="hint">Job wartet bereits</span>
+                    <?php elseif (!$canEdit): ?><span class="hint">Nur mit Bearbeitungsrecht</span>
+                    <?php else: ?><span class="hint">Synchronisation pausiert</span><?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+
+    <h3 class="mon-h3">Fällige Einzüge und Einreichfenster</h3>
+    <?php
+    $qz = monitor_queue();
+    $rulesCfg = collections_rules_config();
+    $winOpen = collections_window_open();
+    $nextOpen = collections_window_next_open();
+    ?>
+    <dl class="kv">
+        <dt>Fällige, noch nicht eingereichte Einzüge</dt>
+        <dd><?= (int)$qz['collections_due'] ?><?= $qz['collections_oldest_age'] !== null ? ' (ältester seit ' . e(mon_age_label((int)$qz['collections_oldest_age'])) . ')' : '' ?></dd>
+        <dt>Einreichfenster</dt>
+        <dd><?php if (!$rulesCfg['window_enabled']): ?>Nicht eingeschränkt (rund um die Uhr)
+            <?php elseif ($winOpen): ?><?= monitor_state_badge('ok', 'offen') ?> <?= e($rulesCfg['window_start']) ?> bis <?= e($rulesCfg['window_end']) ?>
+            <?php else: ?><?= monitor_state_badge('unknown', 'geschlossen') ?> <?= e($rulesCfg['window_start']) ?> bis <?= e($rulesCfg['window_end']) ?>, nächste Öffnung <?= e($nextOpen->format('d.m.Y H:i')) ?><?php endif; ?></dd>
+    </dl>
+    <p class="hint">Das Einreichfenster begrenzt ausschließlich das Einreichen von Lastschriften. Synchronisation,
+    Klärung unklarer Versuche, Statusabrufe bei Stripe, Monitoring und E-Mail laufen unabhängig davon rund um die Uhr.</p>
 </div>
 
 <div class="card">

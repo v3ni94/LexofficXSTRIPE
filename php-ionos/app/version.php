@@ -8,12 +8,20 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.15';
+const APP_VERSION = '4.16';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.16', 'date' => '07.09.2026', 'title' => 'Kennzahlen anklickbar, Statusseite mit echten Daten',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Die fünf Kennzahlen der Systemübersicht sind anklickbar und führen auf die Liste, aus der sie stammen. Neu ist der Abschnitt "Wartende Aufgaben" (System, Jobs): wartende Jobs mit Firma, Typ, einreichender Person (fehlt sie, war es der Scheduler), Zeitpunkt, nächstem Versuch, Versuchszahl und letztem Fehler; Reservierungen, deren Worker sich nicht mehr meldet, mit Laufzeit und Alter des Heartbeats; offene Synchronisationsläufe mit Fortschritt und Kennzeichnung "hängt"; fällige Einzüge samt Zustand des Einreichfensters und nächster Öffnung.'],
+            ['type' => 'Neu', 'text' => 'Aktionen im Abschnitt "Wartende Aufgaben" (je mit 2FA-Code und Protokoll im Audit): "Jetzt ausführen" und "Abbrechen" für wartende Jobs, "Reservierung freigeben" für Jobs ohne Lebenszeichen des Workers (ohne Fehlversuch; bei frischem Heartbeat verweigert, damit einem laufenden Worker der Job nicht entzogen wird) und "Fortsetzung einreihen" für einen offenen Synchronisationslauf (setzt am Zwischenstand an, gesperrt bei pausierter Firma).'],
+            ['type' => 'Behoben', 'text' => 'Die öffentliche Statusseite zeigte dauerhaft "Status unbekannt (Daten veraltet)". Ursache war der fehlende letzte Einrichtungsschritt: Die Anwendung hatte kein Ziel für die Statusdaten (status_publish leer), und im Release kann sie nicht schreiben. Jetzt schreibt sie nach /opt/smarteinzug/shared/status/status.json, Caddy liefert genau diese Datei unter dem Status-Host aus (die PHP-Container schreibend, Caddy nur lesend eingebunden; bewusst nicht shared/storage, dort liegen Kundendaten). deploy.sh legt den Ordner an und kopiert den Platzhalter einmalig hinein; veröffentlichte Daten überleben jedes Deployment. Zu setzen bleibt der Eintrag status_publish in shared/config.php (siehe docs/status-page.md).'],
+            ['type' => 'Geändert', 'text' => 'Die Übersicht nennt Herkunft und Grenzen der Messwerte jetzt nach der tatsächlichen Lage statt pauschal "Vom Hosting nicht bereitgestellt": Je Messwert wird angezeigt, ob eine aktuelle Messung vorliegt (CPU, RAM, Systemlast, Festplatte und Sicherungen erfasst der Metrik-Sammler auf dem VPS). Technisch nicht erfassbar bleiben die Zahl belegter PHP-Prozesse und eine unabhängige Erreichbarkeitsprüfung von außen.'],
+            ['type' => 'Neu', 'text' => 'tools/scheduler-sync-check.sh deckt zusätzlich die neuen Ansichten und Aktionen ab (35 Fälle gegen eine echte temporäre MariaDB): wartende gegen reservierte Jobs, Freigabe ohne Fehlversuch, Schutz bei frischem Heartbeat, offene Läufe mit und ohne Job sowie statisch die Verlinkung der Kennzahlen und die 2FA-Pflicht der Aktionen. tools/compose-check.py prüft den Weg der Statusdaten (Einbindungen, Caddyfile, Ordneranlage in deploy.sh, Vorlage in config.example.php), tools/redis-deploy-check.sh die einmalige Kopie des Platzhalters.'],
+         ]],
         ['version' => '4.15', 'date' => '07.09.2026', 'title' => 'Abgebrochene Synchronisation wird sofort fortgesetzt',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Im Monitoring blieb nach einem hart beendeten Worker dauerhaft "Wartende Aufgaben (1 Sync)" stehen. Ursache: Der Scheduler schloss den verwaisten Lauf zwar als Fehler, reihte die Fortsetzung aber erst zur nächsten regulären Fälligkeit ein (auto_sync_hours, Vorgabe 6 Stunden). Jetzt wird die Fortsetzung sofort eingereiht; der Lauf setzt am gespeicherten Cursor an. Ein Doppeleintrag ist über den dedupe_key ausgeschlossen, eine pausierte Firma und ein Lauf mit Fortschritt bleiben unberührt.'],

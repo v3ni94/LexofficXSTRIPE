@@ -27,6 +27,17 @@ require_once $root . '/php-ionos/app/jobs.php';
 $pdo = db();
 $tid = 'org-' . substr(bin2hex(random_bytes(4)), 0, 8);
 
+// Jeder Fall startet auf leeren Tabellen: Das Testskript ruft mehrere Faelle gegen DIESELBE temporaere
+// Datenbank auf; ohne Zuruecksetzen wuerden sich Firmen, Laeufe und Jobs addieren und die Zaehlungen
+// verfaelschen. Betrifft ausschliesslich die Wegwerfdatenbank des Tests.
+foreach (['jobs', 'sync_runs', 'sync_state', 'integrations', 'organizations'] as $tabelle) {
+    try {
+        $pdo->exec('DELETE FROM ' . $tabelle);
+    } catch (Throwable $e) {
+        // Tabelle fehlt in diesem Schema: nichts zu loeschen
+    }
+}
+
 /** Firma mit abgeschlossenem Onboarding, verbundener Lexware-Anbindung und aktiver Warteschlange. */
 function seed_org(PDO $pdo, string $tid, int $syncPaused = 0): void
 {
@@ -93,6 +104,51 @@ switch ($fall) {
         seed_org($pdo, $tid);
         // Kein laufender Zustand: die regulaere Faelligkeit greift (age = null)
         report($pdo, $tid, scheduler_auto_sync(jobs_config(), (int)$mittags->getTimestamp()));
+        break;
+
+    case 'wartende-jobs':
+        // Warteschlangenansicht des Adminbereichs: wartender Job und geplante Wiederholung erscheinen,
+        // ein reservierter Job nicht (der steht unter "Aktive Jobs").
+        seed_org($pdo, $tid);
+        queue_push('sync_run', ['triggered_by' => 'admin'], ['tenant_id' => $tid, 'dedupe_key' => 'sync:' . $tid]);
+        queue_push('maintenance', [], ['dedupe_key' => 'wartung:test']);
+        $reserviert = queue_reserve('worker-test', ['monitor_collect', 'maintenance']);
+        $wartend = queue_waiting_jobs(50);
+        printf("wartend=%d\nreserviert=%s\ntypen=%s\n", count($wartend), $reserviert ? (string)$reserviert['type'] : 'keiner',
+            implode(',', array_map(static fn(array $j): string => (string)$j['type'], $wartend)));
+        break;
+
+    case 'stale-reservierung':
+        // Reservierter Job ohne Lebenszeichen: erscheint in der Liste und laesst sich OHNE Fehlversuch
+        // freigeben; ein frischer Heartbeat verhindert die Freigabe.
+        seed_org($pdo, $tid);
+        queue_push('sync_run', ['triggered_by' => 'admin'], ['tenant_id' => $tid, 'dedupe_key' => 'sync:' . $tid]);
+        $job = queue_reserve('worker-test', ['sync_run']);
+        printf("frisch_gefunden=%d\n", count(queue_stale_reservations(10)));
+        $frisch = queue_release_one((string)$job['id'], ['email' => 'test']);
+        printf("freigabe_frisch=%s\n", $frisch['ok'] ? 'ja' : 'nein');
+        // Heartbeat kuenstlich altern lassen (heartbeat_ttl von sync_run: 300 s)
+        $pdo->prepare('UPDATE jobs SET heartbeat_at = DATE_SUB(NOW(), INTERVAL 20 MINUTE) WHERE id = ?')->execute([$job['id']]);
+        $liste = queue_stale_reservations(10);
+        printf("stale_gefunden=%d\n", count($liste));
+        $vorher = (int)queue_get((string)$job['id'])['attempts'];
+        $r = queue_release_one((string)$job['id'], ['email' => 'test']);
+        $nachher = queue_get((string)$job['id']);
+        printf("freigabe=%s\nstatus=%s\nversuche_vorher=%d\nversuche_nachher=%d\nlocked=%s\n",
+            $r['ok'] ? 'ja' : 'nein', (string)$nachher['status'], $vorher, (int)$nachher['attempts'],
+            $nachher['locked_by'] === null ? 'frei' : (string)$nachher['locked_by']);
+        break;
+
+    case 'offene-laeufe':
+        // Offener Lauf ohne Job gilt als haengend; sobald ein Job wartet, nicht mehr.
+        seed_org($pdo, $tid);
+        seed_state($pdo, $tid, SYNC_STALE_MINUTES + 5);
+        $vor = sync_open_runs(10);
+        queue_push('sync_run', ['triggered_by' => 'admin'], ['tenant_id' => $tid, 'dedupe_key' => 'sync:' . $tid]);
+        $nach = sync_open_runs(10);
+        printf("laeufe=%d\nhaengt_vorher=%s\nhaengt_nachher=%s\nfirma=%s\n", count($vor),
+            !empty($vor[0]['stuck']) ? 'ja' : 'nein', !empty($nach[0]['stuck']) ? 'ja' : 'nein',
+            (string)($vor[0]['org_name'] ?? '-'));
         break;
 
     default:
