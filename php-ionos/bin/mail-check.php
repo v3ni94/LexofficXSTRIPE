@@ -33,7 +33,15 @@ cli_out('SMTP:        ' . (string)($smtp['host'] ?? '(leer)') . ':' . (string)($
 cli_out('SMTP-Nutzer: ' . $mask((string)($smtp['user'] ?? '')));
 cli_out('SMTP-Passwort gesetzt: ' . (empty($smtp['pass']) || $smtp['pass'] === 'HIER-POSTFACH-PASSWORT' ? 'NEIN' : 'ja'));
 cli_out('Betriebspfad: ' . ($queueOn ? 'Warteschlange (Jobtyp mail, Container worker-mail)' : 'direkt beim Aufruf'));
-cli_out('Wirkung bei NICHT AKTIV: keine Bestaetigungs-, Willkommens-, Sicherheits- und Vorabankuendigungsmails; vormerken.php antwortet 503; Statusseite zeigt E-Mail als unbekannt.');
+cli_out('Wirkung bei NICHT AKTIV: keine Bestaetigungs-, Willkommens-, Sicherheits- und Vorabankuendigungsmails; Vormerkungen und Registrierungen werden gespeichert und als wartend markiert (Nachsendung durch die Wartung nach dem Einschalten); Statusseite zeigt E-Mail als unbekannt.');
+$replyTo = trim((string)($cfg['reply_to'] ?? ''));
+if ($replyTo !== '' && !filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
+    cli_out('WARNUNG: reply_to ist keine gueltige E-Mail-Adresse (' . $replyTo . '); Antworten der Empfaenger gingen ins Leere. In shared/config.php korrigieren.');
+}
+$fromAddr = trim((string)($cfg['from_address'] ?? ''));
+if ($fromAddr !== '' && !filter_var($fromAddr, FILTER_VALIDATE_EMAIL)) {
+    cli_out('WARNUNG: from_address ist keine gueltige E-Mail-Adresse (' . $fromAddr . ').');
+}
 
 if (!mail_enabled()) {
     exit(1);

@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.24';
+const APP_VERSION = '4.25';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.25', 'date' => '07.09.2026', 'title' => 'Mailprüfung warnt bei ungültigen Adressen, Betriebshinweise',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'bin/mail-check.php beschrieb die Wirkung eines abgeschalteten Versands noch mit dem Stand vor 4.22 (Vormerkung antwortet 503). Der Hinweis nennt jetzt das Speichern mit Wartemarke und das Nachsenden durch die Wartung.'],
+            ['type' => 'Neu', 'text' => 'bin/mail-check.php warnt, wenn Absender- oder Antwortadresse in der Konfiguration keine gültige E-Mail-Adresse ist (in Produktion fehlte der Antwortadresse die Domainendung).'],
+            ['type' => 'Geändert', 'text' => 'Betriebsdokumentation: Prüfschritte zu Hostinger-Firewall und fail2ban-Einheit nach dem SSH-Ausfall von Lauf #58, Hinweis auf RELEASE_SHA für manuelle Compose-Aufrufe und Ablageort der Deploy-Protokolle.'],
+         ]],
         ['version' => '4.24', 'date' => '07.09.2026', 'title' => 'Links zugestellter E-Mails bleiben gültig, Mail nach Bestätigung wird nachgesendet',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Ein fehlgeschlagener Wiederversand der Bestätigungsmail (etwa bei nicht aktivem Versand) machte bisher die Bestätigungs- und Abmeldelinks einer bereits zugestellten E-Mail ungültig. Neue Token werden jetzt erst gespeichert, wenn die Mail tatsächlich übergeben wurde.'],

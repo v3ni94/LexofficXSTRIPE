@@ -35,6 +35,7 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.25 | `mail-check.php`: aktueller Hinweistext, Warnung bei ungültiger Absender-/Antwortadresse; Betriebsdoku (Hostinger-Firewall, fail2ban-Einheit, RELEASE_SHA, Protokollpfad) | siehe git log | ja |
 | 4.24 | Token erst nach erfolgreichem Versand, Bestätigt-Mail wird nachgesendet, ehrliche Bestätigungsseite | siehe git log | ja |
 | 4.23 | Nachsenden vervollständigt (Migration 022 Nachtrag, Willkommensmail auch bei bestätigter Adresse, Warteschlange, kein Doppelversand, keine leeren Mails), Cron-Matrix und `restart-workers.sh` | siehe git log | ja |
 | 4.22 | Nachsenden wartender Bestätigungs- und Willkommensmails (Migration 021), ehrlicher Seitentext, Adminwarnung | siehe git log | ja |
@@ -97,10 +98,19 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 - Widerspruch: Der Masterplan verlangt eine Tarifaussage zu sevdesk (Buchhaltung Pro nach offizieller Hilfe); die
   frühere Regel „keine Aussagen zu sevdesk-Tarifen“ wurde deshalb auf genau diese belegte Formulierung geändert (CLAUDE.md).
 
-- **Produktion: `mail.enabled` steht auf `false`** (bestätigt durch die Kundenmeldung „E-Mail konnte nicht gesendet werden“ am 07.09.2026; seit 4.22 werden solche Einträge gespeichert und nachgesendet) (`shared/config.php` Zeile 73). Damit versendet die Anwendung keine E-Mails
-  (Bestätigungen, Einladungen, Vorabankündigungen per Mail) und `vormerken.php` nimmt keine Vormerkung an (Antwort 503),
-  weil ohne Bestätigungsmail kein Double-Opt-in möglich ist. Vor jeder Bewerbung der sevdesk-Seite muss ein Postfach
-  angelegt und `mail` konfiguriert werden; Zugangsdaten gehören nur in `shared/config.php`.
+- **Produktion: `mail.enabled` steht auf `false`**, Stand `bin/mail-check.php` vom 07.09.2026, 21:11 Uhr auf Release 4.24: SMTP ist
+  vollständig konfiguriert (smtp.ionos.de:587, TLS, Nutzer und Passwort gesetzt, Absender kontakt@smart-einzug.de), es fehlt
+  allein der Schalter. Bis dahin versendet die Anwendung nichts; seit 4.22 werden Vormerkungen und Registrierungen mit
+  Wartemarke gespeichert und nach dem Einschalten von der Wartung nachgesendet (Migrationen 021 und 022 sind angewandt).
+  Zusätzlich fehlerhaft: `mail.reply_to` lautet `kontakt@smart-einzug` (ohne `.de`), Antworten der Empfänger gingen ins
+  Leere; vor dem Einschalten in `shared/config.php` korrigieren. `mail-check.php` warnt seit 4.25 bei ungültigen Adressen.
+- GitHub-Lauf #58 (4.22) scheiterte wie #51 im ersten SSH-Schritt (vier Versuche, Server nie erreicht); Läufe 4.23 und
+  4.24 waren grün, 4.24 (c38f7a2) ist seit 07.09.2026, 16:47 UTC aktiv. Auf dem Server ausgeschlossen: fail2ban (nie eine
+  Sperre) und ufw (22/tcp ALLOW). Offen: Hostinger-Firewall im hPanel, zeitweilige Netzstörung. Auffällig: Der
+  fail2ban-Jail `sshd` filtert `_SYSTEMD_UNIT=sshd.service`, die Einheit heißt auf Ubuntu 24.04 `ssh.service`; zugleich
+  lieferte `journalctl -u ssh` für 24 Stunden keinen einzigen Fehlversuch. Entweder protokolliert sshd unter einer anderen
+  Einheit oder fail2ban sieht keine Fehlversuche (dann wirkungslos). Prüfschritte in `docs/vps/06-betrieb.md`.
+
 - **Vorfall 07.09.2026:** Die Bereinigung von 4.17 löschte beim Deployment b5fcd8d das Altrelease bdd42e0 (4.16), weil es
   keine Markerdatei trug. Behoben in 4.20 (vollständige Altreleases werden nachträglich gekennzeichnet). bdd42e0 ist
   verloren; Rollback-Ziele sind 54caa37 (4.17) und die folgenden Releases.
@@ -111,15 +121,18 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 
-1. **Betreiber:** Mailversand einrichten nach `docs/mail-einrichtung.md` (Postfach, `mail`-Block in `shared/config.php`,
-   `worker-mail` neu starten, `php bin/mail-check.php --send=...`). Danach Registrierung und Vorregistrierung mit eigener
-   Adresse durchspielen. Ohne diesen Schritt bleiben alle E-Mail-Funktionen aus.
+1. **Betreiber:** Mailversand einschalten: in `shared/config.php` `mail.reply_to` auf `kontakt@smart-einzug.de` korrigieren
+   und `mail.enabled` auf `true` setzen, dann `bash /opt/smarteinzug/deploy/scripts/restart-workers.sh` und
+   `php bin/mail-check.php --send=...` im php-Container (vorher `export RELEASE_SHA=...`, siehe `docs/mail-einrichtung.md`).
+   Die wartenden Bestätigungs- und Willkommensmails sendet die Wartung danach innerhalb einer Stunde nach. Anschließend
+   Registrierung und Vorregistrierung mit eigener Adresse durchspielen.
 1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
 1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
    E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll
    (Kennzahlen je `signup_domain` sind im Adminbereich vorhanden).
-3. Statusseite prüfen: `curl -sS https://status.smart-einzug.de/status.json | head -c 200` nach etwa vier Minuten
-   (Monitoring alle 240 s), Restdateien entfernen, `config.php` im php-Container mit `php -l` prüfen.
+3. SSH-Ausfälle der Läufe #51/#58: Hostinger-Firewall im hPanel prüfen, `journalctl _COMM=sshd` gegen `journalctl -u ssh`
+   vergleichen und fail2ban-Jail auf die richtige Einheit stellen (Serverkonfiguration, bewusst planen). Optional: automatischer
+   zweiter Anlauf des Jobs `deploy-vps` bei reinem Verbindungsfehler (braucht `actions: write`, nur nach Freigabe).
 4. DETM-Leadseiten: blockiert bis Impressumsdaten und Entscheidung zum Provisionsnachweis vorliegen.
 5. Masterplan Phase 2 (ab 11.09.): sevdesk-Testkonto beschaffen, Endpunkte verifizieren, `SevdeskSource` füllen, Workertyp
    `sevdesk`, Anbieterwahl in der Firmeneinrichtung (`invoice_source`), Verbindungsseite „Buchhaltungssystem“ ohne

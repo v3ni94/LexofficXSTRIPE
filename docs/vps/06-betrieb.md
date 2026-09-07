@@ -666,6 +666,30 @@ ss -tlnp | grep sshd
 ssh-keyscan -p <ssh-port> <vps-host> 2>/dev/null | ssh-keygen -lf -
 ```
 
+**Befund vom 07.09.2026 (Lauf #58, Version 4.22):** gleiches Bild wie #51, fail2ban hatte nie eine Adresse gesperrt,
+ufw erlaubt 22/tcp von überall, die Läufe davor und danach waren grün. Zwei Punkte kamen dabei hinzu:
+
+```bash
+# 6. Hostinger-Firewall (hPanel, VPS, Firewall) liegt VOR ufw und ist dort nicht sichtbar:
+#    Regelwerk aktiv? Ist der SSH-Port auf Quelladressen eingeschränkt? GitHub-Runner wechseln ihre Adressen.
+
+# 7. Protokolliert sshd unter der Einheit, die fail2ban überwacht? Auf Ubuntu 24.04 heißt die Einheit ssh.service,
+#    der Jail-Standard filtert _SYSTEMD_UNIT=sshd.service. Null Fehlversuche in 24 Stunden auf offenem Port 22 sind
+#    unplausibel und deuten darauf hin, dass fail2ban nichts sieht.
+journalctl _COMM=sshd --since -24h --no-pager | grep -c "Invalid user\|Failed password"
+journalctl -u ssh --since -24h --no-pager | grep -c "Invalid user\|Failed password"
+fail2ban-client get sshd journalmatch
+# Abhilfe (Serverkonfiguration, bewusst planen): in /etc/fail2ban/jail.local unter [sshd]
+#   backend = systemd
+#   journalmatch = _SYSTEMD_UNIT=ssh.service + _COMM=sshd
+# danach systemctl restart fail2ban und fail2ban-client status sshd erneut prüfen.
+```
+
+Für manuelle `docker compose`-Aufrufe (etwa `exec -T php php bin/mail-check.php`) gilt immer: vorher
+`export RELEASE_SHA="$(basename "$(readlink -f /opt/smarteinzug/releases/current)")"`, sonst bricht Compose mit
+„required variable RELEASE_SHA is missing“ ab. Die Protokolldatei aus `.deploy-status.json` (`log_file`) liegt unter
+`/opt/smarteinzug/logs/`.
+
 Passt der Hostkey nicht mehr zum Secret `VPS_SSH_KNOWN_HOSTS`, ist das kein Netzfehler: `StrictHostKeyChecking`
 bleibt bewusst aktiv, das Secret muss nach einer Neuinstallation des Servers erneuert werden.
 
