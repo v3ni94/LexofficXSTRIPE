@@ -156,3 +156,14 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
    `sevdesk`, Anbieterwahl in der Firmeneinrichtung (`invoice_source`), Verbindungsseite „Buchhaltungssystem“ ohne
    Lexware-Pflichtfelder, Pilotfreigabe über `sevdesk_connect`. Versandwerkzeug für die Startnachricht (nur bestätigt und
    nicht gesperrt, setzt `notified_at`). Rechtliche Prüfung der Texte (Einwilligung v3, Datenschutz 3a, Sperrvermerk).
+
+
+## 7. Frontend-Branch `claude/frontend-smart-einzug-egsouk` (Stand 08.09.2026, kein Deployment aus diesem Branch)
+
+Auftrag: Masterprompt „SEO-, Content- und Landingpage-Ausbau für SmartEinzug“ vom 07.09.2026 (Bestandsaufnahme, Faktenregister, Bereinigung, Keyword-Map, Maßnahmenplan). Arbeitsordner `docs/seo/`, Einstieg `docs/seo/README.md`.
+
+Entscheidungen des Betreibers (07.09.2026): keine Preisbeträge auf den Marketingseiten bis zur Freigabe; lexoffice-einzug.de und lexware-einzug.de als Leadseiten der DETM Management Consulting FZCO ohne SmartEinzug-Logo (Pflichtangaben offen); neue Leaddomains sevdesk-einzug.de (Vormerkung) und sevdesk-sepa.de (SEPA-Wissen) mit getrennten Inhalten; lastschrift-einfach.de ist nur eine Weiterleitung auf smart-abrechnen.de (Ordner und Upload zu bereinigen, Empfehlung an das Backend).
+
+Umgesetzt: Inventarwerkzeug `tools/seo-inventory.py`, Keyword-Map `docs/seo/keyword-map.json` mit `tools/seo-map-check.py` (28 Cluster, 72 Seiten, 0 Fehler), `tools/build-sitemaps.py` mit lastmod aus Git, `tools/pricing-check.php` Abschnitt D, `tools/lead-assets.py`, Faktenregister (191 Einträge), Aussagenprüfung (241 Befunde, 58 verworfen), DETM-Umstellung der Leadseiten, sevdesk-Domains, Bereinigung der Werbeaussagen und Preisentfernung (Phase 2, siehe Commits).
+
+Vor dem Merge in den Backend-Branch zu klären: DETM-Impressumsangaben, `signup_domains` in Produktion um die sevdesk-Domains ergänzen, IONOS-Zuordnung der neuen Domains, AGB-Preisangaben (Anwalt), Freigabe der Preisdarstellung. Offene Fragen an den Betreiber stehen in `docs/seo/02-faktenregister.md`, Abschnitt „Offene Fragen“.
