@@ -74,18 +74,18 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 `.../datenschutz/index.html`, `.../assets/css/site.css` (Asset-Hashes aller Seiten der Domain neu), `.../sitemap.xml`,
 `tools/interest-check.sh`, `tools/lib/interest-sim.php`, `tools/build-docs.py`, `docs/integrations.md`, `docs/einwilligungen.md`, `php-ionos/cron.php`, `CLAUDE.md`, `php-ionos/app/version.php`.
 
-## 4. Getestet (lokal, 07.09.2026)
+## 4. Getestet (lokal, Gesamtlauf 08.09.2026 nach 4.39: alle Suiten grün)
 
 | Suite | Ergebnis |
 |---|---|
 | `bash tools/github-ssh-retry-check.sh` | 43 bestanden, 0 fehlgeschlagen |
 | `bash tools/github-poll-check.sh` | 25 / 0 |
-| `bash tools/redis-deploy-check.sh` | 109 / 0 (Szenarien 18 und 19 neu) |
+| `bash tools/redis-deploy-check.sh` | 111 / 0 |
 | `bash tools/deploy-runner-check.sh` | 35 / 0 |
-| `bash tools/scheduler-sync-check.sh` | 35 / 0 |
+| `bash tools/scheduler-sync-check.sh` | 59 / 0 (Fälle 10a bis 10c seit 4.39) |
 | `bash tools/worker-signal-check.sh` | 17 / 0 |
 | `bash tools/invoice-source-check.sh` | 42 / 0 (temporäre MariaDB) |
-| `bash tools/legal-check.sh` | 56 / 0 (temporäre MariaDB) |
+| `bash tools/legal-check.sh` | 66 / 0 (temporäre MariaDB) |
 | `bash tools/interest-check.sh` | 133 / 0 (statische Prüfung „keine stille Bestätigung“ seit 4.24 fälschlich rot, weil sie den lesenden Vergleich `=== 'confirmed'` traf; Muster auf schreibende Zuweisung eingegrenzt) (temporäre MariaDB, Fassung 4.24) |
 | `php tools/mail-ci-check.php` | 32 / 0 |
 | `php tools/totp-policy-check.php` | 73 / 0 (neu in 4.36) |
@@ -161,6 +161,21 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
   `deploy/vps/scripts/restart-workers.sh`.
 
 ## 6. Nächste offene Schritte (Reihenfolge)
+
+Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Releases 4.33 bis 4.39, alle gepusht):
+
+- **Betreiber, Deployment prüfen:** Läufe für 4.35 bis 4.39 im GitHub-Workflow (aus der Session nicht einsehbar); Migrationen 025
+  bis 029 laufen isoliert vor dem Cutover. Nach dem Deployment `restart-workers.sh` ist nicht nötig (kein Konfigurationswechsel).
+- **Betreiber, Rechte:** unter Adminbereich, Benutzer und Rechte, erste Mitarbeiter einladen (Mailversand aktiv); Rolle Mitarbeiter
+  Support für Supportkräfte; eigene Rollen bei Bedarf.
+- **Betreiber, sevdesk:** Testkonto beschaffen; Prüffragen des Endpunktregisters (`docs/sevdesk.md`, 5b) abarbeiten; erst dann
+  `sevdesk_api_verified = 1`, Pilotfirmen, `sevdesk_collections = 1`. Ohne Eingriff wird am 30.09.2026 nur die Verbindung frei.
+- **Betreiber, Go-live:** Leitfaden Scharfschaltung (Unternehmensdokumentation, Kapitel 2, auch als Kapitel-PDF) Schritt für Schritt;
+  Stripe-Konto der Müller Holding AG, Rechtsdokumente nach anwaltlicher Prüfung, Wiederherstellungstest, DNS-Nachweis.
+- **Frontend-Chat:** `php tools/pricing-check.php` Abschnitt D ist rot wegen fester Preisangaben auf `websites/` (kein Backend-Thema);
+  bitte dort bereinigen, damit der Workflow die Prüfung wieder mitlaufen kann.
+- **Performance, Phase 2 (nach einer Woche Messwerten):** Bemessung der Lexware-Worker, Lexware-Webhooks und Seitengröße erst nach
+  Prüfung der Dokumentation am Primärtext (`docs/sync-performance.md`, Nachtrag 4.39).
 
 0. **Betreiber (nach Deployment 4.37):** Migration 027 setzt bestehenden Superadmin-Konten die Rolle Administrator. Unter Adminbereich,
    „Benutzer und Rechte“ Mitarbeiter einladen (Mailversand muss aktiv sein); für den Fall, dass ein Mitarbeiter ohne Firma sich anmeldet,
