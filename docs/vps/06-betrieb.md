@@ -65,10 +65,12 @@ Checks. `tools/compose-check.py` prüft das ohne laufenden Docker-Daemon (siehe 
 |---|---|---|---|
 | `php` | php-fpm (Web) | `bin/healthcheck.php --db` | Datenbank über `SELECT 1` erreichbar |
 | `scheduler` | `bin/scheduler.php` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des Containers jünger als 90 Sekunden |
-| `worker-lexware-1`, `worker-lexware-2`, `worker-stripe`, `worker-mail`, `worker-maintenance` | `bin/worker.php --pool=...` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des jeweiligen Worker-Containers jünger als 90 Sekunden |
+| `worker-lexware-1`, `worker-lexware-2`, `worker-sevdesk`, `worker-stripe`, `worker-mail`, `worker-maintenance` | `bin/worker.php --pool=...` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des jeweiligen Worker-Containers jünger als 90 Sekunden |
 | `metrics` | `bin/host-metrics.php` | `bin/healthcheck.php --metrics` | `bin/host-metrics.php` läuft als PID 1 UND die Sammelschleife hat zuletzt innerhalb von `METRICS_MAX_AGE_SECONDS` (Standard 300 Sekunden) einen Durchlauf beendet |
 | `redis` | `redis-server` | `redis-cli ping` | Redis antwortet |
 | `caddy` | `caddy` | keiner | Das Basisimage `caddy:2-alpine` bringt keinen eigenen Healthcheck mit; kein Mangel, siehe unten |
+
+`worker-sevdesk` (Version 4.38) bedient den eigenen Pool `sevdesk` und bleibt untätig, solange keine sevdesk-Firma verbunden und freigegeben ist, weil der Scheduler dann nichts einreiht.
 
 Zu `caddy`: `deploy/vps/scripts/deploy.sh` wartet beim Deployment nur auf Container, die einen
 Healthcheck besitzen, und prüft die Kette Coolify-Proxy, Caddy, php-fpm anschließend funktional über

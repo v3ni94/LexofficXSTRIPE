@@ -73,6 +73,9 @@ function _sync_empty_metrics(): array
 function _sync_collect_client_metrics(InvoiceSource $lex, array &$metrics, int $calls0, float $ms0, float $thr0, int $ret0): void
 {
     $client = $lex instanceof LexwareOfficeSource ? $lex->client() : ($lex instanceof LexofficeClient ? $lex : null);
+    if ($client === null && class_exists('SevdeskSource') && $lex instanceof SevdeskSource) {
+        $client = $lex->client(); // gleiche Zaehler (requestCount, requestMs, throttleMs, retryCount)
+    }
     if ($client === null) {
         return;
     }
@@ -314,7 +317,8 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
     }
 
     if (!$cursor['recheck_ids']) {
-        $pdo->prepare('UPDATE integrations SET lexoffice_last_sync = NOW() WHERE tenant_id = ?')
+        // Zeitpunkt der letzten Synchronisation in der Spalte des Buchhaltungssystems der Firma (4.38)
+        $pdo->prepare('UPDATE integrations SET ' . ($lex->code() === 'sevdesk' ? 'sevdesk_last_sync' : 'lexoffice_last_sync') . ' = NOW() WHERE tenant_id = ?')
             ->execute([$tenantId]);
         $cursor['metrics']['duration_s'] = max(0, time() - (int)($cursor['metrics']['started_at'] ?? time()));
         return $finish($cursor, true);

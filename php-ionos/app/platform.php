@@ -25,6 +25,7 @@ const PLATFORM_PERMISSIONS = [
     'admin.view'         => ['Adminbereich',    'Adminbereich betreten (Startseite)'],
     'companies.view'     => ['Firmen',          'Firmenaccounts, Kennzahlen und Diagramme einsehen'],
     'companies.plan'     => ['Firmen',          'Tarif einer Firma zuweisen, Abrechnungsbefreiung setzen'],
+    'companies.manage'   => ['Firmen',          'In Firmeneinstellungen eingreifen: Wechselsperre des Buchhaltungssystems aufheben'],
     'plans.manage'       => ['Tarife',          'Tarife bearbeiten (Preise, Limits, Sichtbarkeit)'],
     'notstopp.platform'  => ['Not-Stopp',       'Plattformweiten Not-Stopp aktivieren und aufheben'],
     'interest.view'      => ['Vormerkungen',    'Vormerkungen einsehen und als CSV exportieren'],

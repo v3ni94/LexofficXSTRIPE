@@ -6,11 +6,13 @@ require_once __DIR__ . '/app/sync_state.php';
 require_once __DIR__ . '/app/queue.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/customer_settings.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 
 // require_subscription() statt require_onboarded(): Diese Seite führt selbst den
 // letzten Onboarding-Schritt (erste Synchronisation) aus.
 $ctx = require_subscription();
 $tenantId = $ctx['org_id'];
+$isrcLabel = invoice_source_current($tenantId)['label'];
 $pdo = db();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -34,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (queue_enabled($tenantId)) {
                 // Warteschlange aktiv: der Webrequest startet nur den Auftrag, Worker verarbeiten ihn (HIGH)
                 $started = sync_state_start($tenantId, $ctx + ['trigger' => 'manual']);
-                $job = queue_push('sync_run', ['triggered_by' => 'manual'], ['tenant_id' => $tenantId, 'user_id' => $ctx['user_id'], 'priority' => 'high', 'dedupe_key' => 'sync:' . $tenantId]);
+                $job = queue_push(invoice_source_sync_job_type($tenantId), ['triggered_by' => 'manual'], ['tenant_id' => $tenantId, 'user_id' => $ctx['user_id'], 'priority' => 'high', 'dedupe_key' => 'sync:' . $tenantId]);
                 if (!empty($started['already_running']) || !$job['created']) {
                     flash_set('info', 'Die Synchronisierung läuft bereits. Ein weiterer Start ist nicht erforderlich.');
                 }
@@ -125,7 +127,7 @@ $syncState = sync_state_get($tenantId);
 if (!empty($_GET['syncing'])) {
     if ($syncState && $syncState['status'] === 'error') {
         $cat = function_exists('monitor_category') ? monitor_category((string)($syncState['last_error'] ?? '')) : 'other';
-        flash_set('error', 'Synchronisation abgebrochen (' . ($cat === 'auth' ? 'Lexware Office lehnt den API-Schlüssel ab' : ($cat === 'timeout' || $cat === 'connection' || $cat === 'dns' ? 'Verbindung zu Lexware Office nicht möglich' : 'technischer Fehler')) . '). Details unter Synchronisationen.');
+        flash_set('error', 'Synchronisation abgebrochen (' . ($cat === 'auth' ? $isrcLabel . ' lehnt den API-Schlüssel ab' : ($cat === 'timeout' || $cat === 'connection' || $cat === 'dns' ? 'Verbindung zu ' . $isrcLabel . ' nicht möglich' : 'technischer Fehler')) . '). Details unter Synchronisationen.');
         $pdo->prepare("UPDATE sync_state SET status = 'idle' WHERE tenant_id = ?")->execute([$tenantId]);
         redirect('invoices.php');
     }
@@ -147,7 +149,7 @@ if (!empty($_GET['syncing'])) {
         layout_header('Rechnungen', $ctx);
         ?>
         <h1>Rechnungen</h1>
-        <p class="page-sub">Synchronisation mit Lexware Office: <?= e(sync_state_label($syncState)) ?><?= (int)($syncState['skipped_starts'] ?? 0) > 0 ? ' · ' . (int)$syncState['skipped_starts'] . ' Doppelstart(s) übersprungen' : '' ?></p>
+        <p class="page-sub">Synchronisation mit <?= e($isrcLabel) ?>: <?= e(sync_state_label($syncState)) ?><?= (int)($syncState['skipped_starts'] ?? 0) > 0 ? ' · ' . (int)$syncState['skipped_starts'] . ' Doppelstart(s) übersprungen' : '' ?></p>
         <div class="card">
             <p>Die Rechnungen werden serverseitig in kleinen Schritten übernommen. Sie können diese Seite
                 schließen: Der Lauf wird im Hintergrund fortgesetzt (mit eingerichtetem Cron auch ohne geöffneten
@@ -234,7 +236,7 @@ $lastSync = $stmt->fetchColumn();
 layout_header('Rechnungen', $ctx);
 ?>
 <h1>Rechnungen</h1>
-<p class="page-sub">Offene und überfällige Rechnungen aus Lexware Office · letzte Synchronisation: <?= format_datetime($lastSync ?: null) ?>
+<p class="page-sub">Offene und überfällige Rechnungen aus <?= e($isrcLabel) ?> · letzte Synchronisation: <?= format_datetime($lastSync ?: null) ?>
     <?php if ($quota['limit'] !== null): ?> · Einzüge in dieser Periode: <?= (int)$quota['used'] ?> von <?= (int)$quota['limit'] ?><?php endif; ?></p>
 <?php if ($quota['limit'] !== null && !empty($quota['warn'])): $quotaPlan = plan_for_org($tenantId); $quotaCand = plan_upgrade_candidate($quotaPlan, 'collections', (int)$quota['limit'] + 1); ?>
 <div class="flash <?= $quota['allowed'] ? 'flash-warn' : 'flash-error' ?>">
@@ -248,15 +250,15 @@ layout_header('Rechnungen', $ctx);
         <form method="post">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="sync">
-            <button type="submit" class="btn">Mit Lexware Office synchronisieren</button>
+            <button type="submit" class="btn">Mit <?= e($isrcLabel) ?> synchronisieren</button>
         </form>
-        <a class="btn btn-secondary" href="synchronisationen.php" title="Verlauf der Synchronisationen mit Lexware Office">Synchronisationen</a>
+        <a class="btn btn-secondary" href="synchronisationen.php" title="Verlauf der Synchronisationen mit <?= e($isrcLabel) ?>">Synchronisationen</a>
         <?php if ($filter === 'open'): ?>
             <a class="btn btn-secondary" href="<?= e(invoices_url('all', $sepaFilter)) ?>">Alle anzeigen</a>
         <?php else: ?>
             <a class="btn btn-secondary" href="<?= e(invoices_url('open', $sepaFilter)) ?>">Nur offene anzeigen</a>
         <?php endif; ?>
-        <a class="btn btn-secondary" href="reconcile.php">Mit Lexware Office abgleichen</a>
+        <a class="btn btn-secondary" href="reconcile.php">Mit <?= e($isrcLabel) ?> abgleichen</a>
     </div>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <span class="hint" style="align-self: center;">SEPA-deaktivierte Kunden:</span>
@@ -270,7 +272,7 @@ layout_header('Rechnungen', $ctx);
     <?php if ($pauseReason): ?>
         <div class="flash flash-error"><?= e($pauseReason) ?> <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>
     <?php endif; ?>
-    <p class="hint">Vor jeder Einreichung wird der offene Restbetrag der Rechnung bei Lexware Office abgerufen. Weicht er vom Rechnungsbetrag ab
+    <p class="hint">Vor jeder Einreichung wird der offene Restbetrag der Rechnung bei <?= e($isrcLabel) ?> abgerufen. Weicht er vom Rechnungsbetrag ab
         (Teilzahlung), wird nur nach ausdrücklicher Bestätigung der Restbetrag eingezogen; ist die Rechnung bezahlt, wird nichts eingereicht.
         Rechnungen mit Klärungsbedarf (z. B. nach einer Erstattung über Stripe) werden nicht eingezogen, bis ein Inhaber oder Administrator die Klärung abgeschlossen hat.</p>
     <?php if ($preNotify): ?>
@@ -316,7 +318,7 @@ layout_header('Rechnungen', $ctx);
                     </td>
                     <td class="num"><?= format_eur($inv['total_gross_amount']) ?>
                         <?php if ($inv['open_amount'] !== null && $inv['open_amount_fetched_at']): ?>
-                            <div class="hint" title="Offener Betrag laut Lexware Office (Payments-Endpunkt)">Rest laut Lexware: <?= format_eur($inv['open_amount']) ?><br>Stand <?= format_datetime($inv['open_amount_fetched_at']) ?></div>
+                            <div class="hint" title="Offener Betrag laut Lexware Office (Payments-Endpunkt)">Rest laut <?= e($isrcLabel) ?>: <?= format_eur($inv['open_amount']) ?><br>Stand <?= format_datetime($inv['open_amount_fetched_at']) ?></div>
                         <?php endif; ?>
                     </td>
                     <td><?= format_date($inv['due_date']) ?></td>
@@ -348,7 +350,7 @@ layout_header('Rechnungen', $ctx);
                             $nothingOpen = $restCents !== null && $restCents <= 0;
                         ?>
                         <?php if ($nothingOpen): ?>
-                            <span class="hint">Laut Lexware Office kein Restbetrag offen (Stand <?= format_datetime($inv['open_amount_fetched_at']) ?>). Bitte synchronisieren.</span>
+                            <span class="hint">Laut <?= e($isrcLabel) ?> kein Restbetrag offen (Stand <?= format_datetime($inv['open_amount_fetched_at']) ?>). Bitte synchronisieren.</span>
                         <?php else: ?>
                         <?php if ($partial): ?>
                             <div class="hint">Teilzahlung erkannt: Es wird nur der Restbetrag von <strong><?= format_eur_cents($restCents) ?></strong> eingezogen.</div>
@@ -379,7 +381,7 @@ layout_header('Rechnungen', $ctx);
                         </form>
                         <?php endif; ?>
                         <?php elseif (!$needsReview && !in_array($inv['lexoffice_status'], ['open', 'overdue'], true)): ?>
-                            <span class="hint">Nicht mehr einziehbar (Lexware Office: <?= e(lexoffice_status_label($inv['lexoffice_status'])) ?>)</span>
+                            <span class="hint">Nicht mehr einziehbar (<?= e($isrcLabel) ?>: <?= e(lexoffice_status_label($inv['lexoffice_status'])) ?>)</span>
                         <?php elseif (!$hasCustomer): ?>
                             <span class="hint">Kein Kunde verknüpft</span>
                         <?php elseif ($sepaDisabled): ?>

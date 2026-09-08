@@ -12,9 +12,11 @@ require_once __DIR__ . '/app/customer_settings.php';
 require_once __DIR__ . '/app/mandates.php';
 require_once __DIR__ . '/app/mandate_files.php';
 require_once __DIR__ . '/app/mandate_requests.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 
 $ctx = require_subscription();
 $tenantId = $ctx['org_id'];
+$isrcLabel = invoice_source_current($tenantId)['label'];
 $pdo = db();
 
 $customerId = (string)($_GET['id'] ?? ($_POST['customer_id'] ?? ''));
@@ -449,7 +451,7 @@ layout_header('Kunde ' . $customer['name'], $ctx);
     <?php if (!$invoices): ?><p class="hint">Keine Rechnungen synchronisiert.</p><?php else: ?>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Nr.</th><th class="num">Betrag</th><th>Fällig</th><th>Lexware Office</th><th>Einzug</th></tr></thead>
+            <thead><tr><th>Nr.</th><th class="num">Betrag</th><th>Fällig</th><th><?= e($isrcLabel) ?></th><th>Einzug</th></tr></thead>
             <tbody>
             <?php foreach ($invoices as $inv): ?>
                 <tr>

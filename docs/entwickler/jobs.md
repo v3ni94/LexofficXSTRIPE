@@ -86,6 +86,22 @@ Job-Handler zentral in `job_handle()` (`app/jobs.php:51-65`); Pools/Zuordnung in
   `job_runs` je Verarbeitungsversuch (`job_run_start()`/`job_run_finish()`, `app/jobs.php:457-501`).
 - **Kooperativer Abbruch:** nach jedem abgeschlossenen Schritt (`worker_stop_requested()`,
   `app/jobs.php:165-167`) und bei belegter Sperre nach 5 Wiederholungen (`app/jobs.php:139-145`),   Fortsetzung über `JobRequeueException`, kein Fehlversuch, Cursor bleibt in `sync_state` erhalten.
+- **`sync_run_sevdesk`, sevdesk-Synchronisation (Version 4.38):** eigener Jobtyp für Firmen mit
+  `integrations.invoice_source = 'sevdesk'`, aber **derselbe Handler** `job_sync_run()`
+  (`job_handle()`, `app/jobs.php:57-58`: beide Fälle rufen `job_sync_run($job, $workerId)` auf,
+  `invoice_source_for_tenant()` wählt intern den passenden Adapter). Eigener Worker-Pool `sevdesk`
+  (`jobs_pools()`, `app/jobs.php:32`) und eigener Container `worker-sevdesk`
+  (`deploy/vps/docker-compose.yml:254-256`), damit Drosselung und Störungen des einen
+  Buchhaltungssystems die Synchronisation des anderen nicht ausbremsen. Auswahl des Jobtyps je
+  Firma über `invoice_source_sync_job_type()`/`INVOICE_SOURCE_SYNC_JOB_TYPES`
+  (`app/invoice_source.php:192-205`: `lexware_office` → `sync_run`, `sevdesk` → `sync_run_sevdesk`).
+  Der Scheduler (`scheduler_auto_sync()`, `app/jobs.php:362-432`) reiht sevdesk-Firmen nur ein, wenn
+  `integrations.sevdesk_connected = 1` **und** die Verbindung freigegeben ist
+  (`integration_switch('sevdesk', 'connect')`, `app/jobs.php:368, 390-392`); ohne freigegebene
+  sevdesk-Firmen bleibt der Pool untätig. Gemeinsamer `dedupe_key` `sync:<tenant_id>` mit `sync_run`
+  verhindert, dass dieselbe Firma über beide Jobtypen hinweg doppelt eingereiht wird
+  (`app/jobs.php:407, 417, 425`). Zeitbudget, Sperre gegen Parallelität, Timeouts/Wiederholungen und
+  kooperativer Abbruch entsprechen `sync_run` (gleicher Handler).
 
 ### `collections_due`, fällige SEPA-Einzüge einreichen
 
@@ -261,15 +277,19 @@ Job-Handler zentral in `job_handle()` (`app/jobs.php:51-65`); Pools/Zuordnung in
 
 - **Aufgabe:** reserviert Jobs seines Pools und verarbeitet sie nacheinander über `job_execute()`
   (`app/jobs.php:454-506`).
-- **Startbefehl/Arbeitsverzeichnis:** `php bin/worker.php --pool=lexware|stripe|mail|maintenance|all
-  [--max-jobs=500] [--max-memory-mb=256] [--once] [--sleep=1]`
-  (Kommentarkopf `bin/worker.php:1-11`); tatsächliche Startzeilen mit `memory_limit` per CLI-Flag,
-  z. B. `["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php",
-  "--pool=lexware"]` (`docker-compose.yml:244`). Fünf Dienste: `worker-lexware-1`,
-  `worker-lexware-2`, `worker-stripe`, `worker-mail`, `worker-maintenance`
-  (`docker-compose.yml:242-261`); `worker-lexware-2` ist in Staging über ein Compose-Profil
-  deaktiviert (Kommentar Zeile 36-37, Datei `docker-compose.staging.yml` nicht Gegenstand dieses
-  Dokuments).
+- **Startbefehl/Arbeitsverzeichnis:** `php bin/worker.php --pool=<pool>
+  [--max-jobs=500] [--max-memory-mb=256] [--once] [--sleep=1]`, `<pool>` einer der Schlüssel aus
+  `jobs_pools()` (`app/jobs.php:28-38`: `lexware`, `sevdesk`, `stripe`, `mail`, `maintenance`,
+  `all`; der Kommentarkopf `bin/worker.php:1-11` listet noch nicht `sevdesk`, `bin/worker.php`
+  liest die erlaubten Pools aber dynamisch aus `jobs_pools()`, `bin/worker.php:21-24`). Tatsächliche
+  Startzeilen mit `memory_limit` per CLI-Flag, z. B. `["php", "-d",
+  "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=lexware"]`
+  (`docker-compose.yml:244`). Sechs Dienste: `worker-lexware-1`, `worker-lexware-2`,
+  **`worker-sevdesk`** (Version 4.38, Pool `sevdesk`, bleibt ohne freigegebene sevdesk-Firmen
+  untätig, da der Scheduler dann nichts einreiht), `worker-stripe`, `worker-mail`,
+  `worker-maintenance` (`docker-compose.yml:242-268`); `worker-lexware-2` ist in Staging über ein
+  Compose-Profil deaktiviert (Kommentar Zeile 68-69, Datei `docker-compose.staging.yml` nicht
+  Gegenstand dieses Dokuments).
 - **Benutzer:** `${APP_UID:-33}:${APP_GID:-33}`, PID 1 ohne Shell-Wrapper (`["php", ...]`, kein `sh
   -c`, Kommentar `docker-compose.yml:240-241`).
 - **Voraussetzungen:** `queue_available()`, sonst Exit 3 (`bin/worker.php:44-47`); Pool muss in

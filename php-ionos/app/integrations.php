@@ -83,6 +83,26 @@ function integration_lexoffice_key(array $integration): ?string
     return !empty($integration['lexoffice_api_key_encrypted']) ? decrypt_value($integration['lexoffice_api_key_encrypted']) : null;
 }
 
+/**
+ * sevdesk-Verbindungstest mit dem Token (Erreichbarkeit und Berechtigung, siehe SevdeskSource::getProfile) und
+ * Pruefzeitpunkt speichern. Ein Firmenname liegt erst vor, wenn der passende Endpunkt verifiziert ist.
+ * @return array{company_name:?string}
+ */
+function integration_verify_sevdesk(string $tenantId, string $apiKey): array
+{
+    $profile = invoice_source_from_key('sevdesk', $apiKey)->getProfile();
+    $company = $profile['companyName'] ?? null;
+    db()->prepare(
+        'UPDATE integrations SET sevdesk_company_name = ?, sevdesk_last_verified_at = NOW() WHERE tenant_id = ?'
+    )->execute([$company !== null ? mb_substr((string)$company, 0, 255) : null, $tenantId]);
+    return ['company_name' => $company];
+}
+
+function integration_sevdesk_key(array $integration): ?string
+{
+    return !empty($integration['sevdesk_api_key_encrypted']) ? decrypt_value($integration['sevdesk_api_key_encrypted']) : null;
+}
+
 /** Liefert true, wenn die Firma mit einem Stripe-Testschlüssel verbunden ist (Banner im Layout). */
 function integration_stripe_test_mode(string $tenantId): bool
 {

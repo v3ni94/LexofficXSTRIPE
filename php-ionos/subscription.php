@@ -8,9 +8,11 @@ require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/billing.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 
 $ctx = require_owner();
 $tenantId = $ctx['org_id'];
+$isrcLabel = invoice_source_current($tenantId)['label'];
 $pdo = db();
 
 $stmt = $pdo->prepare('SELECT * FROM organizations WHERE id = ?');
@@ -107,7 +109,7 @@ layout_header('Abonnement', $ctx);
 <div class="card" id="bestellen">
     <h2><?= $org['subscription_status'] === 'canceled' ? 'Vertrag aktivieren' : 'Abonnement abschließen' ?>: Bestellübersicht</h2>
     <dl class="kv">
-        <dt>Leistung</dt><dd><?= e(product_name()) ?>, Tarif <?= e($plan['name']) ?>: SEPA-Einzug für Rechnungen aus Lexware Office über das eigene Stripe-Konto, Mandatsverwaltung, Einzugshistorie, Support</dd>
+        <dt>Leistung</dt><dd><?= e(product_name()) ?>, Tarif <?= e($plan['name']) ?>: SEPA-Einzug für Rechnungen aus <?= e($isrcLabel) ?> über das eigene Stripe-Konto, Mandatsverwaltung, Einzugshistorie, Support</dd>
         <dt>Preis</dt><dd><?= format_eur_cents((int)$plan['price_cents']) ?> netto je <?= (int)$plan['period_days'] ?> Tage<?= billing_vat_hint((int)$plan['price_cents']) ?>. Die Umsatzsteuer wird auf der Rechnung ausgewiesen; bei gültiger USt-IdNr. außerhalb Deutschlands gilt das Reverse-Charge-Verfahren.</dd>
         <dt>Laufzeit</dt><dd>Abrechnungsperiode <?= (int)$plan['period_days'] ?> Tage, verlängert sich automatisch um jeweils <?= (int)$plan['period_days'] ?> Tage, bis Sie kündigen.</dd>
         <dt>Kündigung</dt><dd>Jederzeit zum Ende der laufenden Abrechnungsperiode, ohne Frist, über Firma > Abonnement. Der Zugriff bleibt bis zum Periodenende bestehen.</dd>

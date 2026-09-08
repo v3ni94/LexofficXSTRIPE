@@ -8,12 +8,20 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.37';
+const APP_VERSION = '4.38';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.38', 'date' => '07.09.2026', 'title' => 'sevdesk Phase 2: Adapter, Verbindung je Firma, eigener Worker, Freigabetermin, Wechselsperre aufheben',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'sevdesk-Adapter hinter der bestehenden Rechnungsquelle (nur lesend): offene und teilbezahlte Rechnungen, Positionen, Kontakte mit Kundennummer und E-Mail, Änderungserkennung. Gebaut nach Sekundärquellen ohne Testkonto: Jede Annahme ist im Endpunktregister der Dokumentation mit Prüffrage vermerkt. Der offene Restbetrag und damit jeder SEPA-Einzug für sevdesk-Rechnungen bleiben gesperrt, bis der Betreiber die Zahlungsfelder mit einem sevdesk-Konto bestätigt hat (Schalter sevdesk_api_verified) und Einzüge freigibt (sevdesk_collections).'],
+            ['type' => 'Neu', 'text' => 'Firmen mit sevdesk verbinden ihr Konto in den Einstellungen (Token verschlüsselt, Verbindungstest, Trennen, Migration 028); Onboarding, Rechnungen, Kunden, Abgleich und Synchronisationsverlauf zeigen das Buchhaltungssystem der Firma. Eigener Jobtyp und Worker-Container für sevdesk (worker-sevdesk), damit Störungen des einen Systems das andere nicht bremsen; Monitoring-Komponente sevdesk.'],
+            ['type' => 'Neu', 'text' => 'Freigabetermin: Ohne ausdrücklichen Schalter wird die sevdesk-Verbindung automatisch ab dem hinterlegten Termin (Vorgabe 30.09.2026) freigegeben; sevdesk_connect = 1 oder 0 hat immer Vorrang. Der Termin gibt nur Verbinden und Lesen frei, nie den Einzug. Anzeige im Adminbereich und in den Einstellungen.'],
+            ['type' => 'Neu', 'text' => 'Adminbereich, Firmen: Wechselsperre des Buchhaltungssystems aufheben (Pflichtgrund, Berechtigung companies.manage, protokolliert); die Firma sieht den Zeitpunkt in den Einstellungen. Der Wechsel von sevdesk weg löscht den Token wie bei Lexware Office. AVV-Entwurf Anlage 1 um den Abschnitt sevdesk erweitert (neue Fassung, anwaltliche Prüfung vor Veröffentlichung).'],
+            ['type' => 'Neu', 'text' => 'Unternehmensdokumentation: Leitfaden Scharfschaltung (Go-live) mit Stripe-Einrichtung, Reihenfolge, Prüfpunkten, Rücknahme und Freigabematrix als eigenes Kapitel (auch als Kapitel-PDF).'],
+         ]],
         ['version' => '4.37', 'date' => '07.09.2026', 'title' => 'Plattform-Benutzer und Rechte: Mitarbeiter, Support und Administratoren mit Rollen',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Adminbereich „Benutzer und Rechte“: Mitarbeiter und Administratoren des Betreibers per E-Mail einladen (Link zum Festlegen des Passworts, danach Pflicht zur Zwei-Faktor-Authentifizierung), Rollen vergeben, Zugang entziehen, Konten deaktivieren. Systemrollen Administrator, Mitarbeiter Support und Mitarbeiter; eigene Rollen aus einem Katalog von 18 Berechtigungen (Firmen, Tarife, Not-Stopp, Vormerkungen, Support, System, Rechtsdokumente, Dokumentation, Benutzer). Migration 027.'],

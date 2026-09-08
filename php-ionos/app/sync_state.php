@@ -452,7 +452,7 @@ function sync_open_runs(int $limit = 50): array
     $rows = $st->fetchAll();
     foreach ($rows as &$r) {
         $r['cursor'] = $r['cursor_json'] ? (json_decode((string)$r['cursor_json'], true) ?: []) : [];
-        $r['job'] = function_exists('queue_tenant_active') ? queue_tenant_active((string)$r['tenant_id'], 'sync_run') : null;
+        $r['job'] = function_exists('queue_tenant_active') ? queue_tenant_active((string)$r['tenant_id'], QUEUE_SYNC_TYPES) : null;
         $r['stuck'] = empty($r['lock_active']) && $r['job'] === null;
     }
     return $rows;
@@ -494,7 +494,7 @@ function sync_progress_fragment(string $tenantId): string
 {
     $state = sync_state_get($tenantId);
     if (function_exists('queue_tenant_active')) {
-        $job = queue_tenant_active($tenantId, 'sync_run');
+        $job = queue_tenant_active($tenantId, QUEUE_SYNC_TYPES);
         if ($job && $state) {
             $state['queue_waiting'] = $job['status'] === 'retry';
             $state['job_status'] = $job['status'];

@@ -13,6 +13,7 @@ require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/alerts.php';
 require_once __DIR__ . '/app/admin_charts.php';
 require_once __DIR__ . '/app/interest.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 require_once __DIR__ . '/app/mailer.php';
 require_once __DIR__ . '/app/integration_state.php';
 
@@ -102,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
     try {
-        $need = ['platform_pause' => 'notstopp.platform', 'plan_update' => 'plans.manage', 'org_plan' => 'companies.plan',
+        $need = ['platform_pause' => 'notstopp.platform', 'plan_update' => 'plans.manage', 'org_plan' => 'companies.plan', 'org_lock_reset' => 'companies.manage',
                  'interest_unsubscribe' => 'interest.manage', 'interest_delete' => 'interest.manage', 'interest_block' => 'interest.manage', 'interest_invite' => 'interest.manage'];
         if (isset($need[$action]) && !$can($need[$action])) {
             throw new RuntimeException('Ihre Rolle hat für diese Aktion keine Berechtigung (' . $need[$action] . ').');
@@ -174,6 +175,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'plan' => $plan['code'], 'billing_exempt' => !empty($_POST['billing_exempt']),
             ]);
             flash_set('success', 'Tarif der Firma ' . $org['name'] . ' auf ' . $plan['name'] . ' gesetzt.');
+        } elseif ($action === 'org_lock_reset') {
+            // Vier-Wochen-Sperre des Buchhaltungssystem-Wechsels aufheben (Entscheidung 07.09.2026): Pflichtgrund, Audit,
+            // kein Geldfluss und damit keine Zweitbestaetigung (Regel 4.36).
+            require_once __DIR__ . '/app/invoice_source_switch.php';
+            invoice_source_lock_reset($ctx, (string)($_POST['org_id'] ?? ''), (string)($_POST['reason'] ?? ''));
+            flash_set('success', 'Wechselsperre aufgehoben. Die Firma kann das Buchhaltungssystem sofort wechseln; danach beginnt die Vier-Wochen-Frist erneut.');
         } elseif ($action === 'interest_unsubscribe' || $action === 'interest_delete') {
             // Widerruf oder Löschverlangen per Nachricht (Datenschutzerklärung 3a); kein Geldfluss, keine Zweitbestätigung
             // (seit 4.36), Audit bleibt. Löschen ist endgültig: Bestätigungsdialog im Formular.
@@ -264,7 +271,9 @@ $orgs = $pdo->query(
     "SELECT o.*,
             (SELECT COUNT(*) FROM organization_members m WHERE m.organization_id = o.id AND m.status = 'active') AS members,
             (SELECT COUNT(*) FROM payment_collections pc WHERE pc.tenant_id = o.id AND pc.stripe_status <> 'cancelled') AS collections,
-            (SELECT lexoffice_last_sync FROM integrations i WHERE i.tenant_id = o.id) AS last_sync,
+            (SELECT COALESCE(i.sevdesk_last_sync, i.lexoffice_last_sync) FROM integrations i WHERE i.tenant_id = o.id) AS last_sync,
+            (SELECT COALESCE(i.invoice_source, 'lexware_office') FROM integrations i WHERE i.tenant_id = o.id) AS invoice_source,
+            (SELECT i.invoice_source_changed_at FROM integrations i WHERE i.tenant_id = o.id) AS invoice_source_changed_at,
             (SELECT u.email FROM organization_members m JOIN users u ON u.id = m.user_id WHERE m.organization_id = o.id AND m.role = 'owner' LIMIT 1) AS owner_email
      FROM organizations o WHERE o.deleted_at IS NULL ORDER BY o.created_at DESC LIMIT 500"
 )->fetchAll();
@@ -441,7 +450,7 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
     <h2>Firmenaccounts</h2>
     <div class="table-wrap">
         <table class="table-sm">
-            <thead><tr><th>Firma</th><th>Inhaber</th><th>Herkunft</th><th>Registriert</th><th>Tarif</th><th>Abo</th><th>Benutzer</th><th>Einzüge</th><th>Letzter Sync</th><th>Tarif setzen</th></tr></thead>
+            <thead><tr><th>Firma</th><th>Inhaber</th><th>Herkunft</th><th>Registriert</th><th>Tarif</th><th>Abo</th><th>Benutzer</th><th>Einzüge</th><th>Buchhaltung</th><th>Letzter Sync</th><th>Tarif setzen</th></tr></thead>
             <tbody>
             <?php foreach ($orgs as $o): ?>
                 <tr>
@@ -453,6 +462,17 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
                     <td><?= e(subscription_status_label((string)$o['subscription_status'])) ?></td>
                     <td><?= (int)$o['members'] ?></td>
                     <td><?= (int)$o['collections'] ?></td>
+                    <td><?php $lockUntil = invoice_source_lock_until($o['invoice_source_changed_at'] ?? null); $locked = $lockUntil !== null && $lockUntil > gmdate('Y-m-d H:i:s'); ?>
+                        <?= e(invoice_source_label((string)$o['invoice_source'])) ?>
+                        <?php if ($locked): ?>
+                            <span class="hint">(Wechselsperre bis <?= e(format_date($lockUntil)) ?>)</span>
+                            <?php if ($can('companies.manage')): ?>
+                            <form method="post" class="inline-form" onsubmit="return confirm('Wechselsperre für diese Firma aufheben?');"><?= csrf_field() ?><input type="hidden" name="action" value="org_lock_reset"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
+                                <input type="text" name="reason" placeholder="Grund (Pflicht)" required maxlength="200" style="max-width: 160px; padding: 5px 8px; font-size: 13px;">
+                                <button type="submit" class="btn btn-sm btn-secondary" title="Vier-Wochen-Sperre aufheben (protokolliert)">Sperre aufheben</button></form>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </td>
                     <td><?= format_datetime($o['last_sync']) ?></td>
                     <td>
                         <?php if ($can('companies.plan')): ?><form method="post" class="inline-form">
@@ -482,6 +502,7 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
 <?php if ($can('interest.view')): ?>
 <div class="card" id="vormerkungen">
     <h2>Vormerkungen für angekündigte Integrationen</h2>
+    <p class="hint">sevdesk-Verbindung: <strong><?= e($interestSwitches['connect_text'] ?? ($interestSwitches['connect'] ? 'freigegeben' : 'nicht freigegeben')) ?></strong>; Restbetrag und Einzug <?= !empty($interestSwitches['api_verified']) ? 'bestätigt (sevdesk_api_verified = 1)' : '<strong>gesperrt</strong>, bis der Abruf des offenen Restbetrags mit einem sevdesk-Konto bestätigt ist (sevdesk_api_verified)' ?>; Einzüge <?= $interestSwitches['collections'] ? 'freigegeben' : 'gesperrt (sevdesk_collections)' ?>. Schalter und Freigabetermin (sevdesk_release_at) setzt der Betreiber serverseitig in platform_settings.</p>
     <p class="hint">sevdesk: öffentlicher Status <strong><?= e($interestSwitches['public_state']) ?></strong>, Vormerkung <?= $interestSwitches['waitlist'] ? 'offen' : 'geschlossen' ?>,
         Verbindung <?= $interestSwitches['connect'] ? 'frei' : 'gesperrt' ?>, neue Einzüge <?= $interestSwitches['collections'] ? 'frei' : 'gesperrt' ?>,
         Rückschreibung <?= $interestSwitches['writeback'] ? 'frei' : 'gesperrt' ?>. Schalter nur serverseitig (platform_settings, Schlüssel sevdesk_*), siehe docs/sevdesk.md.</p>

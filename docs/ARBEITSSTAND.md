@@ -26,6 +26,12 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
   Rechnungssystem, keine zweite Anwendung (Empfehlung in `docs/integrations.md`, vom Betreiber noch nicht bestätigt).
   Öffentlich gilt „in Planung, Start geplant zum 30.09.2026“ (Termin vom Betreiber vorgegeben), nur Vormerkung, kein Preis,
   kein Kaufbutton, keine Aussagen zu sevdesk-Tarifen.
+- sevdesk (Entscheidung 07.09.2026, Aufgabe 3): Phase 2 OHNE Testkonto umgesetzt. Verbinden und Lesen werden automatisch am
+  30.09.2026 freigegeben (`sevdesk_release_at`; `sevdesk_connect` = 1 schaltet früher frei, = 0 sperrt). Einzüge für sevdesk-Rechnungen
+  bleiben gesperrt, bis der Betreiber die Zahlungsfelder mit einem echten sevdesk-Konto bestätigt (`sevdesk_api_verified` = 1) und
+  `sevdesk_collections` = 1 setzt; das ist eine bewusste Abweichung vom Wunsch „alles zum 30.09.“, weil ohne verifizierten Restbetrag
+  Fehlbeträge möglich wären. Keine weitere Subdomain nötig: eine Anwendung, ein Adminbereich; Marketing je System läuft über Seiten
+  beziehungsweise Leaddomains (`signup_domain`).
 - Leadseiten lexware-einzug.de und lexoffice-einzug.de sollen auf DETM Management Consulting FZCO laufen (eigenständige
   Leadseiten ohne SmartEinzug-Logo, Provision nach Herkunft). Impressumsdaten fehlen, nichts erfinden.
 
@@ -38,6 +44,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.38 | sevdesk Phase 2 ohne Testkonto: `app/sevdesk.php` (Client mit Header-Token, api_call_gate, Circuit Breaker, Monitoring; Adapter mit Lexware-Strukturen, Status- und Fälligkeitsabbildung, Restbetrag nur mit `sevdesk_api_verified`), Freigabetermin `sevdesk_release_at` (Vorgabe 30.09.2026, `integration_switch` mit Vorrang expliziter Werte), Migration 028 (integrations.sevdesk_*, invoice_source_lock_reset_at, Registry development, Freigabetermin), Einstellungen sevdesk (verbinden/prüfen/trennen), Onboarding und Kundenseiten mit dynamischem Label (Sonnet-Agent), Jobtyp `sync_run_sevdesk`/Pool `sevdesk`/`worker-sevdesk` (prod+staging), Scheduler nach Buchhaltungssystem, `QUEUE_SYNC_TYPES`, Adminaktion Wechselsperre aufheben (`companies.manage`, Pflichtgrund, Audit), Monitoring-Komponente sevdesk, AVV-Entwurf Anlage 1 A2 (Fassung entwurf-2), Doku (Sonnet-Agent: sevdesk.md Endpunktregister, integrations, handbuch 5.1a, jobs, 06-betrieb, unternehmensdoku), CLAUDE.md; neue Suite `tools/sevdesk-check.sh` (Stub-Server) | siehe git log | sevdesk-check 110/0, scheduler-sync-check 35/0, invoice-source-check 42/0, legal-check 66/0, platform-roles-check 83/0, interest-check 133/0, totp-policy-check 73/0, compose-check 0, staging-isolation 0, php -l |
 | 4.37 | Plattform-Benutzer und Rechte: `app/platform.php` (PLATFORM_PERMISSIONS, Systemrollen, platform_can/require_platform, Einladung, Schutzregeln), Migration 027 (`platform_roles`, `users.platform_role`), `admin-users.php`, Plattformkontext ohne Firma (`_current_user_platform`, `platform_only`, `platform_home_url`), Rechteprüfung in allen Adminseiten und im Support-Modus, Navigation nach Rechten, Dokumentationsrechte über docs.admin/docs.technical; Doku sicherheit.md (neuer Abschnitt), schnittstellen, unternehmensdoku, monitoring, Datenwörterbuch, CLAUDE.md; neues `tools/platform-roles-check.sh` | siehe git log | platform-roles-check 83/0, totp-policy-check 73/0, docs-access-check 23/0, legal-check 66/0, scheduler-sync-check 35/0, interest-check 133/0, invoice-source-check 42/0, php -l |
 | 4.36 | Zweitbestätigung (2FA) nur für Wichtiges nach Vorstandsbeschluss: `QUEUE_MONEY_TYPES`/`queue_type_is_money()`, geteilte Zweige (incident_publish, org_sync_pause, platform_pause nur Aufheben, admin-legal nur publish/retire), zehn Aktionen ohne Code, Formularfelder angepasst; Mobilbefund admin-legal (table-wrap); Doku sicherheit.md (Tabelle), payment-safety 5c, monitoring, unternehmensdoku, schnittstellen, 06-betrieb, integrations, qa, CLAUDE.md; neues `tools/totp-policy-check.php` | siehe git log | totp-policy-check 73/0, legal-check, scheduler-sync-check, php -l |
 | 4.35 | Workflow-Datei repariert: `VPS_RETRY_STATE_FILE` mit festem Pfad statt `runner.temp` in der Job-Umgebung (Lauf #69 „Invalid workflow file“, 4.34 startete gar nicht); Dokumentationsauswirkung: `docs/vps/06-betrieb.md` (Regel zu Kontexten auf Job-Ebene), Revision entwickler r4 | siehe git log | YAML-Parse, github-ssh-retry-check 43/0, github-poll-check 25/0, compose-check 0 Fehler |
@@ -82,6 +89,7 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 | `php tools/mail-ci-check.php` | 32 / 0 |
 | `php tools/totp-policy-check.php` | 73 / 0 (neu in 4.36) |
 | `bash tools/platform-roles-check.sh` | 83 / 0 (neu in 4.37, temporäre MariaDB) |
+| `bash tools/sevdesk-check.sh` | 110 / 0 (neu in 4.38, HTTP-Stub plus temporäre MariaDB) |
 | `php tools/pricing-check.php`, `php tools/billing-setup-check.php` | 13 / 0, 55 / 0 |
 | `python3 tools/site-qa.py` | 0 Fehler, 4 Warnungen (bekannte Überschriftendoppelungen zwischen Domains) |
 | `python3 tools/compose-check.py`, `docs-build-check.py`, `staging-isolation-check.py` | 0 Fehler |
@@ -135,6 +143,11 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
   lieferte `journalctl -u ssh` für 24 Stunden keinen einzigen Fehlversuch. Entweder protokolliert sshd unter einer anderen
   Einheit oder fail2ban sieht keine Fehlversuche (dann wirkungslos). Prüfschritte in `docs/vps/06-betrieb.md`.
 
+- **sevdesk-Adapter unverifiziert (4.38):** Endpunkte, Felder, Statuscodes, Zeitzone der Zeitstempel, Paginierung und Rate-Limit stammen
+  aus Sekundärquellen (Register in `docs/sevdesk.md`). Möglich ist, dass der Verbindungstest oder die Liste am echten Konto fehlschlägt
+  (dann klare Fehlermeldung, kein Datenverlust, kein Geldfluss). Vor `sevdesk_api_verified` = 1 zwingend mit Testkonto prüfen:
+  Basisadresse, Header, `status`-Werte 200/750/1000, `sumGross`/`paidAmount`, `payDate`/`timeToPay`, `update`, `embed=contact`,
+  `InvoicePos`-Filter, `CommunicationWay`-Typ EMAIL, Belegtyp-Bedeutungen (MA, TR, AR, ER, WKR), Gutschriften.
 - **Lauf #69 (4.34) „Invalid workflow file“:** `runner.temp` in der Job-Umgebung von `deploy-vps`; GitHub lehnte die Datei ab,
   kein Job lief, 4.34 wurde nicht deployt. Behoben in 4.35 (fester Pfad). Der Lauf für 4.35 muss grün werden und holt die
   Migrationen 025 und 026 nach; Ergebnis aus der Session nicht einsehbar (GitHub-API gesperrt), vom Betreiber zu bestätigen.

@@ -142,12 +142,12 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
   (Support-Anfragen, Firmenzugriff, Konten entsperren, Systemübersicht lesend), `staff` (lesend: Firmen, Vormerkungen,
   Systemübersicht). Systemrollen sind nicht löschbar; `support` und `staff` sind anpassbar. Eigene Rollen bestehen aus
   einer Auswahl des Katalogs; `admin.view` ist immer enthalten.
-- **Berechtigungskatalog** (`PLATFORM_PERMISSIONS`): `admin.view`, `companies.view`, `companies.plan`, `plans.manage`,
+- **Berechtigungskatalog** (`PLATFORM_PERMISSIONS`): `admin.view`, `companies.view`, `companies.plan`, `companies.manage` (Wechselsperre des Buchhaltungssystems aufheben, seit 4.38), `plans.manage`,
   `notstopp.platform`, `interest.view`, `interest.manage`, `support.view`, `support.tickets`, `support.sessions`,
   `support.users`, `monitoring.view`, `monitoring.edit`, `legal.view`, `legal.manage`, `docs.admin`, `docs.technical`,
   `users.manage`. Jede Adminseite verlangt ein Eintrittsrecht (`require_platform`) und prüft je POST-Aktion serverseitig
   das passende Recht; Menüpunkte und Formulare werden zusätzlich ausgeblendet, sind aber nie der Schutz.
-- **Zuordnung:** `admin.php` (`admin.view`; Kennzahlen/Firmen `companies.view`, Tarif je Firma `companies.plan`,
+- **Zuordnung:** `admin.php` (`admin.view`; Kennzahlen/Firmen `companies.view`, Tarif je Firma `companies.plan`, Wechselsperre aufheben `companies.manage`,
   Tarife `plans.manage`, Not-Stopp `notstopp.platform`, Vormerkungen `interest.view`/`interest.manage`),
   `admin-support.php` (`support.view`; Firmenwechsel `support.sessions`, Anfragen `support.tickets`, Entsperren und
   2FA-Reset `support.users`), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen

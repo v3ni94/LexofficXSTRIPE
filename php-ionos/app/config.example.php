@@ -162,6 +162,14 @@ return [
     // api.lexoffice.io wird bei Verbindungsfehlern automatisch als Ausweich-
     // adresse versucht.
     'lexware_api_base_url' => 'https://api.lexware.io/v1',
+    // sevdesk (Version 4.38, Adapter app/sevdesk.php). base_url und x_version stammen aus Sekundaerquellen und sind mit einem
+    // Testkonto zu verifizieren; auth_prefix bleibt leer (roher Token im Header Authorization, kein "Bearer ").
+    'sevdesk' => [
+        'base_url'        => 'https://my.sevdesk.de/api/v1',
+        'auth_prefix'     => '',
+        'x_version'       => '',        // optionaler Header X-Version, nur setzen, wenn die Dokumentation es verlangt
+        'timeout_seconds' => 20,
+    ],
 
     // --- Stripe-Mandatsreferenz mit Firmenpräfix beginnen lassen ---
     // Nutzt die Stripe-Option mandate_options.reference_prefix (verfügbar ab

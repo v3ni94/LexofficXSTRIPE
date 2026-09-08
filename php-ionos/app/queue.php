@@ -97,6 +97,7 @@ function queue_type_defaults(string $type): array
 {
     $map = [
         'sync_run'         => ['max_attempts' => 6, 'heartbeat_ttl' => 300],
+        'sync_run_sevdesk' => ['max_attempts' => 6, 'heartbeat_ttl' => 300], // gleiche Logik, eigener Worker-Pool (4.38)
         'collections_due'  => ['max_attempts' => 5, 'heartbeat_ttl' => 600],
         'unclear_attempts' => ['max_attempts' => 5, 'heartbeat_ttl' => 300],
         'mail'             => ['max_attempts' => 3, 'heartbeat_ttl' => 120],
@@ -160,6 +161,9 @@ function queue_push(string $type, array $payload = [], array $opts = []): array
  * Notbremse des Workers, hier um die Freigabe durch einen Menschen.
  */
 const QUEUE_MONEY_TYPES = ['collections_due', 'unclear_attempts'];
+
+/** Synchronisationsjobs je Buchhaltungssystem (gleicher Handler job_sync_run, getrennte Worker-Pools, gemeinsamer dedupe_key sync:<firma>). */
+const QUEUE_SYNC_TYPES = ['sync_run', 'sync_run_sevdesk'];
 
 /** Bewegt dieser Jobtyp Geld (Zweitbestätigung für Admin-Eingriffe erforderlich)? */
 function queue_type_is_money(?string $type): bool
@@ -310,7 +314,7 @@ function queue_fail(array $job, string $error, string $category, bool $retryable
     if (($job['type'] ?? '') === 'mail') {
         queue_prune_payload((string)$job['id']);
     }
-    if (($job['type'] ?? '') === 'sync_run' && !empty($job['tenant_id'])) {
+    if (in_array((string)($job['type'] ?? ''), QUEUE_SYNC_TYPES, true) && !empty($job['tenant_id'])) {
         // Synchronisation endgültig gescheitert: Lauf schließen, damit kein verwaister Zustand bleibt
         try {
             require_once __DIR__ . '/sync_state.php';
@@ -368,7 +372,7 @@ function queue_cancel(string $id, ?array $actor): bool
         if (($job['type'] ?? '') === 'mail') {
             queue_prune_payload($id);
         }
-        if (($job['type'] ?? '') === 'sync_run' && !empty($job['tenant_id'])) {
+        if (in_array((string)($job['type'] ?? ''), QUEUE_SYNC_TYPES, true) && !empty($job['tenant_id'])) {
             try {
                 require_once __DIR__ . '/sync_state.php';
                 $s = sync_state_get((string)$job['tenant_id']);
@@ -578,13 +582,18 @@ function queue_failed_jobs(int $limit = 50, bool $includeClosed = false): array
 }
 
 /** Aktiver Job eines Typs für eine Firma (für die Nutzeranzeige, mandantengefiltert). */
-function queue_tenant_active(string $tenantId, string $type): ?array
+function queue_tenant_active(string $tenantId, string|array $type): ?array
 {
     if (!queue_available()) {
         return null;
     }
-    $st = db()->prepare("SELECT * FROM jobs WHERE tenant_id = ? AND type = ? AND status IN ('queued','processing','retry') ORDER BY created_at DESC LIMIT 1");
-    $st->execute([$tenantId, $type]);
+    $types = array_values(array_filter(array_map('strval', (array)$type), static fn(string $t): bool => $t !== ''));
+    if ($types === []) {
+        return null;
+    }
+    $marks = implode(',', array_fill(0, count($types), '?'));
+    $st = db()->prepare("SELECT * FROM jobs WHERE tenant_id = ? AND type IN ($marks) AND status IN ('queued','processing','retry') ORDER BY created_at DESC LIMIT 1");
+    $st->execute(array_merge([$tenantId], $types));
     $row = $st->fetch();
     if ($row) {
         $row['payload_data'] = json_decode((string)$row['payload'], true) ?: [];
@@ -594,7 +603,7 @@ function queue_tenant_active(string $tenantId, string $type): ?array
 
 function queue_type_label(string $type): string
 {
-    return ['sync_run' => 'Synchronisation Lexware Office', 'collections_due' => 'Einzugsverarbeitung', 'unclear_attempts' => 'Klärung unklarer Einzugsversuche', 'mail' => 'E-Mail-Versand',
+    return ['sync_run' => 'Synchronisation Lexware Office', 'sync_run_sevdesk' => 'Synchronisation sevdesk', 'collections_due' => 'Einzugsverarbeitung', 'unclear_attempts' => 'Klärung unklarer Einzugsversuche', 'mail' => 'E-Mail-Versand',
             'monitor_collect' => 'Monitoring-Sammler', 'maintenance' => 'Wartungsaufgaben', 'alerts' => 'Alarmierung', 'mandate_reminders' => 'Mandats-Erinnerungen'][$type] ?? $type;
 }
 

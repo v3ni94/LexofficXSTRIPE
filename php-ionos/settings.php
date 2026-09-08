@@ -76,6 +76,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             notify_integration_change($ctx, 'Lexware-Office-Verbindung getrennt');
             flash_set('success', 'Lexware-Office-Verbindung getrennt. Bereits synchronisierte Rechnungen und Kunden bleiben erhalten.');
 
+        } elseif ($action === 'save_sevdesk') {
+            support_guard();
+            require_once __DIR__ . '/app/integration_state.php';
+            $key = trim($_POST['sevdesk_api_key'] ?? '');
+            if ($key === '') {
+                throw new RuntimeException('Bitte den sevdesk-API-Token eingeben.');
+            }
+            if (!integration_switch('sevdesk', 'connect')) {
+                throw new RuntimeException('Die sevdesk-Anbindung ist noch nicht freigegeben (' . integration_connect_state_text('sevdesk') . ').');
+            }
+            $info = integration_verify_sevdesk($tenantId, $key);
+            $pdo->prepare(
+                'UPDATE integrations SET sevdesk_api_key_encrypted = ?, sevdesk_connected = 1, sevdesk_disconnected_at = NULL WHERE tenant_id = ?'
+            )->execute([encrypt_value($key), $tenantId]);
+            audit_log($tenantId, $ctx, 'sevdesk_connected', 'integration', $tenantId, ['company' => $info['company_name']]);
+            funnel_event_once($tenantId, 'sevdesk_connected', $ctx['user_id']);
+            notify_integration_change($ctx, 'sevdesk-Verbindung eingerichtet');
+            flash_set('success', 'sevdesk erfolgreich verbunden (Token geprüft). Der Firmenname wird von sevdesk derzeit nicht übermittelt.');
+
+        } elseif ($action === 'verify_sevdesk') {
+            $key = integration_sevdesk_key($integration);
+            if ($key === null) {
+                throw new RuntimeException('Es ist kein sevdesk-Token hinterlegt.');
+            }
+            integration_verify_sevdesk($tenantId, $key);
+            audit_log($tenantId, $ctx, 'sevdesk_verified', 'integration', $tenantId);
+            flash_set('success', 'sevdesk-Verbindung geprüft: Zugriff funktioniert.');
+
+        } elseif ($action === 'disconnect_sevdesk') {
+            support_guard();
+            $pdo->prepare(
+                'UPDATE integrations SET sevdesk_api_key_encrypted = NULL, sevdesk_connected = 0, sevdesk_disconnected_at = NOW() WHERE tenant_id = ?'
+            )->execute([$tenantId]);
+            audit_log($tenantId, $ctx, 'sevdesk_disconnected', 'integration', $tenantId);
+            notify_integration_change($ctx, 'sevdesk-Verbindung getrennt');
+            flash_set('success', 'sevdesk-Verbindung getrennt. Bereits synchronisierte Rechnungen und Kunden bleiben erhalten.');
+
         } elseif ($action === 'save_stripe') {
             support_guard();
             $secretKey = trim($_POST['stripe_secret_key'] ?? '');
@@ -167,6 +204,8 @@ layout_header('Einstellungen', $ctx);
        Wer zwei Buchhaltungen dauerhaft parallel führt, legt dafür einen zweiten Firmenaccount an.</p>
     <?php if ($isrc['changed_at']): ?>
         <p class="hint">Letzter Wechsel: <?= e(format_datetime($isrc['changed_at'])) ?> (<?= (int)$isrc['switches'] ?> Wechsel insgesamt)<?= $isrcLock['locked'] ? ', nächster Wechsel möglich ab ' . e(format_date($isrcLock['until'])) : '' ?>.</p>
+    <?php elseif (!empty($isrc['lock_reset_at'])): ?>
+        <p class="hint">Sperre durch den Betreiber aufgehoben am <?= e(format_date($isrc['lock_reset_at'])) ?> (<?= (int)$isrc['switches'] ?> Wechsel insgesamt). Ein Wechsel ist wieder möglich; danach gilt erneut die Sperre von vier Wochen.</p>
     <?php endif; ?>
     <?php if ($canEdit): ?>
         <?php foreach ($isrcTargets as $code => $t): ?>
@@ -250,6 +289,54 @@ layout_header('Einstellungen', $ctx);
                 <button type="submit" class="btn">Verbindung herstellen</button>
             </div>
         </form>
+    <?php endif; ?>
+</div>
+<?php elseif ($isrc['code'] === 'sevdesk'): require_once __DIR__ . '/app/integration_state.php'; require_once __DIR__ . '/app/sevdesk.php'; $sevOpen = integration_switch('sevdesk', 'connect'); $sevConnected = (int)($integration['sevdesk_connected'] ?? 0) === 1; ?>
+<div class="card">
+    <h2>sevdesk
+        <?= $sevConnected
+            ? '<span class="badge badge-success">Verbunden</span>'
+            : ($sevOpen ? '<span class="badge badge-neutral">Nicht verbunden</span>' : '<span class="badge badge-neutral">Verbindung folgt</span>') ?>
+    </h2>
+    <?php if (!$sevOpen): ?>
+        <p class="hint">Die Verbindung zu sevdesk ist noch nicht freigegeben (<?= e(integration_connect_state_text('sevdesk')) ?>). Bis dahin werden keine Rechnungen abgerufen; Stripe können Sie bereits verbinden.</p>
+    <?php else: ?>
+        <p class="hint">Zugriff über die sevdesk-API (<?= e((string)(config('sevdesk')['base_url'] ?? SevdeskClient::DEFAULT_BASE_URL)) ?>) nur lesend. Nach der offiziellen sevdesk-Hilfe setzt der API-Zugriff den Tarif Buchhaltung Pro (Systemversion 2.0) voraus; geprüft wird das beim Verbindungstest. Der Token wird vor dem Speichern getestet, verschlüsselt abgelegt und danach nicht mehr angezeigt.</p>
+        <?php if (!SevdeskSource::paymentsVerified()): ?>
+            <div class="flash flash-warn" style="margin:8px 0">Rechnungen und Kunden werden aus sevdesk gelesen. <strong>SEPA-Einzüge für sevdesk-Rechnungen sind noch gesperrt</strong>, bis der Betreiber den Abruf des offenen Restbetrags mit einem sevdesk-Konto bestätigt hat. Sie sehen den Stand hier und unter Rechnungen.</div>
+        <?php endif; ?>
+        <?php if ($sevConnected): ?>
+            <dl class="kv">
+                <dt>Konto</dt><dd><?= e($integration['sevdesk_company_name'] ?: 'Firmenname wird von sevdesk nicht übermittelt') ?></dd>
+                <dt>Zuletzt geprüft</dt><dd><?= $integration['sevdesk_last_verified_at'] ? e(format_datetime($integration['sevdesk_last_verified_at'])) : 'noch nicht geprüft' ?></dd>
+                <dt>Letzte Synchronisation</dt><dd><?= $integration['sevdesk_last_sync'] ? e(format_datetime($integration['sevdesk_last_sync'])) : 'noch keine' ?></dd>
+            </dl>
+            <?php if ($canEdit): ?>
+            <div class="form-actions" style="gap: 8px; display: flex; flex-wrap: wrap;">
+                <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="verify_sevdesk">
+                    <button type="submit" class="btn btn-secondary btn-sm">Verbindung prüfen</button></form>
+                <form method="post"><?= csrf_field() ?><input type="hidden" name="action" value="disconnect_sevdesk">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('sevdesk-Verbindung wirklich trennen? Bereits synchronisierte Daten bleiben erhalten.')">Verbindung trennen</button></form>
+            </div>
+            <?php endif; ?>
+        <?php elseif ($canEdit): ?>
+            <details class="guide" open>
+                <summary>So erstellen Sie den API-Token in sevdesk</summary>
+                <ol>
+                    <li>In sevdesk anmelden und die <span class="path">Einstellungen</span> öffnen.</li>
+                    <li>Den Bereich <span class="path">Benutzer</span> wählen und den eigenen Benutzer öffnen.</li>
+                    <li>Dort den <span class="path">API-Token</span> anzeigen lassen oder erzeugen und kopieren (nach der sevdesk-Hilfe; Menüführung kann sich ändern).</li>
+                    <li>Den Token unten einfügen und auf <span class="path">Verbindung herstellen</span> klicken.</li>
+                </ol>
+            </details>
+            <form method="post">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="save_sevdesk">
+                <label for="sevdesk_api_key">sevdesk-API-Token</label>
+                <input type="password" id="sevdesk_api_key" name="sevdesk_api_key" required autocomplete="off" placeholder="Token aus sevdesk (Einstellungen, Benutzer)">
+                <div class="form-actions"><button type="submit" class="btn">Verbindung herstellen</button></div>
+            </form>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 <?php else: ?>

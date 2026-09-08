@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ((int)$orgRow['sync_paused'] === 1) {
                 throw new RuntimeException('Für diese Firma ist die Synchronisation pausiert (Wartungsmodus).');
             }
-            $r = queue_push('sync_run', ['triggered_by' => 'admin'], ['tenant_id' => $orgId, 'user_id' => $ctx['user_id'] ?? null, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $orgId]);
+            $r = queue_push(invoice_source_sync_job_type($orgId), ['triggered_by' => 'admin'], ['tenant_id' => $orgId, 'user_id' => $ctx['user_id'] ?? null, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $orgId]);
             audit_log($orgId, $ctx, 'sync_enqueued_admin', 'organization', $orgId, ['job_id' => $r['id'], 'created' => (bool)$r['created']]);
             flash_set('success', $r['created'] ? 'Fortsetzung der Synchronisation eingereiht.' : 'Für diese Firma ist bereits ein Synchronisationsjob aktiv.');
             $back = 'admin-system.php?tab=jobs#wartend';

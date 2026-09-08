@@ -10,9 +10,11 @@ require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/sync_state.php';
 require_once __DIR__ . '/app/monitor_view.php'; // monitor_category_label() für die Fehlerkategorie
+require_once __DIR__ . '/app/invoice_source_switch.php';
 
 $ctx = require_onboarded();
 $tenantId = (string)$ctx['org_id'];
+$isrcLabel = invoice_source_current($tenantId)['label'];
 
 /** Badge für den Status eines Synchronisationslaufs. */
 function sync_run_badge(string $status): string
@@ -44,7 +46,7 @@ $showLive = sync_state_is_running($state);
 layout_header('Synchronisationen', $ctx);
 ?>
 <h1>Synchronisationen</h1>
-<p class="page-sub">Verlauf der Abgleiche mit Lexware Office für diese Firma.
+<p class="page-sub">Verlauf der Abgleiche mit <?= e($isrcLabel) ?> für diese Firma.
     <a href="invoices.php">Zu den Rechnungen</a></p>
 
 <?php if ($showLive): ?>

@@ -32,7 +32,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [worker_heartbeats](#worker-heartbeats) | Lebenszeichen der laufenden Worker-Prozesse (Scheduler, Worker-Pools) fuer Betriebsueberwachung. | Hintergrundverarbeitung / Warteschlange | keine (plattformweit, worker_id-bezogen) | 11 | 0 |
 | [sync_runs](#sync-runs) | Historie einzelner Synchronisationslaeufe mit Lexware Office je Firma (Kennzahlen, Fehlerkategorie). | Synchronisation | tenant_id | 24 | 1 |
 | [api_circuits](#api-circuits) | Circuit Breaker je externer API (Lexware Office, Stripe, Mail): unterbindet weitere Aufrufe nach wiederholten technischen Fehlern (CLAUDE.md: api_call_gate()). | Externe Anbindungen / Stabilitaet | keine (plattformweit je API) | 9 | 0 |
-| [integrations](#integrations) | Verbindungsdaten je Firma zu Lexware Office und Stripe (verschluesselte Zugangsdaten, Verbindungsstatus) sowie Wahl der aktiven Rechnungsquelle (Migration 024). | Externe Anbindungen | tenant_id | 20 | 1 |
+| [integrations](#integrations) | Verbindungsdaten je Firma zu Lexware Office und Stripe (verschluesselte Zugangsdaten, Verbindungsstatus) sowie Wahl der aktiven Rechnungsquelle (Migration 024). | Externe Anbindungen | tenant_id | 27 | 1 |
 | [sync_state](#sync-state) | Serverseitiger Fortschritt der laufenden Lexware-Synchronisation je Firma, damit Browser und Cron denselben Lauf fortsetzen koennen (schema.sql-Kommentar Zeile 427). | Synchronisation | tenant_id | 13 | 1 |
 | [webhook_events](#webhook-events) | Idempotenz- und Reihenfolgeschutz fuer verarbeitete Webhook-Ereignisse (verhindert doppelte Verarbeitung). | Externe Anbindungen | keine direkt (object_id kann auf Firmenobjekte verweisen, kein tenant_id-Feld) | 6 | 0 |
 | [funnel_events](#funnel-events) | Anonymes Trichter-/Konversions-Tracking je Herkunftsdomain (cookielos, ohne IP-Adresse laut schema.sql-Kommentar Zeile 456). | Marketing und Auswertung | tenant_id | 7 | 0 |
@@ -784,19 +784,26 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | stripe_last_verified_at | DATETIME | ja |  | test \| live |
 | stripe_disconnected_at | DATETIME | ja |  |  |
 | lexoffice_last_sync | DATETIME | ja |  |  |
+| sevdesk_api_key_encrypted | TEXT | ja |  | sevdesk-API-Token, AES-256-GCM verschlüsselt; nie protokolliert oder angezeigt (Migration 028) |
+| sevdesk_connected | TINYINT(1) | nein | 0 | 1 = sevdesk verbunden (Token geprüft); Verbinden nur bei freigegebener Anbindung |
+| sevdesk_company_name | VARCHAR(255) | ja |  | bleibt leer: der Verbindungstest liefert keinen Firmennamen (Endpunkt nicht verifiziert) |
+| sevdesk_last_verified_at | DATETIME | ja |  | letzter erfolgreicher Verbindungstest |
+| sevdesk_disconnected_at | DATETIME | ja |  | Zeitpunkt der Trennung (Einstellungen oder Wechsel des Buchhaltungssystems) |
+| sevdesk_last_sync | DATETIME | ja |  | letzte abgeschlossene Synchronisation einer sevdesk-Firma |
 | created_at | DATETIME | nein | CURRENT_TIMESTAMP |  |
 | updated_at | DATETIME | nein | CURRENT_TIMESTAMP | [ON UPDATE CURRENT_TIMESTAMP] |
 | invoice_source | VARCHAR(32) | nein | 'lexware_office' | aktuell genutztes Rechnungssystem (lexware_office \| sevdesk laut integration_providers), Standard lexware_office (Migration 024) [per ALTER ergänzt] |
 | invoice_source_changed_at | DATETIME | nein | 0 | Zeitpunkt des letzten Wechsels, Grundlage einer Sperrfrist von vier Wochen bis zum naechsten Wechsel (Migrationskommentar 024) [per ALTER ergänzt] |
+| invoice_source_lock_reset_at | DATETIME | ja |  | Zeitpunkt (UTC), an dem der Betreiber die Vier-Wochen-Sperre aufgehoben hat (Audit invoice_source_lock_reset) [per ALTER ergänzt] |
 
 **Indizes und Eindeutigkeit:** UQ uq_integration_tenant (tenant_id)  
 **Von der Datenbank erzwungene Beziehungen:** tenant_id → organizations.id (ON DELETE CASCADE)  
 **Erzeugt durch:** app/integrations.php integration_load() (Zeile 26, legt Datensatz bei erstem Zugriff an, falls nicht vorhanden), app/auth.php _auth_register_create()/create_company() (bei Firmenanlage)  
-**Verändert durch:** settings.php (lexoffice_api_key_encrypted, lexoffice_connected, stripe_secret_key_encrypted, stripe_webhook_secret_encrypted, stripe_connected und jeweilige *_disconnected_at), app/invoice_source_switch.php invoice_source_switch()/invoice_source_apply_signup() (invoice_source, invoice_source_changed_at, invoice_source_switches), app/integrations.php integration_verify_stripe()/integration_verify_lexoffice() (stripe_account_id, stripe_business_name, stripe_mode, lexoffice_company_name, jeweilige *_last_verified_at), app/sync.php sync_invoices_step()/sync_invoices() (lexoffice_last_sync)  
+**Verändert durch:** settings.php (lexoffice_api_key_encrypted, lexoffice_connected, stripe_secret_key_encrypted, stripe_webhook_secret_encrypted, stripe_connected und jeweilige *_disconnected_at), app/invoice_source_switch.php invoice_source_switch()/invoice_source_apply_signup() (invoice_source, invoice_source_changed_at, invoice_source_switches), app/integrations.php integration_verify_stripe()/integration_verify_lexoffice() (stripe_account_id, stripe_business_name, stripe_mode, lexoffice_company_name, jeweilige *_last_verified_at), app/sync.php sync_invoices_step()/sync_invoices() (lexoffice_last_sync), settings.php save_sevdesk/verify_sevdesk/disconnect_sevdesk, app/integrations.php integration_verify_sevdesk() (4.38), admin.php org_lock_reset über app/invoice_source_switch.php invoice_source_lock_reset() (4.38)  
 **Gelesen durch:** settings.php, onboarding.php, app/sync.php, app/collections.php (Pruefung, ob Anbindungen aktiv sind)  
 **Löschung, Archivierung, Aufbewahrung:** nicht gefunden; ON DELETE CASCADE ueber tenant_id bei Loeschung der Firma  
 **Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Betraege: keine; Zeit: lexoffice_last_verified_at, lexoffice_disconnected_at, stripe_last_verified_at, stripe_disconnected_at, lexoffice_last_sync, created_at/updated_at DATETIME; externe IDs: stripe_account_id (Stripe-Konto der Firma, getrennt vom Plattform-Stripe-Konto in organizations)  
-**Migrationen:** Basistabelle vor Migrationszaehlung, 004_integration_verification.sql (vermutlich *_last_verified_at/_disconnected_at, *_company_name/_business_name/_mode, dem Namen nach passend), 024_invoice_source_switch.sql (invoice_source_changed_at, invoice_source_switches)  
+**Migrationen:** Basistabelle vor Migrationszaehlung, 004_integration_verification.sql (vermutlich *_last_verified_at/_disconnected_at, *_company_name/_business_name/_mode, dem Namen nach passend), 024_invoice_source_switch.sql (invoice_source_changed_at, invoice_source_switches), 028_sevdesk_verbindung.sql  
 **Besonderheiten:** lexoffice_api_key_encrypted, stripe_secret_key_encrypted und stripe_webhook_secret_encrypted sind ueber app/crypto.php (AES-256-GCM) verschluesselt, laut CLAUDE.md nie im Frontend gezeigt. UNIQUE (tenant_id) macht die Tabelle 1:1 zur Firma.  
 
 ## sync_state

@@ -70,6 +70,10 @@ services:
   worker-lexware-2:
     profiles: ["nicht-aktiv"]
 
+  worker-sevdesk:
+    mem_limit: 256m
+    cpus: "0.15"
+
   worker-stripe:
     mem_limit: 256m
     cpus: "0.25"

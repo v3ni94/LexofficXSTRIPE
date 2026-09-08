@@ -421,6 +421,12 @@ CREATE TABLE IF NOT EXISTS integrations (
     stripe_last_verified_at         DATETIME   NULL,
     stripe_disconnected_at          DATETIME   NULL,
     lexoffice_last_sync             DATETIME   NULL,
+    sevdesk_api_key_encrypted       TEXT       NULL,               -- sevdesk-Anbindung (Migration 028)
+    sevdesk_connected               TINYINT(1) NOT NULL DEFAULT 0,
+    sevdesk_company_name            VARCHAR(255) NULL,
+    sevdesk_last_verified_at        DATETIME   NULL,
+    sevdesk_disconnected_at         DATETIME   NULL,
+    sevdesk_last_sync               DATETIME   NULL,
     created_at                      DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                      DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_integration_tenant (tenant_id),
@@ -797,9 +803,9 @@ INSERT IGNORE INTO integration_providers (code, name, kind, status, capabilities
     ('lexware_office', 'Lexware Office', 'invoice_system', 'released',
      '["read_customers","read_open_invoices","read_open_amount","detect_changes"]', 'v1',
      'Public API (nach Angaben von Lexware Tarif XL erforderlich, im eigenen Konto prüfen). Kein Schreibzugriff auf Zahlungen.'),
-    ('sevdesk', 'sevdesk', 'invoice_system', 'planned',
-     '[]', 'v2',
-     'In Planung. Voraussetzung laut Anbieter voraussichtlich Tarif Buchhaltung Pro, API v2. Ungeprüft, keine Freigabe, kein Angebot.'),
+    ('sevdesk', 'sevdesk', 'invoice_system', 'development',
+     '["read_customers","read_open_invoices","detect_changes"]', 'v1 (Systemversion 2.0)',
+     'Adapter nach Sekundaerquellen gebaut (07.09.2026), nicht mit Testkonto verifiziert. Lesen ab Freigabe (sevdesk_connect oder sevdesk_release_at); offener Restbetrag und Einzug erst nach Bestaetigung (sevdesk_api_verified, sevdesk_collections). Kein Schreibzugriff.'),
     ('stripe', 'Stripe', 'payment_provider', 'released',
      '["sepa_debit","payment_intents","setup_checkout","mandates","webhooks"]', '2024-06-20',
      'Eigenes Stripe-Konto des Kunden, SEPA-Lastschrift muss dort freigeschaltet sein.');
@@ -809,7 +815,8 @@ ALTER TABLE integrations
     ADD COLUMN IF NOT EXISTS invoice_source VARCHAR(32) NOT NULL DEFAULT 'lexware_office' AFTER tenant_id;
 ALTER TABLE integrations
     ADD COLUMN IF NOT EXISTS invoice_source_changed_at DATETIME NULL AFTER invoice_source,           -- letzter Wechsel (Migration 024)
-    ADD COLUMN IF NOT EXISTS invoice_source_switches   INT      NOT NULL DEFAULT 0 AFTER invoice_source_changed_at;
+    ADD COLUMN IF NOT EXISTS invoice_source_switches   INT      NOT NULL DEFAULT 0 AFTER invoice_source_changed_at,
+    ADD COLUMN IF NOT EXISTS invoice_source_lock_reset_at DATETIME NULL AFTER invoice_source_switches;    -- Sperre vom Betreiber aufgehoben (Migration 028)
 
 -- ===========================================================================
 -- Ergänzungen aus Migration 007 (Erstattungen, Klärungsbedarf, Alarmierung).

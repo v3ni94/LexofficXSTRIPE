@@ -39,7 +39,7 @@ DOCUMENTS = [
         'code': 'unternehmen', 'title': 'Unternehmens- und Verkaufsdokumentation',
         'audience': 'Kaufinteressenten, externe Prüfer, Unternehmens- und Softwareübergabe',
         'classification': 'intern', 'access': 'admin',
-        'chapters': ['unternehmen/unternehmensdokumentation.md'],
+        'chapters': ['unternehmen/unternehmensdokumentation.md', 'unternehmen/go-live-leitfaden.md'],
     },
     {
         'code': 'entwickler', 'title': 'Entwickler- und Betriebsdokumentation',

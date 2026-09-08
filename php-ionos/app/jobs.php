@@ -21,16 +21,19 @@ require_once __DIR__ . '/mailer.php';
 // Signalmodell der Worker (Stop-Signale, kooperativer Abbruch, Notbremse); definiert
 // WorkerShutdownException als Sonderfall von JobRequeueException (queue.php ist bereits geladen).
 require_once __DIR__ . '/worker_signals.php';
+require_once __DIR__ . '/invoice_source.php';
+require_once __DIR__ . '/integration_state.php';
 
 /** Worker-Pools und die Jobtypen, die sie bearbeiten. */
 function jobs_pools(): array
 {
     return [
         'lexware'     => ['sync_run'],
+        'sevdesk'     => ['sync_run_sevdesk'], // eigener Container worker-sevdesk (4.38); gleicher Handler, getrennte Drosselung
         'stripe'      => ['collections_due', 'unclear_attempts'],
         'mail'        => ['mail', 'alerts', 'mandate_reminders'],
         'maintenance' => ['monitor_collect', 'maintenance'],
-        'all'         => ['sync_run', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'monitor_collect', 'maintenance'],
+        'all'         => ['sync_run', 'sync_run_sevdesk', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'monitor_collect', 'maintenance'],
     ];
 }
 
@@ -52,6 +55,7 @@ function job_handle(array $job, string $workerId): array
 {
     switch ((string)$job['type']) {
         case 'sync_run':          return job_sync_run($job, $workerId);
+        case 'sync_run_sevdesk':  return job_sync_run($job, $workerId); // sevdesk-Firmen, invoice_source_for_tenant() waehlt den Adapter
         case 'collections_due':   return job_collections_due($job);
         case 'unclear_attempts':  return job_unclear_attempts($job);
         case 'mail':              return job_mail($job);
@@ -359,14 +363,19 @@ function scheduler_auto_sync(array $cfg, int $now): array
 {
     $queued = [];
     try {
+        // Je Firma genau ein Buchhaltungssystem (integrations.invoice_source): Lexware-Firmen mit verbundenem Schluessel,
+        // sevdesk-Firmen nur, wenn verbunden UND die Anbindung freigegeben ist (Schalter oder Freigabetermin).
+        $sevdeskOpen = integration_switch('sevdesk', 'connect');
         $rows = db()->query(
-            "SELECT o.id, o.sync_paused, s.status AS sync_status,
+            "SELECT o.id, o.sync_paused, s.status AS sync_status, COALESCE(i.invoice_source, 'lexware_office') AS invoice_source,
                     TIMESTAMPDIFF(SECOND, COALESCE(s.finished_at, s.updated_at), NOW()) AS age_seconds,
                     TIMESTAMPDIFF(SECOND, s.updated_at, NOW()) AS state_age_seconds
              FROM organizations o
              JOIN integrations i ON i.tenant_id = o.id
              LEFT JOIN sync_state s ON s.tenant_id = o.id
-             WHERE o.deleted_at IS NULL AND o.onboarding_completed = 1 AND i.lexoffice_connected = 1"
+             WHERE o.deleted_at IS NULL AND o.onboarding_completed = 1
+               AND ((COALESCE(i.invoice_source, 'lexware_office') = 'lexware_office' AND i.lexoffice_connected = 1)
+                 OR (i.invoice_source = 'sevdesk' AND i.sevdesk_connected = 1))"
         )->fetchAll();
     } catch (Throwable $e) {
         return [];
@@ -377,11 +386,15 @@ function scheduler_auto_sync(array $cfg, int $now): array
         if ((int)$o['sync_paused'] === 1 || !queue_enabled($tid)) {
             continue;
         }
+        $type = INVOICE_SOURCE_SYNC_JOB_TYPES[(string)$o['invoice_source']] ?? 'sync_run';
+        if ($type === 'sync_run_sevdesk' && !$sevdeskOpen) {
+            continue; // sevdesk noch nicht freigegeben: kein Abruf
+        }
         if (($o['sync_status'] ?? null) === 'running') {
             // Läuft wirklich (Fortschritt in den letzten Minuten) oder hängt ein aktiver Job daran: nichts einreihen.
             // Ein verwaister Lauf ohne Job wird als Fehler geschlossen, damit die Firma nicht dauerhaft ausfällt.
             $fresh = $o['state_age_seconds'] !== null && (int)$o['state_age_seconds'] < SYNC_STALE_MINUTES * 60;
-            if ($fresh || queue_tenant_active($tid, 'sync_run')) {
+            if ($fresh || queue_tenant_active($tid, QUEUE_SYNC_TYPES)) {
                 continue;
             }
             db()->prepare("UPDATE sync_state SET status = 'error', lock_until = NULL, lock_owner = NULL, finished_at = NOW(), last_error = 'Lauf ohne Fortschritt vom Scheduler geschlossen' WHERE tenant_id = ? AND status = 'running'")->execute([$tid]);
@@ -391,7 +404,7 @@ function scheduler_auto_sync(array $cfg, int $now): array
             // ansetzt. Ohne diese Zeile blieb die Firma nach einem abgebrochenen Lauf (z.B. hart beendeter
             // Worker) bis zu auto_sync_hours Stunden ohne Synchronisation, was im Monitoring als dauerhaft
             // "wartende Aufgabe" erschien. Der dedupe_key verhindert Doppeleintraege.
-            $r = queue_push('sync_run', ['triggered_by' => 'stale-fortsetzung'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
+            $r = queue_push($type, ['triggered_by' => 'stale-fortsetzung'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
             if ($r['created']) {
                 $queued[] = 'sync_run:fortsetzung:' . $tid;
             }
@@ -401,7 +414,7 @@ function scheduler_auto_sync(array $cfg, int $now): array
         $fullMark = monitor_mark_get('sched_full_' . $tid);
         $today = date('Y-m-d', $now);
         if ($hourLocal === $cfg['full_sync_hour'] && $fullMark !== $today) {
-            $r = queue_push('sync_run', ['triggered_by' => 'full', 'full' => true], ['tenant_id' => $tid, 'priority' => 'low', 'dedupe_key' => 'sync:' . $tid]);
+            $r = queue_push($type, ['triggered_by' => 'full', 'full' => true], ['tenant_id' => $tid, 'priority' => 'low', 'dedupe_key' => 'sync:' . $tid]);
             if ($r['created']) {
                 monitor_mark('sched_full_' . $tid, $today); // Marker nur, wenn der Vollabgleich wirklich eingereiht wurde
                 $queued[] = 'sync_run:full:' . $tid;
@@ -409,7 +422,7 @@ function scheduler_auto_sync(array $cfg, int $now): array
             continue;
         }
         if ($ageSeconds === null || $ageSeconds >= $cfg['auto_sync_hours'] * 3600) {
-            $r = queue_push('sync_run', ['triggered_by' => 'auto'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
+            $r = queue_push($type, ['triggered_by' => 'auto'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
             if ($r['created']) {
                 $queued[] = 'sync_run:auto:' . $tid;
             }

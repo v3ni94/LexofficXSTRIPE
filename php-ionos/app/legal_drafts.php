@@ -20,7 +20,7 @@ function legal_drafts(): array
     return [
         [
             'code' => 'avv',
-            'version' => '2026-09-entwurf-1',
+            'version' => '2026-09-entwurf-2',
             'title' => 'Vereinbarung zur Auftragsverarbeitung (Art. 28 DSGVO)',
             'summary' => 'Regelt die Verarbeitung der Rechnungs- und Kundendaten Ihrer Firma durch die Müller Holding AG als Auftragsverarbeiterin beim Betrieb von SmartEinzug. Anlage 1 nennt jedes verarbeitete Datenfeld und seine Herkunft.',
             'required_for' => 'all',
@@ -102,7 +102,7 @@ Für die Haftung gelten Art. 82 DSGVO und die Regelungen des Nutzungsvertrags. B
 
 # Anlage 1: Verarbeitete Daten und ihre Herkunft
 
-Grundsatz: Die Schnittstellen von Lexware Office und Stripe stellen erheblich mehr Daten bereit, als die Anwendung verwendet. SmartEinzug ruft ausschließlich die nachfolgend genannten Felder ab und speichert nur die als gespeichert gekennzeichneten. Schreibende Zugriffe auf das Buchhaltungssystem finden nicht statt.
+Grundsatz: Die Schnittstellen von Lexware Office, sevdesk und Stripe stellen erheblich mehr Daten bereit, als die Anwendung verwendet. Je Firma ist genau ein Buchhaltungssystem angebunden (Abschnitt A oder A2). SmartEinzug ruft ausschließlich die nachfolgend genannten Felder ab und speichert nur die als gespeichert gekennzeichneten. Schreibende Zugriffe auf das Buchhaltungssystem finden nicht statt.
 
 ## A. Abruf aus Lexware Office (nur lesend, mit dem Schnittstellenschlüssel des Verantwortlichen)
 
@@ -114,6 +114,17 @@ Verwendete Schnittstellen: Profil, Belegliste (nur Rechnungen mit Status offen o
 - Kontakt: Firmenname oder Vor- und Nachname, Kundennummer, erste hinterlegte E-Mail-Adresse (Reihenfolge geschäftlich, Büro, privat, sonstige). Gespeichert. Nicht abgerufen und nicht gespeichert werden Anschriften, Telefonnummern, Steuernummern, Bankverbindungen und alle weiteren Kontaktfelder.
 - Zahlungsstand: offener Restbetrag und Währung unmittelbar vor einem Einzug. Gespeichert wird der offene Betrag mit Abrufzeitpunkt; Zahlungsstatus, Belegstatus und Zahldatum dieser Abfrage werden nicht gespeichert.
 - Schnittstellenschlüssel: verschlüsselt gespeichert (AES-256-GCM), niemals protokolliert oder im Browser angezeigt.
+
+## A2. Abruf aus sevdesk (nur lesend, mit dem API-Token des Verantwortlichen; gilt für Firmen mit sevdesk als Buchhaltungssystem)
+
+Verwendete Schnittstellen: Kontaktliste (nur zum Verbindungstest, ein Datensatz), Rechnungsliste (nur offene und teilbezahlte Rechnungen des Typs Rechnung), Rechnungsdetail, Rechnungspositionen, Kontakt, Kommunikationswege (nur E-Mail).
+
+- Verbindungstest: Erreichbarkeit und Berechtigung des Tokens. Ein Firmenname des sevdesk-Kontos wird derzeit nicht abgerufen.
+- Rechnungsliste: Belegkennung, Rechnungsnummer, Belegstatus, Belegtyp, Änderungszeitpunkt. Nur zur Steuerung der Synchronisation; dauerhaft gespeichert erst über das Rechnungsdetail.
+- Rechnungsdetail: Rechnungsnummer, Rechnungsdatum, Fälligkeit (Zahlungsziel), Bruttobetrag, bereits gezahlter Betrag, Währung, Belegstatus, Belegtyp, Änderungszeitpunkt, Kontaktkennung und Name des Rechnungsempfängers. Gespeichert. Rechnungspositionen: Bezeichnung, Beschreibung, Menge, Einzelpreis, Steuersatz. Gespeichert; daraus wird ein Stichwort für die Zuordnung abgeleitet.
+- Kontakt: Firmenname oder Vor- und Nachname, Kundennummer, eine E-Mail-Adresse aus den Kommunikationswegen. Gespeichert. Nicht abgerufen und nicht gespeichert werden Anschriften, Telefonnummern, Steuer- und Umsatzsteuer-Identifikationsnummern, Bankverbindungen und alle weiteren Kontaktfelder.
+- Zahlungsstand: offener Restbetrag (Bruttobetrag abzüglich gezahltem Betrag) und Währung unmittelbar vor einem Einzug. Gespeichert wird der offene Betrag mit Abrufzeitpunkt.
+- API-Token: verschlüsselt gespeichert (AES-256-GCM), niemals protokolliert oder im Browser angezeigt.
 
 ## B. Im Firmenaccount erfasste Daten zu Kunden des Verantwortlichen
 
@@ -158,7 +169,7 @@ Rechnungs- und Kundendaten bleiben gespeichert, solange der Nutzungsvertrag best
 - Sicherungsspeicher für Datenbankbackups: [Platzhalter: Firma, Anschrift und Speicherregion des Objektspeicheranbieters einsetzen].
 - E-Mail-Versand (Bestätigungs-, Sicherheits- und Systemnachrichten): IONOS SE, Elgendorfer Straße 57, 56410 Montabaur, Deutschland.
 
-Nicht Unterauftragsverarbeiter im Sinne dieser Vereinbarung, weil vom Verantwortlichen selbst beauftragt: Haufe-Lexware GmbH & Co. KG (Lexware Office, Buchhaltungssystem des Verantwortlichen) und Stripe Payments Europe, Ltd. (Zahlungsdienstleister, eigenes Stripe-Konto des Verantwortlichen).
+Nicht Unterauftragsverarbeiter im Sinne dieser Vereinbarung, weil vom Verantwortlichen selbst beauftragt: Haufe-Lexware GmbH & Co. KG (Lexware Office) beziehungsweise sevdesk GmbH (sevdesk), jeweils als Buchhaltungssystem des Verantwortlichen, und Stripe Payments Europe, Ltd. (Zahlungsdienstleister, eigenes Stripe-Konto des Verantwortlichen).
 
 Für das Abonnement des Verantwortlichen bei der Auftragsverarbeiterin (Plattform-Abrechnung) nutzt die Auftragsverarbeiterin ihr eigenes Stripe-Konto; dabei werden Firmenname und die E-Mail-Adresse des Inhabers an Stripe übergeben, Rechnungsanschrift und Umsatzsteuer-Identifikationsnummer gibt der Verantwortliche direkt bei Stripe ein. Diese Verarbeitung erfolgt in eigener Verantwortung der Müller Holding AG und ist in der Datenschutzerklärung beschrieben.
 MD;

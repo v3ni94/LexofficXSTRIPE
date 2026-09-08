@@ -260,6 +260,27 @@ Jede Firma führt vollständig getrennte Kunden, Rechnungen, Einzüge, eine eige
 
 [Screenshot: Einstellungen, Abschnitt Lexware Office mit Anleitung und Eingabefeld]
 
+### 5.1a sevdesk verbinden
+
+**Ziel:** Den API-Zugang zu sevdesk herstellen, damit Rechnungen und Kunden übernommen werden.
+
+**Voraussetzungen:** Rolle Inhaber oder Administrator. Die Firma muss sevdesk als Buchhaltungssystem gewählt haben (Kapitel 5.4). Ein sevdesk-Konto mit API-Token (nach der offiziellen sevdesk-Hilfe wird dafür der Tarif Buchhaltung Pro, Systemversion 2.0, vorausgesetzt; die Prüfung erfolgt beim Verbindungstest). Die Verbindung muss vom Betreiber bereits freigegeben sein; solange das nicht der Fall ist, zeigt "Einstellungen" anstelle des Eingabefelds den Hinweis, dass die Verbindung zu sevdesk noch nicht freigegeben ist, und Rechnungen werden noch nicht abgerufen.
+
+**Schritte zur Erstellung des Tokens in sevdesk** (auf der Seite "Einstellungen" als Anleitung hinterlegt):
+
+1. In sevdesk anmelden und die "Einstellungen" öffnen.
+2. Den Bereich "Benutzer" wählen und den eigenen Benutzer öffnen.
+3. Dort den "API-Token" anzeigen lassen oder erzeugen und kopieren (die Menüführung von sevdesk kann sich ändern).
+
+**Schritte in SmartEinzug:**
+
+1. Auf "Einstellungen" den Token in das Feld "sevdesk-API-Token" einfügen.
+2. Auf "Verbindung herstellen" klicken.
+
+**Erwartetes Ergebnis:** Die Verbindung wird sofort gegen die sevdesk-API geprüft; bei Erfolg wechselt der Status auf "Verbunden". sevdesk übermittelt beim Verbindungstest keinen Firmennamen, die Karte zeigt deshalb den Hinweis, dass der Firmenname nicht übermittelt wird, statt eines Kontonamens. Der Token wird verschlüsselt abgelegt und danach nicht mehr angezeigt.
+
+**Hinweise:** Solange der Betreiber die Einzüge für sevdesk noch nicht freigegeben hat, sehen Sie einen Hinweis; Rechnungen und Kunden werden bereits gelesen. "Verbindung prüfen" testet den bestehenden Token erneut, "Verbindung trennen" entfernt ihn; bereits synchronisierte Rechnungen und Kunden bleiben als Historie erhalten. Ihr Stripe-Konto können Sie unabhängig davon bereits verbinden.
+
 ### 5.2 Stripe verbinden
 
 **Ziel:** Das eigene Stripe-Konto anbinden, über das die Lastschriften laufen.
@@ -316,7 +337,7 @@ Jede Firma arbeitet mit genau einem Buchhaltungssystem. Das Abonnement ist für 
 
 **Typische Hinderungsgründe:**
 
-- Innerhalb der vierwöchigen Sperrfrist nach dem letzten Wechsel: Datum des nächstmöglichen Wechsels wird angezeigt.
+- Innerhalb der vierwöchigen Sperrfrist nach dem letzten Wechsel: Datum des nächstmöglichen Wechsels wird angezeigt. Hat der Betreiber die Sperre auf Ihre Anfrage aufgehoben, zeigt die Karte den Zeitpunkt der Aufhebung; ein Wechsel ist dann sofort wieder möglich, danach gilt erneut die Sperre von vier Wochen.
 - Noch vorgemerkte, terminierte oder in Verarbeitung befindliche Einzüge: Diese müssen zunächst storniert werden oder abgeschlossen sein.
 - Eine Synchronisation läuft gerade: Abschluss abwarten.
 

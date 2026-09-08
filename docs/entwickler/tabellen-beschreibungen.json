@@ -564,7 +564,9 @@
       "settings.php (lexoffice_api_key_encrypted, lexoffice_connected, stripe_secret_key_encrypted, stripe_webhook_secret_encrypted, stripe_connected und jeweilige *_disconnected_at)",
       "app/invoice_source_switch.php invoice_source_switch()/invoice_source_apply_signup() (invoice_source, invoice_source_changed_at, invoice_source_switches)",
       "app/integrations.php integration_verify_stripe()/integration_verify_lexoffice() (stripe_account_id, stripe_business_name, stripe_mode, lexoffice_company_name, jeweilige *_last_verified_at)",
-      "app/sync.php sync_invoices_step()/sync_invoices() (lexoffice_last_sync)"
+      "app/sync.php sync_invoices_step()/sync_invoices() (lexoffice_last_sync)",
+      "settings.php save_sevdesk/verify_sevdesk/disconnect_sevdesk, app/integrations.php integration_verify_sevdesk() (4.38)",
+      "admin.php org_lock_reset über app/invoice_source_switch.php invoice_source_lock_reset() (4.38)"
     ],
     "gelesen_durch": [
       "settings.php, onboarding.php, app/sync.php, app/collections.php (Pruefung, ob Anbindungen aktiv sind)"
@@ -574,13 +576,21 @@
     "migrationen": [
       "Basistabelle vor Migrationszaehlung",
       "004_integration_verification.sql (vermutlich *_last_verified_at/_disconnected_at, *_company_name/_business_name/_mode, dem Namen nach passend)",
-      "024_invoice_source_switch.sql (invoice_source_changed_at, invoice_source_switches)"
+      "024_invoice_source_switch.sql (invoice_source_changed_at, invoice_source_switches)",
+      "028_sevdesk_verbindung.sql"
     ],
     "besonderheiten": "lexoffice_api_key_encrypted, stripe_secret_key_encrypted und stripe_webhook_secret_encrypted sind ueber app/crypto.php (AES-256-GCM) verschluesselt, laut CLAUDE.md nie im Frontend gezeigt. UNIQUE (tenant_id) macht die Tabelle 1:1 zur Firma.",
     "spalten_erlaeuterung": {
       "invoice_source": "aktuell genutztes Rechnungssystem (lexware_office | sevdesk laut integration_providers), Standard lexware_office (Migration 024)",
       "invoice_source_changed_at": "Zeitpunkt des letzten Wechsels, Grundlage einer Sperrfrist von vier Wochen bis zum naechsten Wechsel (Migrationskommentar 024)",
-      "invoice_source_switches": "Zaehler der Wechsel zur Missbrauchserkennung (Migrationskommentar 024)"
+      "invoice_source_switches": "Zaehler der Wechsel zur Missbrauchserkennung (Migrationskommentar 024)",
+      "sevdesk_api_key_encrypted": "sevdesk-API-Token, AES-256-GCM verschlüsselt; nie protokolliert oder angezeigt (Migration 028)",
+      "sevdesk_connected": "1 = sevdesk verbunden (Token geprüft); Verbinden nur bei freigegebener Anbindung",
+      "sevdesk_company_name": "bleibt leer: der Verbindungstest liefert keinen Firmennamen (Endpunkt nicht verifiziert)",
+      "sevdesk_last_verified_at": "letzter erfolgreicher Verbindungstest",
+      "sevdesk_disconnected_at": "Zeitpunkt der Trennung (Einstellungen oder Wechsel des Buchhaltungssystems)",
+      "sevdesk_last_sync": "letzte abgeschlossene Synchronisation einer sevdesk-Firma",
+      "invoice_source_lock_reset_at": "Zeitpunkt (UTC), an dem der Betreiber die Vier-Wochen-Sperre aufgehoben hat (Audit invoice_source_lock_reset)"
     }
   },
   "sync_state": {

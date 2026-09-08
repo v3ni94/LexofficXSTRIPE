@@ -2,12 +2,14 @@
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 
 $ctx = require_subscription();
 if (!(int)$ctx['onboarding_completed']) {
     redirect('onboarding.php');
 }
 $tenantId = $ctx['org_id'];
+$isrcLabel = invoice_source_current($tenantId)['label'];
 $pdo = db();
 
 $search = trim($_GET['q'] ?? '');
@@ -49,7 +51,7 @@ if ($only === 'no_iban') {
 layout_header('Kunden', $ctx);
 ?>
 <h1>Kunden</h1>
-<p class="page-sub">Kundenstamm aus Lexware Office mit Bankverbindungen und SEPA-Mandaten. Klicken Sie auf einen Kunden für Details und das Mandatsdokument.</p>
+<p class="page-sub">Kundenstamm aus <?= e($isrcLabel) ?> mit Bankverbindungen und SEPA-Mandaten. Klicken Sie auf einen Kunden für Details und das Mandatsdokument.</p>
 
 <div class="card">
     <form method="get" class="inline-form" style="margin-bottom: 12px; flex-wrap: wrap;">
@@ -67,7 +69,7 @@ layout_header('Kunden', $ctx);
 
     <?php if (!$customers): ?>
         <p class="hint">Keine Kunden gefunden. Kunden werden bei der Rechnungs-Synchronisation
-            automatisch aus Lexware Office übernommen.</p>
+            automatisch aus <?= e($isrcLabel) ?> übernommen.</p>
     <?php else: ?>
     <div class="table-wrap">
         <table>
