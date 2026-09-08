@@ -4,13 +4,13 @@ Stand: 07.09.2026. Dieser Ordner bündelt die Arbeitsergebnisse zum Masterprompt
 
 | Dokument | Inhalt | Status |
 |---|---|---|
-| `url-inventar.md`, `url-inventar.json` | URL-Inventar der drei Marketingdomains, erzeugt von `tools/seo-inventory.py` (Title, H1, Canonical, Indexierung, Sitemap, Verlinkung, Preise, Prüfwörter) | erzeugt, bei jeder Änderung neu ausführen |
-| `01-bestandsaufnahme.md` | Bestandsaufnahme: Domainrollen, technische Prüfung, Leserperspektive, Datenlücken | in Arbeit |
-| `02-faktenregister.md` | Faktenregister: belegte Tatsachen über die Software mit Quelle, Status (bestätigt, geplant, ungeklärt, veraltet) und zulässiger Formulierung | in Arbeit |
-| `03-aussagenpruefung.md` | Abgleich der Werbeaussagen je Domain mit Verdikt, Korrektur und Verifikation | in Arbeit |
-| `keyword-map.json`, `04-keyword-map.md` | Gemeinsame Themen- und URL-Zuordnung über alle Domains (SEO_KEYWORD_MAP), geprüft durch `tools/seo-map-check.py` | in Arbeit |
-| `05-massnahmenplan.md` | Größere Eingriffe, Entscheidungen (DETM, sevdesk-Domains), die eine Freigabe der Geschäftsführung brauchen (Zusammenführungen, Weiterleitungen, Indexierung, AGB, Preisdarstellung, vierte Domain) | in Arbeit |
-| `06-mess-und-pflegekonzept.md` | Erfolgskette, Ereignisse, Datenlücken, Redaktions- und Prüfplan, Freigabezustände | in Arbeit |
+| `url-inventar.md`, `url-inventar.json` | URL-Inventar der Marketingdomains, erzeugt von `tools/seo-inventory.py` (Title, H1, Canonical, Indexierung, Sitemap, Verlinkung, Preise, Prüfwörter) | erzeugt (72 Seiten, sechs Domains), bei jeder Änderung neu ausführen |
+| `01-bestandsaufnahme.md` | Bestandsaufnahme: Domainrollen, technische Prüfung, Leserperspektive, Datenlücken | erstellt, Stand 08.09.2026 |
+| `02-faktenregister.md` | Faktenregister: belegte Tatsachen über die Software mit Quelle, Status (bestätigt, geplant, ungeklärt, veraltet) und zulässiger Formulierung | erstellt, Stand 08.09.2026 |
+| `03-aussagenpruefung.md` | Abgleich der Werbeaussagen je Domain mit Verdikt, Korrektur und Verifikation | erstellt, Stand 08.09.2026 |
+| `keyword-map.json`, `04-keyword-map.md` | Gemeinsame Themen- und URL-Zuordnung über alle Domains (SEO_KEYWORD_MAP), geprüft durch `tools/seo-map-check.py` | erstellt, Stand 08.09.2026 |
+| `05-massnahmenplan.md` | Größere Eingriffe, Entscheidungen (DETM, sevdesk-Domains), die eine Freigabe der Geschäftsführung brauchen (Zusammenführungen, Weiterleitungen, Indexierung, AGB, Preisdarstellung, vierte Domain) | erstellt, Stand 08.09.2026 |
+| `06-mess-und-pflegekonzept.md` | Erfolgskette, Ereignisse, Datenlücken, Redaktions- und Prüfplan, Freigabezustände | erstellt, Stand 08.09.2026 |
 
 ## Werkzeuge
 
