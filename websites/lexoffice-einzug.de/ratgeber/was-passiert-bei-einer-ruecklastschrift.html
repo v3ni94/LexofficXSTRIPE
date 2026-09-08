@@ -110,7 +110,7 @@
       <p>Angenommen, die Nordwind Service GmbH zieht eine Rechnung der Beispiel GmbH per SEPA ein. Der Status wechselt zunächst auf "in Bearbeitung". Meldet die Bank der Beispiel GmbH die Lastschrift später zurück, ändert sich der Status in SmartEinzug auf Rücklastschrift, und die Nordwind Service GmbH erkennt sofort, welche Rechnung betroffen ist.</p>
 
       <h2>Wie erfährt SmartEinzug von einer Rücklastschrift?</h2>
-      <p>Stripe meldet Statusänderungen über einen Webhook an SmartEinzug zurück. Zusätzlich lässt sich der Status manuell abgleichen. Auf diesem Weg werden auch Rücklastschriften erkannt und der betroffenen Rechnung zugeordnet, ohne dass Sie den Stripe-Bereich selbst durchsuchen müssen.</p>
+      <p>Stripe meldet eine Rücklastschrift über den von Ihnen eingerichteten Webhook an SmartEinzug und ordnet sie der betroffenen Rechnung zu, ohne dass Sie den Stripe-Bereich selbst durchsuchen müssen. Der manuelle Statusabgleich erkennt Erfolg und Fehlschlag laufender Einzüge, Rücklastschriften jedoch nicht; richten Sie deshalb den Webhook ein.</p>
 
       <h2>Was sollten Sie nach einer Rücklastschrift tun?</h2>
       <p>Klären Sie zunächst mit dem betroffenen Kunden, woran der Einzug gescheitert ist, etwa mangelnde Kontodeckung oder ein Widerspruch gegen die Belastung. Anschließend können Sie die Rechnung erneut zum Einzug vorsehen, sobald die Ursache geklärt ist, oder alternativ auf eine Zahlung per Überweisung ausweichen. Prüfen Sie in strittigen Fällen, ob das zugrunde liegende SEPA-Mandat weiterhin gültig ist.</p>
