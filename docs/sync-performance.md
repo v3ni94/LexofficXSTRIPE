@@ -77,6 +77,8 @@ Adminbereich sichtbar machen. Verhalten, das von unbestätigten API-Eigenschafte
 | 5 | Adminbereich System, Reiter „Synchronisation & Performance“ | `app/sync_perf.php`: Läufe, Dauer, Aufrufe, Detail- und Kontaktabrufe, übersprungene Rechnungen, Antwortzeit je Aufruf, längster Aufruf, Drosselung, Wiederholungen, Wartezeit in der Warteschlange, Cursorgröße (24 Stunden und 7 Tage); Worker je Pool; Firmen mit dem größten Aufwand; wirksame Konfiguration mit Quelle; Verteilung des Vollabgleichs; Circuit Breaker | Betreiber sieht Engpässe ohne Serverzugriff; Grundlage für die Bemessung weiterer Worker |
 
 Prüfungen: `bash tools/scheduler-sync-check.sh` (Fälle 10a bis 10c: Verteilung, Fairness, Reiter) und `bash tools/sevdesk-check.sh`.
+Seit 4.43 zeigt der Reiter den gewählten Zeitraum und den gleich langen Vorzeitraum statt fester 24 Stunden und 7 Tage
+(`app/admin_period.php`, Auswahlleiste mit Voreinstellungen und freiem Bereich).
 
 ### Bewusst nicht umgesetzt (offene Prüffragen, Stand 07.09.2026)
 

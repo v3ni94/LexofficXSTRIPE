@@ -16,8 +16,8 @@ require_once __DIR__ . '/queue.php';
 require_once __DIR__ . '/jobs.php';
 require_once __DIR__ . '/lexoffice.php';
 
-/** Zusammenfassung aller Laeufe der letzten $hours Stunden. */
-function sync_perf_overview(int $hours): array
+/** Zusammenfassung aller Laeufe im Zeitraum [$from, $to) (lokale Zeit wie sync_runs.started_at). */
+function sync_perf_overview(DateTimeImmutable $from, DateTimeImmutable $to): array
 {
     $out = ['runs' => 0, 'success' => 0, 'failed' => 0, 'avg_duration_ms' => null, 'max_duration_ms' => null, 'api_calls' => 0, 'api_ms' => 0,
             'throttle_ms' => 0, 'retries' => 0, 'detail_calls' => 0, 'contact_calls' => 0, 'skipped' => 0, 'checked' => 0,
@@ -29,9 +29,9 @@ function sync_perf_overview(int $hours): array
                     COALESCE(SUM(retries),0) AS retries, COALESCE(SUM(detail_calls),0) AS detail_calls, COALESCE(SUM(contact_calls),0) AS contact_calls,
                     COALESCE(SUM(skipped),0) AS skipped, COALESCE(SUM(checked),0) AS checked, COALESCE(MAX(api_ms_max),0) AS api_ms_max,
                     COALESCE(MAX(cursor_bytes_max),0) AS cursor_bytes_max
-             FROM sync_runs WHERE started_at >= DATE_SUB(NOW(), INTERVAL ? HOUR) AND finished_at IS NOT NULL"
+             FROM sync_runs WHERE started_at >= ? AND started_at < ? AND finished_at IS NOT NULL"
         );
-        $st->execute([$hours]);
+        $st->execute([$from->format('Y-m-d H:i:s'), $to->format('Y-m-d H:i:s')]);
         $r = $st->fetch() ?: [];
         $out['runs'] = (int)($r['runs'] ?? 0);
         $out['success'] = (int)($r['ok'] ?? 0);
@@ -48,9 +48,9 @@ function sync_perf_overview(int $hours): array
     try {
         $st = db()->prepare(
             "SELECT COUNT(queue_wait_ms) AS n, AVG(queue_wait_ms) AS avg_w, MAX(queue_wait_ms) AS max_w FROM job_runs
-             WHERE job_type IN ('queue:sync_run', 'queue:sync_run_sevdesk') AND started_at >= ? AND queue_wait_ms IS NOT NULL"
+             WHERE job_type IN ('queue:sync_run', 'queue:sync_run_sevdesk') AND started_at >= ? AND started_at < ? AND queue_wait_ms IS NOT NULL"
         );
-        $st->execute([mon_utc(monitor_now() - $hours * 3600)]);
+        $st->execute([mon_utc($from->getTimestamp()), mon_utc($to->getTimestamp())]);
         $r = $st->fetch() ?: [];
         $out['queue_wait_n'] = (int)($r['n'] ?? 0);
         $out['queue_wait_avg_ms'] = $out['queue_wait_n'] > 0 ? (int)round((float)$r['avg_w']) : null;
@@ -62,7 +62,7 @@ function sync_perf_overview(int $hours): array
 }
 
 /** Firmen mit dem groessten Aufwand (Aufrufe, Dauer) im Zeitraum. */
-function sync_perf_top_tenants(int $hours, int $limit = 10): array
+function sync_perf_top_tenants(DateTimeImmutable $from, DateTimeImmutable $to, int $limit = 10): array
 {
     try {
         $st = db()->prepare(
@@ -71,10 +71,10 @@ function sync_perf_top_tenants(int $hours, int $limit = 10): array
                     SUM(r.detail_calls) AS detail_calls, SUM(r.contact_calls) AS contact_calls, SUM(r.skipped) AS skipped, SUM(r.checked) AS checked,
                     SUM(r.throttle_ms) AS throttle_ms, MAX(r.api_ms_max) AS api_ms_max, MAX(r.cursor_bytes_max) AS cursor_bytes_max, MAX(r.finished_at) AS last_finished
              FROM sync_runs r JOIN organizations o ON o.id = r.tenant_id LEFT JOIN integrations i ON i.tenant_id = r.tenant_id
-             WHERE r.started_at >= DATE_SUB(NOW(), INTERVAL ? HOUR) AND r.finished_at IS NOT NULL
+             WHERE r.started_at >= ? AND r.started_at < ? AND r.finished_at IS NOT NULL
              GROUP BY r.tenant_id, o.name, i.invoice_source ORDER BY api_calls DESC, duration_ms DESC LIMIT " . max(1, min(50, $limit))
         );
-        $st->execute([$hours]);
+        $st->execute([$from->format('Y-m-d H:i:s'), $to->format('Y-m-d H:i:s')]);
         return $st->fetchAll();
     } catch (Throwable $e) {
         return [];
@@ -178,13 +178,15 @@ function sync_perf_fmt_bytes(int $b): string
     return $b >= 1048576 ? number_format($b / 1048576, 1, ',', '.') . ' MB' : ($b >= 1024 ? number_format($b / 1024, 0, ',', '.') . ' KB' : $b . ' B');
 }
 
-/** HTML des Reiters. */
-function sync_perf_render(): string
+/** HTML des Reiters fuer den gewaehlten Zeitraum (admin_period_from_request) mit Vergleich zum Vorzeitraum. */
+function sync_perf_render(array $period): string
 {
     $cfg = jobs_config();
-    $o24 = sync_perf_overview(24);
-    $o7 = sync_perf_overview(168);
-    $top = sync_perf_top_tenants(168, 10);
+    $o24 = sync_perf_overview($period['from'], $period['to']);
+    $o7 = sync_perf_overview($period['prev_from'], $period['prev_to']);
+    $top = sync_perf_top_tenants($period['from'], $period['to'], 10);
+    $lab = (string)$period['label'];
+    $labPrev = 'Vorzeitraum (' . $period['prev_from']->format('d.m.Y') . ' bis ' . $period['prev_to']->modify('-1 day')->format('d.m.Y') . ')';
     $workers = sync_perf_workers();
     $plan = sync_perf_full_sync_plan($cfg);
     $circuits = sync_perf_circuits();
@@ -196,7 +198,7 @@ function sync_perf_render(): string
         (Bestandsaufnahme 07.09.2026). Felder ohne Daten zeigen „keine Daten“; nichts wird geschätzt.</p>
     <?php if (!empty($o24['error'])): ?><div class="flash flash-warn"><?= e($o24['error']) ?></div><?php endif; ?>
     <div class="table-wrap"><table>
-        <thead><tr><th>Kennzahl</th><th>Letzte 24 Stunden</th><th>Letzte 7 Tage</th><th>Erläuterung</th></tr></thead>
+        <thead><tr><th>Kennzahl</th><th><?= e($lab) ?></th><th><?= e($labPrev) ?></th><th>Erläuterung</th></tr></thead>
         <tbody>
         <tr><td>Läufe (erfolgreich / fehlgeschlagen)</td><td><?= (int)$o24['runs'] ?> (<?= (int)$o24['success'] ?> / <?= (int)$o24['failed'] ?>)</td><td><?= (int)$o7['runs'] ?> (<?= (int)$o7['success'] ?> / <?= (int)$o7['failed'] ?>)</td><td class="hint">abgeschlossene Läufe aller Firmen</td></tr>
         <tr><td>Dauer je Lauf (Durchschnitt / Maximum)</td><td><?= e(sync_perf_fmt_ms($o24['avg_duration_ms'])) ?> / <?= e(sync_perf_fmt_ms($o24['max_duration_ms'])) ?></td><td><?= e(sync_perf_fmt_ms($o7['avg_duration_ms'])) ?> / <?= e(sync_perf_fmt_ms($o7['max_duration_ms'])) ?></td><td class="hint">von Start bis Abschluss, inklusive Wartezeiten zwischen Versuchen</td></tr>
@@ -224,7 +226,7 @@ function sync_perf_render(): string
 </div>
 
 <div class="card">
-    <h2>Firmen mit dem größten Aufwand (7 Tage)</h2>
+    <h2>Firmen mit dem größten Aufwand (<?= e($lab) ?>)</h2>
     <?php if (!$top): ?><p class="hint">Keine abgeschlossenen Läufe im Zeitraum.</p><?php else: ?>
     <div class="table-wrap"><table>
         <thead><tr><th>Firma</th><th>System</th><th>Läufe</th><th>Fehler</th><th>Dauer gesamt</th><th>API-Aufrufe</th><th>Detail / Kontakt</th><th>Übersprungen</th><th>Drosselung</th><th>Längster Aufruf</th><th>Cursor</th><th>Zuletzt</th></tr></thead>

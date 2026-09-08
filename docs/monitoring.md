@@ -8,6 +8,8 @@ Adminnavigation (admin.php), letzter Eintrag "System". Zugriff nur mit Plattform
 
 Leserecht: alle Plattformadministratoren. Änderungsrecht (Störungsmeldungen anlegen, veröffentlichen, Testversand, manuelle Veröffentlichung des Snapshots): zusätzlich Eintrag in config monitoring.editors (E-Mail-Adressen); leer bedeutet alle Plattformadministratoren. Nur das Veröffentlichen einer Störungs- oder Wartungsmeldung verlangt einen aktuellen Authenticator-Code oder eine Codeeingabe innerhalb der letzten 5 Minuten (require_recent_totp mit Bestätigungsfenster, Abschnitt 5.7); Zurückziehen, Testversand und Snapshot-Übertragung laufen seit 4.36 ohne Code, aber mit CSRF-Schutz und Audit (Beschluss des Vorstands vom 07.09.2026, Regel in docs/entwickler/sicherheit.md).
 
+Zeitraum (seit 4.43, app/admin_period.php): Die Reiter Verfügbarkeit und Synchronisation & Performance sowie die Kennzahlen der Plattform-Administration nutzen eine gemeinsame Zeitraumauswahl mit Voreinstellungen (Heute, Gestern, 7, 30, 90 Tage, dieser und letzter Monat, Quartal, Jahr, 12 Monate) und freiem Von-bis-Bereich (höchstens drei Jahre); die Wahl wird in der Sitzung gemerkt, Kennzahlen zeigen den Vergleich zum gleich langen Vorzeitraum, Diagramme wählen die Auflösung nach Länge (Tag bis 31 Tage, Kalenderwoche bis 26 Wochen, sonst Monat). Die Live-Fenster (1 Minute bis 24 Stunden) der Übersicht und Aktivität bleiben davon unberührt. Prüfung: php tools/admin-period-check.php.
+
 Die Seite aktualisiert das Kopf-Fragment alle 30 Sekunden (assets/js/app.js), pausiert in inaktiven Tabs und löst keine Prüfungen aus. "Jetzt prüfen" startet nur den Sammler mit Zeitbudget; keine Migration, Synchronisation, Lastschrift oder Testmail.
 
 ## Was tatsächlich gemessen wird

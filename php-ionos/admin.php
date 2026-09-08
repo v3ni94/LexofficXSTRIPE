@@ -12,6 +12,7 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/alerts.php';
 require_once __DIR__ . '/app/admin_charts.php';
+require_once __DIR__ . '/app/admin_period.php';
 require_once __DIR__ . '/app/interest.php';
 require_once __DIR__ . '/app/invoice_source_switch.php';
 require_once __DIR__ . '/app/mailer.php';
@@ -212,21 +213,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('admin.php');
 }
 
-// --- Kennzahlen je Akquisitionsquelle ---
-$byDomain = $pdo->query(
+// --- Zeitraum (4.43): Voreinstellungen oder freier Bereich, gemerkt in der Sitzung; Bestandszahlen bleiben zeitraumunabhaengig ---
+$period = admin_period_from_request($_GET, '30t');
+[$pFrom, $pTo] = admin_period_sql_bounds($period);
+[$pPrevFrom, $pPrevTo] = admin_period_sql_bounds($period, true);
+
+// --- Kennzahlen je Akquisitionsquelle (Firmen, die im Zeitraum registriert wurden; Abo-Status ist der heutige Stand) ---
+$st = $pdo->prepare(
     "SELECT COALESCE(NULLIF(signup_domain, ''), 'direkt') AS domain,
             COUNT(*) AS registrations,
             SUM(subscription_status = 'active') AS active_subs,
             SUM(subscription_status = 'canceled') AS canceled,
             SUM(subscription_status = 'exempt') AS exempt,
             SUM(onboarding_completed) AS onboarded
-     FROM organizations WHERE deleted_at IS NULL
+     FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ?
      GROUP BY COALESCE(NULLIF(signup_domain, ''), 'direkt') ORDER BY registrations DESC"
-)->fetchAll();
+);
+$st->execute([$pFrom, $pTo]);
+$byDomain = $st->fetchAll();
 
-$funnel = $pdo->query(
-    "SELECT domain, event, COUNT(*) AS cnt FROM funnel_events GROUP BY domain, event"
-)->fetchAll();
+$st = $pdo->prepare(
+    "SELECT (SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ?) AS regs,
+            (SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ?) AS regs_prev,
+            (SELECT COUNT(*) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS coll,
+            (SELECT COUNT(*) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS coll_prev,
+            (SELECT COALESCE(SUM(amount_cents - COALESCE(refunded_cents, 0)),0) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS vol,
+            (SELECT COALESCE(SUM(amount_cents - COALESCE(refunded_cents, 0)),0) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS vol_prev"
+);
+$st->execute([$pFrom, $pTo, $pPrevFrom, $pPrevTo, $pFrom, $pTo, $pPrevFrom, $pPrevTo, $pFrom, $pTo, $pPrevFrom, $pPrevTo]);
+$periodTotals = $st->fetch() ?: ['regs' => 0, 'regs_prev' => 0, 'coll' => 0, 'coll_prev' => 0, 'vol' => 0, 'vol_prev' => 0];
+
+$st = $pdo->prepare("SELECT domain, event, COUNT(*) AS cnt FROM funnel_events WHERE created_at >= ? AND created_at < ? GROUP BY domain, event");
+$st->execute([$pFrom, $pTo]);
+$funnel = $st->fetchAll();
 $funnelMap = [];
 foreach ($funnel as $f) {
     $funnelMap[$f['domain']][$f['event']] = (int)$f['cnt'];
@@ -241,18 +260,25 @@ $domains = array_unique(array_merge(array_column($byDomain, 'domain'), array_key
 
 $plans = plan_list();
 
-// --- Diagrammdaten: letzte 12 Kalenderwochen ---
-$weekSlots = chart_week_slots(12);
+// --- Diagrammdaten im gewaehlten Zeitraum, Aufloesung nach Laenge (Tag, Kalenderwoche, Monat) ---
+$weekSlots = admin_period_slots($period);
+$bucketReg = admin_period_sql_bucket('created_at', $period['resolution']);
+$bucketCol = admin_period_sql_bucket('COALESCE(completed_at, submitted_at, created_at)', $period['resolution']);
 $regByWeek = array_fill_keys(array_keys($weekSlots), 0);
-foreach ($pdo->query("SELECT YEARWEEK(created_at, 3) AS wk, COUNT(*) AS cnt FROM organizations WHERE deleted_at IS NULL AND created_at >= DATE_SUB(CURDATE(), INTERVAL 13 WEEK) GROUP BY wk")->fetchAll() as $r) {
+$st = $pdo->prepare("SELECT $bucketReg AS wk, COUNT(*) AS cnt FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ? GROUP BY wk");
+$st->execute([$pFrom, $pTo]);
+foreach ($st->fetchAll() as $r) {
     if (isset($regByWeek[$r['wk']])) { $regByWeek[$r['wk']] = (int)$r['cnt']; }
 }
 $volByWeek = array_fill_keys(array_keys($weekSlots), 0);
 $cntByWeek = array_fill_keys(array_keys($weekSlots), 0);
-foreach ($pdo->query("SELECT YEARWEEK(COALESCE(completed_at, submitted_at, created_at), 3) AS wk, SUM(amount_cents - COALESCE(refunded_cents, 0)) AS cents, COUNT(*) AS cnt
-    FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= DATE_SUB(CURDATE(), INTERVAL 13 WEEK) GROUP BY wk")->fetchAll() as $r) {
+$st = $pdo->prepare("SELECT $bucketCol AS wk, SUM(amount_cents - COALESCE(refunded_cents, 0)) AS cents, COUNT(*) AS cnt
+    FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ? GROUP BY wk");
+$st->execute([$pFrom, $pTo]);
+foreach ($st->fetchAll() as $r) {
     if (isset($volByWeek[$r['wk']])) { $volByWeek[$r['wk']] = (int)$r['cents']; $cntByWeek[$r['wk']] = (int)$r['cnt']; }
 }
+$resLabel = admin_period_resolution_label($period);
 $chartRows = static fn(array $byWeek): array => array_map(static fn(string $wk, string $label): array => ['label' => $label, 'value' => $byWeek[$wk]], array_keys($weekSlots), $weekSlots);
 $funnelTotals = [];
 foreach ($funnelSteps as $ev => $label) {
@@ -333,7 +359,14 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
 
 <?php if ($can('companies.view')): ?>
 <div class="card" id="kennzahlen">
-    <h2>Kennzahlen je Akquisitionsquelle</h2>
+    <h2>Kennzahlen im Zeitraum</h2>
+    <?= admin_period_selector('admin.php', $period) ?>
+    <div class="card-grid stat-row">
+        <div class="stat-card"><div class="stat-value"><?= (int)$periodTotals['regs'] ?></div><div class="stat-label">Registrierungen<span class="stat-compare"><?= e(admin_period_compare((float)$periodTotals['regs'], (float)$periodTotals['regs_prev'])) ?></span></div></div>
+        <div class="stat-card"><div class="stat-value"><?= (int)$periodTotals['coll'] ?></div><div class="stat-label">Erfolgreiche Einzüge<span class="stat-compare"><?= e(admin_period_compare((float)$periodTotals['coll'], (float)$periodTotals['coll_prev'])) ?></span></div></div>
+        <div class="stat-card"><div class="stat-value" style="font-size: 20px;"><?= format_eur_cents((int)$periodTotals['vol']) ?></div><div class="stat-label">Eingezogen, netto nach Erstattungen<span class="stat-compare"><?= e(admin_period_compare((float)$periodTotals['vol'], (float)$periodTotals['vol_prev'])) ?></span></div></div>
+    </div>
+    <h3 class="mon-h3">Je Akquisitionsquelle (Firmen, die im Zeitraum registriert wurden; Abo-Status heute)</h3>
     <div class="table-wrap">
         <table>
             <thead><tr><th>Domain</th><th>Registrierungen</th><th>Onboarding fertig</th><th>Zahlende Kunden</th><th>Conversion</th><th>Umsatz je 4 Wochen (Schätzung)</th><th>Gekündigt (Churn)</th><th>Befreit</th></tr></thead>
@@ -364,17 +397,17 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
 <div class="card" id="diagramme">
     <h2>Diagramme</h2>
     <div class="chart-grid">
-        <div><?= chart_bars($chartRows($regByWeek), 'Registrierungen je Kalenderwoche (12 Wochen)') ?></div>
-        <div><?= chart_bars($chartRows($volByWeek), 'Eingezogenes Volumen je Kalenderwoche in EUR, netto nach Erstattungen', $fmtEur, '#2E2D2E') ?></div>
-        <div><?= chart_bars($chartRows($cntByWeek), 'Erfolgreiche Einzüge je Kalenderwoche', null, '#9F9F9F') ?></div>
-        <div><?= chart_hbars($regByDomain, 'Registrierungen je Herkunft (gesamt)') ?></div>
-        <div class="chart-wide"><?= chart_hbars($funnelTotals, 'Funnel über alle Herkünfte (gesamt)', null, '#E3AC48') ?></div>
+        <div><?= chart_bars($chartRows($regByWeek), 'Registrierungen ' . $resLabel . ' (' . $period['label'] . ')') ?></div>
+        <div><?= chart_bars($chartRows($volByWeek), 'Eingezogenes Volumen ' . $resLabel . ' in EUR, netto nach Erstattungen', $fmtEur, '#2E2D2E') ?></div>
+        <div><?= chart_bars($chartRows($cntByWeek), 'Erfolgreiche Einzüge ' . $resLabel, null, '#9F9F9F') ?></div>
+        <div><?= chart_hbars($regByDomain, 'Registrierungen je Herkunft (' . $period['label'] . ')') ?></div>
+        <div class="chart-wide"><?= chart_hbars($funnelTotals, 'Funnel über alle Herkünfte (' . $period['label'] . ')', null, '#E3AC48') ?></div>
     </div>
-    <p class="hint">Serverseitig erzeugte Grafiken aus den Tabellen organizations, payment_collections und funnel_events, keine Datenübertragung an Dritte.</p>
+    <p class="hint">Serverseitig erzeugte Grafiken aus den Tabellen organizations, payment_collections und funnel_events für den oben gewählten Zeitraum, keine Datenübertragung an Dritte.</p>
 </div>
 
 <div class="card">
-    <h2>Funnel je Domain</h2>
+    <h2>Funnel je Domain (<?= e($period['label']) ?>)</h2>
     <div class="table-wrap">
         <table class="table-sm">
             <thead><tr><th>Schritt</th><?php foreach ($domains as $dm): ?><th><?= e($dm) ?></th><?php endforeach; ?></tr></thead>

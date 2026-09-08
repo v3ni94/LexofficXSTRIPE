@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.42';
+const APP_VERSION = '4.43';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.43', 'date' => '08.09.2026', 'title' => 'Adminbereich: Zeitraum für Kennzahlen frei wählbar',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Einheitliche Zeitraumauswahl im Adminbereich: Heute, Gestern, 7, 30, 90 Tage, dieser und letzter Monat, Quartal, Jahr, 12 Monate oder ein freier Von-bis-Bereich (bis drei Jahre). Die Wahl wird für die Sitzung gemerkt. Kennzahlen im Zeitraum (Registrierungen, erfolgreiche Einzüge, eingezogenes Volumen) mit Vergleich zum gleich langen Vorzeitraum; Akquisitionsquellen, Funnel und Diagramme folgen dem Zeitraum, die Diagramme wählen die Auflösung (Tag, Kalenderwoche, Monat) nach seiner Länge.'],
+            ['type' => 'Geändert', 'text' => 'System, Reiter Verfügbarkeit und Synchronisation & Performance nutzen dieselbe Auswahl (Performance mit Vorzeitraum als Vergleichsspalte). Bestandszahlen (Firmen, Benutzer, Gesamtvolumen) bleiben zeitraumunabhängig; die Live-Fenster der Übersicht bleiben unverändert.'],
+         ]],
         ['version' => '4.42', 'date' => '08.09.2026', 'title' => 'sevdesk-Pilot: Verbindung zunächst nur für Firmen des Betreibers',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Pilotphase für sevdesk (Migration 030): Verbinden und Wechseln zu sevdesk ist bis zum Freigabetermin nur Firmen möglich, in denen ein Administrator der Plattform Mitglied ist, sowie Firmen aus einer Pilotliste. Andere Firmen sehen weiterhin „in Vorbereitung“ mit Vormerkung; die Registrierung mit sevdesk führt zur Vormerkung. Am Freigabetermin endet der Pilot von selbst. Einzüge bleiben unabhängig davon gesperrt, bis die Zahlungsfelder mit einem sevdesk-Konto bestätigt sind.'],

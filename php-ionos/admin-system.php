@@ -43,6 +43,8 @@ $windows = monitor_windows();
 $wParam = is_string($_GET['w'] ?? null) ? (string)$_GET['w'] : '';
 $w = isset($windows[$wParam]) ? $wParam : '1h';
 $d = is_scalar($_GET['d'] ?? null) && in_array((int)$_GET['d'], [7, 30, 90], true) ? (int)$_GET['d'] : 30;
+require_once __DIR__ . '/app/admin_period.php';
+$period = admin_period_from_request($_GET, '30t'); // Zeitraum fuer Verfuegbarkeit und Performance (4.43); Fenster w bleibt fuer Live-Ansichten
 $back = 'admin-system.php?tab=' . $tab . '&w=' . $w . '&d=' . $d;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -752,7 +754,8 @@ $queueGlobalOn = feature_enabled('queue');
 <?php endif; // queueOk ?>
 <?php endif; ?>
 
-<?php if ($tab === 'performance'): require_once __DIR__ . '/app/sync_perf.php'; require_once __DIR__ . '/app/invoice_source_switch.php'; echo sync_perf_render(); endif; ?>
+<?php if ($tab === 'performance'): require_once __DIR__ . '/app/sync_perf.php'; require_once __DIR__ . '/app/invoice_source_switch.php';
+    echo admin_period_selector('admin-system.php?tab=performance', $period); echo sync_perf_render($period); endif; ?>
 
 <?php if ($tab === 'server'): ?>
 <?php
@@ -892,15 +895,16 @@ $srvStateLabels = ['ok' => 'System OK', 'degraded' => 'System Warning', 'fail' =
 <?php endif; ?>
 
 <?php if ($tab === 'verfuegbarkeit'): ?>
-<div class="mon-windows">Zeitraum:
-    <?php foreach ([7, 30, 90] as $dd): ?><a href="admin-system.php?tab=verfuegbarkeit&amp;d=<?= $dd ?>"<?= $dd === $d ? ' class="active"' : '' ?>><?= $dd ?> Tage</a><?php endforeach; ?>
-    <span class="hint">Zeitgewichtet aus periodischen Prüfungen (Gültigkeit je Messung begrenzt). Formel: Verfügbarkeit = T_ok / (T_ok + T_ausfall); Messabdeckung = (T_ok + T_ausfall) / Fenster. Unbekannte Zeit zählt weder als Erfolg noch als Ausfall. Wartung wird nicht herausgerechnet.</span>
-</div>
+<?= admin_period_selector('admin-system.php?tab=verfuegbarkeit', $period) ?>
+<p class="hint">Zeitgewichtet aus periodischen Prüfungen (Gültigkeit je Messung begrenzt). Formel: Verfügbarkeit = T_ok / (T_ok + T_ausfall); Messabdeckung = (T_ok + T_ausfall) / Fenster. Unbekannte Zeit zählt weder als Erfolg noch als Ausfall. Wartung wird nicht herausgerechnet.
+<?php if ($period['to']->getTimestamp() < $now - 86400): ?> Hinweis: Der Verlauf je Tag und die öffentliche Verfügbarkeit beziehen sich auf die letzten <?= (int)$period['days'] ?> Tage bis heute; die Tabellen darunter auf den gewählten Zeitraum.<?php endif; ?></p>
 <?php
 $firstRaw = $available ? mon_ts(db()->query('SELECT MIN(checked_at) FROM monitor_checks')->fetchColumn() ?: null) : null;
 $firstDay = $available ? (db()->query('SELECT MIN(day) FROM monitor_daily')->fetchColumn() ?: null) : null;
 $since = $firstRaw !== null ? mon_local(mon_utc($firstRaw)) : ($firstDay ? $firstDay : 'noch keine Daten');
-$winFrom = $now - $d * 86400;
+$d = max(1, min(366, (int)$period['days']));
+$winFrom = $period['from']->getTimestamp();
+$winTo = min($now, $period['to']->getTimestamp());
 ?>
 <div class="card">
     <h2>Nutzerfunktionen (öffentliche Komponenten)</h2>
@@ -909,7 +913,7 @@ $winFrom = $now - $d * 86400;
         <thead><tr><th>Funktion</th><th>Verfügbarkeit (beobachtet)</th><th>Messabdeckung</th><th>Verfügbare Stunden</th><th>Ausfall</th><th>Unbekannt</th><th>Verlauf <?= $d ?> Tage</th></tr></thead>
         <tbody>
         <?php foreach (monitor_public_components() as $key => $def): $a = monitor_public_availability($key, $d); $hist = monitor_public_daily_history($key, $d); $worst = null;
-            foreach ($def['internal'] as $ic) { $u = monitor_uptime($ic, $winFrom, $now); if ($worst === null || ($u['availability_pct'] ?? 101) < ($worst['availability_pct'] ?? 101)) { $worst = $u; } } ?>
+            foreach ($def['internal'] as $ic) { $u = monitor_uptime($ic, $winFrom, $winTo); if ($worst === null || ($u['availability_pct'] ?? 101) < ($worst['availability_pct'] ?? 101)) { $worst = $u; } } ?>
             <tr><td><?= e($def['name']) ?><div class="hint"><?= e(implode(', ', $def['internal'])) ?></div></td>
                 <td><?= $worst ? monitor_pct($worst['availability_pct']) : 'Keine Daten' ?><?php if ($worst && $worst['availability_pct'] !== null): ?><div class="hint">konservativ inkl. unbekannter Zeit: <?= e(number_format((float)$worst['conservative_min_pct'], 3, ',', '.')) ?> %</div><?php endif; ?></td>
                 <td><?= $worst ? e(number_format((float)$worst['coverage_pct'], 2, ',', '.')) . ' %' : '-' ?></td>
@@ -925,7 +929,7 @@ $winFrom = $now - $d * 86400;
     <div class="table-wrap"><table>
         <thead><tr><th>Komponente</th><th>Verfügbarkeit</th><th>Messabdeckung</th><th>Prüfungen / Fehlprüfungen</th><th>Letzte erkannte Störung</th><th>Seit letztem bestätigten Ausfall</th></tr></thead>
         <tbody>
-        <?php foreach (monitor_components_overview() as $c): if (in_array($c['key'], ['db_size', 'storage', 'sftp'], true)) continue; $u = monitor_uptime($c['key'], $winFrom, $now);
+        <?php foreach (monitor_components_overview() as $c): if (in_array($c['key'], ['db_size', 'storage', 'sftp'], true)) continue; $u = monitor_uptime($c['key'], $winFrom, $winTo);
             $lastFail = $available ? (db()->prepare("SELECT checked_at FROM monitor_checks WHERE component = ? AND status = 'fail' ORDER BY checked_at DESC LIMIT 1")) : null;
             $lf = null; if ($lastFail) { $lastFail->execute([$c['key']]); $lf = $lastFail->fetchColumn() ?: null; } ?>
             <tr><td><?= e($c['name']) ?></td><td><?= monitor_pct($u['availability_pct']) ?></td><td><?= e(number_format((float)$u['coverage_pct'], 2, ',', '.')) ?> %</td><td><?= (int)$u['checks'] ?> / <?= (int)$u['fails'] ?></td>

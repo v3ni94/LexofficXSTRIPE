@@ -212,17 +212,19 @@ switch ($fall) {
         require_once $root . '/php-ionos/app/sync_perf.php';
         require_once $root . '/php-ionos/app/invoice_source_switch.php';
         require_once $root . '/php-ionos/app/layout.php';
+        require_once $root . '/php-ionos/app/admin_period.php';
+        $per = admin_period_from_request(['zeitraum' => '7t']);
         seed_org($pdo, $tid);
-        $o = sync_perf_overview(24);
+        $o = sync_perf_overview($per['from'], $per['to']);
         printf("leer_runs=%d\nleer_wait=%s\n", $o['runs'], $o['queue_wait_avg_ms'] === null ? 'keine' : 'zahl');
         $pdo->prepare("INSERT INTO sync_runs (id, tenant_id, triggered_by, status, started_at, finished_at, duration_ms, steps, checked, skipped, api_calls, api_ms, throttle_ms, detail_calls, contact_calls, api_ms_max, cursor_bytes_max)
                        VALUES (?, ?, 'auto', 'success', DATE_SUB(NOW(), INTERVAL 10 MINUTE), DATE_SUB(NOW(), INTERVAL 8 MINUTE), 120000, 4, 50, 30, 80, 40000, 12000, 20, 10, 900, 20480)")
             ->execute([uuid4(), $tid]);
         $pdo->prepare("INSERT INTO job_runs (id, job_type, job_key, tenant_id, source, status, started_at, heartbeat_at, finished_at, queue_wait_ms) VALUES (?, 'queue:sync_run', 'j1', ?, 'worker', 'success', UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP(), 2500)")
             ->execute([uuid4(), $tid]);
-        $o = sync_perf_overview(24);
-        $top = sync_perf_top_tenants(24, 5);
-        $html = sync_perf_render();
+        $o = sync_perf_overview($per['from'], $per['to']);
+        $top = sync_perf_top_tenants($per['from'], $per['to'], 5);
+        $html = sync_perf_render($per);
         printf("runs=%d\napi_calls=%d\nms_je_aufruf=%d\nwait_avg=%d\ndetail=%d\ncursor=%d\ntop=%d\ntop_firma=%s\nhtml_ok=%d\nplan=%d\n",
             $o['runs'], $o['api_calls'], (int)$o['avg_ms_per_call'], (int)$o['queue_wait_avg_ms'], $o['detail_calls'], $o['cursor_bytes_max'], count($top), (string)($top[0]['org_name'] ?? ''),
             (str_contains($html, 'Synchronisation &amp; Performance') && str_contains($html, 'Wirksame Konfiguration') && str_contains($html, 'Testfirma')) ? 1 : 0,

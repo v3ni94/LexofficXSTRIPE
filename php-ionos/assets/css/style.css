@@ -701,3 +701,15 @@ a.stat-card.stat-link:focus-visible { outline: 2px solid #E3AC48; outline-offset
 .perm-group .inline-check { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; font-size: 13px; }
 .perm-group .inline-check strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; font-size: 12px; }
 .perm-group .inline-check .hint { display: block; }
+
+/* Zeitraumsteuerung im Adminbereich (4.43) */
+.period-bar { margin: 6px 0 16px; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 14px; }
+.period-bar .period-label { font-weight: 600; margin-right: 2px; }
+.period-bar a { padding: 3px 10px; border: 1px solid var(--color-border, #ddd); border-radius: 14px; text-decoration: none; color: var(--color-text-muted); white-space: nowrap; }
+.period-bar a:hover { color: var(--hvm-black); background: var(--color-surface); }
+.period-bar a.active { color: #fff; background: var(--hvm-anthracite, #2E2D2E); border-color: var(--hvm-anthracite, #2E2D2E); }
+.period-form { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: 6px; }
+.period-form label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; margin: 0; }
+.period-form input[type="date"] { padding: 3px 6px; font-size: 13px; width: auto; }
+.period-current { flex-basis: 100%; }
+.stat-compare { display: block; font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }

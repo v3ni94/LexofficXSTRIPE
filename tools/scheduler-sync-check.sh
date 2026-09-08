@@ -126,7 +126,7 @@ OUT="$(run performance)"
 [[ "$(feld "$OUT" top)" == "1" && "$(feld "$OUT" top_firma)" == "Testfirma" ]] && ok "Firmenliste mit Namen" || bad "top=$(feld "$OUT" top) top_firma=$(feld "$OUT" top_firma)"
 [[ "$(feld "$OUT" html_ok)" == "1" ]] && ok "Reiter rendert Kennzahlen, Konfiguration und Firma" || bad "html_ok=$(feld "$OUT" html_ok)"
 [[ "$(feld "$OUT" plan)" == "1" ]] && ok "Vollabgleichsplan zaehlt die verbundene Firma" || bad "plan=$(feld "$OUT" plan)"
-grep -q "'performance' => 'Synchronisation & Performance'" "$ROOT/php-ionos/admin-system.php" && grep -q "sync_perf_render()" "$ROOT/php-ionos/admin-system.php" && ok "Reiter in admin-system.php eingebunden" || bad "Reiter fehlt"
+grep -q "'performance' => 'Synchronisation & Performance'" "$ROOT/php-ionos/admin-system.php" && grep -q "sync_perf_render(\$period)" "$ROOT/php-ionos/admin-system.php" && ok "Reiter in admin-system.php eingebunden" || bad "Reiter fehlt"
 php -r 'require "'"$ROOT"'/php-ionos/app/bootstrap.php";' >/dev/null 2>&1; true
 grep -q "self::pageSize()" "$ROOT/php-ionos/app/lexoffice.php" && grep -q "min(250" "$ROOT/php-ionos/app/lexoffice.php" && ok "Seitengroesse konfigurierbar, hoechstens 250" || bad "pageSize"
 
