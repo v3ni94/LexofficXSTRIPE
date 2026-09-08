@@ -61,8 +61,73 @@ Grundlage: Repository-Stand abd5d26, `python3 tools/site-qa.py` (0 Fehler, 4 War
 
 ## 5. Leserperspektive
 
-(wird nach Abschluss der Leserprüfung ergänzt)
+Ein Agent hat die Startseiten und drei Schlüsselseiten als potenzieller Kunde gelesen (Inhaber eines kleinen Unternehmens mit Lexware Office, ohne Stripe-Konto, ohne SEPA-Vorwissen). Bewertung 1 bis 5 (5 = sehr gut). Vollständig in der Arbeitsdatei `leser.json` (Workflow vom 07.09.2026).
+
+| Seite | Note | Verstanden in zwei Bildschirmen | Wichtigste Verbesserung |
+|---|---|---|---|
+| smart-einzug.de/index.html | 4 | ja | Auf der Startseite kurz erklären, wie ein SEPA-Mandat je Kunde tatsächlich angelegt wird (IBAN, Unterschrift), statt das nur als Datenfeld zu erwähnen. |
+| lexoffice-einzug.de/index.html | 4 | ja | Die Voraussetzungen (eigenes Stripe-Konto, Tarif Lexware Office XL) bereits im Hero nennen statt erst im Abschnitt 'Voraussetzungen' weiter unten. |
+| lexware-einzug.de/index.html | 5 | ja | Erklären, wie und bis wann eingereichte Lastschriften tatsächlich beim Kunden abgebucht werden (Zeitfenster, Banklaufzeit bis zum Geldeingang). |
+| smart-einzug.de/so-funktionierts/index.html | 4 | ja | Auf dieser Seite ebenfalls die Tarifvoraussetzung Lexware Office XL nennen, da Besucher hier direkt über Suchmaschinen einsteigen können, ohne vorher die Startseite gesehen zu haben. |
+| smart-einzug.de/integrationen/lexware-office/index.html | 4 | ja | Kurz erwähnen, dass zusätzlich ein eigenes Stripe-Konto für den Einzug nötig ist, da diese Seite isoliert über Suchmaschinen aufgerufen werden kann. |
+| lexoffice-einzug.de/lexoffice-lastschrift-einrichten.html | 5 | ja | Klarstellen, dass die Einrichtung des Stripe-Webhooks (Schritt 9) technisches Verständnis erfordert, statt an anderer Stelle durchgängig 'ohne Vorwissen' zu versprechen. |
+
+Widersprüche zwischen den Domains (in Phase 2 bereinigt):
+
+- Zeile 172 (smart-einzug.de/index.html): 'Alle drei Schritte durchlaufen Sie direkt im Anschluss an die Registrierung, geführt und ohne Vorwissen.' ↔ lexoffice-einzug.de/lexoffice-lastschrift-einrichten.html Zeile 547: Einrichtung eines Stripe-Webhooks mit sieben konkreten Ereignissen und Signing Secret wird 
+- Zeile 175-177 (smart-einzug.de/index.html): Ablauf in drei Schritten. ↔ lexoffice-einzug.de/index.html Zeile 165-177 beschreibt denselben Ablauf in acht Schritten, lexoffice-einzug.de/lexoffice-lastschrift-einrichten.html Zeile 65-7
+- Zeile 165-177 (lexoffice-einzug.de/index.html): Ablauf in acht Schritten. ↔ smart-einzug.de/index.html Zeile 170-177 und lexware-einzug.de/index.html Zeile 168-177 beschreiben denselben Vorgang in drei Schritten.
+- Zeile 168-177 (lexware-einzug.de/index.html): Ablauf in drei Schritten. ↔ lexoffice-einzug.de/index.html Zeile 165-177 beschreibt denselben Ablauf in acht Schritten.
+- Zeile 547 dieser Seite: Manuelle Einrichtung eines Stripe-Webhooks mit sieben konkreten Ereignistypen und Signing Secret als notwendiger Schritt für zeitnahe St ↔ smart-einzug.de/index.html Zeile 172: 'Alle drei Schritte durchlaufen Sie direkt im Anschluss an die Registrierung, geführt und ohne Vorwissen.' Der Webhook-Sch
+
+Offene Fragen eines Interessenten, die die Seiten nicht beantworten (in Phase 2 und 3 adressiert):
+
+- smart-einzug.de/index.html: Wie und wo wird ein SEPA-Mandat mit IBAN und Unterschrift des Kunden angelegt? Auf dieser Seite nur als vorhandenes Datenfeld erwähnt (Zeile 208), kein Ablauf beschrieben.
+- smart-einzug.de/index.html: Gibt es ein Zeitfenster, in dem Lastschriften tatsächlich eingereicht werden, und wie lange dauert es bis zum Geldeingang? Nicht erwähnt.
+- lexoffice-einzug.de/index.html: Warum wird die Voraussetzung Lexware Office XL nicht schon im Hero genannt, sondern erst im Abschnitt 'Voraussetzungen' bzw. der FAQ (Zeile 291)?
+- lexoffice-einzug.de/index.html: Wie unterscheidet sich der Ablauf in acht Schritten hier von der Drei-Schritte-Darstellung auf smart-einzug.de für dasselbe Produkt?
+- lexware-einzug.de/index.html: Wie wird das SEPA-Mandat inhaltlich erzeugt (Unterschrift des Kunden, Papier oder digital)? Nur 'Unterschrift und Gültigkeit im Blick behalten' (Zeile 323) erwähnt, kein Ablauf beschrieben.
+- lexware-einzug.de/index.html: Gibt es ein festes Zeitfenster für die tatsächliche Einreichung der Lastschrift bei der Bank? Nicht erwähnt.
+- lastschrift-einfach.de/index.html: Wird beim Klick auf den Link 'Mehr auf smart-einzug.de' (Zeile 437) klar, dass es sich um dasselbe Unternehmen und dieselbe Anwendung wie bei den anderen drei Domains handelt? Im Footer (Zeile 443) fe
+- smart-einzug.de/so-funktionierts/index.html: Warum fehlt auf dieser 'So funktioniert's'-Seite die Tarifvoraussetzung Lexware Office XL, obwohl sie auf der Startseite und der Integrationsseite genannt wird?
+- smart-einzug.de/so-funktionierts/index.html: Der Unterschied zwischen 'Freigeben' und dem tatsächlichen Einreichen der Lastschrift bei der Bank wird auch hier nicht angesprochen.
+- smart-einzug.de/integrationen/lexware-office/index.html: Diese Seite erwähnt Stripe nicht, obwohl ein eigenes Stripe-Konto für den eigentlichen Einzug zwingend nötig ist (laut Startseite Zeile 77 und FAQ Zeile 272). Wer nur diese Integrationsseite liest, kö
 
 ## 6. Überschneidungen
 
-(Kurzfassung folgt aus `04-keyword-map.md`)
+Die Clusteranalyse (zwei Agenten: Zuordnung und Kritik) ordnet alle 72 indexierbaren und nicht indexierbaren Seiten der fünf Domains 28 Suchintentionen zu (`04-keyword-map.md`, `keyword-map.json`). Verteilung der Konflikte: 11 gleiche_intention_zwei_domains, 1 gleiche_intention_eine_domain, 1 duenn_und_doppelt, 9 falsche_domain_fuer_dauerinhalt, 6 keine.
+
+Kernbefunde:
+
+- Spiegelmuster zwischen lexware-einzug.de und lexoffice-einzug.de: sieben Seitenpaare bedienen dieselbe Intention mit demselben Angebot und unterscheiden sich im Wesentlichen durch die Schreibweise „lexoffice“ gegenüber „Lexware Office“. Das ist die größte strukturelle Schwäche des Bestands und der Kern des Maßnahmenplans M4.
+- Doorway-Muster innerhalb von lexware-einzug.de: Startseite plus drei indexierbare Keyword-Seiten mit gleicher Gliederung und gleichem CTA für „Lexware Office Lastschrift“.
+- Die Hauptdomain smart-einzug.de hat keine eigenen Wissens- und Anleitungsseiten (Mandat, Rücklastschrift, Vorabankündigung, Fristen, Sicherheit, Stripe-Anleitung); diese Inhalte liegen auf den Leaddomains. Nach Masterprompt gehören dauerhafte Inhalte auf die Hauptdomain, eine Verlagerung braucht aber Rankingdaten und Freigabe.
+- Auf smart-einzug.de bedienen so-funktionierts und hilfe dieselbe Einrichtungsintention.
+- Die Primärkandidaten für „Lexware Office verbinden“ und „Einrichtung bis zum ersten Einzug“ sind auf der Hauptdomain die dünnsten Seiten ihres Clusters; hier liegt der Ausbaubedarf von Phase 3.
+
+Konfliktcluster (Auszug, Entscheidung nach Search-Console-Daten, Maßnahmenplan M4):
+
+| Cluster | Konflikt | Bevorzugte Zielseite | Empfehlung | Freigabe |
+|---|---|---|---|---|
+| C01_lexware_office_lastschrift_einziehen | gleiche_intention_zwei_domains | https://smart-einzug.de/ | zusammenfuehren_pruefen | ja |
+| C02_lexoffice_lastschrift | gleiche_intention_eine_domain | https://lexoffice-einzug.de/ | zusammenfuehren_pruefen | ja |
+| C03_lastschrifteinzug_automatisieren | gleiche_intention_zwei_domains | https://lexware-einzug.de/lexware-office-lastschrifteinzug | ausbauen | nein |
+| C04_lexware_office_verbinden_api | duenn_und_doppelt | https://smart-einzug.de/integrationen/lexware-office/ | ausbauen | nein |
+| C05_stripe_rolle_verbinden | gleiche_intention_zwei_domains | https://lexware-einzug.de/lexware-office-stripe | zusammenfuehren_pruefen | ja |
+| C06_stripe_verbinden_anleitung | falsche_domain_fuer_dauerinhalt | https://lexware-einzug.de/anleitung/stripe-verbinden | verlagern_pruefen | ja |
+| C07_einrichtung_erster_einzug | gleiche_intention_zwei_domains | https://smart-einzug.de/so-funktionierts/ | ausbauen | nein |
+| C08_hilfe_faq_hub | gleiche_intention_zwei_domains | https://smart-einzug.de/hilfe/ | zusammenfuehren_pruefen | ja |
+| C09_funktionen | gleiche_intention_zwei_domains | https://smart-einzug.de/funktionen/ | zusammenfuehren_pruefen | ja |
+| C10_preise | gleiche_intention_zwei_domains | https://smart-einzug.de/preise/ | zusammenfuehren_pruefen | ja |
+| C11_sicherheit | falsche_domain_fuer_dauerinhalt | https://lexware-einzug.de/sicherheit | verlagern_pruefen | ja |
+| C13_sevdesk | gleiche_intention_zwei_domains | https://smart-einzug.de/integrationen/sevdesk/ | behalten | nein |
+| C15_sepa_mandat_verwalten_produkt | gleiche_intention_zwei_domains | https://lexware-einzug.de/lexware-office-sepa-mandat | zusammenfuehren_pruefen | ja |
+| C16_sepa_mandat_wissen | falsche_domain_fuer_dauerinhalt | https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat | neu_auf_hauptdomain | ja |
+| C17_mandat_einholen_bestandskunden | falsche_domain_fuer_dauerinhalt | https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden | verlagern_pruefen | ja |
+| C18_ruecklastschrift | falsche_domain_fuer_dauerinhalt | https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift | neu_auf_hauptdomain | ja |
+| C19_ablauf_fristen_zahlungsstatus | falsche_domain_fuer_dauerinhalt | https://lexware-einzug.de/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten | verlagern_pruefen | ja |
+| C20_vorabankuendigung | falsche_domain_fuer_dauerinhalt | https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift | verlagern_pruefen | ja |
+| C21_lastschrift_oder_ueberweisung | gleiche_intention_zwei_domains | https://lexoffice-einzug.de/ratgeber/lexoffice-lastschrift-oder-ueberweisung | behalten | nein |
+| C22_lastschrift_verbuchen_lexware_office | falsche_domain_fuer_dauerinhalt | https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office | verlagern_pruefen | ja |
+| C23_kunden_rechnungen_zuordnen | falsche_domain_fuer_dauerinhalt | https://lexoffice-einzug.de/ratgeber/kunden-und-rechnungen-richtig-zuordnen | verlagern_pruefen | ja |
+| C24_ratgeber_uebersicht | gleiche_intention_zwei_domains | https://lexware-einzug.de/ratgeber/ | neu_auf_hauptdomain | ja |
