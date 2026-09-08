@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Integrationen von SmartEinzug</title>
-<meta name="description" content="Integrationen von SmartEinzug: Lexware Office ist verfügbar, eine Anbindung an sevdesk befindet sich in Planung. Übersicht der unterstützten Rechnungssysteme.">
+<meta name="description" content="Integrationen von SmartEinzug: Lexware Office verfügbar, sevdesk in Vorbereitung. Ein Buchhaltungssystem je Firmenaccount, mehrere Firmen mit einem Benutzerkonto.">
 <link rel="canonical" href="https://smart-einzug.de/integrationen/">
 <meta property="og:title" content="Integrationen von SmartEinzug">
-<meta property="og:description" content="Integrationen von SmartEinzug: Lexware Office ist verfügbar, eine Anbindung an sevdesk befindet sich in Planung. Übersicht der unterstützten Rechnungssysteme.">
+<meta property="og:description" content="Integrationen von SmartEinzug: Lexware Office verfügbar, sevdesk in Vorbereitung. Ein Buchhaltungssystem je Firmenaccount, mehrere Firmen mit einem Benutzerkonto.">
 <meta property="og:url" content="https://smart-einzug.de/integrationen/">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
@@ -65,7 +65,7 @@
       <p class="eyebrow">Anbindungen</p>
       <h1>Integrationen von SmartEinzug</h1>
       <span class="bar" aria-hidden="true"></span>
-      <p class="lead">SmartEinzug verbindet Ihr Rechnungssystem mit Ihrem eigenen Stripe-Konto. Derzeit ist die Anbindung an Lexware Office verfügbar, weitere Systeme sind in Planung.</p>
+      <p class="lead">SmartEinzug verbindet Ihr Buchhaltungssystem mit Ihrem eigenen Stripe-Konto. Verfügbar ist heute die Anbindung an Lexware Office; eine Anbindung an sevdesk befindet sich in Vorbereitung.</p>
     </div>
   </header>
 
@@ -74,13 +74,13 @@
       <div class="tiles">
         <div class="tile">
           <h3>Lexware Office</h3>
-          <p>Verfügbar. Rechnungs- und Kundendaten werden über die Public API synchronisiert, Voraussetzung ist nach Angaben von Lexware der Tarif Lexware Office XL.</p>
+          <p>Verfügbar. Offene und überfällige Rechnungen sowie Kundenname, Kundennummer und E-Mail-Adresse werden über die Public API gelesen; der offene Restbetrag wird vor jedem Einzug live abgefragt. Voraussetzung ist nach Angaben von Lexware der Tarif Lexware Office XL, bitte im eigenen Konto prüfen.</p>
           <p><a href="/integrationen/lexware-office/">Zur Integration Lexware Office</a></p>
         </div>
         <div class="tile">
           <h3>sevdesk</h3>
-          <p>In Vorbereitung: SmartEinzug soll künftig auch offene sevdesk-Rechnungen mit Ihrem eigenen Stripe-Konto verbinden. Der Start ist für Ende September 2026 geplant; die Anbindung ist derzeit nicht verfügbar.</p>
-          <p><a href="/integrationen/sevdesk/#vormerken">Für sevdesk vormerken</a></p>
+          <p>In Vorbereitung, Start für Ende September 2026 geplant. SmartEinzug soll künftig auch offene sevdesk-Rechnungen mit Ihrem eigenen Stripe-Konto verbinden. Die Anbindung ist derzeit nicht verfügbar und nicht buchbar; eine kostenlose Vormerkung ist möglich, ohne Abonnement und ohne Zahlungspflicht.</p>
+          <p><a href="/integrationen/sevdesk/">Zum Stand der sevdesk-Anbindung</a> oder direkt <a href="/integrationen/sevdesk/#vormerken">für sevdesk vormerken</a></p>
         </div>
       </div>
     </div>
@@ -89,11 +89,57 @@
   <section class="section section-alt">
     <div class="container">
       <div class="section-head">
-        <p class="eyebrow">Zahlungsabwicklung</p>
-        <h2>Ihr eigenes Stripe-Konto</h2>
+        <p class="eyebrow">Grundsatz</p>
+        <h2>Genau ein Buchhaltungssystem je Firmenaccount</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Unabhängig vom angebundenen Rechnungssystem läuft der Einzug immer über ein eigenes Stripe-Konto des Kunden, das für SEPA-Lastschriften freigeschaltet sein muss. SmartEinzug verwaltet kein eigenes Sammelkonto und hat keinen Zugriff auf eingezogene Beträge.</p>
+        <p>Jeder Firmenaccount ist mit genau einem Buchhaltungssystem verbunden und zeigt ausschließlich dieses System. Bei der Registrierung wählen Sie es aus; Lexware Office ist derzeit die einzige wählbare Anbindung.</p>
       </div>
+      <ul class="checklist">
+        <li><strong>Wechsel in den Einstellungen.</strong> Ein späterer Wechsel ist ausschließlich durch Inhaber oder Administrator möglich und wird mit dem aktuellen Authenticator-Code bestätigt. Der Wechsel trennt die bisherige Verbindung, der hinterlegte Schlüssel wird gelöscht; Rechnungen, Kunden, Mandate und Einzüge bleiben als Historie erhalten, das Abonnement läuft unverändert weiter.</li>
+        <li><strong>Gesperrt bei offenen Einzügen.</strong> Solange Einzüge vorgemerkt, terminiert oder in Verarbeitung sind oder eine Synchronisation läuft, ist kein Wechsel möglich.</li>
+        <li><strong>Vier Wochen Sperre.</strong> Nach jedem Wechsel gilt eine Sperre von vier Wochen, bevor erneut gewechselt werden kann. Jeder Wechsel wird im Protokoll der Firma festgehalten.</li>
+        <li><strong>Zwei Buchhaltungen, zwei Firmenaccounts.</strong> Wer parallel mit zwei Buchhaltungssystemen arbeitet, legt zwei Firmenaccounts an; beide lassen sich mit einem Benutzerkonto führen.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Mehrere Firmen</p>
+          <h2>Mehrere Firmen mit einem Benutzerkonto</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Ein Benutzerkonto kann mehreren Firmen angehören. Über die Firmenübersicht legen Sie weitere Firmen an und wechseln zwischen ihnen, ohne sich neu anzumelden; jeder Wechsel prüft Ihre Mitgliedschaft serverseitig.</p>
+          <p>Jede Firma bleibt vollständig getrennt: eigene Kunden, Rechnungen, Mandate und Einzüge, eine eigene Anbindung an das Buchhaltungssystem und an Stripe, ein eigenes Mandatspräfix und ein eigenes Abonnement. Der Mehrfirmenzugang verbindet nur Anmeldung und Navigation, nicht die Datenbestände. Auswertungen über mehrere Firmen hinweg gibt es nicht.</p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card" role="img" aria-label="Beispiel einer Firmenübersicht mit zwei Firmen und getrennten Anbindungen">
+            <ul class="timeline">
+              <li class="done"><strong>Firma A (Beispiel)</strong>Lexware Office, eigenes Stripe-Konto, eigenes Abonnement</li>
+              <li class="done"><strong>Firma B (Beispiel)</strong>Lexware Office, zweites Stripe-Konto, zweites Abonnement</li>
+              <li><strong>Ein Benutzerkonto</strong>Eine Anmeldung mit Zwei-Faktor-Authentifizierung, Wechsel über die Firmenübersicht</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Gemeinsame Grundlage</p>
+        <h2>Was für jede Anbindung gilt</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ul class="checklist">
+        <li><strong>Eigenes Stripe-Konto.</strong> Der Einzug läuft immer über das Stripe-Konto Ihrer Firma, das für SEPA-Lastschriften freigeschaltet sein muss. SmartEinzug führt kein Sammelkonto und hat keinen Zugriff auf eingezogene Beträge; Stripe rechnet seine Gebühren direkt mit Ihnen ab.</li>
+        <li><strong>SEPA-Basislastschrift.</strong> Stripe unterstützt das SEPA-Basislastschriftverfahren (Core), nicht das Firmenlastschriftverfahren (B2B).</li>
+        <li><strong>Kein Rückschreiben.</strong> Keine Anbindung schreibt in Ihre Buchhaltung zurück. Zahlungseingänge buchen Sie wie bisher in Ihrem Buchhaltungssystem.</li>
+        <li><strong>Mandate, IBANs und Prüfungen in der Plattform.</strong> SEPA-Mandate und Bankverbindungen Ihrer Kunden werden in SmartEinzug erfasst; die Sicherheitsprüfungen vor jeder Lastschrift gehören zur Plattform, nicht zur einzelnen Anbindung. Mehr dazu unter <a href="/sicherheit/">Sicherheit</a>.</li>
+        <li><strong>Verschlüsselte Schlüssel.</strong> API-Schlüssel werden mit AES-256-GCM verschlüsselt gespeichert und nach der Eingabe nicht mehr im Klartext angezeigt.</li>
+      </ul>
     </div>
   </section>
 
@@ -120,6 +166,9 @@
           <li><a href="/impressum/">Impressum</a></li>
           <li><a href="/datenschutz/">Datenschutz</a></li>
           <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
           <li><a href="/hilfe/">Hilfe</a></li>
           <li><a href="/kontakt/">Kontakt</a></li>
           <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>

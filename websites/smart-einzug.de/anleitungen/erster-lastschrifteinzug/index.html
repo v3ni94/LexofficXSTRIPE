@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Erster Lastschrifteinzug mit SmartEinzug: Anleitung</title>
+<meta name="description" content="Vom Firmenaccount zum ersten SEPA-Einzug: IBAN und Mandat erfassen, Rechnung vormerken oder terminieren, Status prüfen, Rücklastschrift klären, Journal exportieren.">
+<link rel="canonical" href="https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/">
+<meta property="og:title" content="Erster Lastschrifteinzug mit SmartEinzug: Anleitung">
+<meta property="og:description" content="Vom Firmenaccount zum ersten SEPA-Einzug: IBAN und Mandat erfassen, Rechnung vormerken oder terminieren, Status prüfen, Rücklastschrift klären, Journal exportieren.">
+<meta property="og:url" content="https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905f" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905f">
+<link rel="stylesheet" href="/assets/css/site.css?v=3a9921073a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://smart-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Anleitungen",
+      "item": "https://smart-einzug.de/anleitungen/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Erster Lastschrifteinzug",
+      "item": "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><img class="logo" src="/assets/img/logo-horizontal.png?v=20260905f" srcset="/assets/img/logo-horizontal.png?v=20260905f 1x, /assets/img/logo-horizontal@2x.png?v=20260905f 2x" alt="SmartEinzug" width="246" height="56"></a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li><a href="/anleitungen/">Anleitungen</a></li>
+    <li aria-current="page">Erster Lastschrifteinzug</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Anleitung 3 von 3</p>
+      <h1>Vom Firmenaccount zum ersten Lastschrifteinzug</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Lexware Office und Stripe sind verbunden, die erste Synchronisation ist gelaufen. Diese Anleitung führt vom Kunden mit IBAN und Mandat über die Freigabe einer Rechnung bis zur Statuskontrolle, zum Umgang mit Rücklastschriften und Klärungsfällen und zum Export des Einzugsjournals.</p>
+      <p class="hero-note">Voraussetzungen: beide Verbindungen aktiv (<a href="/anleitungen/lexware-office-verbinden/">Anleitung 1</a> und <a href="/anleitungen/stripe-verbinden/">Anleitung 2</a>) und mindestens eine offene Rechnung aus Lexware Office. Für den ersten Durchlauf empfiehlt sich der Testmodus von Stripe.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Vorbereitung</p>
+        <h2>Einstellungen unter Firmendaten prüfen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ul class="checklist">
+        <li><strong>Gläubiger-Identifikationsnummer:</strong> freiwilliges Feld. Ist sie hinterlegt, prüft SmartEinzug die Prüfziffer und druckt sie auf das Mandatsdokument; fehlt sie, steht dort ein Platzhalter. An Stripe wird sie nicht übermittelt.</li>
+        <li><strong>Handschriftlicher Nachweis erforderlich:</strong> in der Standardeinstellung aktiv. Ein Einzug ist dann erst möglich, wenn zum Mandat Datum und Ort der Unterschrift erfasst sind.</li>
+        <li><strong>Vorabankündigung:</strong> Frist in Tagen (Standard 14) und Schalter für den Versand per E-Mail durch SmartEinzug. Ist der Schalter aktiv, sind Sofort-Einzüge gesperrt, Einzüge werden mit mindestens dieser Frist terminiert und der Kunde braucht eine E-Mail-Adresse. Ist er aus, versendet SmartEinzug keine Ankündigung; laut Mandatstext gilt dann die Rechnung als Vorabankündigung.</li>
+        <li><strong>Mandatspräfix:</strong> bei der Registrierung festgelegt und nachträglich nicht änderbar. Zusammen mit der Kundennummer bildet es die Mandatsreferenz.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Schritt 1</p>
+        <h2>Kunde mit IBAN und Mandat ausstatten</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Kundendetails öffnen</h3><p>Kunden entstehen aus den synchronisierten Rechnungen. Öffnen Sie unter Kunden den gewünschten Kunden oder klicken Sie in der Rechnungsliste auf den Kundennamen. Die Kundendetails gliedern sich in SEPA-Einzug, SEPA-Mandate, Unterschriebenes Mandat hochladen, Bankverbindung, Rechnungen und Einzüge.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>IBAN erfassen</h3><p>Im Bereich Bankverbindung tragen Sie Neue IBAN, Kontoinhaber und optional die BIC ein und wählen IBAN speichern. SmartEinzug prüft die IBAN rechnerisch (Prüfsumme und Länge, Deutschland und acht weitere Länder), setzt SEPA-Einzug auf Ja, registriert die Zahlungsmethode ohne Zahlung bei Stripe und bindet ein vorhandenes Mandat an diese IBAN oder legt ein Mandat an. Ein Abgleich mit Bankdaten oder eine Prüfung des Kontoinhabers findet nicht statt. Alternativ nutzen Sie die Arbeitsseite SEPA Pflegen, die alle Kunden ohne IBAN nacheinander vorlegt: IBAN speichern (SEPA: Ja) oder Kein SEPA.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Mandatsdokument erzeugen und drucken</h3><p>Im Bereich SEPA-Mandate wählen Sie SEPA-Mandat erzeugen (Dokument). Die Mandatsreferenz vergibt SmartEinzug aus Präfix und Kundennummer. Über Mandatsdokument anzeigen / drucken öffnet sich die Druckansicht im Format A4 mit der Schaltfläche Drucken / Als PDF speichern. Das Dokument trägt den Mandatstext für die SEPA-Basislastschrift, den Hinweis auf das Erstattungsrecht von acht Wochen, den Hinweis auf Stripe als Zahlungsdienstleister, die Vorabankündigungsfrist und den Verfall nach 36 Monaten ohne Einzug. Fehlende Firmendaten erscheinen als Platzhalter.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Unterschrift erfassen</h3><p>Der Kunde unterschreibt das Dokument auf Papier. Anschließend tragen Sie in der Mandatszeile Datum und Ort ein und wählen Unterschrift erfassen. Das Datum darf nicht in der Zukunft liegen. SmartEinzug prüft die Unterschrift nicht, sondern hält den Vermerk fest; bis dahin zeigt die Spalte Unterschrift den Hinweis Nachweis nicht erfasst. Das unterschriebene Original bewahren Sie auf.</p></div></li>
+        <li class="step"><span class="step-number">5</span><div><h3>Alternativ: unterschriebenes Mandat hochladen</h3><p>Im Bereich Unterschriebenes Mandat hochladen laden Sie Scan oder Foto als PDF, JPG oder PNG bis 10 MB hoch. Ist das Häkchen Unterschrift gleich erfassen gesetzt und sind Datum und Ort eingetragen, ist das Mandat sofort nutzbar; ohne das Häkchen bleibt der Nachweis offen. Die Datei liegt außerhalb des Webzugriffs und ist nur für Mitglieder Ihrer Firma abrufbar. Sie ersetzt nicht die Aufbewahrung des Originals.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Schritt 2</p>
+        <h2>Rechnung wählen und Einzug freigeben</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">6</span><div><h3>Rechnung auswählen</h3><p>Unter Rechnungen filtern Sie mit Nur offene anzeigen. Jede Zeile zeigt Nummer, Kunde, Betrag, Fälligkeit, Stichwort, Status und die möglichen Aktionen. Fehlt eine IBAN, steht dort Keine IBAN hinterlegt mit Link zu den Kundendetails. Bei deaktiviertem SEPA-Einzug, offener Klärung oder einer in Lexware Office nicht mehr offenen Rechnung ist kein Einzug möglich.</p></div></li>
+        <li class="step"><span class="step-number">7</span><div><h3>Einzug vormerken</h3><p>Mit Einzug vormerken geben Sie den Einzug frei. SmartEinzug prüft dabei die Stripe-Verbindung, offene Einzugsversuche und den zuletzt bekannten Restbetrag; der Restbetrag laut Lexware Office wird spätestens bei der Einreichung live abgefragt. Ist eine Teilzahlung bekannt, bestätigen Sie den Restbetrag ausdrücklich, und nur dieser Betrag wird eingezogen. Ist die Karenzzeit der Plattform abgeschaltet, heißt die Schaltfläche Einziehen.</p></div></li>
+        <li class="step"><span class="step-number">8</span><div><h3>Oder terminieren</h3><p>Mit Terminieren und einem Datum legen Sie den Einzugstermin fest: frühestens morgen, höchstens 365 Tage voraus, nur Montag bis Freitag. Feiertage prüft SmartEinzug nicht. Bei aktiver Vorabankündigung muss der Termin mindestens die eingestellte Frist entfernt liegen; die Ankündigung geht beim Terminieren per E-Mail an den Kunden. Scheitert der Versand, wird nicht terminiert.</p></div></li>
+        <li class="step"><span class="step-number">9</span><div><h3>Mehrere Rechnungen auf einmal</h3><p>Auf der Seite Einzüge fasst Alle bereiten Einzüge vormerken alle Rechnungen zusammen, deren Kunde eine aktive IBAN, ein verwendbares Mandat und eingeschalteten SEPA-Einzug hat. Anzahl und Summe stehen auf der Schaltfläche, eine Rückfrage bestätigt den Vorgang. Jede Freigabe wird mit auslösender Person protokolliert.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Zwischen Freigabe und Einreichung</p>
+        <h2>Karenzzeit und nächtliches Einreichfenster</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <p>Ein Einzug wird nicht in dem Moment an Stripe übergeben, in dem Sie ihn freigeben. Vorgemerkte Einzüge warten zunächst eine Karenzzeit ab (Standardeinstellung der Plattform: vier Stunden) und werden anschließend gebündelt im nächtlichen Einreichfenster eingereicht. Terminierte Einzüge werden am gewählten Tag ebenfalls nur innerhalb dieses Fensters eingereicht. Die aktuell geltende Regel zeigt die Seite Einzüge unter Karenzzeit an.</p>
+      <p>Bis zur Einreichung können Sie jeden Einzug auf der Seite Einzüge mit Stornieren zurücknehmen, die Rechnung ist dann wieder offen, oder mit Umterminieren auf einen anderen Werktag legen. Bereits eingereichte Einzüge lassen sich nicht mehr anhalten.</p>
+      <div class="info-box">
+        <p><strong>Prüfungen vor jeder Einreichung.</strong> Not-Stopp, Vorabankündigungsregel, Tarifkontingent, Rechnungsstatus laut Lexware Office, kein laufender Einzug derselben Rechnung, kein Klärungsbedarf, SEPA-Einzug beim Kunden aktiv, aktive IBAN, verwendbares Mandat, offener Restbetrag live bei Lexware Office und ein Versuchsjournal mit Idempotenzschlüssel gegen Doppelbelastung. Eine inzwischen bezahlte Rechnung wird nicht eingereicht, bei einer Teilzahlung nur der Restbetrag; ist der Restbetrag nicht abrufbar, bleibt der Einzug terminiert und wird im nächsten Lauf erneut geprüft.</p>
+      </div>
+      <ul class="checklist">
+        <li><strong>Überfällig:</strong> Liegt der Termin eines noch nicht eingereichten Einzugs mehrere Tage zurück (Standardeinstellung drei Tage), etwa nach einem Not-Stopp, zeigt SmartEinzug ihn als Überfällig an und holt ihn nicht still nach. Sie terminieren neu oder stornieren.</li>
+        <li><strong>Ausnahme außerhalb des Fensters:</strong> Inhaber und Administratoren reichen fällige Einzüge mit aktuellem Authenticator-Code über Ausnahmsweise jetzt einreichen sofort ein. Die Karenzzeit muss abgelaufen sein; der Vorgang wird protokolliert.</li>
+        <li><strong>Not-Stopp:</strong> Unter Not-Stopp halten Inhaber und Administratoren alle Einreichungen der Firma an; vorgemerkte und terminierte Einzüge können dabei gesammelt storniert werden. Bereits eingereichte Lastschriften werden nicht gestoppt. Das Aufheben verlangt einen Authenticator-Code.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Schritt 3</p>
+        <h2>Status prüfen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <p>Nach der Einreichung steht der Einzug auf In Bearbeitung und die Rechnung auf Im Einzug. Die Rückmeldung von Stripe kommt über den Webhook aus Anleitung 2 oder über Status mit Stripe abgleichen auf der Seite Einzüge; dieser Abgleich liest nur, es bewegt sich kein Geld. Zwischen Einreichung und Gutschrift liegen Bankarbeitstage; die Auszahlung erfolgt von Stripe an Ihr Geschäftskonto. Den Zahlungseingang buchen Sie wie bisher in Lexware Office, SmartEinzug schreibt nichts zurück.</p>
+      <div class="tiles">
+        <div class="tile"><h3>Vorgemerkt, Terminiert</h3><p>Freigegeben, aber noch nicht bei Stripe eingereicht. Stornieren und Umterminieren sind möglich.</p></div>
+        <div class="tile"><h3>Wird eingereicht, In Bearbeitung</h3><p>An Stripe übergeben, Ergebnis steht aus. Die Rechnung zeigt Im Einzug.</p></div>
+        <div class="tile"><h3>Erfolgreich</h3><p>Die Lastschrift wurde ausgeführt. Die Rechnung zeigt Eingezogen; die Stripe-Mandatsreferenz erscheint in den Kundendetails.</p></div>
+        <div class="tile"><h3>Fehlgeschlagen</h3><p>Stripe hat die Lastschrift abgelehnt oder sie ist gescheitert. Der von Stripe gemeldete Grund steht am Einzug. Ein erneuter Einzug erfolgt nur manuell.</p></div>
+        <div class="tile"><h3>Rücklastschrift, Erstattet</h3><p>Rückgabe oder Widerspruch des Zahlers beziehungsweise eine in Stripe ausgeführte Erstattung, jeweils nur mit eingerichtetem Webhook erkennbar.</p></div>
+        <div class="tile"><h3>Storniert, Überfällig</h3><p>Vor der Einreichung zurückgenommen beziehungsweise mit verstrichenem Termin, der nicht automatisch nachgeholt wird.</p></div>
+      </div>
+      <p>Die Seite Einzüge filtert nach jedem Status und zeigt Rechnung, Kunde, Betrag, Mandat, Status, Termin, Einreichzeitpunkt und auslösende Person. Das Dashboard fasst offene Rechnungen, laufende, vorgemerkte, erfolgreiche und fehlgeschlagene Einzüge zusammen und listet die letzten Einzüge; die Kundendetails zeigen alle Einzüge des Kunden.</p>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Wenn etwas nicht glatt läuft</p>
+        <h2>Rücklastschrift, Erstattung und Klärungsbedarf</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">10</span><div><h3>Rücklastschrift</h3><p>Meldet Stripe eine Rückgabe oder einen Widerspruch, wechselt der Einzug auf Rücklastschrift und die Rechnung auf Fehlgeschlagen; der Vorgang wird protokolliert. SmartEinzug unterscheidet nicht zwischen fehlender Deckung und Widerspruch und versendet keine E-Mail; prüfen Sie die Seite Einzüge daher regelmäßig. Es gibt keinen automatischen zweiten Versuch. Nach Klärung mit dem Kunden geben Sie die Rechnung bei Bedarf erneut frei; sie durchläuft dann alle Prüfungen. Hat der Kunde das Mandat widerrufen, halten Sie das in den Kundendetails mit Widerrufen fest und erfassen ein neues Mandat. Hintergrund im Beitrag <a href="/wissen/ruecklastschrift/">Rücklastschrift</a>.</p></div></li>
+        <li class="step"><span class="step-number">11</span><div><h3>Erstattung</h3><p>Erstattungen lösen Sie in Ihrem Stripe-Konto aus, nicht in SmartEinzug. Stripe meldet sie über den Webhook: Der Betrag wird am Einzug vermerkt, bei vollständiger Erstattung wechselt der Einzug auf Erstattet, und die Rechnung erhält den Vermerk Klärung offen. Ein automatischer Neu-Einzug findet nicht statt. Inhaber oder Administrator schließen den Fall in der Rechnungsliste mit Klärung abgeschlossen ab; danach ist die Rechnung wieder manuell einziehbar.</p></div></li>
+        <li class="step"><span class="step-number">12</span><div><h3>Unklare Einzugsversuche</h3><p>Antwortet Stripe bei einer Einreichung nicht, etwa durch eine Zeitüberschreitung, vermerkt SmartEinzug den Versuch als unbekannt und reicht die Rechnung bis zur Klärung nicht erneut ein. Die Seite Einzüge zeigt den Fall unter Unklare Einzugsversuche; mit Unklare Versuche prüfen fragt SmartEinzug lesend bei Stripe nach, trägt gefundene Lastschriften nach oder gibt den Versuch frei. Im Zweifel wird nicht eingereicht.</p></div></li>
+        <li class="step"><span class="step-number">13</span><div><h3>Fehlgeschlagene Einzüge</h3><p>Ein fehlgeschlagener Einzug lässt sich nicht umterminieren. Prüfen Sie den am Einzug vermerkten Grund, korrigieren Sie bei Bedarf IBAN oder Mandat in den Kundendetails und geben Sie die Rechnung erneut frei, einzeln oder mit Termin.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Schritt 4</p>
+        <h2>Einzugsjournal exportieren</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <p>Das Einzugsjournal erreichen Sie über den Punkt Export im Profilmenü oder auf der Seite Einzüge, dort mit dem gerade gewählten Statusfilter. Es unterstützt die Buchung der Zahlungseingänge in Lexware Office und die Abstimmung mit Ihrer Steuerberatung.</p>
+      <ul class="checklist">
+        <li><strong>Format:</strong> CSV in UTF-8 mit Semikolon als Trennzeichen, in Tabellenkalkulationen direkt zu öffnen. Ein Export nach DATEV oder eine Rückspielung nach Lexware Office ist nicht enthalten.</li>
+        <li><strong>Spalten unter anderem:</strong> Rechnungsnummer, Kunde, Kundennummer, Betrag, Status, Eingereicht am, Erfolgreich am, Rücklastschrift am, Erstattet und Erstattet am, Mandatsreferenz und Stripe-Mandatsreferenz, Restbetrag laut Lexware Office, Termin, Vermerk, Fehlergrund, auslösende Person sowie die Stripe-Kennungen des Vorgangs.</li>
+        <li><strong>Berechtigung:</strong> Alle Rollen der Firma dürfen exportieren. Jeder Export wird protokolliert.</li>
+        <li><strong>Protokoll:</strong> Der Inhaber sieht unter Firmendaten das Protokoll aller sicherheits- und geldrelevanten Aktionen und exportiert es als CSV. Protokolleinträge werden 90 Tage aufbewahrt; Einzüge und Mandate bleiben davon unabhängig in der Anwendung nachweisbar.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Fragen</p>
+        <h2>Häufige Fragen zum ersten Einzug</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="faq-list faq-grid">
+        <details><summary>Warum steht in der Rechnungsliste Einzug vormerken und nicht Einziehen?</summary><p class="faq-answer">Weil die Karenzzeit der Plattform aktiv ist. Die Freigabe merkt den Einzug vor, eingereicht wird nach Ablauf der Karenzzeit im nächtlichen Einreichfenster. Bis dahin bleibt der Einzug stornierbar.</p></details>
+        <details><summary>Wird die Lastschrift genau am Fälligkeitstag ausgeführt?</summary><p class="faq-answer">SmartEinzug reicht einen terminierten Einzug am gewählten Werktag innerhalb des Einreichfensters bei Stripe ein. Wann das Konto des Kunden belastet und der Betrag Ihnen gutgeschrieben wird, richtet sich nach Stripe und den beteiligten Banken.</p></details>
+        <details><summary>Was erscheint auf dem Kontoauszug meines Kunden?</summary><p class="faq-answer">SmartEinzug übergibt einen Verwendungszweck aus Firmenname, Rechnungsnummer, Kundennummer und Stichwort. Da der Einzug über Stripe läuft, können auf dem Kontoauszug Gläubiger-Identifikationsnummer und Mandatsreferenz von Stripe erscheinen; der Mandatstext weist darauf hin. Hintergrund im Beitrag <a href="/wissen/sepa-mandat/">SEPA-Mandat</a>.</p></details>
+        <details><summary>Kann ich den SEPA-Einzug für einen Kunden ausschließen?</summary><p class="faq-answer">Ja. In den Kundendetails setzen Sie SEPA-Einzug auf Nein, in der Rechnungsliste steht dafür SEPA: Nein. Rechnungen dieses Kunden werden weder einzeln noch im Sammel-Einzug berücksichtigt.</p></details>
+        <details><summary>Was passiert mit einem lange nicht genutzten Mandat?</summary><p class="faq-answer">Ein Mandat, das 36 Monate nicht für einen Einzug verwendet wurde, markiert SmartEinzug als verfallen und lehnt den Einzug ab. Sie erfassen dann in den Kundendetails ein neues Mandat. Die letzte Nutzung wird bei jeder Einreichung fortgeschrieben.</p></details>
+        <details><summary>Wer darf Einzüge auslösen?</summary><p class="faq-answer">Alle Rollen der Firma, auch Mitarbeiter. Jede Freigabe, Terminierung, Stornierung und Einreichung wird mit Person und Zeitpunkt protokolliert. Nur Ausnahmen außerhalb des Einreichfensters und das Aufheben eines Not-Stopps sind Inhabern und Administratoren mit Authenticator-Code vorbehalten.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Alle Schritte im eigenen Firmenaccount durchgehen</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="anleitung-einzug-final">Jetzt registrieren</a>
+        <a href="/anleitungen/" class="btn btn-outline">Übersicht der Anleitungen</a>
+      </div>
+      <p>Weitere Seiten: <a href="/so-funktionierts/">So funktioniert's</a>, <a href="/hilfe/">Hilfe</a>, <a href="/integrationen/lexware-office/">Integration Lexware Office</a>.</p>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=a48427be21" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

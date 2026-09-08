@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rücklastschrift und Erstattung in SmartEinzug</title>
+<meta name="description" content="Wie SmartEinzug Rücklastschrift und Erstattung aus Stripe erkennt und was danach gilt: kein Neuversuch, keine E-Mail, keine Gebührenerfassung, Buchung bei Ihnen.">
+<link rel="canonical" href="https://smart-einzug.de/wissen/ruecklastschrift/">
+<meta property="og:title" content="Rücklastschrift und Erstattung in SmartEinzug">
+<meta property="og:description" content="Wie SmartEinzug Rücklastschrift und Erstattung aus Stripe erkennt und was danach gilt: kein Neuversuch, keine E-Mail, keine Gebührenerfassung, Buchung bei Ihnen.">
+<meta property="og:url" content="https://smart-einzug.de/wissen/ruecklastschrift/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905f" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905f">
+<link rel="stylesheet" href="/assets/css/site.css?v=3a9921073a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://smart-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Wissen",
+      "item": "https://smart-einzug.de/wissen/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Rücklastschrift und Erstattung",
+      "item": "https://smart-einzug.de/wissen/ruecklastschrift/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Rücklastschrift und Erstattung beim Einzug über Stripe",
+  "description": "Wie SmartEinzug Rücklastschrift und Erstattung aus Stripe erkennt und was danach gilt: kein Neuversuch, keine E-Mail, keine Gebührenerfassung, Buchung bei Ihnen.",
+  "inLanguage": "de",
+  "author": {
+    "@type": "Organization",
+    "name": "Müller Holding AG",
+    "url": "https://mueller-holding.ag"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Müller Holding AG",
+    "url": "https://mueller-holding.ag"
+  },
+  "datePublished": "2026-09-08",
+  "mainEntityOfPage": "https://smart-einzug.de/wissen/ruecklastschrift/"
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><img class="logo" src="/assets/img/logo-horizontal.png?v=20260905f" srcset="/assets/img/logo-horizontal.png?v=20260905f 1x, /assets/img/logo-horizontal@2x.png?v=20260905f 2x" alt="SmartEinzug" width="246" height="56"></a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li><li><a href="/wissen/">Wissen</a></li><li aria-current="page">Rücklastschrift und Erstattung</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Wissen</p>
+      <h1>Rücklastschrift und Erstattung beim Einzug über Stripe</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Eine eingezogene Lastschrift kann zurückkommen, und ein bereits eingezogener Betrag kann über Stripe erstattet werden. Diese Seite beschreibt, wie SmartEinzug beide Fälle erkennt, was danach in der Software geschieht und welche Schritte bei Ihnen bleiben.</p>
+      <p class="hero-note">Stand: 08.09.2026. Orientierung, keine Rechtsberatung. Fristen und Bedingungen für Erstattungen ergeben sich aus den Bedingungen der Bank Ihres Kunden und aus Ihrem Stripe-Konto; verbindliche Auskunft geben Ihre Bank und Ihre Rechtsberatung.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Ursachen</p>
+        <h2>Weshalb eine Lastschrift zurückkommt</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Bei der SEPA-Basislastschrift, dem einzigen Verfahren, das SmartEinzug nutzt, sind drei Gruppen von Ursachen typisch. Für die Software sehen sie alle gleich aus; die Unterscheidung müssen Sie mit dem Kunden oder im Stripe-Dashboard treffen.</p>
+      </div>
+      <div class="tiles">
+        <div class="tile"><h3>Widerspruch des Zahlers</h3><p>Der Kunde verlangt von seiner Bank die Erstattung einer bereits ausgeführten Lastschrift. Bei einer autorisierten Basislastschrift ist das nach dem Wortlaut des Mandatstextes aus SmartEinzug in der Regel innerhalb von acht Wochen ab Belastung möglich. Die genauen Bedingungen richten sich nach der Vereinbarung des Kunden mit seiner Bank.</p></div>
+        <div class="tile"><h3>Fehlende Deckung</h3><p>Das Konto des Kunden weist zum Zeitpunkt der Belastung nicht genug Guthaben oder Kreditrahmen auf, und die Bank löst die Lastschrift nicht ein oder bucht sie zurück.</p></div>
+        <div class="tile"><h3>Konto oder Bankverbindung</h3><p>Das Konto ist aufgelöst oder gesperrt, die IBAN gehört nicht zum Kunden, oder der Kontoinhaber hat Lastschriften für dieses Konto ausgeschlossen. Ein Teil dieser Fälle zeigt sich bereits als fehlgeschlagene Einreichung, ein Teil erst nachträglich.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Erkennung</p>
+        <h2>Wie die Rücklastschrift in SmartEinzug ankommt</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Den Status eines Einzugs erhält SmartEinzug auf zwei Wegen: über den Stripe-Webhook Ihrer Firma und über die Schaltfläche „Status mit Stripe abgleichen“. Der Abgleich erkennt Erfolg und Fehlschlag laufender Einzüge. Rücklastschriften und Erstattungen erkennt ausschließlich der Webhook.</p>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Stripe meldet das Ereignis</h3><p>Stripe sendet das Ereignis charge.dispute.created an den Webhook-Endpunkt. SmartEinzug ordnet es Ihrer Firma zu, prüft die Signatur mit dem hinterlegten Webhook-Secret und verwirft die Meldung, wenn die Prüfung scheitert.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Einzug erhält den Status Rücklastschrift</h3><p>Der betroffene Einzug wechselt auf „Rücklastschrift“ mit dem festen Vermerk „SEPA-Lastschrift wurde vom Kunden widerrufen“ und einem Abschlusszeitpunkt. Dieser Vermerk ist für alle Rücklastschriften gleich.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Rechnung wird fehlgeschlagen</h3><p>Die zugehörige Rechnung erhält den Einzugsstatus „fehlgeschlagen“. Der Einzug zählt nicht mehr als laufender oder erfolgreicher Einzug dieser Rechnung, sodass ein späterer manueller Neu-Einzug wieder den bei Lexware Office offenen Restbetrag zugrunde legt.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Protokolleintrag</h3><p>Im Protokoll Ihrer Firma entsteht der Eintrag collection_disputed mit Betrag und Stripe-Vorgangsnummer. Der Inhaber kann das Protokoll einsehen und als CSV exportieren.</p></div></li>
+      </ol>
+      <div class="info-box">
+        <p>Den Rückgabegrund, den Stripe mitliefert, wertet SmartEinzug nicht aus und zeigt ihn nicht an. Eine Rückgabe wegen fehlender Deckung und ein echter Widerspruch sehen in der Software gleich aus. Den Grund finden Sie im Stripe-Dashboard oder klären ihn mit dem Kunden. Ohne hinterlegtes Webhook-Secret werden Rücklastschriften und Erstattungen nicht erkannt; das Dashboard zeigt dann einen Alarm der Stufe mittel. Die Einrichtung beschreibt die Anleitung <a href="/anleitungen/stripe-verbinden/">Stripe verbinden</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Danach</p>
+        <h2>Was die Software nach einer Rücklastschrift tut und was nicht</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><h3>Sichtbar an vier Stellen</h3><p>In der Einzugsübersicht mit Filter nach Status, in den Kundendetails, im Dashboard in der Kennzahl für fehlgeschlagene Einzüge und Rücklastschriften sowie im CSV-Export des Journals. Dazu kommt der Protokolleintrag für den Inhaber.</p></div>
+        <div class="tile"><h3>Kein automatischer Neuversuch</h3><p>SmartEinzug reicht nach einer Rücklastschrift, einem Fehlschlag oder einer Erstattung nie von selbst erneut ein. Ein fehlgeschlagener Einzug lässt sich auch nicht umterminieren. Ein Neu-Einzug erfolgt nur durch Sie: als Einzelrechnung, im Sammel-Einzug oder terminiert, und er durchläuft erneut alle Prüfungen einschließlich des live bei Lexware Office abgefragten Restbetrags.</p></div>
+        <div class="tile"><h3>Keine E-Mail</h3><p>Weder der Kunde noch der Inhaber erhält bei einer Rücklastschrift eine Nachricht von SmartEinzug; die Alarmierung kennt dafür keine Bedingung. Prüfen Sie die Einzugsübersicht deshalb regelmäßig, insbesondere in den Wochen nach größeren Einzugsläufen.</p></div>
+        <div class="tile"><h3>Mandat bleibt unverändert</h3><p>Eine Rücklastschrift ändert den Status des Mandats nicht. Hat der Kunde sein Mandat tatsächlich widerrufen, erfassen Sie den Widerruf selbst in den Kundendetails. Wie das geht, steht im Beitrag <a href="/wissen/sepa-mandat/">SEPA-Lastschriftmandat</a>.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Erstattung</p>
+        <h2>Erstattungen aus Stripe und der Klärungsbedarf</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Erstattungen lösen Sie ausschließlich im Stripe-Dashboard aus. SmartEinzug bietet keine Erstattungsfunktion, übernimmt aber den Stand aus den Stripe-Ereignissen charge.refunded und charge.refund.updated und markiert die betroffene Rechnung, damit niemand versehentlich erneut einzieht.</p>
+      </div>
+      <ul class="checklist">
+        <li><strong>Vollerstattung:</strong> Der Einzug erhält den Status „Erstattet“. Die Rechnung gilt wieder als offen, trägt aber Klärungsbedarf und den Vermerk, dass kein automatischer Neu-Einzug erfolgt.</li>
+        <li><strong>Teilerstattung:</strong> Der erstattete Betrag wird am Einzug vermerkt, der Status bleibt „Erfolgreich“, die Rechnung erhält Klärungsbedarf.</li>
+        <li><strong>Rücknahme einer Erstattung bei Stripe:</strong> Auch dieser Fall wird am Einzug vermerkt.</li>
+        <li><strong>Klärung abschließen:</strong> Nur Inhaber oder Administratoren heben den Klärungsbedarf auf; der Schritt wird protokolliert. Danach ist die Rechnung wieder manuell einziehbar.</li>
+        <li><strong>Wiederholte Meldungen:</strong> Meldet Stripe denselben Erstattungsstand erneut, ändert sich nichts und es entsteht kein weiterer Protokolleintrag.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Außerhalb der Software</p>
+        <h2>Gebühren und Buchung bleiben bei Ihnen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><h3>Gebühren</h3><p>Gebühren von Stripe für den Einzug oder für eine Rückgabe sowie Entgelte Ihrer Bank werden von SmartEinzug weder erfasst noch berechnet noch angezeigt, und es gibt keine Weiterberechnung an den Zahler. Stripe rechnet die Gebühren Ihres eigenen Stripe-Kontos direkt mit Ihnen ab. Ob und wie Sie Kosten einer Rücklastschrift an den Kunden weitergeben dürfen, ist eine vertragliche und rechtliche Frage für Ihre Beratung.</p></div>
+        <div class="tile"><h3>Buchung in Lexware Office</h3><p>SmartEinzug liest Rechnungen und Zahlungsstand aus Lexware Office, schreibt aber nichts zurück: keine Zahlungen, keine Notizen, keine Statusänderungen. Zahlungseingang, Rücklastschrift und Erstattung buchen Sie selbst in Lexware Office. Bleibt die Rechnung dort offen, führt SmartEinzug sie weiterhin als offene Rechnung mit fehlgeschlagenem Einzug.</p></div>
+        <div class="tile"><h3>Kommunikation mit dem Kunden</h3><p>SmartEinzug versendet weder Zahlungsbestätigungen noch Mahnungen noch Hinweise auf eine Rücklastschrift. Jede Nachricht an den Kunden nach einer Rückgabe stammt von Ihnen und mit Ihrem Absender.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Vorgehen</p>
+        <h2>Empfohlene Reihenfolge nach einer Rückgabe</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Kunden ansprechen</h3><p>Nennen Sie Rechnungsnummer, Betrag und Einzugsdatum aus der Einzugsübersicht und weisen Sie darauf hin, dass die Abbuchung über Stripe lief; auf dem Kontoauszug des Kunden können Angaben von Stripe stehen. Klären Sie, ob es sich um einen Widerspruch, fehlende Deckung oder ein Kontoproblem handelte.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Mandat und IBAN prüfen</h3><p>Hat der Kunde das Mandat widerrufen, erfassen Sie den Widerruf in den Kundendetails und holen bei Bedarf ein neues Mandat ein. Ist die IBAN veraltet, hinterlegen Sie die neue; die Änderung wird in der Historie festgehalten.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Zahlungsweg vereinbaren</h3><p>Vereinbaren Sie einen neuen Einzugstermin oder die Zahlung per Überweisung. Bei einem neuen Termin gilt die <a href="/wissen/vorabankuendigung/">Vorabankündigung</a> wie bei jedem anderen Einzug.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Erneut einziehen oder anders abschließen</h3><p>Den Neu-Einzug lösen Sie manuell aus; die Software prüft Mandat, Nachweis, Frist und Restbetrag erneut. Bei einer Erstattung muss zuvor ein Inhaber oder Administrator den Klärungsbedarf aufheben.</p></div></li>
+        <li class="step"><span class="step-number">5</span><div><h3>In Lexware Office buchen</h3><p>Erfassen Sie Rückgabe, Erstattung und den späteren Zahlungseingang in Lexware Office und dokumentieren Sie die Absprache mit dem Kunden in Ihrer Kundenakte. SmartEinzug übernimmt diesen Schritt nicht.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Fragen</p>
+        <h2>Häufige Fragen zu Rücklastschrift und Erstattung</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="faq-list faq-grid">
+        <details><summary>Erkennt SmartEinzug eine Rücklastschrift auch ohne Webhook?</summary><p class="faq-answer">Nein. Der manuelle Abgleich liest nur laufende Einzüge und erkennt Erfolg oder Fehlschlag. Rücklastschriften und Erstattungen kommen ausschließlich über den Webhook mit hinterlegtem Secret an.</p></details>
+        <details><summary>Sehe ich in SmartEinzug, warum die Lastschrift zurückkam?</summary><p class="faq-answer">Nein. Die Software setzt für jede Rücklastschrift denselben Vermerk. Den von Stripe gelieferten Rückgabegrund sehen Sie im Stripe-Dashboard.</p></details>
+        <details><summary>Zieht SmartEinzug nach einer Rücklastschrift automatisch erneut ein?</summary><p class="faq-answer">Nein, in keinem Fall. Auch nach einer fehlgeschlagenen Einreichung oder einer Erstattung folgt kein automatischer Versuch. Sie entscheiden und lösen den Neu-Einzug selbst aus.</p></details>
+        <details><summary>Wird mein Kunde bei einer Rücklastschrift informiert?</summary><p class="faq-answer">Nicht durch SmartEinzug. Die Software versendet an Zahler nur die optionale Vorabankündigung. Ob Ihr Kunde von seiner Bank informiert wird, liegt außerhalb der Software.</p></details>
+        <details><summary>Kann ich eine Erstattung aus SmartEinzug heraus auslösen?</summary><p class="faq-answer">Nein. Erstattungen veranlassen Sie im Stripe-Dashboard. SmartEinzug übernimmt den Stand und markiert die Rechnung mit Klärungsbedarf.</p></details>
+        <details><summary>Wer darf den Klärungsbedarf einer Rechnung aufheben?</summary><p class="faq-answer">Nur Inhaber und Administratoren. Mitarbeiter sehen den Klärungsbedarf, können ihn aber nicht abschließen. Der Schritt wird im Protokoll festgehalten.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Webhook einrichten, damit Rückgaben sichtbar werden</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Ohne Webhook bleiben Rücklastschriften und Erstattungen in SmartEinzug unsichtbar. Weitere Grundlagen finden Sie in der <a href="/wissen/">Wissensübersicht</a>, den Ablauf des Einzugs unter <a href="/so-funktionierts/">So funktioniert's</a>.</p>
+      <div class="cta-row">
+        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="wissen-rueck-final">Jetzt registrieren</a>
+        <a href="/anleitungen/stripe-verbinden/" class="btn btn-outline">Anleitung: Stripe verbinden</a>
+      </div>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=a48427be21" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

@@ -224,18 +224,18 @@
     "Public API in Lexware Office nicht gefunden",
     "Lexware-Office-Integration"
    ],
-   "primaer_url": "https://smart-einzug.de/integrationen/lexware-office/",
+   "primaer_url": "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Integrations- und Anleitungsinhalte gehören laut Betreiberrolle auf smart-einzug.de. Bedingung: Die Seite muss vorher ausgebaut werden (derzeit 149 Wörter gegenüber 258 und 272 Wörtern auf lexware-einzug.de) und intern stärker verlinkt werden (2 eingehende Links); bis dahin ist lexware-einzug.de/anleitung/lexware-office-api die faktisch bessere Anleitung.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Information",
    "seiten": [
     {
      "url": "https://smart-einzug.de/integrationen/lexware-office/",
-     "rolle": "primaer",
+     "rolle": "ergaenzend",
      "indexierung": "index",
      "canonical": "self",
-     "mehrwert": "Einzige Seite zur Anbindung auf der Produktdomain, aber nur 149 Wörter und 2 eingehende Links; nennt Public API, Tarif und Weg zum ersten Einzug in Kurzform."
+     "mehrwert": "Integrationsseite: was gelesen wird, wie oft synchronisiert wird, Voraussetzungen; die Anleitung beschreibt die Einrichtung."
     },
     {
      "url": "https://lexware-einzug.de/anleitung/lexware-office-api",
@@ -257,11 +257,18 @@
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Problemorientierte Seite \"Warum finde ich die Public API nicht?\" mit Tarifprüfung (460 Wörter); eigener Blickwinkel Fehlersuche, Begriff \"lexoffice\" passt zur Domainrolle."
+    },
+    {
+     "url": "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Schritt-für-Schritt-Anleitung mit den Bezeichnungen der Anwendung: API-Schlüssel erzeugen, hinterlegen, Verbindungstest, was synchronisiert wird."
     }
    ],
-   "konflikt": "duenn_und_doppelt",
-   "empfehlung": "ausbauen",
-   "freigabe_noetig": false,
+   "konflikt": "gleiche_intention_zwei_domains",
+   "empfehlung": "weiterleiten_pruefen",
+   "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Suchanfragen, Impressionen, Klicks und durchschnittliche Position je Seite dieses Clusters (mindestens 12 Monate, Vergleich der Domains je Suchanfrage)",
     "Search Console: Indexierungsstatus je URL (indexiert, gecrawlt aber nicht indexiert, Duplikat mit anderem Canonical)",
@@ -272,8 +279,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
-   "prueftermin": "08.12.2026"
+   "status": "technische_pruefung",
+   "prueftermin": "08.12.2026",
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/anleitung/lexware-office-api, https://lexware-einzug.de/lexware-office-api"
   },
   {
    "cluster_id": "C05_stripe_rolle_verbinden",
@@ -332,22 +340,29 @@
     "Stripe Webhook einrichten SmartEinzug",
     "Stripe Testmodus Livemodus SmartEinzug"
    ],
-   "primaer_url": "https://lexware-einzug.de/anleitung/stripe-verbinden",
+   "primaer_url": "https://smart-einzug.de/anleitungen/stripe-verbinden/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Einzige Seite dieser Intention im Bestand. Bedingung: Anleitungsinhalte gehören laut Betreiberrolle auf smart-einzug.de; eine Verlagerung ist erst nach Search-Console-Daten und Freigabe zu prüfen.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Information",
    "seiten": [
     {
      "url": "https://lexware-einzug.de/anleitung/stripe-verbinden",
-     "rolle": "primaer",
+     "rolle": "konkurrent",
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Einzige Schritt-für-Schritt-Anleitung zur Stripe-Verbindung inklusive Webhook, Test- und Livemodus, Trennen der Verbindung (262 Wörter, 3 eingehende Links)."
+    },
+    {
+     "url": "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Anleitung für das eigene Stripe-Konto einschließlich Webhook mit den sieben verarbeiteten Ereignissen und Test-/Livemodus."
     }
    ],
-   "konflikt": "falsche_domain_fuer_dauerinhalt",
-   "empfehlung": "verlagern_pruefen",
+   "konflikt": "gleiche_intention_zwei_domains",
+   "empfehlung": "weiterleiten_pruefen",
    "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Suchanfragen, Impressionen, Klicks und durchschnittliche Position je Seite dieses Clusters (mindestens 12 Monate, Vergleich der Domains je Suchanfrage)",
@@ -358,8 +373,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
-   "prueftermin": "08.12.2026"
+   "status": "technische_pruefung",
+   "prueftermin": "08.12.2026",
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/anleitung/stripe-verbinden"
   },
   {
    "cluster_id": "C07_einrichtung_erster_einzug",
@@ -373,18 +389,18 @@
     "Was brauche ich für eine SEPA-Lastschrift",
     "So funktioniert SmartEinzug"
    ],
-   "primaer_url": "https://smart-einzug.de/so-funktionierts/",
+   "primaer_url": "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Anleitungsinhalte gehören laut Betreiberrolle auf die Produktdomain, Seite ist dort stark verlinkt. Bedingung: Ausbau auf den Detailgrad der lexoffice-Anleitung (543 Wörter) einschließlich Voraussetzungsliste; bis dahin bleibt lexoffice-einzug.de/lexoffice-lastschrift-einrichten die vollständigere Seite.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Information",
    "seiten": [
     {
      "url": "https://smart-einzug.de/so-funktionierts/",
-     "rolle": "primaer",
+     "rolle": "ergaenzend",
      "indexierung": "index",
      "canonical": "self",
-     "mehrwert": "Beschreibt die drei Schritte und was nach der Einrichtung passiert (276 Wörter, 14 eingehende Links); einzige Ablaufseite auf der Produktdomain, aber knapper als die Anleitung auf lexoffice-einzug.de."
+     "mehrwert": "Kurzfassung des Ablaufs in drei Schritten mit Voraussetzungen; die Anleitung vertieft."
     },
     {
      "url": "https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten",
@@ -399,11 +415,18 @@
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Checkliste der Voraussetzungen vor dem ersten Einzug (Mandat, IBAN, Gläubiger-ID, Stripe-Verbindung, 322 Wörter); Teilaspekt, nur 2 eingehende Links."
+    },
+    {
+     "url": "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Vollständiger Weg vom eingerichteten Firmenaccount bis zum ersten Einzug und zur Statuskontrolle, mit Karenzzeit, Einreichfenster und Klärungsfällen."
     }
    ],
    "konflikt": "gleiche_intention_zwei_domains",
-   "empfehlung": "ausbauen",
-   "freigabe_noetig": false,
+   "empfehlung": "weiterleiten_pruefen",
+   "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Suchanfragen, Impressionen, Klicks und durchschnittliche Position je Seite dieses Clusters (mindestens 12 Monate, Vergleich der Domains je Suchanfrage)",
     "Search Console: Indexierungsstatus je URL (indexiert, gecrawlt aber nicht indexiert, Duplikat mit anderem Canonical)",
@@ -413,9 +436,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
+   "status": "technische_pruefung",
    "prueftermin": "08.12.2026",
-   "kritik": "so-funktionierts und hilfe auf smart-einzug.de bedienen dieselbe Einrichtungsintention; hilfe als Bestandsnutzer-Hilfe schärfen, so-funktionierts als Einrichtungsseite ausbauen."
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten"
   },
   {
    "cluster_id": "C08_hilfe_faq_hub",
@@ -571,22 +594,29 @@
     "Zwei-Faktor-Authentifizierung SmartEinzug",
     "Webhook-Signaturprüfung"
    ],
-   "primaer_url": "https://lexware-einzug.de/sicherheit",
+   "primaer_url": "https://smart-einzug.de/sicherheit/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Einzige Seite der Intention. Bedingung: Vertrauensinhalte gehören laut Betreiberrolle auf smart-einzug.de, wo keine Sicherheitsseite existiert (docs/seo/01-bestandsaufnahme.md Zeile 13); Verlagerung nur nach Freigabe und mit Search-Console-Daten.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Registrierung",
    "seiten": [
     {
      "url": "https://lexware-einzug.de/sicherheit",
-     "rolle": "primaer",
+     "rolle": "konkurrent",
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Einzige Sicherheitsseite im Bestand: 2FA, verschlüsselte Schlüssel, Mandantentrennung, Protokoll, Webhook-Signaturprüfung (271 Wörter, 25 eingehende Links)."
+    },
+    {
+     "url": "https://smart-einzug.de/sicherheit/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Belegbare Sicherheitsaussagen mit offen benannten Grenzen (Protokoll 90 Tage, keine Verfügbarkeitszusage, IBAN maskiert statt verschlüsselt)."
     }
    ],
-   "konflikt": "falsche_domain_fuer_dauerinhalt",
-   "empfehlung": "verlagern_pruefen",
+   "konflikt": "gleiche_intention_zwei_domains",
+   "empfehlung": "weiterleiten_pruefen",
    "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Suchanfragen, Impressionen, Klicks und durchschnittliche Position je Seite dieses Clusters (mindestens 12 Monate, Vergleich der Domains je Suchanfrage)",
@@ -596,8 +626,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
-   "prueftermin": "08.12.2026"
+   "status": "technische_pruefung",
+   "prueftermin": "08.12.2026",
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/sicherheit"
   },
   {
    "cluster_id": "C12_integrationen_uebersicht",
@@ -776,15 +807,15 @@
     "Gläubiger-Identifikationsnummer",
     "Mandatsreferenz Gläubiger-ID Kontoauszug"
    ],
-   "primaer_url": "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat",
+   "primaer_url": "https://smart-einzug.de/wissen/sepa-mandat/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Bestandskandidat, weil lastschrift-einfach.de laut Betreiber nicht im Geltungsbereich liegt. Bedingung: Wissensinhalte gehören auf smart-einzug.de, wo keine Mandatsseite existiert; empfohlen ist eine neue Seite dort, die die Inhalte der drei Bestandsseiten zusammenführt; Weiterleitungen erst nach Search-Console-Daten und Freigabe.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Information",
    "seiten": [
     {
      "url": "https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat",
-     "rolle": "primaer",
+     "rolle": "konkurrent",
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Entstehung, Bestandteile, Widerruf und Verfall des Mandats mit Bezug zu SmartEinzug (319 Wörter, 4 eingehende Links); einzige Mandats-Wissensseite auf einer Domain im Geltungsbereich."
@@ -795,10 +826,17 @@
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Teilaspekt Mandatsreferenz und Gläubiger-ID mit Hinweis zum Kontoauszug des Zahlers (274 Wörter); einziger Abschnitt im Bestand, der Zahlungspflichtige indirekt anspricht (websites/lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id.html Zeilen 137 bis 139)."
+    },
+    {
+     "url": "https://smart-einzug.de/wissen/sepa-mandat/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Mandat so, wie SmartEinzug es abbildet: Basislastschrift, Mandatsreferenz automatisch, Gläubiger-ID auf dem Dokument, Papiererteilung, Widerruf, Verfall."
     }
    ],
-   "konflikt": "falsche_domain_fuer_dauerinhalt",
-   "empfehlung": "neu_auf_hauptdomain",
+   "konflikt": "gleiche_intention_zwei_domains",
+   "empfehlung": "weiterleiten_pruefen",
    "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Suchanfragen, Impressionen, Klicks und durchschnittliche Position je Seite dieses Clusters (mindestens 12 Monate, Vergleich der Domains je Suchanfrage)",
@@ -809,8 +847,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
-   "prueftermin": "08.12.2026"
+   "status": "technische_pruefung",
+   "prueftermin": "08.12.2026",
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat"
   },
   {
    "cluster_id": "C17_mandat_einholen_bestandskunden",
@@ -861,22 +900,29 @@
     "SEPA Rücklastschrift was tun",
     "Rücklastschrift Kosten"
    ],
-   "primaer_url": "https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift",
+   "primaer_url": "https://smart-einzug.de/wissen/ruecklastschrift/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Bestandskandidat im Geltungsbereich. Bedingung: Wissensinhalt gehört auf smart-einzug.de, wo keine Rücklastschriftseite existiert; empfohlen ist eine neue Seite dort, die Fristen, Kosten und Produktablauf verbindet; Weiterleitungen erst nach Search-Console-Daten und Freigabe.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Information",
    "seiten": [
     {
      "url": "https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift",
-     "rolle": "primaer",
+     "rolle": "konkurrent",
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Ursachen, Erkennung über Stripe und Vorgehen danach mit Produktbezug (374 Wörter, 3 eingehende Links); einzige Rücklastschriftseite auf einer Domain im Geltungsbereich."
+    },
+    {
+     "url": "https://smart-einzug.de/wissen/ruecklastschrift/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Rücklastschrift und Erstattung bei Einzug über Stripe: Erkennung nur per Webhook, kein Neuversuch, Klärungsbedarf, Grenzen der Software."
     }
    ],
-   "konflikt": "falsche_domain_fuer_dauerinhalt",
-   "empfehlung": "neu_auf_hauptdomain",
+   "konflikt": "gleiche_intention_zwei_domains",
+   "empfehlung": "weiterleiten_pruefen",
    "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Suchanfragen, Impressionen, Klicks und durchschnittliche Position je Seite dieses Clusters (mindestens 12 Monate, Vergleich der Domains je Suchanfrage)",
@@ -887,8 +933,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
-   "prueftermin": "08.12.2026"
+   "status": "technische_pruefung",
+   "prueftermin": "08.12.2026",
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift"
   },
   {
    "cluster_id": "C19_ablauf_fristen_zahlungsstatus",
@@ -949,22 +996,29 @@
     "Vorabankündigung Frist 14 Tage",
     "Vorabinformation Lastschrift"
    ],
-   "primaer_url": "https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift",
+   "primaer_url": "https://smart-einzug.de/wissen/vorabankuendigung/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Einzige Seite der Intention. Bedingung: Dünn (241 Wörter) und auf einer Einstiegsdomain; Ausbau oder Verlagerung auf smart-einzug.de nur nach Search-Console-Daten und Freigabe; der Fristenteil überschneidet sich mit C19.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Information",
    "seiten": [
     {
      "url": "https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift",
-     "rolle": "primaer",
+     "rolle": "konkurrent",
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Einzige eigene Seite zur Vorabankündigung mit Standardfrist und Unterstützung durch SmartEinzug, aber nur 241 Wörter (dünnster Ratgeberartikel des Bestands), 3 eingehende Links."
+    },
+    {
+     "url": "https://smart-einzug.de/wissen/vorabankuendigung/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Vorabankündigung als optionale Firmeneinstellung mit Frist, Versandinhalt, Sperre von Sofort-Einzügen; Grenzen offen benannt."
     }
    ],
-   "konflikt": "falsche_domain_fuer_dauerinhalt",
-   "empfehlung": "verlagern_pruefen",
+   "konflikt": "gleiche_intention_zwei_domains",
+   "empfehlung": "weiterleiten_pruefen",
    "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Suchanfragen, Impressionen, Klicks und durchschnittliche Position je Seite dieses Clusters (mindestens 12 Monate, Vergleich der Domains je Suchanfrage)",
@@ -974,8 +1028,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
-   "prueftermin": "08.12.2026"
+   "status": "technische_pruefung",
+   "prueftermin": "08.12.2026",
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift"
   },
   {
    "cluster_id": "C21_lastschrift_oder_ueberweisung",
@@ -1100,9 +1155,9 @@
     "lexoffice Lastschrift Ratgeber",
     "Ratgeber Lexware Office SEPA"
    ],
-   "primaer_url": "https://lexware-einzug.de/ratgeber/",
+   "primaer_url": "https://smart-einzug.de/wissen/",
    "ohne_primaer": false,
-   "primaer_begruendung": "Bestandskandidat mit der stärksten internen Verlinkung im Geltungsbereich; die Wahl ist schwach begründet, weil alle drei Hubs nur die Artikel ihrer eigenen Domain bündeln. Bedingung: Ein Ratgeberbereich auf smart-einzug.de existiert nicht (docs/seo/01-bestandsaufnahme.md Zeile 13); wird er angelegt, wird er bevorzugte Zielseite und die Domain-Hubs bleiben Navigationsseiten.",
+   "primaer_begruendung": "Hauptdomain bündelt dauerhafte Inhalte (Masterprompt Abschnitt 5); neue Seite am 08.09.2026 aus dem Faktenregister erstellt.",
    "seitentyp": "",
    "conversion_ziel": "Information",
    "seiten": [
@@ -1115,14 +1170,28 @@
     },
     {
      "url": "https://lexware-einzug.de/ratgeber/",
-     "rolle": "primaer",
+     "rolle": "konkurrent",
      "indexierung": "index",
      "canonical": "self",
      "mehrwert": "Übersicht der vier Artikel mit Einordnung der SEPA-Basislastschrift im Unternehmenseinsatz (427 Wörter, 25 eingehende Links); Nutzen als Hub der eigenen Domain."
+    },
+    {
+     "url": "https://smart-einzug.de/wissen/",
+     "rolle": "primaer",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Übersicht der Wissensseiten der Hauptdomain; die Anleitungsübersicht ergänzt sie."
+    },
+    {
+     "url": "https://smart-einzug.de/anleitungen/",
+     "rolle": "ergaenzend",
+     "indexierung": "index",
+     "canonical": "self",
+     "mehrwert": "Übersicht der Anleitungen (Einrichtung), getrennt von den Wissensseiten (Verfahren)."
     }
    ],
    "konflikt": "gleiche_intention_zwei_domains",
-   "empfehlung": "neu_auf_hauptdomain",
+   "empfehlung": "weiterleiten_pruefen",
    "freigabe_noetig": true,
    "datenbedarf": [
     "Search Console: Impressionen der drei Hubs (Hubs ranken selten für Begriffe, Nutzen ist die interne Verteilung)",
@@ -1131,8 +1200,9 @@
    "faktenquellen": [
     "02-faktenregister.md (SYNC, EINZUG, MAND, STRIPE, TARIF, KONTO)"
    ],
-   "status": "in_bereinigung_phase_2",
-   "prueftermin": "08.12.2026"
+   "status": "technische_pruefung",
+   "prueftermin": "08.12.2026",
+   "kritik": "Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/ratgeber/, https://lexware-einzug.de/ratgeber/"
   },
   {
    "cluster_id": "C27_vergleich_wettbewerber",

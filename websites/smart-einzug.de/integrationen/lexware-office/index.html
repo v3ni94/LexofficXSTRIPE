@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lexware-Office-Integration von SmartEinzug</title>
-<meta name="description" content="Die Lexware-Office-Integration von SmartEinzug: Anbindung über die Public API, benötigter Tarif, synchronisierte Daten und der Weg zum ersten SEPA-Einzug.">
+<meta name="description" content="Lexware-Office-Integration von SmartEinzug: welche Rechnungs- und Kundendaten die Public API liefert, wie oft synchronisiert wird und welche Voraussetzungen gelten.">
 <link rel="canonical" href="https://smart-einzug.de/integrationen/lexware-office/">
 <meta property="og:title" content="Lexware-Office-Integration von SmartEinzug">
-<meta property="og:description" content="Die Lexware-Office-Integration von SmartEinzug: Anbindung über die Public API, benötigter Tarif, synchronisierte Daten und der Weg zum ersten SEPA-Einzug.">
+<meta property="og:description" content="Lexware-Office-Integration von SmartEinzug: welche Rechnungs- und Kundendaten die Public API liefert, wie oft synchronisiert wird und welche Voraussetzungen gelten.">
 <meta property="og:url" content="https://smart-einzug.de/integrationen/lexware-office/">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
@@ -67,7 +67,7 @@
       <p class="eyebrow">Integration</p>
       <h1>Lexware-Office-Integration von SmartEinzug</h1>
       <span class="bar" aria-hidden="true"></span>
-      <p class="lead">Lexware Office, ehemals lexoffice, ist die erste und derzeit einzige verfügbare Anbindung von SmartEinzug.</p>
+      <p class="lead">Lexware Office, ehemals lexoffice, ist die erste und derzeit einzige verfügbare Anbindung von SmartEinzug. Die Verbindung liest über die Public API, was für den Einzug nötig ist, und schreibt nichts zurück.</p>
     </div>
   </header>
 
@@ -77,13 +77,75 @@
         <p class="eyebrow">Technik</p>
         <h2>Wie die Anbindung funktioniert</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>SmartEinzug ruft über die Public API von Lexware Office die für den Einzug relevanten Rechnungs- und Kundendaten ab. Nach Angaben von Lexware ist für die Nutzung der Public API der Tarif Lexware Office XL erforderlich, bitte prüfen Sie den aktuellen Stand in Ihrem eigenen Konto. Für den Einzug selbst ist zusätzlich ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto erforderlich.</p>
-        <p>Der Abgleich läuft serverseitig und inkrementell: Bereits abgeschlossene Rechnungen werden nicht fortlaufend erneut abgerufen, neue und geänderte Vorgänge erscheinen automatisch.</p>
+        <p>SmartEinzug ruft über die Public API von Lexware Office die für den Einzug relevanten Rechnungs- und Kundendaten ab, ausschließlich lesend. Den Einzug selbst führt Stripe über Ihr eigenes, für SEPA-Lastschriften freigeschaltetes Stripe-Konto aus. Lexware Office bleibt Ihre Rechnungssoftware; an der Art, wie Sie Rechnungen schreiben und Zahlungen buchen, ändert sich nichts.</p>
+        <p>Der Abgleich läuft serverseitig im Hintergrund, Ihr Browser muss dafür nicht geöffnet bleiben. Unveränderte Rechnungen werden nicht erneut geladen, bereits abgeschlossene Vorgänge werden nicht fortlaufend abgerufen, und die Anwendung hält die Lastgrenzen der Lexware-Schnittstelle ein.</p>
       </div>
     </div>
   </section>
 
   <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Daten</p>
+        <h2>Was aus Lexware Office gelesen wird</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Übernommen werden alle Rechnungen, die in Lexware Office als offen oder überfällig geführt werden, ohne Datumsfilter und ohne Mengenbegrenzung, also auch Altbestand aus der Zeit vor Ihrer Registrierung. Entwürfe, bezahlte und stornierte Rechnungen werden nicht importiert.</p>
+      </div>
+      <ul class="checklist two-col">
+        <li>Rechnungsnummer und Rechnungsstatus</li>
+        <li>Bruttobetrag und Währung</li>
+        <li>Fälligkeitsdatum</li>
+        <li>Rechnungspositionen; daraus bildet SmartEinzug ein Stichwort für den Verwendungszweck der Lastschrift</li>
+        <li>Kundenname und Kundennummer</li>
+        <li>Eine E-Mail-Adresse des Kunden</li>
+      </ul>
+      <p style="margin-top:24px">Nicht gelesen werden Anschriften, Telefonnummern, Steuernummern, Bankverbindungen, Rechnungsdokumente oder Belege. IBAN und SEPA-Mandat Ihrer Kunden erfassen Sie in SmartEinzug; sie stammen nicht aus Lexware Office.</p>
+      <p>Der Zugriff ist rein lesend. SmartEinzug schreibt nichts nach Lexware Office zurück: keine Zahlungen, keine Notizen, keine Statusänderungen. Zahlungseingänge buchen Sie wie bisher in Lexware Office. Eine Abgleichsansicht in SmartEinzug zeigt Abweichungen zwischen beiden Systemen nach Rechnungsnummer und Status; Beträge prüft diese Ansicht nicht.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Rhythmus</p>
+          <h2>Wie oft synchronisiert wird</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Die Synchronisation läuft im Hintergrund, in der Regel mehrmals täglich, ergänzt um einen nächtlichen Vollabgleich, bei dem jede Rechnung erneut geprüft wird. Zusätzlich starten Sie den Abgleich jederzeit manuell über die Schaltfläche „Mit Lexware Office synchronisieren“. Fortschritt, Abschlussmeldung und die Historie aller Läufe sehen Sie in der Anwendung.</p>
+          <p>In Lexware Office bezahlte oder stornierte Rechnungen werden beim nächsten Abgleich erkannt und nicht eingezogen; Änderungen an Betrag, Fälligkeit oder Positionen werden übernommen. Der Abgleich erfolgt zum Zeitpunkt des Laufs, nicht in Echtzeit, weil Lexware Office Änderungen nicht aktiv meldet.</p>
+          <p>Unabhängig vom Rhythmus fragt SmartEinzug unmittelbar vor jedem Einzug den offenen Restbetrag der Rechnung live bei Lexware Office ab. Eine zwischenzeitlich bezahlte Rechnung wird deshalb nicht eingezogen, eine Teilzahlung wird erkannt. Bleibt die Synchronisation länger als 48 Stunden aus, erhält der Inhaber eine Hinweis-E-Mail.</p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card">
+            <ul class="timeline">
+              <li class="done"><strong>Abgleich im Hintergrund</strong>In der Regel mehrmals täglich, nur geänderte Rechnungen werden geladen</li>
+              <li class="done"><strong>Nächtlicher Vollabgleich</strong>Jede offene und überfällige Rechnung wird erneut geprüft</li>
+              <li class="done"><strong>Manueller Start</strong>Jederzeit über die Schaltfläche in der Rechnungsübersicht</li>
+              <li><strong>Live-Restbetrag vor jedem Einzug</strong>Abfrage bei Lexware Office unmittelbar vor der Lastschrift</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Voraussetzungen</p>
+        <h2>Was Sie für die Anbindung benötigen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ul class="checklist">
+        <li><strong>API-Schlüssel der Public API.</strong> Nach Angaben von Lexware ist die Public API an bestimmte Tarife gebunden, derzeit Lexware Office XL; bitte prüfen Sie den aktuellen Stand in Ihrem eigenen Konto. SmartEinzug prüft keinen Tarif, sondern nur, ob der Schlüssel funktioniert.</li>
+        <li><strong>Eigenes Stripe-Konto.</strong> Es muss für SEPA-Lastschriften freigeschaltet sein. Über dieses Konto führt Stripe die Lastschriften aus und rechnet seine Gebühren direkt mit Ihnen ab.</li>
+        <li><strong>Firmenaccount bei SmartEinzug.</strong> Mit eingerichteter Zwei-Faktor-Authentifizierung; den Schlüssel hinterlegen Inhaber oder Administratoren in den Einstellungen.</li>
+        <li><strong>Mandate und IBANs Ihrer Kunden.</strong> Sie werden in SmartEinzug erfasst und bei Stripe als Zahlungsmethode registriert.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
     <div class="container">
       <div class="section-head">
         <p class="eyebrow">Einrichtung</p>
@@ -92,9 +154,10 @@
       </div>
       <ol class="steps">
         <li class="step"><span class="step-number">1</span><div><h3>API-Schlüssel erzeugen</h3><p>In Lexware Office unter Einstellungen, Erweiterungen, Weitere Apps, Public API einen neuen Schlüssel anlegen.</p></div></li>
-        <li class="step"><span class="step-number">2</span><div><h3>Schlüssel hinterlegen</h3><p>Den Schlüssel in den Einstellungen Ihres SmartEinzug-Accounts eintragen, die Anwendung prüft die Verbindung.</p></div></li>
-        <li class="step"><span class="step-number">3</span><div><h3>Rechnungen abrufen</h3><p>Offene und überfällige Rechnungen stehen anschließend in SmartEinzug zur weiteren Verarbeitung bereit.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Schlüssel hinterlegen</h3><p>Den Schlüssel in den Einstellungen Ihres SmartEinzug-Accounts eintragen. Die Anwendung prüft die Verbindung, speichert den Schlüssel verschlüsselt und zeigt ihn danach nicht mehr an.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Rechnungen abrufen</h3><p>Offene und überfällige Rechnungen stehen anschließend in SmartEinzug zur Freigabe bereit.</p></div></li>
       </ol>
+      <p style="margin-top:24px">Die Schritt-für-Schritt-Anleitung finden Sie unter <a href="/anleitungen/lexware-office-verbinden/">Lexware Office verbinden</a>. Den Gesamtablauf von der Registrierung bis zum ersten Einzug beschreibt die Seite <a href="/so-funktionierts/">So funktioniert's</a>.</p>
     </div>
   </section>
 
@@ -121,6 +184,9 @@
           <li><a href="/impressum/">Impressum</a></li>
           <li><a href="/datenschutz/">Datenschutz</a></li>
           <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
           <li><a href="/hilfe/">Hilfe</a></li>
           <li><a href="/kontakt/">Kontakt</a></li>
           <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>

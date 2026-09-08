@@ -30,6 +30,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -37,7 +38,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -115,6 +118,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -122,7 +126,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -142,7 +148,375 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 14,
+  "links_intern_eingehend": 23,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "anleitungen/erster-lastschrifteinzug/index.html",
+  "url": "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Erster Lastschrifteinzug mit SmartEinzug: Anleitung",
+  "title_laenge": 51,
+  "description": "Vom Firmenaccount zum ersten SEPA-Einzug: IBAN und Mandat erfassen, Rechnung vormerken oder terminieren, Status prüfen, Rücklastschrift klären, Journal exportieren.",
+  "description_laenge": 164,
+  "h1": [
+   "Vom Firmenaccount zum ersten Lastschrifteinzug"
+  ],
+  "h2": [
+   "Einstellungen unter Firmendaten prüfen",
+   "Kunde mit IBAN und Mandat ausstatten",
+   "Rechnung wählen und Einzug freigeben",
+   "Karenzzeit und nächtliches Einreichfenster",
+   "Status prüfen",
+   "Rücklastschrift, Erstattung und Klärungsbedarf",
+   "Einzugsjournal exportieren",
+   "Häufige Fragen zum ersten Einzug",
+   "Alle Schritte im eigenen Firmenaccount durchgehen"
+  ],
+  "canonical": "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1937,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
+   "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/integrationen/lexware-office/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/ruecklastschrift/",
+   "https://smart-einzug.de/wissen/sepa-mandat/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Übersicht der Anleitungen",
+    "href": "/anleitungen/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 3,
+   "ruecklastschrift": 7,
+   "vorabankuendigung": 5,
+   "glaeubiger_id": 2,
+   "mandat": 37,
+   "rueckschreibung_buchhaltung": 1,
+   "lexware_office": 11,
+   "sofort_geld": 3,
+   "einzug_datum_frist": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 6,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "anleitungen/index.html",
+  "url": "https://smart-einzug.de/anleitungen/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Anleitungen: Einrichtung und erster Einzug",
+  "title_laenge": 42,
+  "description": "Drei Anleitungen für SmartEinzug: Lexware Office verbinden, Stripe-Konto mit Webhook einrichten und den ersten SEPA-Einzug bis zur Statuskontrolle durchführen.",
+  "description_laenge": 159,
+  "h1": [
+   "Anleitungen für die Einrichtung von SmartEinzug"
+  ],
+  "h2": [
+   "Der Weg vom leeren Firmenaccount zur ersten Lastschrift",
+   "Voraussetzungen für alle drei Anleitungen",
+   "Weiterführende Seiten",
+   "Firmenaccount anlegen und mit der ersten Anleitung beginnen"
+  ],
+  "canonical": "https://smart-einzug.de/anleitungen/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 441,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+   "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
+   "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/integrationen/lexware-office/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/ruecklastschrift/",
+   "https://smart-einzug.de/wissen/sepa-mandat/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung 1 öffnen",
+    "href": "/anleitungen/lexware-office-verbinden/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 2,
+   "mandat": 5,
+   "zwei_faktor": 2,
+   "lexware_office": 9,
+   "lexware_allgemein": 1,
+   "tarif_xl_public_api": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 23,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "anleitungen/lexware-office-verbinden/index.html",
+  "url": "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Lexware Office mit SmartEinzug verbinden: Anleitung",
+  "title_laenge": 51,
+  "description": "Schritt für Schritt: API-Schlüssel der Lexware Office Public API erzeugen, in SmartEinzug hinterlegen, Verbindung prüfen und die erste Synchronisation starten.",
+  "description_laenge": 159,
+  "h1": [
+   "Lexware Office mit SmartEinzug verbinden"
+  ],
+  "h2": [
+   "API-Schlüssel in Lexware Office erzeugen",
+   "Schlüssel in SmartEinzug hinterlegen und prüfen",
+   "Was die Synchronisation aus Lexware Office übernimmt",
+   "Nach der Verbindung",
+   "Häufige Fragen zur Verbindung mit Lexware Office",
+   "Weiter mit Anleitung 2: das eigene Stripe-Konto verbinden"
+  ],
+  "canonical": "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 958,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/integrationen/lexware-office/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung 2 öffnen",
+    "href": "/anleitungen/stripe-verbinden/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "mandat": 1,
+   "rueckschreibung_buchhaltung": 1,
+   "verschluesselung": 1,
+   "lexware_office": 27,
+   "lexware_allgemein": 10,
+   "tarif_xl_public_api": 8,
+   "sofort_geld": 1,
+   "einzug_datum_frist": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 4,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "anleitungen/stripe-verbinden/index.html",
+  "url": "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Stripe-Konto und Webhook in SmartEinzug einrichten",
+  "title_laenge": 50,
+  "description": "Anleitung: Stripe-Konto per Secret Key oder eingeschränktem Schlüssel verbinden, Test- und Livemodus unterscheiden, Webhook mit sieben Ereignissen einrichten.",
+  "description_laenge": 158,
+  "h1": [
+   "Eigenes Stripe-Konto mit SmartEinzug verbinden"
+  ],
+  "h2": [
+   "Schlüssel erzeugen und in SmartEinzug hinterlegen",
+   "Webhook einrichten, damit Stripe den Status zurückmeldet",
+   "Die sieben Ereignisse und ihre Wirkung in SmartEinzug",
+   "Was ohne eingerichteten Webhook nicht erkannt wird",
+   "Häufige Fragen zur Stripe-Verbindung",
+   "Weiter mit Anleitung 3: der erste Lastschrifteinzug"
+  ],
+  "canonical": "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1120,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+   "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung 3 öffnen",
+    "href": "/anleitungen/erster-lastschrifteinzug/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "testen_testphase": 1,
+   "automatisch": 1,
+   "ruecklastschrift": 3,
+   "mandat": 4,
+   "verschluesselung": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 5,
   "verwaist": false
  },
  {
@@ -198,6 +572,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -205,7 +580,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -228,7 +605,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 16,
+  "links_intern_eingehend": 25,
   "verwaist": false
  },
  {
@@ -274,6 +651,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -281,7 +659,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -318,7 +698,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 14,
+  "links_intern_eingehend": 23,
   "verwaist": false
  },
  {
@@ -346,7 +726,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 426,
+  "woerter_hauptinhalt": 468,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -361,6 +741,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -369,7 +750,9 @@
    "https://smart-einzug.de/integrationen/sevdesk/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -390,11 +773,12 @@
   ],
   "pruefwoerter": {
    "kostenlos": 1,
-   "ruecklastschrift": 1,
-   "mandat": 1,
+   "ruecklastschrift": 2,
+   "vorabankuendigung": 1,
+   "mandat": 2,
    "zwei_faktor": 1,
    "sevdesk": 3,
-   "lexware_office": 5,
+   "lexware_office": 6,
    "lexware_allgemein": 3,
    "tarif_xl_public_api": 1,
    "stripe_gebuehr": 1,
@@ -402,7 +786,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 14,
+  "links_intern_eingehend": 23,
   "verwaist": false
  },
  {
@@ -446,6 +830,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -453,7 +838,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de",
@@ -473,7 +860,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 16,
+  "links_intern_eingehend": 25,
   "verwaist": false
  },
  {
@@ -503,7 +890,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 920,
+  "woerter_hauptinhalt": 923,
   "jsonld_typen": [
    "Organization",
    "PostalAddress",
@@ -525,6 +912,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -533,7 +921,9 @@
    "https://smart-einzug.de/integrationen/sevdesk/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -613,7 +1003,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 16,
+  "links_intern_eingehend": 25,
   "verwaist": false
  },
  {
@@ -623,13 +1013,15 @@
   "seitentyp": "integration",
   "title": "Integrationen von SmartEinzug",
   "title_laenge": 29,
-  "description": "Integrationen von SmartEinzug: Lexware Office ist verfügbar, eine Anbindung an sevdesk befindet sich in Planung. Übersicht der unterstützten Rechnungssysteme.",
-  "description_laenge": 158,
+  "description": "Integrationen von SmartEinzug: Lexware Office verfügbar, sevdesk in Vorbereitung. Ein Buchhaltungssystem je Firmenaccount, mehrere Firmen mit einem Benutzerkonto.",
+  "description_laenge": 162,
   "h1": [
    "Integrationen von SmartEinzug"
   ],
   "h2": [
-   "Ihr eigenes Stripe-Konto",
+   "Genau ein Buchhaltungssystem je Firmenaccount",
+   "Mehrere Firmen mit einem Benutzerkonto",
+   "Was für jede Anbindung gilt",
    "Lexware Office jetzt anbinden"
   ],
   "canonical": "https://smart-einzug.de/integrationen/",
@@ -638,7 +1030,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 129,
+  "woerter_hauptinhalt": 507,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -653,6 +1045,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -662,7 +1055,9 @@
    "https://smart-einzug.de/integrationen/sevdesk/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -682,14 +1077,20 @@
    }
   ],
   "pruefwoerter": {
-   "sevdesk": 3,
-   "lexware_office": 5,
+   "kostenlos": 1,
+   "firmenlastschrift_b2b": 2,
+   "mandat": 5,
+   "mehrfirmen": 4,
+   "zwei_faktor": 1,
+   "verschluesselung": 2,
+   "sevdesk": 5,
+   "lexware_office": 8,
    "lexware_allgemein": 1,
    "tarif_xl_public_api": 1
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 14,
+  "links_intern_eingehend": 23,
   "verwaist": false
  },
  {
@@ -699,13 +1100,16 @@
   "seitentyp": "integration",
   "title": "Lexware-Office-Integration von SmartEinzug",
   "title_laenge": 42,
-  "description": "Die Lexware-Office-Integration von SmartEinzug: Anbindung über die Public API, benötigter Tarif, synchronisierte Daten und der Weg zum ersten SEPA-Einzug.",
-  "description_laenge": 154,
+  "description": "Lexware-Office-Integration von SmartEinzug: welche Rechnungs- und Kundendaten die Public API liefert, wie oft synchronisiert wird und welche Voraussetzungen gelten.",
+  "description_laenge": 164,
   "h1": [
    "Lexware-Office-Integration von SmartEinzug"
   ],
   "h2": [
    "Wie die Anbindung funktioniert",
+   "Was aus Lexware Office gelesen wird",
+   "Wie oft synchronisiert wird",
+   "Was Sie für die Anbindung benötigen",
    "API-Schlüssel hinterlegen",
    "Lexware Office jetzt verbinden"
   ],
@@ -715,7 +1119,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 162,
+  "woerter_hauptinhalt": 641,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -730,6 +1134,8 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -737,7 +1143,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -757,15 +1165,18 @@
    }
   ],
   "pruefwoerter": {
-   "automatisch": 1,
+   "mandat": 2,
+   "zwei_faktor": 1,
+   "verschluesselung": 1,
    "lexoffice": 1,
-   "lexware_office": 5,
-   "lexware_allgemein": 2,
-   "tarif_xl_public_api": 3
+   "lexware_office": 17,
+   "lexware_allgemein": 3,
+   "tarif_xl_public_api": 5,
+   "einzug_datum_frist": 2
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 2,
+  "links_intern_eingehend": 5,
   "verwaist": false
  },
  {
@@ -818,6 +1229,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -826,7 +1238,9 @@
    "https://smart-einzug.de/integrationen/lexware-office/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -901,6 +1315,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -908,7 +1323,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -930,7 +1347,7 @@
   "pruefwoerter": {},
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 14,
+  "links_intern_eingehend": 23,
   "verwaist": false
  },
  {
@@ -1114,6 +1531,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -1121,7 +1539,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -1154,7 +1574,108 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 14,
+  "links_intern_eingehend": 23,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "sicherheit/index.html",
+  "url": "https://smart-einzug.de/sicherheit/",
+  "seitentyp": "produktseite",
+  "title": "Sicherheit bei SmartEinzug: Zugang, Schlüssel, Einzüge",
+  "title_laenge": 54,
+  "description": "Sicherheit bei SmartEinzug: Pflicht-2FA, verschlüsselte Schlüssel, Rollen, Protokoll, befristeter Support-Zugriff, Schutz vor Doppelbelastung und offene Grenzen.",
+  "description_laenge": 161,
+  "h1": [
+   "So schützt SmartEinzug Zugänge, Schlüssel und Einzüge"
+  ],
+  "h2": [
+   "Anmeldung nur mit zweitem Faktor",
+   "Wie Schlüssel gespeichert und verwendet werden",
+   "Rollen, Einladungen und mehrere Firmen",
+   "Was protokolliert wird und wie lange",
+   "Wenn der Support auf Ihren Firmenaccount zugreift",
+   "Schutz vor Fehleinzügen und Doppelbelastung",
+   "Betrieb, Datenbank und Sicherungen",
+   "Was wir nicht zusagen",
+   "Fragen zur Sicherheit von SmartEinzug",
+   "Account anlegen und zweiten Faktor einrichten"
+  ],
+  "canonical": "https://smart-einzug.de/sicherheit/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 2047,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [
+   "08.09.2026"
+  ],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "So funktioniert's",
+    "href": "/so-funktionierts/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "minuten_angabe": 1,
+   "ruecklastschrift": 1,
+   "vorabankuendigung": 1,
+   "mandat": 10,
+   "mehrfirmen": 4,
+   "zwei_faktor": 10,
+   "verschluesselung": 10,
+   "standort_deutschland": 1,
+   "lexware_office": 11,
+   "stripe_gebuehr": 2,
+   "sofort_geld": 5,
+   "einzug_datum_frist": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 23,
   "verwaist": false
  },
  {
@@ -1180,7 +1701,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 355,
+  "woerter_hauptinhalt": 372,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -1198,6 +1719,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -1205,7 +1727,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -1232,7 +1756,7 @@
    "automatisch": 3,
    "mandat": 6,
    "zwei_faktor": 1,
-   "lexware_office": 3,
+   "lexware_office": 4,
    "lexware_allgemein": 1,
    "tarif_xl_public_api": 2,
    "sofort_geld": 2,
@@ -1240,7 +1764,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 14,
+  "links_intern_eingehend": 23,
   "verwaist": false
  },
  {
@@ -1278,6 +1802,7 @@
   "links_intern_ausgehend": [
    "https://smart-einzug.de/",
    "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
@@ -1285,7 +1810,9 @@
    "https://smart-einzug.de/integrationen/",
    "https://smart-einzug.de/kontakt/",
    "https://smart-einzug.de/preise/",
-   "https://smart-einzug.de/so-funktionierts/"
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -1306,6 +1833,393 @@
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
   "links_intern_eingehend": 0,
   "verwaist": true
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "wissen/index.html",
+  "url": "https://smart-einzug.de/wissen/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Wissen zu SEPA-Lastschrift und SmartEinzug",
+  "title_laenge": 42,
+  "description": "Grundlagen zum SEPA-Einzug mit SmartEinzug: Lastschriftmandat, Rücklastschrift und Erstattung, Vorabankündigung, erklärt an den Funktionen und Grenzen der Software.",
+  "description_laenge": 164,
+  "h1": [
+   "Wissen rund um den SEPA-Einzug mit SmartEinzug"
+  ],
+  "h2": [
+   "Drei Beiträge zum Einstieg",
+   "Weshalb diese Seiten die Grenzen der Software benennen",
+   "Vom Wissen zur Anwendung",
+   "Grundlagen gelesen, Einzug vorbereiten"
+  ],
+  "canonical": "https://smart-einzug.de/wissen/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 417,
+  "jsonld_typen": [
+   "BreadcrumbList",
+   "ListItem"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [
+   "08.09.2026"
+  ],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+   "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/ruecklastschrift/",
+   "https://smart-einzug.de/wissen/sepa-mandat/",
+   "https://smart-einzug.de/wissen/vorabankuendigung/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Ablauf ansehen",
+    "href": "/so-funktionierts/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 3,
+   "firmenlastschrift_b2b": 1,
+   "ruecklastschrift": 5,
+   "vorabankuendigung": 4,
+   "glaeubiger_id": 1,
+   "mandat": 7,
+   "rueckschreibung_buchhaltung": 1,
+   "lexware_office": 2,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 23,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "wissen/ruecklastschrift/index.html",
+  "url": "https://smart-einzug.de/wissen/ruecklastschrift/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Rücklastschrift und Erstattung in SmartEinzug",
+  "title_laenge": 45,
+  "description": "Wie SmartEinzug Rücklastschrift und Erstattung aus Stripe erkennt und was danach gilt: kein Neuversuch, keine E-Mail, keine Gebührenerfassung, Buchung bei Ihnen.",
+  "description_laenge": 161,
+  "h1": [
+   "Rücklastschrift und Erstattung beim Einzug über Stripe"
+  ],
+  "h2": [
+   "Weshalb eine Lastschrift zurückkommt",
+   "Wie die Rücklastschrift in SmartEinzug ankommt",
+   "Was die Software nach einer Rücklastschrift tut und was nicht",
+   "Erstattungen aus Stripe und der Klärungsbedarf",
+   "Gebühren und Buchung bleiben bei Ihnen",
+   "Empfohlene Reihenfolge nach einer Rückgabe",
+   "Häufige Fragen zu Rücklastschrift und Erstattung",
+   "Webhook einrichten, damit Rückgaben sichtbar werden"
+  ],
+  "canonical": "https://smart-einzug.de/wissen/ruecklastschrift/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1313,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [
+   "08.09.2026"
+  ],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/stripe-verbinden/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/sepa-mandat/",
+   "https://smart-einzug.de/wissen/vorabankuendigung/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung: Stripe verbinden",
+    "href": "/anleitungen/stripe-verbinden/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "partner_offiziell": 1,
+   "automatisch": 4,
+   "ruecklastschrift": 22,
+   "vorabankuendigung": 2,
+   "mandat": 8,
+   "rueckschreibung_buchhaltung": 2,
+   "lexware_office": 7,
+   "einzug_datum_frist": 1
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 6,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "wissen/sepa-mandat/index.html",
+  "url": "https://smart-einzug.de/wissen/sepa-mandat/",
+  "seitentyp": "keyword_landingpage",
+  "title": "SEPA-Lastschriftmandat in SmartEinzug",
+  "title_laenge": 37,
+  "description": "Wie SmartEinzug das Basislastschriftmandat abbildet: Inhalt, Mandatsreferenz, Gläubiger-ID, Erteilung auf Papier, Widerruf, Verfall nach 36 Monaten, Grenzen.",
+  "description_laenge": 157,
+  "h1": [
+   "Das SEPA-Lastschriftmandat in SmartEinzug"
+  ],
+  "h2": [
+   "Basislastschrift ja, Firmenlastschrift nein",
+   "Was das Mandatsdokument aus SmartEinzug enthält",
+   "Mandatsreferenz und Gläubiger-ID: wer vergibt was",
+   "So kommt das unterschriebene Mandat in die Software",
+   "Handschriftlicher Nachweis erforderlich",
+   "Widerruf und Verfall nach 36 Monaten",
+   "Was SmartEinzug am Mandat nicht prüft",
+   "Häufige Fragen zum Mandat in SmartEinzug",
+   "Mandat erfasst? Dann zum ersten Einzug"
+  ],
+  "canonical": "https://smart-einzug.de/wissen/sepa-mandat/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1704,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [
+   "08.09.2026"
+  ],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/ruecklastschrift/",
+   "https://smart-einzug.de/wissen/vorabankuendigung/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung: erster Lastschrifteinzug",
+    "href": "/anleitungen/erster-lastschrifteinzug/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "automatisch": 1,
+   "firmenlastschrift_b2b": 5,
+   "ruecklastschrift": 2,
+   "vorabankuendigung": 6,
+   "glaeubiger_id": 14,
+   "mandat": 55,
+   "lexware_office": 1,
+   "einzug_datum_frist": 3
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 4,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "wissen/vorabankuendigung/index.html",
+  "url": "https://smart-einzug.de/wissen/vorabankuendigung/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Vorabankündigung vor dem SEPA-Einzug in SmartEinzug",
+  "title_laenge": 51,
+  "description": "Zweck und Frist der Vorabankündigung als Orientierung und wie SmartEinzug den E-Mail-Versand übernimmt: Firmeneinstellung, Frist 1 bis 30 Tage, Inhalt, Grenzen.",
+  "description_laenge": 160,
+  "h1": [
+   "Vorabankündigung vor dem Lastschrifteinzug"
+  ],
+  "h2": [
+   "Wozu die Ankündigung dient",
+   "Vorabankündigung per E-Mail durch das Portal senden",
+   "Was in der E-Mail steht und wer sie absendet",
+   "Wann die Software keine Ankündigung versendet",
+   "Schalter an oder aus: eine kaufmännische Abwägung",
+   "Häufige Fragen zur Vorabankündigung in SmartEinzug",
+   "Einstellung festlegen, dann terminieren"
+  ],
+  "canonical": "https://smart-einzug.de/wissen/vorabankuendigung/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1062,
+  "jsonld_typen": [
+   "Article",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [
+   "08.09.2026"
+  ],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/ruecklastschrift/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   },
+   {
+    "text": "Anleitung: erster Lastschrifteinzug",
+    "href": "/anleitungen/erster-lastschrifteinzug/"
+   },
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "ruecklastschrift": 3,
+   "vorabankuendigung": 12,
+   "glaeubiger_id": 2,
+   "mandat": 11,
+   "lexware_office": 3,
+   "sofort_geld": 6,
+   "einzug_datum_frist": 5
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 3,
+  "verwaist": false
  },
  {
   "domain": "lexoffice-einzug.de",
@@ -1626,7 +2540,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexoffice-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 1404,
+  "woerter_hauptinhalt": 1407,
   "jsonld_typen": [
    "Organization",
    "SoftwareApplication",
@@ -4017,7 +4931,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 1486,
+  "woerter_hauptinhalt": 1489,
   "jsonld_typen": [
    "Organization",
    "SoftwareApplication",
@@ -4239,7 +5153,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 334,
+  "woerter_hauptinhalt": 362,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -4259,6 +5173,7 @@
    "https://lexware-einzug.de/funktionen",
    "https://lexware-einzug.de/hilfe",
    "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-lastschrifteinzug",
    "https://lexware-einzug.de/lexware-office-sepa-mandat",
    "https://lexware-einzug.de/lexware-office-stripe",
    "https://lexware-einzug.de/offene-rechnungen-per-lastschrift-einziehen",
@@ -4294,8 +5209,8 @@
   "pruefwoerter": {
    "automatisch": 2,
    "mandat": 4,
-   "lexware_office": 10,
-   "lexware_allgemein": 4,
+   "lexware_office": 11,
+   "lexware_allgemein": 5,
    "tarif_xl_public_api": 2,
    "sofort_geld": 1
   },
@@ -4389,8 +5304,8 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 0,
-  "verwaist": true
+  "links_intern_eingehend": 2,
+  "verwaist": false
  },
  {
   "domain": "lexware-einzug.de",
@@ -5023,7 +5938,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 427,
+  "woerter_hauptinhalt": 449,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -5043,6 +5958,7 @@
    "https://lexware-einzug.de/funktionen",
    "https://lexware-einzug.de/hilfe",
    "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-lastschrifteinzug",
    "https://lexware-einzug.de/preise",
    "https://lexware-einzug.de/ratgeber/",
    "https://lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id",
@@ -5076,8 +5992,8 @@
    "vorabankuendigung": 1,
    "glaeubiger_id": 2,
    "mandat": 5,
-   "lexware_office": 9,
-   "lexware_allgemein": 1,
+   "lexware_office": 10,
+   "lexware_allgemein": 2,
    "tarif_xl_public_api": 1,
    "einzug_datum_frist": 7
   },

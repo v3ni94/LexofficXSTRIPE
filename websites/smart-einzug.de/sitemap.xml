@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://smart-einzug.de/</loc><lastmod>2026-09-08</lastmod><priority>1.0</priority></url>
+  <url><loc>https://smart-einzug.de/anleitungen/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/anleitungen/lexware-office-verbinden/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/anleitungen/stripe-verbinden/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
   <url><loc>https://smart-einzug.de/funktionen/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
   <url><loc>https://smart-einzug.de/hilfe/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
   <url><loc>https://smart-einzug.de/integrationen/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
   <url><loc>https://smart-einzug.de/integrationen/lexware-office/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
   <url><loc>https://smart-einzug.de/integrationen/sevdesk/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
   <url><loc>https://smart-einzug.de/preise/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/sicherheit/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
   <url><loc>https://smart-einzug.de/so-funktionierts/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
-  <url><loc>https://smart-einzug.de/agb/</loc><lastmod>2026-09-07</lastmod><priority>0.3</priority></url>
+  <url><loc>https://smart-einzug.de/wissen/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/wissen/ruecklastschrift/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/wissen/sepa-mandat/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/wissen/vorabankuendigung/</loc><lastmod>2026-09-08</lastmod><priority>0.8</priority></url>
+  <url><loc>https://smart-einzug.de/agb/</loc><lastmod>2026-09-08</lastmod><priority>0.3</priority></url>
   <url><loc>https://smart-einzug.de/datenschutz/</loc><lastmod>2026-09-08</lastmod><priority>0.3</priority></url>
   <url><loc>https://smart-einzug.de/impressum/</loc><lastmod>2026-09-08</lastmod><priority>0.3</priority></url>
-  <url><loc>https://smart-einzug.de/kontakt/</loc><lastmod>2026-09-07</lastmod><priority>0.3</priority></url>
+  <url><loc>https://smart-einzug.de/kontakt/</loc><lastmod>2026-09-08</lastmod><priority>0.3</priority></url>
 </urlset>

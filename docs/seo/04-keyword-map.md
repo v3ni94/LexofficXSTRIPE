@@ -9,7 +9,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Unternehmen schreibt Rechnungen in Lexware Office und sucht eine Lösung, um diese per SEPA-Lastschrift einzuziehen.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** Lexware Office Lastschrift · **Varianten:** Lexware Office SEPA-Lastschrift, SEPA-Lastschrift Lexware Office, Lexware Office Lastschrift einziehen, Lexware SEPA Einzug, Lexware-Office-Rechnungen per Lastschrift einziehen  
 **Bevorzugte Zielseite:** https://smart-einzug.de/  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 **Hinweis:** Innerhalb von lexware-einzug.de bedienen Startseite und drei Keyword-Seiten dieselbe Intention mit gleichem CTA (Doorway-Muster in einer Domain); Zusammenführung nach Rankingprüfung.  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
@@ -27,7 +27,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Nutzer, der sein Programm noch "lexoffice" nennt, will wissen, wie er Rechnungen aus lexoffice per Lastschrift einzieht.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** lexoffice Lastschrift · **Varianten:** lexoffice Lastschrift einrichten, lexoffice Lastschriftverfahren, lexoffice SEPA, lexoffice SEPA Zahlungen, lexoffice Rechnungen Lastschrift  
 **Bevorzugte Zielseite:** https://lexoffice-einzug.de/  
-**Konflikt:** gleiche_intention_eine_domain · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_eine_domain · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -42,7 +42,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Unternehmen will den wiederkehrenden Lastschrifteinzug offener Lexware-Office-Rechnungen automatisieren und den Ablauf von Synchronisation bis Status verstehen.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** Lexware Office Lastschrifteinzug · **Varianten:** Lastschrifteinzug Lexware Office automatisieren, lexoffice Lastschrifteinzug, offene Rechnungen per Lastschrift einziehen, wiederkehrender Lastschrifteinzug  
 **Bevorzugte Zielseite:** https://lexware-einzug.de/lexware-office-lastschrifteinzug  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** ausbauen · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** ausbauen · **Freigabe nötig:** nein · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -54,22 +54,24 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 
 **Suchintention:** Ein Nutzer will Lexware Office über die Public API mit SmartEinzug verbinden, sucht den API-Schlüssel, den Menüpunkt oder den benötigten Tarif.  
 **Zielgruppe:** bestandsnutzer_einrichtung · **Hauptbegriff:** Lexware Office verbinden · **Varianten:** Lexware Office API-Schlüssel einrichten, Lexware Office Public API, Lexware Office Public API Tarif XL, Public API in Lexware Office nicht gefunden, Lexware-Office-Integration  
-**Bevorzugte Zielseite:** https://smart-einzug.de/integrationen/lexware-office/  
-**Konflikt:** duenn_und_doppelt · **Empfehlung:** ausbauen · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Bevorzugte Zielseite:** https://smart-einzug.de/anleitungen/lexware-office-verbinden/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/anleitung/lexware-office-api, https://lexware-einzug.de/lexware-office-api  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
-| https://smart-einzug.de/integrationen/lexware-office/ | primaer | index | Einzige Seite zur Anbindung auf der Produktdomain, aber nur 149 Wörter und 2 eingehende Links; nennt Public API, Tarif und Weg zum ersten Einzug in Kurzform. |
+| https://smart-einzug.de/integrationen/lexware-office/ | ergaenzend | index | Integrationsseite: was gelesen wird, wie oft synchronisiert wird, Voraussetzungen; die Anleitung beschreibt die Einrichtung. |
 | https://lexware-einzug.de/anleitung/lexware-office-api | konkurrent | index | Schritt-für-Schritt-Anleitung zum API-Schlüssel mit Tarifhinweis und Verbindung in SmartEinzug (258 Wörter, 5 eingehende Links); derzeit die konkretere Anleitung. |
 | https://lexware-einzug.de/lexware-office-api | konkurrent | index | Erklärt, was die Public API ist, wofür SmartEinzug sie nutzt und wie der Schlüssel geschützt wird (272 Wörter); nur 1 eingehender Link, überschneidet sich mit der Anleitung derselben Domain. |
 | https://lexoffice-einzug.de/lexoffice-public-api-xl | ergaenzend | index | Problemorientierte Seite "Warum finde ich die Public API nicht?" mit Tarifprüfung (460 Wörter); eigener Blickwinkel Fehlersuche, Begriff "lexoffice" passt zur Domainrolle. |
+| https://smart-einzug.de/anleitungen/lexware-office-verbinden/ | primaer | index | Schritt-für-Schritt-Anleitung mit den Bezeichnungen der Anwendung: API-Schlüssel erzeugen, hinterlegen, Verbindungstest, was synchronisiert wird. |
 
 ## C05_stripe_rolle_verbinden
 
 **Suchintention:** Ein Unternehmen will verstehen, warum und wie Lexware Office mit Stripe verbunden wird und welche Rolle Stripe beim Einzug übernimmt.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** Lexware Office mit Stripe verbinden · **Varianten:** lexoffice Stripe verbinden, Lexware Office Stripe, lexoffice Stripe Lastschrift, Stripe SEPA-Lastschrift Lexware Office  
 **Bevorzugte Zielseite:** https://lexware-einzug.de/lexware-office-stripe  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 **Hinweis:** Spiegelpaar lexware-einzug.de / lexoffice-einzug.de, Unterschied im Wesentlichen die Schreibweise (cluster-kritik.json).  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
@@ -81,33 +83,36 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 
 **Suchintention:** Ein Bestandsnutzer will sein Stripe-Konto Schritt für Schritt mit SmartEinzug verbinden, einschließlich Secret Key und Webhook.  
 **Zielgruppe:** bestandsnutzer_einrichtung · **Hauptbegriff:** Stripe mit SmartEinzug verbinden · **Varianten:** Stripe Secret Key SmartEinzug, Stripe Webhook einrichten SmartEinzug, Stripe Testmodus Livemodus SmartEinzug  
-**Bevorzugte Zielseite:** https://lexware-einzug.de/anleitung/stripe-verbinden  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Bevorzugte Zielseite:** https://smart-einzug.de/anleitungen/stripe-verbinden/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/anleitung/stripe-verbinden  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
-| https://lexware-einzug.de/anleitung/stripe-verbinden | primaer | index | Einzige Schritt-für-Schritt-Anleitung zur Stripe-Verbindung inklusive Webhook, Test- und Livemodus, Trennen der Verbindung (262 Wörter, 3 eingehende Links). |
+| https://lexware-einzug.de/anleitung/stripe-verbinden | konkurrent | index | Einzige Schritt-für-Schritt-Anleitung zur Stripe-Verbindung inklusive Webhook, Test- und Livemodus, Trennen der Verbindung (262 Wörter, 3 eingehende Links). |
+| https://smart-einzug.de/anleitungen/stripe-verbinden/ | primaer | index | Anleitung für das eigene Stripe-Konto einschließlich Webhook mit den sieben verarbeiteten Ereignissen und Test-/Livemodus. |
 
 ## C07_einrichtung_erster_einzug
 
 **Suchintention:** Ein neuer Nutzer will SmartEinzug von der Registrierung bis zum ersten SEPA-Einzug einrichten und wissen, welche Voraussetzungen er dafür braucht.  
 **Zielgruppe:** bestandsnutzer_einrichtung · **Hauptbegriff:** SmartEinzug einrichten Schritt für Schritt · **Varianten:** lexoffice Lastschrift einrichten Anleitung, SEPA-Lastschrift für lexoffice einrichten, erster Lastschrifteinzug, Was brauche ich für eine SEPA-Lastschrift, So funktioniert SmartEinzug  
-**Bevorzugte Zielseite:** https://smart-einzug.de/so-funktionierts/  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** ausbauen · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
-**Hinweis:** so-funktionierts und hilfe auf smart-einzug.de bedienen dieselbe Einrichtungsintention; hilfe als Bestandsnutzer-Hilfe schärfen, so-funktionierts als Einrichtungsseite ausbauen.  
+**Bevorzugte Zielseite:** https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
-| https://smart-einzug.de/so-funktionierts/ | primaer | index | Beschreibt die drei Schritte und was nach der Einrichtung passiert (276 Wörter, 14 eingehende Links); einzige Ablaufseite auf der Produktdomain, aber knapper als die Anleitung auf lexoffice-einzug.de. |
+| https://smart-einzug.de/so-funktionierts/ | ergaenzend | index | Kurzfassung des Ablaufs in drei Schritten mit Voraussetzungen; die Anleitung vertieft. |
 | https://lexoffice-einzug.de/lexoffice-lastschrift-einrichten | konkurrent | index | Ausführlichste Anleitung vom bestehenden Konto zum ersten Einzug (543 Wörter, 21 eingehende Links) mit Antworten zu fehlender IBAN und sofortigem gegenüber terminiertem Einzug; eigener Mehrwert durch Detailtiefe. |
 | https://lexoffice-einzug.de/ratgeber/was-brauche-ich-fuer-eine-sepa-lastschrift | ergaenzend | index | Checkliste der Voraussetzungen vor dem ersten Einzug (Mandat, IBAN, Gläubiger-ID, Stripe-Verbindung, 322 Wörter); Teilaspekt, nur 2 eingehende Links. |
+| https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/ | primaer | index | Vollständiger Weg vom eingerichteten Firmenaccount bis zum ersten Einzug und zur Statuskontrolle, mit Karenzzeit, Einreichfenster und Klärungsfällen. |
 
 ## C08_hilfe_faq_hub
 
 **Suchintention:** Ein Bestandsnutzer oder Interessent sucht die Hilfeübersicht oder häufige Fragen zu SmartEinzug (Marken- und Navigationssuche).  
 **Zielgruppe:** gemischt · **Hauptbegriff:** SmartEinzug Hilfe · **Varianten:** SmartEinzug FAQ, Häufige Fragen SmartEinzug, SmartEinzug Anleitung, Webhook einrichten SmartEinzug  
 **Bevorzugte Zielseite:** https://smart-einzug.de/hilfe/  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -120,7 +125,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Interessent will wissen, welche Funktionen SmartEinzug bietet.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** SmartEinzug Funktionen · **Varianten:** Funktionen SmartEinzug, SEPA-Lastschrift Software Funktionen Lexware Office  
 **Bevorzugte Zielseite:** https://smart-einzug.de/funktionen/  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -132,7 +137,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Interessent will wissen, was SmartEinzug kostet und was im Tarif UNLIMITED START enthalten ist.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** SmartEinzug Preise · **Varianten:** SmartEinzug Kosten, UNLIMITED START Preis, Kosten SEPA-Lastschrift Software Lexware Office  
 **Bevorzugte Zielseite:** https://smart-einzug.de/preise/  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -143,19 +148,21 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 
 **Suchintention:** Ein Interessent oder Kunde will wissen, wie SmartEinzug Zugangsdaten, Mandantendaten und Zahlungsvorgänge schützt.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** SmartEinzug Sicherheit · **Varianten:** SmartEinzug Datenschutz Sicherheit, Zwei-Faktor-Authentifizierung SmartEinzug, Webhook-Signaturprüfung  
-**Bevorzugte Zielseite:** https://lexware-einzug.de/sicherheit  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Bevorzugte Zielseite:** https://smart-einzug.de/sicherheit/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/sicherheit  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
-| https://lexware-einzug.de/sicherheit | primaer | index | Einzige Sicherheitsseite im Bestand: 2FA, verschlüsselte Schlüssel, Mandantentrennung, Protokoll, Webhook-Signaturprüfung (271 Wörter, 25 eingehende Links). |
+| https://lexware-einzug.de/sicherheit | konkurrent | index | Einzige Sicherheitsseite im Bestand: 2FA, verschlüsselte Schlüssel, Mandantentrennung, Protokoll, Webhook-Signaturprüfung (271 Wörter, 25 eingehende Links). |
+| https://smart-einzug.de/sicherheit/ | primaer | index | Belegbare Sicherheitsaussagen mit offen benannten Grenzen (Protokoll 90 Tage, keine Verfügbarkeitszusage, IBAN maskiert statt verschlüsselt). |
 
 ## C12_integrationen_uebersicht
 
 **Suchintention:** Ein Interessent will wissen, welche Rechnungssysteme SmartEinzug anbindet.  
 **Zielgruppe:** gemischt · **Hauptbegriff:** SmartEinzug Integrationen · **Varianten:** SmartEinzug unterstützte Rechnungssysteme, SEPA-Lastschrift Integration Buchhaltung  
 **Bevorzugte Zielseite:** https://smart-einzug.de/integrationen/  
-**Konflikt:** keine · **Empfehlung:** ausbauen · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** keine · **Empfehlung:** ausbauen · **Freigabe nötig:** nein · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -166,7 +173,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein sevdesk-Nutzer sucht eine Möglichkeit, sevdesk-Rechnungen per SEPA-Lastschrift einzuziehen, und will sich für die geplante Anbindung vormerken.  
 **Zielgruppe:** gemischt · **Hauptbegriff:** sevdesk SEPA-Lastschrift · **Varianten:** sevdesk Lastschrift, sevdesk Lastschrifteinzug, sevdesk Stripe, sevdesk SEPA-Lastschrift Vorregistrierung  
 **Bevorzugte Zielseite:** https://smart-einzug.de/integrationen/sevdesk/  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 **Hinweis:** Betreiberentscheidung 07.09.2026: eigene Leaddomain; Inhalte getrennt (Ähnlichkeit unter 10 Prozent), Rankings nach Start beobachten.  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
@@ -179,7 +186,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Nutzer will wissen, ob lexoffice und Lexware Office dasselbe sind und was sich durch die Umbenennung ändert.  
 **Zielgruppe:** bestandsnutzer_einrichtung · **Hauptbegriff:** lexoffice heißt jetzt Lexware Office · **Varianten:** lexoffice Lexware Office Umbenennung, lexoffice Lexware Office Unterschied, ist lexoffice Lexware Office  
 **Bevorzugte Zielseite:** https://lexoffice-einzug.de/lexoffice-heisst-jetzt-lexware-office  
-**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -190,7 +197,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Unternehmen will SEPA-Mandate zu seinen Lexware-Office-Kunden hinterlegen, Rechnungen zuordnen und verwalten.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** SEPA-Mandat Lexware Office · **Varianten:** lexoffice SEPA-Mandat, SEPA-Mandat verwalten Lexware Office, Mandatsverwaltung SmartEinzug, lexoffice SEPA-Mandat verwalten  
 **Bevorzugte Zielseite:** https://lexware-einzug.de/lexware-office-sepa-mandat  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** zusammenfuehren_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 **Hinweis:** Spiegelpaar lexware-einzug.de / lexoffice-einzug.de, Unterschied im Wesentlichen die Schreibweise (cluster-kritik.json).  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
@@ -202,20 +209,22 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 
 **Suchintention:** Ein Unternehmen oder Zahlungspflichtiger will verstehen, was ein SEPA-Mandat ist, welche Pflichtangaben es hat und wie Widerruf, Verfall, Mandatsreferenz und Gläubiger-ID funktionieren.  
 **Zielgruppe:** gemischt · **Hauptbegriff:** SEPA-Mandat · **Varianten:** Wie funktioniert ein SEPA-Mandat, SEPA-Mandat Pflichtangaben, SEPA-Lastschriftmandat, Mandatsreferenz, Gläubiger-Identifikationsnummer, Mandatsreferenz Gläubiger-ID Kontoauszug  
-**Bevorzugte Zielseite:** https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** neu_auf_hauptdomain · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Bevorzugte Zielseite:** https://smart-einzug.de/wissen/sepa-mandat/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
-| https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat | primaer | index | Entstehung, Bestandteile, Widerruf und Verfall des Mandats mit Bezug zu SmartEinzug (319 Wörter, 4 eingehende Links); einzige Mandats-Wissensseite auf einer Domain im Geltungsbereich. |
+| https://lexoffice-einzug.de/ratgeber/wie-funktioniert-ein-sepa-mandat | konkurrent | index | Entstehung, Bestandteile, Widerruf und Verfall des Mandats mit Bezug zu SmartEinzug (319 Wörter, 4 eingehende Links); einzige Mandats-Wissensseite auf einer Domain im Geltungsbereich. |
 | https://lexware-einzug.de/ratgeber/mandatsreferenz-glaeubiger-id | ergaenzend | index | Teilaspekt Mandatsreferenz und Gläubiger-ID mit Hinweis zum Kontoauszug des Zahlers (274 Wörter); einziger Abschnitt im Bestand, der Zahlungspflichtige indirekt anspricht (websites/lexware-einzug.de/ratgeber/mandatsrefer |
+| https://smart-einzug.de/wissen/sepa-mandat/ | primaer | index | Mandat so, wie SmartEinzug es abbildet: Basislastschrift, Mandatsreferenz automatisch, Gläubiger-ID auf dem Dokument, Papiererteilung, Widerruf, Verfall. |
 
 ## C17_mandat_einholen_bestandskunden
 
 **Suchintention:** Ein Unternehmen will von bestehenden Kunden ein SEPA-Mandat einholen und sucht Vorgehen und Anschreiben.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** SEPA-Mandat bei Bestandskunden einholen · **Varianten:** SEPA-Mandat einholen Anschreiben, SEPA-Mandat Muster Anschreiben Bestandskunden, Kunden auf Lastschrift umstellen  
 **Bevorzugte Zielseite:** https://lexoffice-einzug.de/ratgeber/sepa-mandat-einholen-bestandskunden  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -225,19 +234,21 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 
 **Suchintention:** Ein Unternehmen oder Zahlungspflichtiger will verstehen, warum eine Lastschrift zurückgegangen ist, welche Fristen und Kosten gelten und was zu tun ist.  
 **Zielgruppe:** gemischt · **Hauptbegriff:** Rücklastschrift · **Varianten:** Was passiert bei einer Rücklastschrift, Rücklastschrift Gründe Fristen, SEPA Rücklastschrift was tun, Rücklastschrift Kosten  
-**Bevorzugte Zielseite:** https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** neu_auf_hauptdomain · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Bevorzugte Zielseite:** https://smart-einzug.de/wissen/ruecklastschrift/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
-| https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift | primaer | index | Ursachen, Erkennung über Stripe und Vorgehen danach mit Produktbezug (374 Wörter, 3 eingehende Links); einzige Rücklastschriftseite auf einer Domain im Geltungsbereich. |
+| https://lexoffice-einzug.de/ratgeber/was-passiert-bei-einer-ruecklastschrift | konkurrent | index | Ursachen, Erkennung über Stripe und Vorgehen danach mit Produktbezug (374 Wörter, 3 eingehende Links); einzige Rücklastschriftseite auf einer Domain im Geltungsbereich. |
+| https://smart-einzug.de/wissen/ruecklastschrift/ | primaer | index | Rücklastschrift und Erstattung bei Einzug über Stripe: Erkennung nur per Webhook, kein Neuversuch, Klärungsbedarf, Grenzen der Software. |
 
 ## C19_ablauf_fristen_zahlungsstatus
 
 **Suchintention:** Ein Unternehmen will wissen, wie lange eine SEPA-Lastschrift dauert, welche Fristen und Vorlaufzeiten gelten und wann sie als bezahlt gilt.  
 **Zielgruppe:** gemischt · **Hauptbegriff:** SEPA-Lastschrift Fristen · **Varianten:** SEPA-Lastschrift Vorlaufzeit, Ablauf SEPA-Lastschrift, Wie lange dauert eine Lastschrift, Lastschrift nicht sofort bezahlt, Lastschrift Status in Bearbeitung, SEPA-Lastschrift Bankarbeitstage  
 **Bevorzugte Zielseite:** https://lexware-einzug.de/ratgeber/sepa-lastschrift-fristen-vorlaufzeiten  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -248,19 +259,21 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 
 **Suchintention:** Ein Unternehmen will wissen, was die Vorabankündigung einer SEPA-Lastschrift ist und welche Frist üblich ist.  
 **Zielgruppe:** gemischt · **Hauptbegriff:** Vorabankündigung SEPA-Lastschrift · **Varianten:** Pre-Notification SEPA, Vorabankündigung Frist 14 Tage, Vorabinformation Lastschrift  
-**Bevorzugte Zielseite:** https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Bevorzugte Zielseite:** https://smart-einzug.de/wissen/vorabankuendigung/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
-| https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift | primaer | index | Einzige eigene Seite zur Vorabankündigung mit Standardfrist und Unterstützung durch SmartEinzug, aber nur 241 Wörter (dünnster Ratgeberartikel des Bestands), 3 eingehende Links. |
+| https://lexware-einzug.de/ratgeber/vorabankuendigung-sepa-lastschrift | konkurrent | index | Einzige eigene Seite zur Vorabankündigung mit Standardfrist und Unterstützung durch SmartEinzug, aber nur 241 Wörter (dünnster Ratgeberartikel des Bestands), 3 eingehende Links. |
+| https://smart-einzug.de/wissen/vorabankuendigung/ | primaer | index | Vorabankündigung als optionale Firmeneinstellung mit Frist, Versandinhalt, Sperre von Sofort-Einzügen; Grenzen offen benannt. |
 
 ## C21_lastschrift_oder_ueberweisung
 
 **Suchintention:** Ein Unternehmen prüft, ob sich SEPA-Lastschrift für den eigenen Betrieb lohnt oder ob die Überweisung sinnvoller bleibt.  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** Lastschrift oder Überweisung · **Varianten:** Für wen sich SEPA-Lastschrift lohnt, Lastschrift Vorteile Nachteile Unternehmen, lexoffice Lastschrift oder Überweisung  
 **Bevorzugte Zielseite:** https://lexoffice-einzug.de/ratgeber/lexoffice-lastschrift-oder-ueberweisung  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -271,7 +284,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Bestandsnutzer will eingezogene Stripe-Lastschriften, Sammelauszahlungen, Gebühren und Rücklastschriften in Lexware Office verbuchen.  
 **Zielgruppe:** bestandsnutzer_einrichtung · **Hauptbegriff:** Lastschrift in Lexware Office verbuchen · **Varianten:** Stripe Auszahlung Lexware Office buchen, Sammelauszahlung Stripe verbuchen, Stripe Gebühren Lexware Office  
 **Bevorzugte Zielseite:** https://lexware-einzug.de/ratgeber/sepa-lastschrift-buchen-lexware-office  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -282,7 +295,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Bestandsnutzer will verstehen, wie SmartEinzug Kunden und Rechnungen aus Lexware Office erkennt, dedupliziert und zuordnet.  
 **Zielgruppe:** bestandsnutzer_einrichtung · **Hauptbegriff:** Kunden und Rechnungen zuordnen SmartEinzug · **Varianten:** Laufkunden-Sammelnummer, Kundennummer Lexware-ID Zuordnung, Deduplizierung Kunden Lexware Office  
 **Bevorzugte Zielseite:** https://lexoffice-einzug.de/ratgeber/kunden-und-rechnungen-richtig-zuordnen  
-**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** falsche_domain_fuer_dauerinhalt · **Empfehlung:** verlagern_pruefen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -292,20 +305,23 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 
 **Suchintention:** Ein Leser sucht eine Übersicht von Ratgeberartikeln zur SEPA-Lastschrift (Navigations- und Einstiegsseite).  
 **Zielgruppe:** gemischt · **Hauptbegriff:** Ratgeber SEPA-Lastschrift · **Varianten:** SEPA-Lastschrift einfach erklärt, lexoffice Lastschrift Ratgeber, Ratgeber Lexware Office SEPA  
-**Bevorzugte Zielseite:** https://lexware-einzug.de/ratgeber/  
-**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** neu_auf_hauptdomain · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Bevorzugte Zielseite:** https://smart-einzug.de/wissen/  
+**Konflikt:** gleiche_intention_zwei_domains · **Empfehlung:** weiterleiten_pruefen · **Freigabe nötig:** ja · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
+**Hinweis:** Neue Primärseite auf der Hauptdomain; die gleichartigen Seiten der Leaddomains bleiben bis zur Rankingprüfung bestehen und werden danach per 301 auf die Hauptdomain geleitet (M4 Gruppe B). Konkurrenten: https://lexoffice-einzug.de/ratgeber/, https://lexware-einzug.de/ratgeber/  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
 | https://lexoffice-einzug.de/ratgeber/ | konkurrent | index | Übersicht der sieben Ratgeberartikel für ehemalige lexoffice-Nutzer (439 Wörter, 21 eingehende Links); Nutzen als Hub der eigenen Domain. |
-| https://lexware-einzug.de/ratgeber/ | primaer | index | Übersicht der vier Artikel mit Einordnung der SEPA-Basislastschrift im Unternehmenseinsatz (427 Wörter, 25 eingehende Links); Nutzen als Hub der eigenen Domain. |
+| https://lexware-einzug.de/ratgeber/ | konkurrent | index | Übersicht der vier Artikel mit Einordnung der SEPA-Basislastschrift im Unternehmenseinsatz (427 Wörter, 25 eingehende Links); Nutzen als Hub der eigenen Domain. |
+| https://smart-einzug.de/wissen/ | primaer | index | Übersicht der Wissensseiten der Hauptdomain; die Anleitungsübersicht ergänzt sie. |
+| https://smart-einzug.de/anleitungen/ | ergaenzend | index | Übersicht der Anleitungen (Einrichtung), getrennt von den Wissensseiten (Verfahren). |
 
 ## C27_vergleich_wettbewerber
 
 **Suchintention:** Ein Interessent vergleicht SmartEinzug mit anderen Lastschriftanbietern (SEPA-Held, GoCardless).  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** SmartEinzug Vergleich · **Varianten:** SEPA-Held Alternative, GoCardless Alternative Lexware Office, Lastschrift Anbieter Vergleich  
 **Bevorzugte Zielseite:** keine (kein organisches Ziel)  
-**Konflikt:** keine · **Empfehlung:** ausbauen · **Freigabe nötig:** ja · **Prüftermin:** 08.12.2026  
+**Konflikt:** keine · **Empfehlung:** ausbauen · **Freigabe nötig:** ja · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -316,7 +332,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Kunde oder Interessent will SmartEinzug kontaktieren (Navigationssuche).  
 **Zielgruppe:** gemischt · **Hauptbegriff:** SmartEinzug Kontakt · **Varianten:** SmartEinzug Support, SmartEinzug E-Mail  
 **Bevorzugte Zielseite:** https://smart-einzug.de/kontakt/  
-**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -327,7 +343,7 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Keine eigene Suchintention: Rechtsseiten (Impressum, Datenschutz, AGB) und Fehlerseiten, die je Domain vorhanden sein müssen.  
 **Zielgruppe:** gemischt · **Hauptbegriff:** SmartEinzug Impressum · **Varianten:** SmartEinzug AGB, SmartEinzug Datenschutz, Impressum lastschrift-einfach.de  
 **Bevorzugte Zielseite:** keine (kein organisches Ziel)  
-**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Status:** in_bereinigung_phase_2 · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
@@ -355,13 +371,13 @@ Rollen: **primaer** (bevorzugte organische Zielseite), **ergaenzend** (eigener M
 **Suchintention:** Ein Unternehmen, das Rechnungen in sevdesk schreibt, will das SEPA-Lastschriftverfahren verstehen und den Einzug vorbereiten (Mandat, Gläubiger-ID, Vorabankündigung, Rücklastschrift).  
 **Zielgruppe:** unternehmen_einziehen · **Hauptbegriff:** sevdesk SEPA Lastschrift · **Varianten:** sevdesk Lastschriftmandat, sevdesk Gläubiger-ID, sevdesk Vorabankündigung, sevdesk Rücklastschrift  
 **Bevorzugte Zielseite:** https://sevdesk-sepa.de/  
-**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Prüftermin:** 08.12.2026  
+**Konflikt:** keine · **Empfehlung:** behalten · **Freigabe nötig:** nein · **Status:** technische_pruefung · **Prüftermin:** 08.12.2026  
 
 | URL | Rolle | Index | Eigenständiger Mehrwert |
 |---|---|---|---|
 | https://sevdesk-sepa.de/ | primaer | index | Verfahren, Mandat, Gläubiger-ID, Vorabankündigung, Rücklastschrift, Checkliste aus Sicht eines sevdesk-Nutzers; keine Produktbeschreibung. |
 
-## Lücken auf der Hauptdomain (aus der Clusteranalyse)
+## Lücken auf der Hauptdomain (Stand der Clusteranalyse vom 07.09.2026, vor Phase 3b)
 
 - **Lexware Office verbinden (API-Schlüssel, Public API, Tarif)** (C04_lexware_office_verbinden_api): teilweise vorhanden, dünn: smart-einzug.de/integrationen/lexware-office/ mit 149 Wörtern und 2 eingehenden Links; keine Schritt-für-Schritt-Anleitung
 - **Erster Lastschrifteinzug (Einrichtung bis zum ersten Einzug, Voraussetzungen)** (C07_einrichtung_erster_einzug): teilweise vorhanden: smart-einzug.de/so-funktionierts/ (276 Wörter) und Schnellstart in smart-einzug.de/hilfe/ (405 Wörter); keine ausführliche Anleitung mit Voraussetzungsliste
