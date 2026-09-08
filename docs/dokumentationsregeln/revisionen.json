@@ -5,9 +5,9 @@
     "summary": "Kennzahlen mit frei wählbarem Zeitraum (4.43)."
   },
   "entwickler": {
-    "revision": "r12",
-    "date": "08.09.2026",
-    "summary": "Vorabankündigung als Vorlage mail_tpl_prenotification(), Musterversand (4.44)."
+    "revision": "r13",
+    "date": "09.09.2026",
+    "summary": "Betrieb: Vorfall Re-run alter Läufe (Downgrade 4.44 auf 4.38) und Downgrade-Schutz in deploy.sh (4.45)."
   },
   "kunden": {
     "revision": "r4",

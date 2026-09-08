@@ -93,6 +93,9 @@ make_release() {
     printf '%s\n2026-01-01T00:00:00Z\n42\n' "$sha" > "$sandbox/releases/$sha/.release-complete"
     printf '#!/usr/bin/env bash\nexit 0\n' > "$rel/scripts/rollback.sh"
     chmod +x "$rel/scripts/rollback.sh"
+    # Downgrade-Schutz wie im echten Release (deploy.sh laedt die Bibliothek aus dem Release).
+    install -d -m 750 "$rel/scripts/lib"
+    cp "$(dirname "$DEPLOY_SH_SRC")/lib/release-version.sh" "$rel/scripts/lib/release-version.sh"
     cp "$DEPLOY_SH_SRC" "$rel/scripts/deploy.sh"
     patch_base "$rel/scripts/deploy.sh" "$sandbox"
     cp "$RUNNER_SRC" "$rel/scripts/deploy-runner.sh"

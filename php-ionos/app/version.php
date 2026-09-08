@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.44';
+const APP_VERSION = '4.45';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.45', 'date' => '09.09.2026', 'title' => 'Deployment: Schutz gegen Downgrade durch erneut gestartete alte Läufe',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Am 08.09.2026 wurden ältere, einst fehlgeschlagene GitHub-Läufe erneut gestartet; jeder Re-run deployt den Commit seines Laufs, sodass Produktion mit grünen Läufen von 4.44 auf 4.38 zurückfiel. Die Datenbank blieb unverändert. Dieses Release rollt den aktuellen Stand wieder aus.'],
+            ['type' => 'Neu', 'text' => 'deploy.sh vergleicht die Version des neuen Release mit der des aktiven und weist eine kleinere Version vor dem ersten Eingriff ab (Hinweis auf die Ursache; bewusster Rücksprung nur über rollback.sh oder mit SMARTEINZUG_ALLOW_DOWNGRADE=1). Gleiche oder höhere Version bleibt erlaubt. Prüfung: tools/release-version-check.sh.'],
+         ]],
         ['version' => '4.44', 'date' => '08.09.2026', 'title' => 'Vorabankündigung als eigene Mailvorlage, Musterversand für Betreiber',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Die Vorabankündigung der SEPA-Lastschrift ist jetzt eine eigene Vorlage in app/mailer.php (mail_tpl_prenotification) mit unverändertem Inhalt: Rechnung, Betrag, Einzugstermin, Zahlungsempfänger, Mandatsreferenz, Gläubiger-Identifikationsnummer, Hinweis auf Stripe und Kontodeckung. Der Einzugsprozess nutzt diese Vorlage; tools/mail-ci-check.php prüft sie.'],

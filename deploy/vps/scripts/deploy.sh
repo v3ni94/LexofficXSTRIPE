@@ -114,6 +114,37 @@ if [[ ! -f "$DEPLOY_DIR/.env" ]]; then
     exit 1
 fi
 
+# Downgrade-Schutz (Vorfall 08.09.2026): Ein "Re-run" eines alten GitHub-Laufs deployt dessen alten Commit und
+# setzte Produktion so von 4.44 auf 4.38 zurueck, mit gruenen Laeufen. Ein Release mit kleinerer APP_VERSION als
+# das aktive wird deshalb abgewiesen; gleiche oder hoehere Version ist erlaubt. Bewusster Ruecksprung: rollback.sh
+# oder SMARTEINZUG_ALLOW_DOWNGRADE=1 im Handbetrieb. Logik und Tests: scripts/lib/release-version.sh,
+# tools/release-version-check.sh.
+RELEASE_VERSION_LIB="$RELEASE_DIR/deploy/vps/scripts/lib/release-version.sh"
+if [[ ! -f "$RELEASE_VERSION_LIB" ]]; then
+    echo "::warning:: $RELEASE_VERSION_LIB fehlt im Release, kein Downgrade-Schutz fuer diesen Lauf."
+elif [[ -L "$CURRENT_LINK" ]]; then
+    # shellcheck source=lib/release-version.sh
+    source "$RELEASE_DIR/deploy/vps/scripts/lib/release-version.sh"
+    AKTIV_DIR="$(readlink -f "$CURRENT_LINK" || true)"
+    set +e
+    DOWNGRADE_MSG="$(release_downgrade_check "$RELEASE_DIR" "${AKTIV_DIR:-}")"
+    DOWNGRADE_RC=$?
+    set -e
+    if [[ "$DOWNGRADE_RC" -eq 1 ]]; then
+        if [[ "${SMARTEINZUG_ALLOW_DOWNGRADE:-0}" == "1" ]]; then
+            echo "::warning:: $DOWNGRADE_MSG Downgrade ausdruecklich erlaubt (SMARTEINZUG_ALLOW_DOWNGRADE=1)."
+        else
+            echo "::error:: $DOWNGRADE_MSG Kein Deployment: Das waere ein Downgrade."
+            echo "::error:: Ursache ist meist ein erneut gestarteter ALTER GitHub-Lauf (Re-run deployt dessen alten Commit)."
+            echo "::error:: Aktuellen Stand ausrollen: Workflow 'Run workflow' auf dem Branch oder neuer Push. Bewusster"
+            echo "::error:: Ruecksprung: rollback.sh, oder SMARTEINZUG_ALLOW_DOWNGRADE=1 im Handbetrieb."
+            exit 1
+        fi
+    else
+        echo "Versionspruefung: $DOWNGRADE_MSG"
+    fi
+fi
+
 # Einen Wert aus deploy/.env lesen, OHNE die Datei auszufuehren (kein "source": Geheimnisse gelangen
 # so nicht in die Umgebung dieses Skripts und seiner Kindprozesse; docker compose liest die Datei
 # selbst ueber --env-file).

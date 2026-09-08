@@ -752,6 +752,28 @@ Erfolg, obwohl nichts ausgeliefert wurde. Seit Version 4.17 gilt:
 - Fehlgeschlagene Statusabfragen werden gemeldet (erste und jede sechste) statt verschwiegen, damit eine
   Zugangsstörung nicht wie ein hängendes Deployment aussieht.
 
+## Kein Downgrade durch erneut gestartete alte Läufe
+
+**Vorfall (08.09.2026, 21:05 bis 21:37 UTC):** Nach dem grünen Deployment von 4.44 wurden in GitHub die früher
+fehlgeschlagenen Läufe #73 bis #79 über „Re-run“ erneut gestartet. Ein Re-run deployt immer den Commit SEINES
+Laufs, nicht den aktuellen Stand des Branches. Die Läufe waren fachlich korrekt und grün, setzten Produktion
+aber Schritt für Schritt auf 4.43, 4.39 und zuletzt 4.38 zurück (`.release_history`), und die Bereinigung
+„behalte die letzten 5“ löschte das Release 4.44 vom Server. Aufgefallen ist es erst, weil
+`restart-workers.sh` den seit 4.41 vorhandenen sevdesk-Worker nicht kannte und die Release-Kennung von 4.38
+nannte. Die Datenbank war nicht betroffen (Migrationen 028 bis 030 blieben eingespielt, sie sind additiv).
+
+**Regel:** Alte Läufe nie erneut starten. Zum Ausrollen des aktuellen Standes immer „Run workflow“ auf dem
+Branch oder ein neuer Push. Ein bewusster Rücksprung läuft über `rollback.sh`.
+
+**Schutz seit 4.45:** `deploy.sh` vergleicht vor jedem Schritt die `APP_VERSION` des neuen Release
+(`app/version.php`) mit der des aktiven Release (Ziel von `releases/current`) über
+`scripts/lib/release-version.sh`. Kleinere Version: Abbruch mit Exit 1 vor der Übernahme des Deploy-Ordners
+und vor dem ersten Compose-Aufruf, mit Hinweis auf Re-run als Ursache. Gleiche oder größere Version: erlaubt
+(erneutes Ausrollen desselben Standes bleibt möglich). Ist eine der beiden Versionen nicht lesbar
+(Erstinstallation, Altrelease), wird das gemeldet und nicht blockiert. Handbetrieb mit bewusstem Downgrade:
+`SMARTEINZUG_ALLOW_DOWNGRADE=1`. Test: `bash tools/release-version-check.sh`; `tools/deploy-runner-check.sh`
+läuft mit der Bibliothek im Sandbox-Release.
+
 ## Kennzahlen im Adminbereich und ihre Aufschlüsselung
 
 Die fünf Kennzahlen der Übersicht (System, Übersicht) sind verlinkt und führen jeweils auf die Liste, aus
