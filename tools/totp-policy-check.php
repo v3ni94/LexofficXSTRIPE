@@ -69,6 +69,7 @@ echo "3) Entfallen (Zweig ohne require_recent_totp, Audit bleibt)\n";
 $entfallen = [
     ['admin-system.php', 'publish_now', 'Statusdaten uebertragen', 'audit_log('],
     ['admin-system.php', 'test_mail', 'Testnachricht', 'audit_log('],
+    ['admin-system.php', 'test_prenotification', 'Muster der Vorabankuendigung an eigene Adresse', 'audit_log('],
     ['admin-system.php', 'sync_enqueue', 'Synchronisation einreihen', 'audit_log('],
     ['admin-system.php', 'org_queue_flag_on', 'Warteschlangen-Flag je Firma', 'tenant_feature_set('],
     ['admin.php', 'plan_update', 'Tarif bearbeiten', 'audit_log('],
@@ -89,7 +90,7 @@ foreach (['admin-system.php', 'admin.php', 'admin-legal.php', 'admin-support.php
 }
 
 echo "4) Formulare: Codefeld nur, wo der Code verlangt wird\n";
-foreach ([['admin-system.php', 'test_mail'], ['admin-system.php', 'publish_now'], ['admin-system.php', 'sync_enqueue'], ['admin-system.php', 'org_sync_resume'],
+foreach ([['admin-system.php', 'test_mail'], ['admin-system.php', 'test_prenotification'], ['admin-system.php', 'publish_now'], ['admin-system.php', 'sync_enqueue'], ['admin-system.php', 'org_sync_resume'],
           ['admin.php', 'plan_update'], ['admin.php', 'org_plan'], ['admin.php', 'interest_delete'], ['admin-legal.php', 'import_draft'], ['admin-legal.php', 'create']] as [$f, $a]) {
     $fs = $forms($src($f), $a);
     $ok("$f Formular $a ohne Codefeld", $fs !== [] && !array_filter($fs, static fn(string $x): bool => str_contains($x, 'name="code"')));

@@ -83,7 +83,7 @@ Geldfluss-Jobtypen) und wird bei jeder neuen Aktion dort ergänzt.
 | Geldfluss | `process_due_now` (`collections.php`), `apply` (`stripe-import.php`), Jobaktionen `job_retry_now`/`job_cancel`/`job_close`/`job_release` für `collections_due` und `unclear_attempts` (`QUEUE_MONEY_TYPES`, `queue_type_is_money()`) | ja; dieselben Jobaktionen für `sync_run`, `mail`, `alerts`, `mandate_reminders`, `monitor_collect`, `maintenance` nein |
 | Kontosicherheit | `change_password` (`security.php`), `transfer_ownership` (`team.php`, zusätzlich Passwort), `switch_invoice_source` (`settings.php`, Projektregel) | ja |
 | Rechtsdokumente | `publish`/`retire` (`admin-legal.php`, Außenwirkung für alle Firmen) | ja; `import_draft`, `create`, `delete` (nur unveröffentlichte Fassungen) nein |
-| Entfallen seit 4.36 | `plan_update`, `org_plan`, `interest_unsubscribe`/`interest_delete`/`interest_block`/`interest_invite` (`admin.php`); `publish_now`, `test_mail`, `sync_enqueue`, `org_queue_flag_on`/`off` (`admin-system.php`) | nein (Audit unverändert; endgültiges Löschen einer Vormerkung mit Bestätigungsdialog) |
+| Entfallen seit 4.36 | `plan_update`, `org_plan`, `interest_unsubscribe`/`interest_delete`/`interest_block`/`interest_invite` (`admin.php`); `publish_now`, `test_mail`, `test_prenotification` (Muster nur an die eigene Adresse, seit 4.44), `sync_enqueue`, `org_queue_flag_on`/`off` (`admin-system.php`) | nein (Audit unverändert; endgültiges Löschen einer Vormerkung mit Bestätigungsdialog) |
 
 Bewusst offen gelassen (Empfehlung „behalten“, vom Vorstand nicht ausdrücklich genannt): `change_password` und
 `transfer_ownership` als Kontosicherheit, `switch_invoice_source` wegen der Projektregel in `CLAUDE.md`. Wer eine dieser

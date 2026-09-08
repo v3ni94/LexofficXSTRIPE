@@ -91,6 +91,8 @@ Alle in `app/mailer.php`, sofern nicht anders vermerkt:
 | `mail_tpl_interest_confirm()` | 522 | Double-Opt-in-Bestätigung einer Integrations-Vormerkung (sevdesk) |
 | `mail_tpl_interest_confirmed()` | 544 | Bestätigte Vormerkung: nächste Schritte, Abmeldelink |
 | `mail_tpl_welcome()` | 562 | Willkommensmail nach Registrierung, mit oder ohne Bestätigungslink |
+| `mail_tpl_prenotification()` | vor `mail_tpl_recovery_codes_regenerated()` | Vorabankündigung SEPA-Lastschrift an den Kunden der Firma (Rechnung, Betrag, Einzugstermin, Zahlungsempfänger, Mandatsreferenz, Gläubiger-ID, Hinweis auf Stripe und Kontodeckung); einzige Quelle, seit 4.44 auch vom Musterversand genutzt |
+| `mail_prenotification_sample()` | direkt danach | Musterdaten (Rechnung RE-MUSTER-0001, Mandat MUSTER-MANDAT-0001, 1.234,56 EUR, Termin heute plus 14 Tage) für den Musterversand; Firmenname und Gläubiger-ID aus der übergebenen Firma |
 | `mail_tpl_security()` | 587 | Generische Sicherheitsbenachrichtigung (Basis für mehrere Spezialfälle) |
 | `mail_tpl_recovery_codes_regenerated()` | 608 | Wiederherstellungscodes wurden neu erzeugt |
 | `mail_tpl_2fa_reset()` | 620 | Zwei-Faktor-Authentifizierung wurde zurückgesetzt (durch Nutzer oder Admin) |
@@ -101,11 +103,20 @@ Alle in `app/mailer.php`, sofern nicht anders vermerkt:
 
 Nicht als eigene `mail_tpl_*`-Funktion, aber ebenfalls über `mail_layout()` gebaut: Alarm-E-Mail
 (`app/alerts.php:213`), Mandatsanforderung/-erinnerung (`app/mandate_requests.php:99`),
-Vorabankündigung (`app/collections.php:1196`), Support-Ticket-Benachrichtigungen
+Support-Ticket-Benachrichtigungen
 (`app/support_tickets.php:190, 205`), Störungs-/Entwarnungsmail (`app/monitor.php:1481`),
 Testversand aus dem Adminbereich und `bin/mail-check.php --send` (`admin-system.php:88`,
 `bin/mail-check.php:57`), jeweils direkter Aufruf von `mail_layout()` statt einer eigenen
-`mail_tpl_*`-Funktion.
+`mail_tpl_*`-Funktion. Die Vorabankündigung war bis 4.43 ebenfalls ein direkter `mail_layout()`-Aufruf in
+`app/collections.php` und ist seit 4.44 die Vorlage `mail_tpl_prenotification()` (Inhalt unverändert).
+
+Musterversand der Vorabankündigung (seit 4.44): Aktion `test_prenotification` in `admin-system.php` sendet die Vorlage mit
+`mail_prenotification_sample()` (Firmenname und Gläubiger-ID der Firma des Administrators, sonst „Muster GmbH“) mit dem
+Betreffvorsatz „MUSTER“ ausschließlich an die E-Mail-Adresse des angemeldeten Administrators (`$ctx['email']`, kein
+Adressfeld im Formular, kein Kunde, kein Eintrag in `payment_collections`); Recht `monitoring.edit`, CSRF, Audit
+`monitor_test_prenotification`, keine Zweitbestätigung (Diagnose ohne Geldwirkung). CLI: `bin/mail-check.php
+--vorabankuendigung --send=ADRESSE` (Direktversand über `mail_send_direct()`), `--html=DATEI` schreibt die HTML-Fassung als
+Vorschau ohne Versand und ohne `mail.enabled`.
 
 ## Zuordnung Ereignis → Auslöser → Empfänger → Vorlage → Versandprozess → Fehlerbehandlung
 
@@ -128,7 +139,7 @@ Testversand aus dem Adminbereich und `bin/mail-check.php --send` (`admin-system.
 | Vormerkung bestätigt | `vormerken.php` (Token A) → `interest_confirm()` | Interessent | `mail_tpl_interest_confirmed()` | `mail_send()` (Aufrufstelle `app/interest.php:341` ff., konkreter Sendeaufruf im weiteren Funktionsverlauf) | Double-Opt-in ausschließlich per Button, nicht per GET (Kommentar Zeile 10-11) |
 | Support-Ticket erstellt/ergänzt | `hilfe.php` → `ticket_notify_support()` (`app/support_tickets.php:177`) | Support-Adresse (`ticket_support_address()`) | `mail_layout('Neue Support-Anfrage', ...)` bzw. „Ergänzung ..." | `mail_send()` (Zeile 191) | kein Versand, wenn keine Support-Adresse konfiguriert (Zeile 181) |
 | Support-Ticket beantwortet/geschlossen | `admin-support.php` → `ticket_notify_customer()` (`app/support_tickets.php:194`) | anfragender Nutzer | `mail_layout('Antwort auf Ihre Support-Anfrage', ...)` | `mail_send()` (Zeile 206) | - |
-| Vorabankündigung SEPA-Lastschrift | `app/collections.php:1183` `_send_prenotification()`, aus dem Einzugsprozess | Kunde der Firma | `mail_layout('Vorabankündigung SEPA-Lastschrift', ...)` (Zeile 1196) | `mail_send()` (Zeile 1197) | nur wenn `organizations.send_pre_notification` gesetzt UND Kunde eine E-Mail-Adresse hat (Zeile 1186); kein Pending-Mechanismus |
+| Vorabankündigung SEPA-Lastschrift | `app/collections.php:1183` `_send_prenotification()`, aus dem Einzugsprozess | Kunde der Firma | `mail_tpl_prenotification()` (seit 4.44, vorher direkter `mail_layout()`-Aufruf) | `mail_send()` (Zeile 1197) | nur wenn `organizations.send_pre_notification` gesetzt UND Kunde eine E-Mail-Adresse hat (Zeile 1186); kein Pending-Mechanismus |
 | Digitale Mandatsanforderung/-erinnerung | `customer.php` bzw. Job `mandate_reminders` → `_mandate_request_mail()` (`app/mandate_requests.php:81`) | Kunde | `mail_layout('SEPA-Lastschriftmandat für ... bestätigen', ...)` bzw. mit Präfix „Erinnerung:" | `mail_send()` (Zeile 100) | Feature-Flag `features.mandate_request` muss aktiv sein (siehe `docs/entwickler/jobs.md`) |
 | Alarmierung (Stufe „hoch") | Job `alerts` → `alerts_cron_notify()` (`app/alerts.php:190-220`) | Inhaber der Firma | `mail_layout('Hinweise zu Ihrem Firmenaccount', ...)` (Zeile 213) | `mail_send()` (Zeile 214) | höchstens einmal je Kalendertag und Firma (`platform_setting`-Marke, Zeile 190) |
 | Einzugskontingent-Warnung | `plan_quota_warning_maybe_send()` (`app/plans.php:290-345`), aufgerufen im Einzugsprozess | Inhaber der Firma | **kein** `mail_tpl_*`/`mail_layout()`, reiner Text (Zeilen 320-335) | `mail_send()` ohne HTML-Parameter (Zeile 341) | höchstens einmal je Abrechnungsperiode (`organizations.quota_warning_period_start`, Zeilen 300-312); siehe Offene Prüfpunkte |
@@ -160,7 +171,11 @@ Bestätigungsvorgang ohne E-Mail (projektweite Regel, CLAUDE.md).
   SMTP-Passwort gesetzt ist (maskiert, nie im Klartext, `bin/mail-check.php:26, 34`), sowie ob die
   Warteschlange oder der direkte Versand greift (Zeile 35). Warnt bei ungültiger `reply_to`- oder
   `from_address`-Adresse (Zeilen 37-44). Mit `--send` wird eine echte Testmail im CI direkt über
-  `mail_send_direct()` versendet (ohne Warteschlange, Zeile 62), Exit-Code 0 bei Erfolg.
+  `mail_send_direct()` versendet (ohne Warteschlange, Zeile 62), Exit-Code 0 bei Erfolg. Mit
+  `--vorabankuendigung --send=ADRESSE` geht statt der Testnachricht das Muster der Vorabankündigung
+  (Betreff „MUSTER Vorabankündigung SEPA-Lastschrift RE-MUSTER-0001“) an die Adresse;
+  `--vorabankuendigung --html=DATEI` schreibt nur die HTML-Vorschau (kein Versand, läuft auch ohne
+  `mail.enabled`).
 - **`mail.log`** (nur bei Transport `log`): vollständige Kopie jeder „gesendeten" Nachricht inkl.
   Header und Body (`app/mailer.php:206-221`), nur für Test-/Entwicklungsumgebungen gedacht, keine
   echte Zustellung.

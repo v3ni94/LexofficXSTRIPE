@@ -40,6 +40,24 @@ $w0 = mail_tpl_welcome('Muster GmbH', null);
 (!str_contains($w0['html'], 'verify-email') && str_contains($w0['text'], 'gilt als bestätigt') && str_contains($w0['html'], 'login.php')) ? $ok('Willkommensmail ohne Bestaetigungslink (Adresse gilt als bestaetigt)') : $bad('Willkommensmail ohne Link');
 $c2 = mail_tpl_interest_confirm('sevdesk', 'https://app.example.test/vormerken.php?token=a', 'https://app.example.test/vormerken.php?abmelden=b', '07.09.2026', 'smart-einzug.de');
 (str_contains($c2['text'], 'Ihre Eintragung vom 07.09.2026 über smart-einzug.de') && str_contains($c2['text'], 'müssen Sie nichts tun')) ? $ok('Nachgesendete Bestaetigungsmail nennt Datum und Herkunft') : $bad('Nachsendung ohne Datum');
-foreach ([$w, $c, $d, $w0, $c2] as $tpl) { str_contains($tpl['html'], 'HRB 104291') ? $ok('Pflichtangaben in Vorlage: ' . $tpl['subject']) : $bad('Pflichtangaben fehlen: ' . $tpl['subject']); }
+echo "3) Vorabankuendigung (mail_tpl_prenotification, Musterdaten)\n";
+$pn = mail_tpl_prenotification(['name' => 'Muster GmbH', 'creditor_identifier' => 'DE98ZZZ09999999999'], ['voucher_number' => 'RE-2026-0042'], ['mandate_reference' => 'MG-000042'], 123456, '2026-09-22');
+($pn['subject'] === 'Vorabankündigung SEPA-Lastschrift RE-2026-0042') ? $ok('Betreff mit Rechnungsnummer') : $bad('Betreff: ' . $pn['subject']);
+foreach (['Rechnung RE-2026-0042 über 1.234,56 EUR, Fälligkeit/Einzug am 22.09.2026.', 'Zahlungsempfänger: Muster GmbH.', 'Mandatsreferenz: MG-000042.', 'Gläubiger-Identifikationsnummer: DE98ZZZ09999999999.', 'Zahlungsdienstleister Stripe', 'ausreichende Kontodeckung'] as $sTxt) {
+    (str_contains($pn['text'], $sTxt) && str_contains($pn['html'], htmlspecialchars($sTxt, ENT_QUOTES, 'UTF-8'))) ? $ok("Pflichtinhalt: $sTxt") : $bad("Pflichtinhalt fehlt: $sTxt");
+}
+$pn0 = mail_tpl_prenotification(['name' => 'Muster GmbH', 'creditor_identifier' => ''], ['voucher_number' => 'RE-1'], ['mandate_reference' => 'M-1'], 100, '2026-09-22');
+(!str_contains($pn0['text'], 'Gläubiger-Identifikationsnummer')) ? $ok('ohne Gläubiger-ID kein leerer Satz') : $bad('Gläubiger-ID leer ausgegeben');
+$smp = mail_prenotification_sample(['name' => 'Firma X', 'creditor_identifier' => '']);
+($smp['org']['name'] === 'Firma X' && $smp['invoice']['voucher_number'] === 'RE-MUSTER-0001' && $smp['mandate']['mandate_reference'] === 'MUSTER-MANDAT-0001' && $smp['amount_cents'] === 123456 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $smp['due_date']) === 1) ? $ok('Musterdaten: Firma uebernommen, Rechnung und Mandat als Muster gekennzeichnet') : $bad('Musterdaten');
+$pnS = mail_tpl_prenotification($smp['org'], $smp['invoice'], $smp['mandate'], $smp['amount_cents'], $smp['due_date'], 'Musterversand ohne echten Einzug.');
+str_contains($pnS['text'], 'Musterversand ohne echten Einzug. Firma X') ? $ok('Musterhinweis in der Fussnote') : $bad('Musterhinweis fehlt');
+$coll = file_get_contents($root . '/php-ionos/app/collections.php');
+(str_contains($coll, 'mail_tpl_prenotification($org, $invoice, $mandate, $amountCents, $dueDate)') && !str_contains($coll, "mail_layout('Vorabankündigung")) ? $ok('_send_prenotification() nutzt die zentrale Vorlage') : $bad('collections.php baut die Vorlage noch selbst');
+$mc = file_get_contents($root . '/php-ionos/bin/mail-check.php');
+(str_contains($mc, "isset(\$opts['vorabankuendigung'])") && str_contains($mc, 'mail_prenotification_sample(') && str_contains($mc, "'MUSTER ' . \$tpl['subject']")) ? $ok('bin/mail-check.php --vorabankuendigung mit MUSTER-Betreff') : $bad('mail-check ohne Musterversand');
+$as = file_get_contents($root . '/php-ionos/admin-system.php');
+(str_contains($as, "\$action === 'test_prenotification'") && str_contains($as, "\$ownEmail = (string)(\$ctx['email']") && str_contains($as, "mail_send(\$ownEmail, 'MUSTER '") && !str_contains($as, "\$_POST['prenotification_to']")) ? $ok('admin-system: Muster nur an eigene Adresse') : $bad('admin-system Musterversand');
+foreach ([$w, $c, $d, $w0, $c2, $pn] as $tpl) { str_contains($tpl['html'], 'HRB 104291') ? $ok('Pflichtangaben in Vorlage: ' . $tpl['subject']) : $bad('Pflichtangaben fehlen: ' . $tpl['subject']); }
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail === 0 ? 0 : 1);

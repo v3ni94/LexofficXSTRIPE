@@ -533,6 +533,10 @@ Diese Schaltfläche steht nicht zur Verfügung, wenn die Vorabankündigung per E
 
 Ist die Vorabankündigung per E-Mail in den Firmeneinstellungen aktiv, sendet das Portal beim Terminieren automatisch eine Ankündigung an den Kunden; Sofort-Einzüge sind dann nicht verfügbar. Ist sie nicht aktiv, gilt die Rechnung selbst mit Angabe von Betrag, Fälligkeit und Mandatsreferenz als Vorabankündigung.
 
+**Inhalt der E-Mail:** Betreff „Vorabankündigung SEPA-Lastschrift“ mit der Rechnungsnummer. Der Text nennt Rechnungsnummer, Betrag und Einzugstermin, Ihre Firma als Zahlungsempfänger, die Mandatsreferenz, Ihre Gläubiger-Identifikationsnummer (sofern in den Firmendaten hinterlegt) sowie den Hinweis, dass der Einzug über den Zahlungsdienstleister Stripe erfolgt und für Kontodeckung zu sorgen ist. Die E-Mail trägt das Design des Portals mit den Pflichtangaben des Betreibers im Fußbereich; ein eigener Text der Firma ist derzeit nicht vorgesehen. Wird ein terminierter Einzug auf ein neues Datum verschoben, geht eine neue Ankündigung mit dem neuen Termin an den Kunden.
+
+**Hinweis zu Stripe:** Stripe kann für SEPA-Lastschriften eigene Benachrichtigungen an Zahler senden; ob und in welcher Form das geschieht, richtet sich nach den Einstellungen Ihres Stripe-Kontos (Kundenmails) und ist nicht Teil des Portals. Verlassen Sie sich für die Vorabankündigung nicht auf Stripe: Entweder ist die Ankündigung durch das Portal aktiv, oder die Rechnung selbst enthält Betrag, Fälligkeit und Mandatsreferenz.
+
 ### 8.5 Not-Stopp
 
 **Ziel:** Alle SEPA-Einzüge der eigenen Firma sofort anhalten, zum Beispiel bei Verdacht auf fehlerhafte Beträge.

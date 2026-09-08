@@ -96,6 +96,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ok = mail_send($cfg['test_mail_to'], $tpl['subject'], $tpl['text'], $tpl['html']);
             audit_log(null, $ctx, 'monitor_test_mail', 'monitor', null, ['accepted' => $ok]);
             flash_set($ok ? 'success' : 'error', $ok ? 'Testnachricht an den Versandweg übergeben (Annahme, kein Zustellnachweis).' : 'Der Versandweg hat die Testnachricht nicht angenommen.');
+        } elseif ($action === 'test_prenotification') {
+            // Muster der Vorabankündigung an die eigene Adresse des angemeldeten Administrators (nie frei wählbar):
+            // Musterrechnung, Mustermandat, kein echter Kunde, kein Einzug. Diagnose ohne Geldwirkung, keine Zweitbestätigung.
+            require_once __DIR__ . '/app/mailer.php';
+            if (!mail_enabled()) {
+                throw new RuntimeException('Der Mailversand ist nicht aktiv (mail.enabled).');
+            }
+            $ownEmail = (string)($ctx['email'] ?? '');
+            if (!filter_var($ownEmail, FILTER_VALIDATE_EMAIL)) {
+                throw new RuntimeException('Für Ihr Konto ist keine gültige E-Mail-Adresse hinterlegt.');
+            }
+            $sampleOrg = ['name' => (string)($ctx['org_name'] ?? '') !== '' ? (string)$ctx['org_name'] : 'Muster GmbH',
+                          'creditor_identifier' => (string)($ctx['creditor_identifier'] ?? '')];
+            $d = mail_prenotification_sample($sampleOrg);
+            $tpl = mail_tpl_prenotification($d['org'], $d['invoice'], $d['mandate'], $d['amount_cents'], $d['due_date'],
+                'Musterversand aus dem Adminbereich vom ' . date('d.m.Y H:i') . ' Uhr, kein echter Einzug.');
+            $ok = mail_send($ownEmail, 'MUSTER ' . $tpl['subject'], $tpl['text'], $tpl['html']);
+            audit_log(null, $ctx, 'monitor_test_prenotification', 'monitor', null, ['accepted' => $ok, 'to' => mail_addr_ref($ownEmail)]);
+            flash_set($ok ? 'success' : 'error', $ok ? 'Muster der Vorabankündigung an Ihre Adresse übergeben (Annahme, kein Zustellnachweis).' : 'Der Versandweg hat das Muster nicht angenommen.');
         } elseif ($action === 'job_retry_now' || $action === 'job_cancel' || $action === 'job_close') {
             if (!queue_available()) {
                 throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
@@ -383,6 +402,11 @@ echo layout_subnav($subnavItems, $tab, 'Systembereiche'); ?>
     <?php if ($canEdit && $cfg['test_mail_to'] !== ''): ?>
     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="test_mail">
         <button type="submit" class="btn btn-secondary">Testnachricht senden</button></form>
+    <?php endif; ?>
+    <?php if ($canEdit): ?>
+    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="test_prenotification">
+        <button type="submit" class="btn btn-secondary" title="Sendet die Vorabankündigung mit Musterrechnung und Mustermandat an Ihre eigene Adresse. Kein Kunde, kein Einzug.">Muster der Vorabankündigung an mich senden</button></form>
+    <p class="hint">Das Muster zeigt die E-Mail, die Kunden einer Firma bei aktiver Vorabankündigung beim Terminieren eines Einzugs erhalten (Betreff mit Vorsatz MUSTER, Musterrechnung RE-MUSTER-0001).</p>
     <?php endif; ?>
 </div>
 <?php endif; ?>

@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.43';
+const APP_VERSION = '4.44';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.44', 'date' => '08.09.2026', 'title' => 'Vorabankündigung als eigene Mailvorlage, Musterversand für Betreiber',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die Vorabankündigung der SEPA-Lastschrift ist jetzt eine eigene Vorlage in app/mailer.php (mail_tpl_prenotification) mit unverändertem Inhalt: Rechnung, Betrag, Einzugstermin, Zahlungsempfänger, Mandatsreferenz, Gläubiger-Identifikationsnummer, Hinweis auf Stripe und Kontodeckung. Der Einzugsprozess nutzt diese Vorlage; tools/mail-ci-check.php prüft sie.'],
+            ['type' => 'Neu', 'text' => 'Musterversand: Adminbereich System, Reiter Übersicht, „Muster der Vorabankündigung an mich senden“ schickt die Mail mit Musterrechnung und Mustermandat ausschließlich an die eigene Adresse des angemeldeten Administrators (Betreff mit Vorsatz MUSTER, kein Kunde, kein Einzug, Audit). Auf dem Server: bin/mail-check.php --vorabankuendigung --send=ADRESSE; --html=DATEI schreibt eine Vorschau ohne Versand.'],
+         ]],
         ['version' => '4.43', 'date' => '08.09.2026', 'title' => 'Adminbereich: Zeitraum für Kennzahlen frei wählbar',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Einheitliche Zeitraumauswahl im Adminbereich: Heute, Gestern, 7, 30, 90 Tage, dieser und letzter Monat, Quartal, Jahr, 12 Monate oder ein freier Von-bis-Bereich (bis drei Jahre). Die Wahl wird für die Sitzung gemerkt. Kennzahlen im Zeitraum (Registrierungen, erfolgreiche Einzüge, eingezogenes Volumen) mit Vergleich zum gleich langen Vorzeitraum; Akquisitionsquellen, Funnel und Diagramme folgen dem Zeitraum, die Diagramme wählen die Auflösung (Tag, Kalenderwoche, Monat) nach seiner Länge.'],
