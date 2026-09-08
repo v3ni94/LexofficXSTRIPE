@@ -191,6 +191,10 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
 - **Performance, Phase 2 (nach einer Woche Messwerten):** Bemessung der Lexware-Worker, Lexware-Webhooks und Seitengröße erst nach
   Prüfung der Dokumentation am Primärtext (`docs/sync-performance.md`, Nachtrag 4.39).
 
+0. **Deployment 08.09.2026, Abend:** Lauf #79 (4.43) scheiterte im ersten SSH-Schritt („Connection timed out“, vier Versuche, Server nie
+   erreicht, nichts verändert). Der automatische zweite Anlauf (#81, auto_retry=1) und der Push-Lauf zu 4.44 (#80) liefen beide grün
+   (deploy-vps success 20:31 und 20:35 UTC); 4.44 enthält 4.43, nichts nachzuholen. Muster wie #51 und #58 (Runner-Adresse oder kurze
+   Netzstörung, `docs/vps/06-betrieb.md`, „SSH-Fehler des Deployments“); Prüfschritte 1 bis 7 dort nur nötig, wenn es sich häuft.
 0. **Betreiber:** Migrationsblockade am 08.09.2026, 14:11 Uhr gelöst (`--retry=028`: 028 und 029 eingespielt, 0 offen). Offen: Re-run des
    Workflows für 4.40 (fd500a4), danach im Adminbereich prüfen, dass Version 4.40 in der Fußzeile steht.
 0. **Betreiber (nach Deployment 4.37):** Migration 027 setzt bestehenden Superadmin-Konten die Rolle Administrator. Unter Adminbereich,
