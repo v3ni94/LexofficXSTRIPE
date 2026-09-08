@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.41';
+const APP_VERSION = '4.42';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.42', 'date' => '08.09.2026', 'title' => 'sevdesk-Pilot: Verbindung zunächst nur für Firmen des Betreibers',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Pilotphase für sevdesk (Migration 030): Verbinden und Wechseln zu sevdesk ist bis zum Freigabetermin nur Firmen möglich, in denen ein Administrator der Plattform Mitglied ist, sowie Firmen aus einer Pilotliste. Andere Firmen sehen weiterhin „in Vorbereitung“ mit Vormerkung; die Registrierung mit sevdesk führt zur Vormerkung. Am Freigabetermin endet der Pilot von selbst. Einzüge bleiben unabhängig davon gesperrt, bis die Zahlungsfelder mit einem sevdesk-Konto bestätigt sind.'],
+         ]],
         ['version' => '4.41', 'date' => '08.09.2026', 'title' => 'Befunde der Code-Review 4.35 bis 4.40 behoben',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Rechte: Die Einladung eines bestehenden Kontos läuft über dieselben Schutzregeln wie jede Rollenänderung (keine Selbst-Eskalation, letzter Administrator geschützt, Superadmin-Kennzeichen fällt bei anderer Rolle, Sitzungen enden). Die Systemrollen Mitarbeiter und Mitarbeiter Support können keine Dokumentationsrechte und keine Benutzerverwaltung mehr erhalten; dafür sind eigene Rollen vorgesehen. Eingeladene Benutzer müssen ihre Adresse nicht ein zweites Mal bestätigen.'],

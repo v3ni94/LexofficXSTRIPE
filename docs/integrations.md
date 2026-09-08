@@ -73,6 +73,8 @@ Unabhängig von diesen produktseitigen Freigabekriterien setzt die Anwendung sei
 die verhindern, dass ein Irrtum bei einer Annahme des Adapters Geld bewegt (`platform_settings`,
 `app/integration_state.php`, ausführlich `docs/sevdesk.md`, Abschnitt 5c):
 
+- `sevdesk_connect = 'pilot'` (4.42) beschränkt Verbinden und Wechseln bis zum Freigabetermin auf Firmen mit einem
+  Administrator-Mitglied der Plattform oder aus `sevdesk_pilot_orgs` (`integration_connect_allowed()`); danach gilt es für alle.
 - `sevdesk_connect` gibt nur das Verbinden und Lesen frei (Kontakte, offene Rechnungen, Änderungserkennung). Ein
   ausdrücklich gesetzter Wert hat Vorrang; ohne ihn greift automatisch der Freigabetermin `sevdesk_release_at`
   (Migration 028 legt ihn mit `2026-09-30` an, Kalendertag Europe/Berlin, jederzeit per SQL änderbar). Dieser Termin ist

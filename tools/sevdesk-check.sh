@@ -63,6 +63,18 @@ if mariadb_sandbox_available; then
     erw "ausdrueckliches connect=1 gilt vor dem Termin" connect_explizit_1_vor_termin 1
     erw "Einzuege bleiben gesperrt (sevdesk_collections)" collections_bleibt_zu 1
     erw "sevdesk als Wechselziel verfuegbar bei Freigabe" sevdesk_verfuegbar_fuer_wechsel 1
+    erw "Pilot: Modus aktiv vor dem Termin" pilot_modus 1
+    erw "Pilot: Schalter technisch offen" pilot_schalter_offen 1
+    erw "Pilot: Firma mit Administrator-Mitglied erlaubt" pilot_adminfirma_erlaubt 1
+    erw "Pilot: Kundenfirma ohne Administrator gesperrt" pilot_kundenfirma_gesperrt 1
+    erw "Pilot: Registrierung mit sevdesk gesperrt" pilot_registrierung_gesperrt 1
+    erw "Pilot: Wechsel der Kundenfirma gesperrt" pilot_wechsel_kundenfirma gesperrt
+    erwp "Pilot: Hinweistext beim Wechsel" pilot_wechsel_text "*Pilotphase*"
+    erw "Pilot: Firma aus sevdesk_pilot_orgs erlaubt (Leerzeichen toleriert)" pilot_liste_erlaubt 1
+    erw "Pilot: Zustandstext" pilot_text "Pilot: nur Firmen von Administratoren, für alle ab 30.09.2026 (Schalter sevdesk_connect = pilot)"
+    erw "Pilot endet am Freigabetermin: alle Firmen" pilot_nach_termin_alle 1
+    erw "Pilot: Text nach dem Termin" pilot_text_nach_termin "Pilot beendet, für alle freigegeben seit 30.09.2026"
+    erw "Pilot: Verlust des Adminrechts sperrt die Firma" pilot_ohne_adminrecht_gesperrt 1
     erw "Faehigkeiten ohne Verifikation: lesen, ohne Restbetrag" faehigkeiten_ohne_verifikation "read_customers,read_open_invoices,detect_changes"
     erw "Verbindungstest: erreichbar, kein Firmenname, 3 Kontakte" profil_erreichbar 1
     erw "Liste offen: nur Typ RE (5001, 5002, 5007)" liste_offen_ids "5001,5002,5007"
@@ -117,6 +129,8 @@ if mariadb_sandbox_available; then
     erw "Scheduler: sevdesk-Firma als sync_run_sevdesk" scheduler_typ_sev sync_run_sevdesk
     erw "queue_tenant_active kennt beide Typen" tenant_active_beide_typen 1
     erwp "Scheduler bei gesperrter Freigabe: nur Lexware" scheduler_sev_gesperrt "sync_run:auto:aaaaaaaa-0000-0000-0000-000000000001"
+    erw "Scheduler im Pilot: Adminfirma wird eingereiht (beide Firmen)" scheduler_pilot_adminfirma 2
+    erwp "Scheduler im Pilot ohne Adminrecht: nur Lexware" scheduler_pilot_ohne_admin "sync_run:auto:aaaaaaaa-0000-0000-0000-000000000001"
     erw "Wechselsperre aktiv" sperre_aktiv 1
     erwp "Reset ohne Grund verweigert" reset_ohne_grund "fehler:*Grund*"
     erw "Reset durch Betreiber" reset_ok ok

@@ -390,8 +390,7 @@ function scheduler_auto_sync(array $cfg, int $now): array
     $queued = [];
     try {
         // Je Firma genau ein Buchhaltungssystem (integrations.invoice_source): Lexware-Firmen mit verbundenem Schluessel,
-        // sevdesk-Firmen nur, wenn verbunden UND die Anbindung freigegeben ist (Schalter oder Freigabetermin).
-        $sevdeskOpen = integration_switch('sevdesk', 'connect');
+        // sevdesk-Firmen nur, wenn verbunden UND die Anbindung fuer diese Firma freigegeben ist (Schalter, Pilot, Termin).
         $rows = db()->query(
             "SELECT o.id, o.sync_paused, s.status AS sync_status, COALESCE(i.invoice_source, 'lexware_office') AS invoice_source,
                     TIMESTAMPDIFF(SECOND, COALESCE(s.finished_at, s.updated_at), NOW()) AS age_seconds,
@@ -413,8 +412,8 @@ function scheduler_auto_sync(array $cfg, int $now): array
             continue;
         }
         $type = INVOICE_SOURCE_SYNC_JOB_TYPES[(string)$o['invoice_source']] ?? 'sync_run';
-        if ($type === 'sync_run_sevdesk' && !$sevdeskOpen) {
-            continue; // sevdesk noch nicht freigegeben: kein Abruf
+        if ($type === 'sync_run_sevdesk' && !integration_connect_allowed('sevdesk', $tid)) {
+            continue; // sevdesk fuer diese Firma nicht freigegeben (Schalter 0 oder Pilot ohne Administrator): kein Abruf
         }
         if (($o['sync_status'] ?? null) === 'running') {
             // Läuft wirklich (Fortschritt in den letzten Minuten) oder hängt ein aktiver Job daran: nichts einreihen.

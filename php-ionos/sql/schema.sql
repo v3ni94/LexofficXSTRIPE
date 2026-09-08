@@ -727,6 +727,10 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('collections_paused', '0');
+-- sevdesk (Migrationen 028 und 030): Freigabetermin der Verbindung; 'pilot' = bis dahin nur Firmen von Administratoren, 1 = alle, 0 = gesperrt.
+INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('sevdesk_release_at', '2026-09-30');
+INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('sevdesk_connect', 'pilot');
+INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('sevdesk_pilot_orgs', '');
 
 -- ---------------------------------------------------------------------------
 -- Stripe-Mandatsdaten am SEPA-Mandat (aus Charge bzw. SetupIntent)

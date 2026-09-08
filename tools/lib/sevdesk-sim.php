@@ -51,7 +51,32 @@ $GLOBALS['integration_now'] = (new DateTimeImmutable('2026-09-01', new DateTimeZ
 $out('connect_explizit_1_vor_termin', integration_switch('sevdesk', 'connect'));
 $out('collections_bleibt_zu', !integration_switch('sevdesk', 'collections'));
 $out('sevdesk_verfuegbar_fuer_wechsel', invoice_source_available('sevdesk'));
+// Pilotphase (4.42): nur Firmen mit Administrator-Mitglied oder aus der Pilotliste, bis zum Freigabetermin
+$setting('sevdesk_connect', 'pilot');
+$pdo->exec("DELETE FROM users WHERE email IN ('pilot-admin@test.local','pilot-kunde@test.local')");
+$adminUser = uuid4(); $kundeUser = uuid4();
+$pdo->prepare("INSERT INTO users (id, email, password_hash, is_superadmin, platform_role, totp_enabled) VALUES (?, 'pilot-admin@test.local', 'x', 0, 'admin', 1), (?, 'pilot-kunde@test.local', 'x', 0, NULL, 1)")->execute([$adminUser, $kundeUser]);
+$pdo->prepare("INSERT INTO organization_members (id, organization_id, user_id, role, status) VALUES (?, ?, ?, 'owner', 'active'), (?, ?, ?, 'owner', 'active')")
+    ->execute([uuid4(), $sev, $adminUser, uuid4(), $lex, $kundeUser]);
+$out('pilot_modus', integration_pilot_mode('sevdesk'));
+$out('pilot_schalter_offen', integration_switch('sevdesk', 'connect'));
+$out('pilot_adminfirma_erlaubt', integration_connect_allowed('sevdesk', $sev));
+$out('pilot_kundenfirma_gesperrt', !integration_connect_allowed('sevdesk', $lex));
+$out('pilot_registrierung_gesperrt', !integration_connect_allowed('sevdesk', null));
+$out('pilot_wechsel_kundenfirma', invoice_source_available('sevdesk', $lex) ? 'erlaubt' : 'gesperrt');
+$out('pilot_wechsel_text', (string)invoice_source_switch_blocker($lex, 'sevdesk'));
+$setting('sevdesk_pilot_orgs', 'x,' . $lex . ' ,y');
+$out('pilot_liste_erlaubt', integration_connect_allowed('sevdesk', $lex));
+$setting('sevdesk_pilot_orgs', '');
+$out('pilot_text', integration_connect_state_text('sevdesk'));
+$GLOBALS['integration_now'] = (new DateTimeImmutable('2026-09-30 00:00:00', new DateTimeZone('Europe/Berlin')))->getTimestamp();
+$out('pilot_nach_termin_alle', integration_connect_allowed('sevdesk', $lex) && !integration_pilot_mode('sevdesk'));
+$out('pilot_text_nach_termin', integration_connect_state_text('sevdesk'));
 unset($GLOBALS['integration_now']);
+$pdo->exec("UPDATE users SET platform_role = NULL WHERE id = '$adminUser'");
+$out('pilot_ohne_adminrecht_gesperrt', !integration_connect_allowed('sevdesk', $sev));
+$pdo->exec("UPDATE users SET platform_role = 'admin' WHERE id = '$adminUser'");
+$setting('sevdesk_connect', '1');
 
 // ---------------------------------------------------------------- 2. Client und Adapter gegen den Stub
 $setting('sevdesk_api_verified', null);
@@ -150,6 +175,15 @@ $pdo->exec('DELETE FROM jobs');
 $setting('sevdesk_connect', '0');
 $q2 = scheduler_auto_sync($cfg, time());
 $out('scheduler_sev_gesperrt', implode(',', $q2));
+$pdo->exec('DELETE FROM jobs');
+$setting('sevdesk_connect', 'pilot');
+$q3 = scheduler_auto_sync($cfg, time()); sort($q3);
+$out('scheduler_pilot_adminfirma', count($q3));
+$pdo->exec("UPDATE users SET platform_role = NULL WHERE id = '$adminUser'");
+$pdo->exec('DELETE FROM jobs');
+$q4 = scheduler_auto_sync($cfg, time());
+$out('scheduler_pilot_ohne_admin', implode(',', $q4));
+$pdo->exec("UPDATE users SET platform_role = 'admin' WHERE id = '$adminUser'");
 $setting('sevdesk_connect', '1');
 
 // ---------------------------------------------------------------- 5. Wechselsperre: Reset durch Betreiber, Trennung beim Wechsel

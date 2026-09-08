@@ -7,7 +7,7 @@
   "entwickler": {
     "revision": "r10",
     "date": "08.09.2026",
-    "summary": "Review 4.41: Einladung über Schutzregeln, Systemrollen ohne docs.*/users.manage, worker-sevdesk in Betriebsskripten."
+    "summary": "sevdesk-Pilot (4.42): Schalterwert pilot, Pilotfirmen, integration_connect_allowed je Firma; Review-Korrekturen 4.41."
   },
   "kunden": {
     "revision": "r3",

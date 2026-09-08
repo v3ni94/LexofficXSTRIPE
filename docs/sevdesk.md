@@ -118,7 +118,13 @@ Jede Zeile gilt als Annahme mit Prüffrage, bis ein Testkonto sie bestätigt (Ab
 
 **Schalterlogik (`platform_settings`, `app/integration_state.php`):**
 
-- **`sevdesk_connect`** (Verbindung und Lesen): Ein ausdrücklich gesetzter Wert (`0` oder `1`) hat immer Vorrang. Ohne
+- **`sevdesk_connect = 'pilot'`** (seit 4.42, Migration 030, Entscheidung 08.09.2026): Pilotphase. Verbinden und Wechseln zu
+  sevdesk dürfen nur Firmen, die ein aktives Mitglied mit Administratorrecht der Plattform haben (`users.is_superadmin = 1`
+  oder `platform_role = 'admin'`), sowie Firmen aus der Liste `sevdesk_pilot_orgs` (kommagetrennte Firmenkennungen).
+  Registrierung mit `integration=sevdesk` führt im Pilot zur Vormerkung. Der Scheduler reiht nur Pilotfirmen ein. Mit dem
+  Freigabetermin `sevdesk_release_at` endet der Pilot von selbst, danach gilt die Verbindung für alle; `1` öffnet sofort,
+  `0` sperrt. Prüfung je Firma: `integration_connect_allowed('sevdesk', $tenantId)` (`app/integration_state.php`).
+- **`sevdesk_connect`** (Verbindung und Lesen): Ein ausdrücklich gesetzter Wert (`0`, `1` oder `pilot`) hat immer Vorrang. Ohne
   einen solchen Wert greift automatisch der Freigabetermin `sevdesk_release_at` (von Migration 028 mit `2026-09-30`
   angelegt, geprüft als Kalendertag 00:00 Uhr Europe/Berlin, `integration_release_reached()`); ab diesem Tag ist die
   Verbindung ohne weiteres Zutun freigegeben. Der Termin ist ein interner Standardwert, jederzeit per SQL änderbar, und

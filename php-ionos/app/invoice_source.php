@@ -142,8 +142,8 @@ function invoice_source_for_tenant(string $tenantId): InvoiceSource
 
     if ($code === 'sevdesk') {
         require_once __DIR__ . '/sevdesk.php';
-        if (!integration_switch('sevdesk', 'connect')) {
-            throw new RuntimeException('Die sevdesk-Anbindung ist noch nicht freigegeben (' . integration_connect_state_text('sevdesk') . ').');
+        if (!integration_connect_allowed('sevdesk', $tenantId)) {
+            throw new RuntimeException('Die sevdesk-Anbindung ist für diese Firma noch nicht freigegeben (' . integration_connect_state_text('sevdesk') . ').');
         }
         if (!$integration || !(int)($integration['sevdesk_connected'] ?? 0)) {
             throw new RuntimeException('sevdesk ist nicht verbunden.');

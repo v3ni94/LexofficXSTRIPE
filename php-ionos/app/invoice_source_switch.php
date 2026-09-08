@@ -50,14 +50,18 @@ function invoice_source_current(string $tenantId): array
     ];
 }
 
-/** Ist das Zielsystem fuer Firmen freigegeben? Lexware Office immer; sevdesk nur mit Schalter sevdesk_connect. */
-function invoice_source_available(string $code): bool
+/**
+ * Ist das Zielsystem fuer (diese) Firma freigegeben? Lexware Office immer; sevdesk nach Schalter sevdesk_connect,
+ * im Pilot nur fuer Pilotfirmen (integration_connect_allowed). Ohne Firmenkennung (Registrierung) zaehlt nur die
+ * allgemeine Freigabe.
+ */
+function invoice_source_available(string $code, ?string $tenantId = null): bool
 {
     if ($code === 'lexware_office') {
         return true;
     }
     if ($code === 'sevdesk') {
-        return integration_switch('sevdesk', 'connect');
+        return integration_connect_allowed('sevdesk', $tenantId);
     }
     return false;
 }
@@ -101,8 +105,8 @@ function invoice_source_switch_blocker(string $tenantId, string $target): ?strin
     if ($cur['code'] === $target) {
         return 'Dieses Buchhaltungssystem ist bereits eingestellt.';
     }
-    if (!invoice_source_available($target)) {
-        return invoice_source_label($target) . ' ist noch nicht für Firmen freigegeben. Sie können sich unverbindlich vormerken lassen.';
+    if (!invoice_source_available($target, $tenantId)) {
+        return invoice_source_label($target) . ' ist noch nicht für Firmen freigegeben' . ($target === 'sevdesk' && integration_pilot_mode('sevdesk') ? ' (Pilotphase, zunächst nur Firmen des Betreibers)' : '') . '. Sie können sich unverbindlich vormerken lassen.';
     }
     $lock = invoice_source_lock($tenantId);
     if ($lock['locked']) {

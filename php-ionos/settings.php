@@ -94,8 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($key === '') {
                 throw new RuntimeException('Bitte den sevdesk-API-Token eingeben.');
             }
-            if (!integration_switch('sevdesk', 'connect')) {
-                throw new RuntimeException('Die sevdesk-Anbindung ist noch nicht freigegeben (' . integration_connect_state_text('sevdesk') . ').');
+            if (!integration_connect_allowed('sevdesk', $tenantId)) {
+                throw new RuntimeException('Die sevdesk-Anbindung ist für diese Firma noch nicht freigegeben (' . integration_connect_state_text('sevdesk') . ').');
             }
             $info = integration_verify_sevdesk($tenantId, $key);
             $pdo->prepare(
@@ -302,7 +302,7 @@ layout_header('Einstellungen', $ctx);
         </form>
     <?php endif; ?>
 </div>
-<?php elseif ($isrc['code'] === 'sevdesk'): require_once __DIR__ . '/app/integration_state.php'; require_once __DIR__ . '/app/sevdesk.php'; $sevOpen = integration_switch('sevdesk', 'connect'); $sevConnected = (int)($integration['sevdesk_connected'] ?? 0) === 1; ?>
+<?php elseif ($isrc['code'] === 'sevdesk'): require_once __DIR__ . '/app/integration_state.php'; require_once __DIR__ . '/app/sevdesk.php'; $sevOpen = integration_connect_allowed('sevdesk', $tenantId); $sevConnected = (int)($integration['sevdesk_connected'] ?? 0) === 1; ?>
 <div class="card">
     <h2>sevdesk
         <?= $sevConnected
@@ -310,7 +310,7 @@ layout_header('Einstellungen', $ctx);
             : ($sevOpen ? '<span class="badge badge-neutral">Nicht verbunden</span>' : '<span class="badge badge-neutral">Verbindung folgt</span>') ?>
     </h2>
     <?php if (!$sevOpen): ?>
-        <p class="hint">Die Verbindung zu sevdesk ist noch nicht freigegeben (<?= e(integration_connect_state_text('sevdesk')) ?>). Bis dahin werden keine Rechnungen abgerufen; Stripe können Sie bereits verbinden.</p>
+        <p class="hint">Die Verbindung zu sevdesk ist für diese Firma noch nicht freigegeben (<?= e(integration_connect_state_text('sevdesk')) ?>). Bis dahin werden keine Rechnungen abgerufen; Stripe können Sie bereits verbinden.</p>
     <?php else: ?>
         <p class="hint">Zugriff über die sevdesk-API (<?= e((string)(config('sevdesk')['base_url'] ?? SevdeskClient::DEFAULT_BASE_URL)) ?>) nur lesend. Nach der offiziellen sevdesk-Hilfe setzt der API-Zugriff den Tarif Buchhaltung Pro (Systemversion 2.0) voraus; geprüft wird das beim Verbindungstest. Der Token wird vor dem Speichern getestet, verschlüsselt abgelegt und danach nicht mehr angezeigt.</p>
         <?php if (!SevdeskSource::paymentsVerified()): ?>

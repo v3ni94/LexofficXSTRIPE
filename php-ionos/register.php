@@ -18,7 +18,7 @@ signup_attribution_capture();
 // (Masterplan, Abschnitt 5). Erst mit gesetztem Schalter sevdesk_connect läuft die normale Konto- und Firmeneinrichtung.
 if (($_SESSION['signup']['integration'] ?? '') === 'sevdesk') {
     require_once __DIR__ . '/app/integration_state.php';
-    if (!integration_switch('sevdesk', 'connect')) {
+    if (!integration_connect_allowed('sevdesk', null)) { // im Pilot: Registrierung mit sevdesk erst nach dem Freigabetermin
         unset($_SESSION['signup']['integration']);
         redirect(marketing_url('/integrationen/sevdesk/#vormerken'));
     }
