@@ -64,6 +64,13 @@ CHAPTERS = [
     ('sevdesk.md', None),
     ('mail-einrichtung.md', None),
     ('rechtsdokumente.md', None),
+    ('seo/README.md', 'SEO und Marketingseiten: Übersicht'),
+    ('seo/01-bestandsaufnahme.md', None),
+    ('seo/02-faktenregister.md', None),
+    ('seo/03-aussagenpruefung.md', None),
+    ('seo/04-keyword-map.md', None),
+    ('seo/05-massnahmenplan.md', None),
+    ('seo/06-mess-und-pflegekonzept.md', None),
 ]
 
 
