@@ -58,6 +58,9 @@ if mariadb_sandbox_available; then
     erw "doppelter Rollencode verweigert" rolle_doppelt verweigert
     erw "Rolle ohne Rechte verweigert" rolle_ohne_rechte verweigert
     erw "Systemrolle admin unveraenderlich" systemrolle_admin_unveraenderlich verweigert
+    erw "Systemrolle support: docs.technical verweigert" systemrolle_support_docs_verweigert verweigert
+    erw "Systemrolle staff: users.manage verweigert" systemrolle_staff_users_manage_verweigert verweigert
+    erw "eigene Rolle darf Dokumentationsrechte erhalten" eigene_rolle_docs_erlaubt ok
     erw "Systemrolle support editierbar" systemrolle_support_editierbar ok
     erw "geaenderte Rolle wirkt sofort" support_nach_aenderung_keine_sessions 1
     erw "Support darf keine Rollen anlegen" support_darf_keine_rollen_anlegen verweigert
@@ -76,6 +79,8 @@ if mariadb_sandbox_available; then
     erw "letzter Administrator nicht deaktivierbar" letzter_admin_nicht_deaktivierbar verweigert
     erw "Mitarbeiter deaktiviert" staff_deaktiviert 1
     erw "eigenes Konto nicht deaktivierbar" eigenes_konto_nicht_deaktivierbar verweigert
+    erw "Einladung des eigenen Kontos mit hoeherer Rolle verweigert" einladung_selbst_verweigert verweigert
+    erw "eigene Rolle nach Einladungsversuch unveraendert" einladung_selbst_rolle_unveraendert technik
     erw "Einladung ohne Mailversand verweigert" einladung_ohne_mail_verweigert verweigert
     erw "Einladung mit ungueltiger Adresse verweigert" einladung_ungueltige_adresse verweigert
     erw "verweigerte Einladung legt kein Konto an" einladung_kein_konto_angelegt 0

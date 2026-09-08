@@ -34,6 +34,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $integration = integration_load($tenantId);
 
     try {
+        // Verbindungsaktionen nur fuer das Buchhaltungssystem der Firma (genau eines je Firma); ausgeblendete Formulare
+        // sind kein Schutz (Review 4.41).
+        $systemFuer = ['save_lexoffice' => 'lexware_office', 'verify_lexoffice' => 'lexware_office', 'disconnect_lexoffice' => 'lexware_office',
+                       'save_sevdesk' => 'sevdesk', 'verify_sevdesk' => 'sevdesk', 'disconnect_sevdesk' => 'sevdesk'];
+        if (isset($systemFuer[$action])) {
+            require_once __DIR__ . '/app/invoice_source_switch.php';
+            $aktuell = invoice_source_current($tenantId)['code'];
+            if ($aktuell !== $systemFuer[$action]) {
+                throw new RuntimeException('Diese Aktion gilt für ' . invoice_source_label($systemFuer[$action]) . '; das Buchhaltungssystem dieser Firma ist ' . invoice_source_label($aktuell) . '.');
+            }
+        }
         if ($action === 'switch_invoice_source') {
             require_once __DIR__ . '/app/invoice_source_switch.php';
             if (($_POST['confirm'] ?? '') !== '1') {

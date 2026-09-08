@@ -5,9 +5,9 @@
     "summary": "Funktionsübersicht: sevdesk auf Stand 4.38, Wechselsperre aufheben; neues Kapitel Leitfaden Scharfschaltung (Go-live) mit Stripe-Einrichtung."
   },
   "entwickler": {
-    "revision": "r9",
+    "revision": "r10",
     "date": "08.09.2026",
-    "summary": "Migrationen: Vorfall 028 (Läufe #73/#74), Freigabe per --retry, Prüfsuite migrations-check gegen den Vorzustand."
+    "summary": "Review 4.41: Einladung über Schutzregeln, Systemrollen ohne docs.*/users.manage, worker-sevdesk in Betriebsskripten."
   },
   "kunden": {
     "revision": "r3",

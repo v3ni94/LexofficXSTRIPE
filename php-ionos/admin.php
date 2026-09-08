@@ -271,7 +271,7 @@ $orgs = $pdo->query(
     "SELECT o.*,
             (SELECT COUNT(*) FROM organization_members m WHERE m.organization_id = o.id AND m.status = 'active') AS members,
             (SELECT COUNT(*) FROM payment_collections pc WHERE pc.tenant_id = o.id AND pc.stripe_status <> 'cancelled') AS collections,
-            (SELECT COALESCE(i.sevdesk_last_sync, i.lexoffice_last_sync) FROM integrations i WHERE i.tenant_id = o.id) AS last_sync,
+            (SELECT CASE WHEN i.invoice_source = 'sevdesk' THEN i.sevdesk_last_sync ELSE i.lexoffice_last_sync END FROM integrations i WHERE i.tenant_id = o.id) AS last_sync,
             (SELECT COALESCE(i.invoice_source, 'lexware_office') FROM integrations i WHERE i.tenant_id = o.id) AS invoice_source,
             (SELECT i.invoice_source_changed_at FROM integrations i WHERE i.tenant_id = o.id) AS invoice_source_changed_at,
             (SELECT u.email FROM organization_members m JOIN users u ON u.id = m.user_id WHERE m.organization_id = o.id AND m.role = 'owner' LIMIT 1) AS owner_email
@@ -582,7 +582,7 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
         getrennt: „Beta einladen“ ist nur für bestätigte, nicht gesperrte Einträge möglich und macht einen abgemeldeten Eintrag nie wieder versandberechtigt.
         „Sperren“ entfernt alle Klartextangaben außer der E-Mail-Adresse und schließt weiteren Versand dauerhaft aus. Löschfristen (Wartung): unbestätigt 30 Tage
         nach Eintragung, abgemeldet 30 Tage nach Abmeldung, bestätigt 30 Tage nach der Startnachricht; gesperrte Einträge bleiben. Zeiten in Ortszeit,
-        keine IP-Adressen. Jede Aktion verlangt den aktuellen 2FA-Code und wird im Audit protokolliert, der CSV-Export ebenfalls.</p>
+        keine IP-Adressen. Jede Aktion ist durch CSRF-Schutz und die Berechtigung interest.manage gesichert und wird im Audit protokolliert, der CSV-Export ebenfalls (seit 4.36 ohne 2FA-Code).</p>
 </div>
 <?php endif; ?>
 

@@ -108,9 +108,14 @@ function sync_perf_full_sync_plan(array $cfg): array
 {
     $plan = [];
     try {
+        // Gleiche Auswahl wie scheduler_auto_sync(): das verbundene System der Firma, sevdesk nur bei freigegebener Anbindung.
+        require_once __DIR__ . '/integration_state.php';
+        $sevdeskOpen = integration_switch('sevdesk', 'connect');
         $rows = db()->query(
             "SELECT o.id FROM organizations o JOIN integrations i ON i.tenant_id = o.id
-             WHERE o.deleted_at IS NULL AND o.onboarding_completed = 1 AND (i.lexoffice_connected = 1 OR i.sevdesk_connected = 1)"
+             WHERE o.deleted_at IS NULL AND o.onboarding_completed = 1
+               AND ((COALESCE(i.invoice_source, 'lexware_office') = 'lexware_office' AND i.lexoffice_connected = 1)
+                 OR (i.invoice_source = 'sevdesk' AND i.sevdesk_connected = 1 AND " . ($sevdeskOpen ? '1' : '0') . " = 1))"
         )->fetchAll(PDO::FETCH_COLUMN);
     } catch (Throwable $e) {
         return [];

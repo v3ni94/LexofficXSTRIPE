@@ -194,7 +194,8 @@ function job_sync_run(array $job, string $workerId): array
         }
         // Fairness zwischen Firmen (4.39): Nach sync_fair_seconds den Worker abgeben, sobald Synchronisationsjobs
         // ANDERER Firmen warten. Der eigene Job geht ohne Fehlversuch ans Ende der Warteschlange (Cursor bleibt).
-        if ($fairSeconds > 0 && microtime(true) - $startedAt >= $fairSeconds && queue_waiting_count(QUEUE_SYNC_TYPES, $tenantId) > 0) {
+        // Nur Jobs desselben Typs zaehlen: Der Pool lexware kann keine sevdesk-Jobs uebernehmen und umgekehrt (Review 4.41).
+        if ($fairSeconds > 0 && microtime(true) - $startedAt >= $fairSeconds && queue_waiting_count([(string)$job['type']], $tenantId) > 0) {
             throw new JobRequeueException('Faire Verteilung: Synchronisationen anderer Firmen warten, Fortsetzung eingeplant');
         }
     }

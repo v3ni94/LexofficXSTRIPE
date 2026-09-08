@@ -225,16 +225,21 @@ function platform_user_invite(array $actor, string $email, ?string $firstName, ?
         $pdo->prepare(
             'INSERT INTO users (id, email, password_hash, display_name, first_name, last_name, platform_role, email_verified_at,
                                 password_reset_token_hash, password_reset_expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, DATE_ADD(NOW(), INTERVAL ? DAY))'
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, DATE_ADD(NOW(), INTERVAL ? DAY))'
         )->execute([$userId, $email, password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT), $displayName, $firstName, $lastName,
             $role['code'], token_hash($token), PLATFORM_INVITE_DAYS]);
+        // email_verified_at = NOW(): Der Einladungslink beweist die Adresse; sonst verlangte require_login() nach dem
+        // Passwort noch eine zweite Bestaetigungsmail, die die Einladung nicht ankuendigt (Review 4.41).
         $created = true;
         $user = user_load($userId);
     } else {
         if ((int)$user['is_active'] !== 1) {
             throw new RuntimeException('Dieses Konto ist deaktiviert. Bitte zuerst reaktivieren.');
         }
-        $pdo->prepare('UPDATE users SET platform_role = ? WHERE id = ?')->execute([$role['code'], $user['id']]);
+        // Bestehendes Konto: dieselben Schutzregeln wie bei jeder Rollenaenderung (nicht die eigene Rolle, nicht den
+        // letzten Administrator herabstufen, is_superadmin faellt bei einer anderen Rolle, Sitzungen enden). Ohne diesen
+        // Weg konnte ein Benutzer mit users.manage sich selbst per Einladung zum Administrator machen (Review 4.41).
+        platform_user_set_role($actor, (string)$user['id'], $role['code']);
         $userId = (string)$user['id'];
     }
     audit_log(null, $actor, 'platform_user_invited', 'user', $userId, ['email' => $email, 'rolle' => $role['code'], 'neu' => $created]);
@@ -385,6 +390,15 @@ function platform_role_save(array $actor, string $code, string $name, string $de
         throw new RuntimeException('Rolle nicht gefunden.');
     }
     $isSystem = $existing !== null && $existing['is_system'];
+    if ($isSystem) {
+        // Systemrollen Mitarbeiter und Mitarbeiter Support duerfen nie Dokumentationsrechte oder die Benutzerverwaltung
+        // erhalten (Dokumentationsregel: Entwickler- und Unternehmensdokumentation nie fuer Mitarbeiter- oder Supportrollen).
+        // Eigene Rollen bleiben frei gestaltbar; das ist eine bewusste Entscheidung des Administrators.
+        $verboten = array_values(array_filter($permissions, static fn(string $p): bool => str_starts_with($p, 'docs.') || $p === 'users.manage'));
+        if ($verboten !== []) {
+            throw new RuntimeException('Die Systemrolle ' . $existing['name'] . ' darf diese Berechtigungen nicht erhalten: ' . implode(', ', $verboten) . '. Dafür eine eigene Rolle anlegen.');
+        }
+    }
     if ($isNew) {
         db()->prepare('INSERT INTO platform_roles (code, name, description, permissions, is_system) VALUES (?, ?, ?, ?, 0)')
             ->execute([$code, $name, $description, json_encode($permissions)]);

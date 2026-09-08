@@ -140,7 +140,8 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
 
 - **Systemrollen:** `admin` (alle Rechte, unveränderlich, entspricht dem bisherigen Superadmin), `support`
   (Support-Anfragen, Firmenzugriff, Konten entsperren, Systemübersicht lesend), `staff` (lesend: Firmen, Vormerkungen,
-  Systemübersicht). Systemrollen sind nicht löschbar; `support` und `staff` sind anpassbar. Eigene Rollen bestehen aus
+  Systemübersicht). Systemrollen sind nicht löschbar; `support` und `staff` sind anpassbar, dürfen aber nie `docs.*` oder
+  `users.manage` erhalten (seit 4.41 im Code erzwungen; Dokumentationsregel: nie Mitarbeiter- oder Supportrollen). Eigene Rollen bestehen aus
   einer Auswahl des Katalogs; `admin.view` ist immer enthalten.
 - **Berechtigungskatalog** (`PLATFORM_PERMISSIONS`): `admin.view`, `companies.view`, `companies.plan`, `companies.manage` (Wechselsperre des Buchhaltungssystems aufheben, seit 4.38), `plans.manage`,
   `notstopp.platform`, `interest.view`, `interest.manage`, `support.view`, `support.tickets`, `support.sessions`,
@@ -160,10 +161,12 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
   `platform` und `platform_only = true`; `require_login()` leitet sie von Kundenseiten auf `platform_home_url()`
   (Adminhost) um, erlaubt sind Adminseiten, `security.php`, `twofa-setup.php`, `verify-email.php`, `support-*.php`,
   `handbuch.php`. Nach Ende einer Support-Sitzung kehren sie in den Plattformkontext zurück (`support-end.php`).
-- **Einladung:** `platform_user_invite()` legt das Konto mit Zufallspasswort an, setzt die Rolle und sendet einen Link
+- **Einladung:** `platform_user_invite()` legt das Konto mit Zufallspasswort und bestätigter E-Mail-Adresse (der Link beweist sie) an, setzt die Rolle und sendet einen Link
   zum Festlegen des Passworts (`password_reset_token_hash`, `PLATFORM_INVITE_DAYS = 3`); danach ist die 2FA-Einrichtung
   Pflicht. Ohne aktiven Mailversand wird die Einladung verweigert, ein Passwortlink erscheint nie im Adminbereich.
-  Bestehende Konten (etwa Inhaber einer Firma) erhalten nur die Rolle und eine Hinweismail.
+  Bestehende Konten (etwa Inhaber einer Firma) erhalten nur die Rolle und eine Hinweismail; die Rollenvergabe läuft dabei
+  über `platform_user_set_role()` mit allen Schutzregeln (seit 4.41: keine Selbst-Eskalation per Einladung, kein Herabstufen
+  des letzten Administrators, `is_superadmin` fällt bei einer anderen Rolle).
 - **Schutzregeln:** die eigene Rolle ist nicht änderbar, das eigene Konto nicht deaktivierbar; der letzte aktive
   Administrator (`platform_admin_count()`) kann weder herabgestuft noch entfernt noch deaktiviert werden; wer den
   Vollzugriff verliert (Rolle unter `admin` oder Entzug), verliert sofort alle Sitzungen (`user_revoke_sessions()`),

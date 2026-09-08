@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.40';
+const APP_VERSION = '4.41';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.41', 'date' => '08.09.2026', 'title' => 'Befunde der Code-Review 4.35 bis 4.40 behoben',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Rechte: Die Einladung eines bestehenden Kontos läuft über dieselben Schutzregeln wie jede Rollenänderung (keine Selbst-Eskalation, letzter Administrator geschützt, Superadmin-Kennzeichen fällt bei anderer Rolle, Sitzungen enden). Die Systemrollen Mitarbeiter und Mitarbeiter Support können keine Dokumentationsrechte und keine Benutzerverwaltung mehr erhalten; dafür sind eigene Rollen vorgesehen. Eingeladene Benutzer müssen ihre Adresse nicht ein zweites Mal bestätigen.'],
+            ['type' => 'Behoben', 'text' => 'Betrieb: Der sevdesk-Worker wird jetzt von restart-workers.sh neu erzeugt sowie von deploy.sh und rollback.sh in Stop und Release-Bindung geprüft. Die Fairness-Abgabe zählt nur wartende Jobs des eigenen Pools. Verbindungsaktionen in den Einstellungen gelten nur für das Buchhaltungssystem der Firma.'],
+            ['type' => 'Behoben', 'text' => 'Anzeigen: Letzte Synchronisation in der Firmenliste je nach Buchhaltungssystem; Verteilung des Vollabgleichs zählt wie der Scheduler nur freigegebene, verbundene Firmen; veralteter 2FA-Hinweis bei den Vormerkungen entfernt.'],
+         ]],
         ['version' => '4.40', 'date' => '08.09.2026', 'title' => 'Migration 028 korrigiert, Freigabe fehlgeschlagener Migrationen per --retry, Migrationsprüfung gegen den Vorzustand',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Deployments 4.38 und 4.39 scheiterten in der Migrationsphase (Läufe #73, #74): Migration 028 schrieb einen zu langen Wert in die Versionsspalte der Anbieter-Registry (20 Zeichen). Der Wert ist gekürzt, die Erläuterung steht im Hinweisfeld. Die laufende Anwendung war nicht betroffen; das alte Release lief unverändert weiter.'],

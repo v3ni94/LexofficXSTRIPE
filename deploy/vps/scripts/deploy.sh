@@ -540,7 +540,7 @@ deploy_step "cutover"
 # 90 s. Ein danach noch laufender Container wird mit kurzer Frist regulaer gestoppt, damit "up -d" nicht
 # erneut auf die alte Frist von 660 s wartet.
 LEGACY_STOP_IDS=()
-for svc in scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail worker-maintenance metrics; do
+for svc in scheduler worker-lexware-1 worker-lexware-2 worker-sevdesk worker-stripe worker-mail worker-maintenance metrics; do
     cid="$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null | head -n1 || true)"
     [[ -n "$cid" ]] || continue
     stopcfg="$(docker inspect --format '{{.Config.StopSignal}} {{.Config.StopTimeout}}' "$cid" 2>/dev/null || true)"
@@ -627,9 +627,11 @@ done
 # der Rollback verweigert, zeigt die Buchfuehrung weiterhin auf das zuletzt bekannte GUTE Release.
 echo "Verifiziere die Release-Bindung aller PHP-Container (working_dir = $RELEASES_DIR/$SHA) ..."
 RELEASE_BOUND_SERVICES=(php scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance metrics)
-if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx worker-lexware-2; then
-    RELEASE_BOUND_SERVICES+=(worker-lexware-2)
-fi
+for optional_svc in worker-lexware-2 worker-sevdesk; do
+    if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx "$optional_svc"; then
+        RELEASE_BOUND_SERVICES+=("$optional_svc")
+    fi
+done
 BINDING_ERRORS=0
 for svc in "${RELEASE_BOUND_SERVICES[@]}"; do
     # "|| true": ein fehlschlagender Compose-Aufruf darf das Skript hier (nach dem Cutover!) nicht still

@@ -215,9 +215,11 @@ fi
 # Stattdessen wird die Release-Bindung verifiziert (siehe deploy.sh).
 echo "Verifiziere die Release-Bindung aller PHP-Container (working_dir = $RELEASES_DIR/$TARGET) ..."
 RELEASE_BOUND_SERVICES=(php scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance metrics)
-if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx worker-lexware-2; then
-    RELEASE_BOUND_SERVICES+=(worker-lexware-2)
-fi
+for optional_svc in worker-lexware-2 worker-sevdesk; do
+    if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx "$optional_svc"; then
+        RELEASE_BOUND_SERVICES+=("$optional_svc")
+    fi
+done
 BINDING_ERRORS=0
 for svc in "${RELEASE_BOUND_SERVICES[@]}"; do
     # "|| true": ein fehlschlagender Compose-Aufruf darf den Rollback hier nicht still beenden (set -e).

@@ -66,6 +66,9 @@ $out('rolle_code_kleingeschrieben', $try(static fn() => platform_role_save($supe
 $out('rolle_doppelt', $try(static fn() => platform_role_save($super, 'buchhaltung', 'x', '', ['admin.view'], true)));
 $out('rolle_ohne_rechte', $try(static fn() => platform_role_save($super, 'leer', 'Leer', '', [], true)));
 $out('systemrolle_admin_unveraenderlich', $try(static fn() => platform_role_save($super, 'admin', 'Admin', '', ['admin.view'], false)));
+$out('systemrolle_support_docs_verweigert', $try(static fn() => platform_role_save($super, 'support', 'Mitarbeiter Support', 'x', ['admin.view', 'support.view', 'docs.technical'], false)));
+$out('systemrolle_staff_users_manage_verweigert', $try(static fn() => platform_role_save($super, 'staff', 'Mitarbeiter', 'x', ['admin.view', 'users.manage'], false)));
+$out('eigene_rolle_docs_erlaubt', $try(static fn() => platform_role_save($super, 'technik', 'Technik', 'liest Doku', ['admin.view', 'docs.technical', 'docs.admin'], true)));
 $out('systemrolle_support_editierbar', $try(static fn() => platform_role_save($super, 'support', 'Mitarbeiter Support', 'geaendert', ['admin.view', 'support.view', 'support.tickets'], false)));
 $out('support_nach_aenderung_keine_sessions', !platform_can($ctxOf($support['user_id']), 'support.sessions'));
 $out('support_darf_keine_rollen_anlegen', $try(static fn() => platform_role_save($support, 'x1', 'X', '', ['admin.view'], true)));
@@ -98,6 +101,15 @@ $out('letzter_admin_nicht_deaktivierbar', $try(static fn() => platform_user_set_
 platform_user_set_active($roleAdmin, $staff['user_id'], false);
 $out('staff_deaktiviert', (int)user_load($staff['user_id'])['is_active'] === 0);
 $out('eigenes_konto_nicht_deaktivierbar', $try(static fn() => platform_user_set_active($roleAdmin, $roleAdmin['user_id'], false)));
+
+// 5b. Einladung eines bestehenden Kontos laeuft ueber die Schutzregeln (Review 4.41): eigene Rolle nicht per Einladung eskalieren
+$GLOBALS['config']['mail'] = ['enabled' => true, 'transport' => 'log'];
+$verwalter = $ctxOf($mk('verwalter@plattform.test', 0, 'technik'));
+platform_role_save($super, 'technik', 'Technik', 'liest Doku', ['admin.view', 'docs.technical', 'users.manage'], false);
+$verwalter = $ctxOf($verwalter['user_id']);
+$out('einladung_selbst_verweigert', $try(static fn() => platform_user_invite($verwalter, 'verwalter@plattform.test', null, null, 'admin')));
+$out('einladung_selbst_rolle_unveraendert', (string)user_load($verwalter['user_id'])['platform_role']);
+$GLOBALS['config']['mail'] = ['enabled' => false];
 
 // 6. Einladung: ohne Mailversand verweigert (kein Passwortlink im Frontend), ungueltige Adresse verweigert
 $out('einladung_ohne_mail_verweigert', $try(static fn() => platform_user_invite($roleAdmin, 'neu@plattform.test', 'Neu', 'Er', 'staff')));

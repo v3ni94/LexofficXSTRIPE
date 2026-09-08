@@ -114,7 +114,7 @@ OUT="$(run fairness)"
 [[ "$(feld "$OUT" mail_zaehlt_nicht)" == "1" ]] && ok "andere Jobtypen zaehlen nicht" || bad "mail_zaehlt_nicht=$(feld "$OUT" mail_zaehlt_nicht)"
 [[ "$(feld "$OUT" spaeter_faellig)" == "0" ]] && ok "spaeter faellige Jobs zaehlen nicht" || bad "spaeter_faellig=$(feld "$OUT" spaeter_faellig)"
 [[ "$(feld "$OUT" fair_seconds)" == "120" ]] && ok "Vorgabe sync_fair_seconds 120" || bad "fair_seconds=$(feld "$OUT" fair_seconds)"
-grep -q "queue_waiting_count(QUEUE_SYNC_TYPES, \$tenantId) > 0" "$ROOT/php-ionos/app/jobs.php" && grep -q "Faire Verteilung" "$ROOT/php-ionos/app/jobs.php" && ok "job_sync_run gibt den Worker per JobRequeueException ab" || bad "Fairness-Abgabe fehlt in job_sync_run"
+grep -qF "queue_waiting_count([(string)\$job['type']], \$tenantId) > 0" "$ROOT/php-ionos/app/jobs.php" && grep -q "Faire Verteilung" "$ROOT/php-ionos/app/jobs.php" && ok "job_sync_run gibt den Worker per JobRequeueException ab" || bad "Fairness-Abgabe fehlt in job_sync_run"
 
 echo "10c) Reiter Synchronisation & Performance (4.39)"
 OUT="$(run performance)"
