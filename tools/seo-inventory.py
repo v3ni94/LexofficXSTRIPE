@@ -28,7 +28,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..', 'websites'))
 OUT_DIR = os.path.normpath(os.path.join(HERE, '..', 'docs', 'seo'))
 # lastschrift-einfach.de ist laut Betreiber (07.09.2026) nur eine Weiterleitung auf smart-abrechnen.de und
-# gehoert nicht zum SEO-Geltungsbereich; der Ordner websites/lastschrift-einfach.de ist Altbestand.
+# gehoert nicht zum SEO-Geltungsbereich; der Ordner websites/lastschrift-einfach.de enthaelt seit dem
+# 08.09.2026 nur noch .htaccess (301) und 404.html.
 DOMAINS = ['smart-einzug.de', 'lexoffice-einzug.de', 'lexware-einzug.de', 'sevdesk-einzug.de', 'sevdesk-sepa.de']
 
 # Woerter und Muster, deren Vorkommen eine Faktenpruefung ausloest (Masterprompt Abschnitte 4, 10, 11).

@@ -12,6 +12,20 @@ RewriteRule ^(.*)$ https://lexware-einzug.de/$1 [R=301,L]
 # Alte Adressen dauerhaft weiterleiten
 RewriteRule ^lexware-office-offene-rechnungen(\.html)?$ /offene-rechnungen-per-lastschrift-einziehen [R=301,L]
 
+# Verlagerung dauerhafter Inhalte auf die Hauptdomain und Zusammenfuehrung gleichartiger Seiten (08.09.2026)
+RewriteRule ^ratgeber/sepa\-lastschrift\-fristen\-vorlaufzeiten(\.html)?/?$ https://smart-einzug.de/wissen/fristen-und-vorlaufzeiten/ [R=301,L]
+RewriteRule ^ratgeber/sepa\-lastschrift\-buchen\-lexware\-office(\.html)?/?$ https://smart-einzug.de/wissen/lastschrift-in-lexware-office-verbuchen/ [R=301,L]
+RewriteRule ^ratgeber/mandatsreferenz\-glaeubiger\-id(\.html)?/?$ https://smart-einzug.de/wissen/mandatsreferenz-und-glaeubiger-id/ [R=301,L]
+RewriteRule ^ratgeber/vorabankuendigung\-sepa\-lastschrift(\.html)?/?$ https://smart-einzug.de/wissen/vorabankuendigung/ [R=301,L]
+RewriteRule ^ratgeber/?$ https://smart-einzug.de/wissen/ [R=301,L]
+RewriteRule ^sicherheit(\.html)?/?$ https://smart-einzug.de/sicherheit/ [R=301,L]
+RewriteRule ^hilfe(\.html)?/?$ https://smart-einzug.de/hilfe/ [R=301,L]
+RewriteRule ^anleitung/stripe\-verbinden(\.html)?/?$ https://smart-einzug.de/anleitungen/stripe-verbinden/ [R=301,L]
+RewriteRule ^anleitung/lexware\-office\-api(\.html)?/?$ https://smart-einzug.de/anleitungen/lexware-office-verbinden/ [R=301,L]
+RewriteRule ^lexware\-office\-api(\.html)?/?$ https://smart-einzug.de/anleitungen/lexware-office-verbinden/ [R=301,L]
+RewriteRule ^lexware\-office\-lastschrift(\.html)?/?$ / [R=301,L]
+RewriteRule ^lexware\-office\-sepa\-lastschrift(\.html)?/?$ / [R=301,L]
+
 # .html-Endung entfernen (externe Anfragen), 404 und Rechtstexte ausgenommen
 RewriteCond %{THE_REQUEST} \s/([^\s?]+?)(?:/index)?\.html[\s?] [NC]
 RewriteCond %1 !^404$

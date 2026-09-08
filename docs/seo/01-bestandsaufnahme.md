@@ -1,5 +1,7 @@
 # Bestandsaufnahme der Marketingseiten
 
+Nachtrag 08.09.2026: Diese Bestandsaufnahme beschreibt den Stand vom 07.09.2026 vor der Bereinigung. Seit dem 08.09.2026 sind die Maßnahmen M2 und M4 umgesetzt (lastschrift-einfach.de nur noch Weiterleitung, Spiegelseiten und Ratgeber der Leaddomains zusammengeführt beziehungsweise nach smart-einzug.de/wissen/ verlagert); der aktuelle Bestand steht in `url-inventar.md` und `04-keyword-map.md`, der Umsetzungsstand in `05-massnahmenplan.md` und `07-abschlussbericht.md`.
+
 Stand: 07.09.2026, Repository-Stand abd5d26, Branch `claude/frontend-smart-einzug-egsouk`. Grundlage sind das Repository, `tools/seo-inventory.py`, `tools/site-qa.py`, die Faktenprüfung des Programmcodes (`02-faktenregister.md`), die Prüfung der Werbeaussagen (`03-aussagenpruefung.md`) und die Überschneidungsanalyse (`04-keyword-map.md`). Live-Abrufe und Google-Daten waren nicht verfügbar (siehe Datenlücken).
 
 ## 1. Ziel und Vorgehen

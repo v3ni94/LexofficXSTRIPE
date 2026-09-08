@@ -8,12 +8,21 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.31';
+const APP_VERSION = '4.32';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.32', 'date' => '08.09.2026', 'title' => 'Marketingseiten: Faktenprüfung, Preisregel, Leadseiten der DETM, sevdesk-Domains, Wissensbereich',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Alle Aussagen der Marketingseiten (smart-einzug.de, lexoffice-einzug.de, lexware-einzug.de) gegen den Programmcode geprüft und bereinigt: nur Lesezugriff auf Lexware Office, Einzüge ausschließlich nach Nutzeraktion, Sofort-Einzug mit Karenzzeit und nächtlichem Einreichfenster, Vorabankündigung als optionale Einstellung, Mandate auf Papier oder als Upload, IBAN maskiert statt „verschlüsselt“, keine Testphase, sevdesk nur als „in Vorbereitung“. Faktenregister und Aussagenprüfung liegen in docs/seo und in der Dokumentation im Adminbereich.'],
+            ['type' => 'Geändert', 'text' => 'Preisbeträge des Produkts erscheinen bis zur Freigabe auf keiner Marketingseite mehr (auch nicht in Metadaten oder strukturierten Daten); die AGB verweisen auf die Bestellübersicht. Konditionen zeigt nur der Registrierungs- und Bestellprozess der Anwendung. tools/pricing-check.php Abschnitt D erzwingt das.'],
+            ['type' => 'Geändert', 'text' => 'lexoffice-einzug.de und lexware-einzug.de sind Leadseiten der DETM Management Consulting FZCO: Textwortmarke statt SmartEinzug-Logo, Impressum und Datenschutz nennen DETM (offene Angaben als [wird ergänzt] markiert), Anbieter der Software bleibt die Müller Holding AG. Spiegelseiten der Leaddomains leiten per 301 auf die Hauptdomain oder ihre Startseite; acht Ratgeberartikel wurden nach smart-einzug.de/wissen/ verlagert.'],
+            ['type' => 'Neu', 'text' => 'smart-einzug.de erhält Anleitungen (Lexware Office verbinden, Stripe verbinden, erster Lastschrifteinzug), einen Wissensbereich (SEPA-Mandat, Rücklastschrift, Vorabankündigung, Fristen, Mandatsreferenz, Verbuchung, Zuordnung, Zahlungsstatus, Lastschrift oder Überweisung, Mandat einholen, Voraussetzungen) und eine Sicherheitsseite mit belegbaren Aussagen; Integrationsseiten ausgebaut.'],
+            ['type' => 'Neu', 'text' => 'Zwei Leaddomains für sevdesk mit getrennten Inhalten (sevdesk-einzug.de Vormerkung, sevdesk-sepa.de SEPA-Wissen), Vormerkung über die Anwendung mit Double-Opt-in. Die Domains sind in config.example.php und im Webhosting-Upload eingetragen; die Produktionskonfiguration (signup_domains) und die Zuordnung beim Hoster sind nachzuziehen.'],
+            ['type' => 'Geändert', 'text' => 'lastschrift-einfach.de ist nur noch eine 301-Weiterleitung auf smart-abrechnen.de (Ordner enthält .htaccess und 404-Seite). Neue Werkzeuge: tools/seo-inventory.py (URL-Inventar), tools/seo-map-check.py (Themen- und URL-Zuordnung docs/seo/keyword-map.json), tools/lead-assets.py (logofreie Bildassets); Sitemaps mit lastmod aus der Git-Historie.'],
+         ]],
         ['version' => '4.31', 'date' => '07.09.2026', 'title' => 'Buchhaltungssystem je Firma: Anzeige, Vorauswahl und Wechsel mit Vier-Wochen-Sperre',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Jede Firma sieht genau ihr Buchhaltungssystem (Lexware Office oder sevdesk), nie beide nebeneinander. Bei der Registrierung wird es vorgewählt (sevdesk erst nach Freigabe). In den Einstellungen können Inhaber und Administratoren mit 2FA-Code wechseln; danach gilt eine Sperre von vier Wochen, damit nicht mit einem Abonnement zwei Buchhaltungen abwechselnd bedient werden. Das Abonnement bleibt beim Wechsel unverändert.'],
