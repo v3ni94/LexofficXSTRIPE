@@ -22,7 +22,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [invitations](#invitations) | Einladungen weiterer Benutzer in eine Firma per Link. | Konten und Firmen | organization_id | 14 | 1 |
 | [registration_requests](#registration-requests) | Zwischenspeicher fuer Firmendaten, wenn sich eine bereits bekannte E-Mail-Adresse ein zweites Mal registriert, bis der bestehende Benutzer sich anmeldet und die Zweitfirma bestaetigt (Migration 015). | Konten und Firmen / Anmeldung | keine eigene tenant_id vor Abschluss; user_id bindet an den bestehenden Benutzer, created_org_id verweist nach Abschluss auf die neue Firma | 10 | 1 |
 | [trusted_devices](#trusted-devices) | Vertrauenswuerdige Geraete, auf denen die 2FA-Abfrage fuer eine begrenzte Zeit uebersprungen werden kann (Migration 016). | Konten und Firmen / Anmeldung | keine direkt; user_id bindet an den Benutzer | 12 | 1 |
-| [job_runs](#job-runs) | Historie/Monitoring aller Hintergrundlaeufe (Cron, Synchronisation, Einzuege, Monitoring) mit Kennzahlen (Migration 017). | Monitoring und Betrieb | tenant_id | 18 | 0 |
+| [job_runs](#job-runs) | Historie/Monitoring aller Hintergrundlaeufe (Cron, Synchronisation, Einzuege, Monitoring) mit Kennzahlen (Migration 017). | Monitoring und Betrieb | tenant_id | 19 | 0 |
 | [monitor_checks](#monitor-checks) | Einzelne Gesundheitspruefungen/Messpunkte je Komponente (Migration 017), Grundlage der Statusseite. | Monitoring und Betrieb | keine (plattformweit, component-bezogen) | 10 | 0 |
 | [monitor_daily](#monitor-daily) | Tagesaggregat der Verfuegbarkeit je Komponente (Sekunden ok/eingeschraenkt/ausgefallen/unbekannt), Grundlage der oeffentlichen Statusseite. | Monitoring und Betrieb | keine (plattformweit) | 9 | 0 |
 | [monitor_requests](#monitor-requests) | Minutengenaue Kennzahlen aller eingehenden Web-Anfragen (Anzahl, 5xx-Fehler, Antwortzeiten) fuer die Statusseite. | Monitoring und Betrieb | keine (plattformweit) | 5 | 0 |
@@ -30,7 +30,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [monitor_incident_updates](#monitor-incident-updates) | Verlaufsmeldungen (Updates) zu einer Stoerung/Wartung aus monitor_incidents. | Monitoring und Betrieb | keine (ueber incident_id an monitor_incidents gebunden, dort plattformweit) | 7 | 1 |
 | [jobs](#jobs) | Warteschlange fuer Hintergrundverarbeitung (Feature-Flag features.queue), verarbeitet von Worker-Prozessen auf dem VPS bzw. inline im Cron. | Hintergrundverarbeitung / Warteschlange | tenant_id | 24 | 0 |
 | [worker_heartbeats](#worker-heartbeats) | Lebenszeichen der laufenden Worker-Prozesse (Scheduler, Worker-Pools) fuer Betriebsueberwachung. | Hintergrundverarbeitung / Warteschlange | keine (plattformweit, worker_id-bezogen) | 11 | 0 |
-| [sync_runs](#sync-runs) | Historie einzelner Synchronisationslaeufe mit Lexware Office je Firma (Kennzahlen, Fehlerkategorie). | Synchronisation | tenant_id | 24 | 1 |
+| [sync_runs](#sync-runs) | Historie einzelner Synchronisationslaeufe mit Lexware Office je Firma (Kennzahlen, Fehlerkategorie). | Synchronisation | tenant_id | 28 | 1 |
 | [api_circuits](#api-circuits) | Circuit Breaker je externer API (Lexware Office, Stripe, Mail): unterbindet weitere Aufrufe nach wiederholten technischen Fehlern (CLAUDE.md: api_call_gate()). | Externe Anbindungen / Stabilitaet | keine (plattformweit je API) | 9 | 0 |
 | [integrations](#integrations) | Verbindungsdaten je Firma zu Lexware Office und Stripe (verschluesselte Zugangsdaten, Verbindungsstatus) sowie Wahl der aktiven Rechnungsquelle (Migration 024). | Externe Anbindungen | tenant_id | 27 | 1 |
 | [sync_state](#sync-state) | Serverseitiger Fortschritt der laufenden Lexware-Synchronisation je Firma, damit Browser und Cron denselben Lauf fortsetzen koennen (schema.sql-Kommentar Zeile 427). | Synchronisation | tenant_id | 13 | 1 |
@@ -440,7 +440,8 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | throttle_ms | INT | nein | 0 |  |
 | retries | INT | nein | 0 |  |
 | skipped_starts | INT | nein | 0 |  |
-| peak_memory_bytes | INT UNSIGNED | ja |  |  |
+| queue_wait_ms | INT | ja |  | Wartezeit eines Warteschlangenjobs von der Fälligkeit (available_at) bis zur Reservierung durch einen Worker, in Millisekunden (Migration 029); NULL bei Cron- und Webläufen |
+| peak_memory_bytes | INT UNSIGNED | ja |  | Wartezeit in der Warteschlange bis zur Reservierung (Migration 029) |
 | error_category | VARCHAR(60) | ja |  | bereinigte Fehlerkategorie (siehe monitor_category()), keine Rohtexte |
 
 **Indizes und Eindeutigkeit:** IX ix_jobruns_type_started (job_type, started_at); IX ix_jobruns_finished (finished_at); IX ix_jobruns_status_heartbeat (status, heartbeat_at)  
@@ -452,7 +453,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 **Gelesen durch:** app/monitor.php (Statusseite, Adminbereich System/Wartende Aufgaben)  
 **Löschung, Archivierung, Aufbewahrung:** nicht gefunden im durchsuchten Code (moeglich, aber nicht lokalisiert)  
 **Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Betraege: keine; Zeit: started_at, heartbeat_at, finished_at DATETIME, duration_ms; externe IDs: keine  
-**Migrationen:** 017_monitoring.sql (CREATE TABLE)  
+**Migrationen:** 017_monitoring.sql (CREATE TABLE), 029_sync_performance.sql  
 **Besonderheiten:** job_key beschreibt laut Kommentar den fachlichen Auftrag (z. B. sync:<firma>:<start>).  
 
 ## monitor_checks
@@ -712,9 +713,13 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | errors | INT | nein | 0 |  |
 | retries | INT | nein | 0 |  |
 | api_calls | INT | nein | 0 |  |
-| api_ms | INT | nein | 0 |  |
+| detail_calls | INT | nein | 0 | Einzelabrufe Rechnungsdetail im Lauf (Migration 029) |
+| contact_calls | INT | nein | 0 | Einzelabrufe Kontakt im Lauf (Migration 029) |
+| api_ms | INT | nein | 0 | Einzelabrufe Kontakt (Migration 029) |
 | throttle_ms | INT | nein | 0 |  |
-| error_category | VARCHAR(60) | ja |  |  |
+| api_ms_max | INT | nein | 0 | längster einzelner API-Aufruf in Millisekunden (Migration 029) |
+| cursor_bytes_max | INT | nein | 0 | größter gespeicherter Cursor (JSON) des Laufs in Byte (Migration 029) |
+| error_category | VARCHAR(60) | ja |  | groesster Cursor des Laufs (Migration 029) |
 | error_text | VARCHAR(500) | ja |  |  |
 
 **Indizes und Eindeutigkeit:** IX ix_syncruns_tenant (tenant_id, started_at)  
@@ -723,10 +728,10 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 - `status`: running | success | partial | failed | cancelled (schema.sql-Kommentar Zeile 370)
 **Erzeugt durch:** app/sync_state.php sync_run_open()  
 **Verändert durch:** app/sync_state.php sync_run_open() (cancelled bei ueberlappendem neuem Lauf), sync_run_attach(), sync_run_finish()  
-**Gelesen durch:** invoices.php (Synchronisationshistorie), admin-system.php  
+**Gelesen durch:** invoices.php (Synchronisationshistorie), admin-system.php, app/sync_perf.php (Adminbereich System, Reiter Synchronisation & Performance, 4.39)  
 **Löschung, Archivierung, Aufbewahrung:** nicht gefunden; ON DELETE CASCADE ueber tenant_id bei Loeschung der Firma  
 **Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Betraege: keine; Zeit: started_at (lokale Zeit wie sync_state laut Kommentar Zeile 371), finished_at DATETIME, duration_ms, api_ms, throttle_ms; externe IDs: correlation_id, job_id (Bezug zur jobs-Tabelle)  
-**Migrationen:** 013_sync_performance.sql (vermutlich, da Kennzahlenspalten wie steps/checked/api_calls zur Sync-Performance-Migration passen; im Code nicht abschliessend bestaetigt) und 014_sync_lock_owner.sql (worker_id-Bezug)  
+**Migrationen:** 013_sync_performance.sql (vermutlich, da Kennzahlenspalten wie steps/checked/api_calls zur Sync-Performance-Migration passen; im Code nicht abschliessend bestaetigt) und 014_sync_lock_owner.sql (worker_id-Bezug), 029_sync_performance.sql  
 **Besonderheiten:** triggered_by unterscheidet manual | auto | full | admin | cron (schema.sql-Kommentar Zeile 367).  
 
 ## api_circuits

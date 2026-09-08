@@ -59,3 +59,44 @@ Live-Messung: nach dem Ausrollen liefert jede abgeschlossene Synchronisation die
 - **Wiederholungen** im Lexware-Client: bei 429 und 5xx höchstens drei bzw. zwei Versuche, Wartezeit aus `Retry-After` (1 bis 30 s) oder 2, 4, 8 s, jeweils plus Zufallsanteil bis 500 ms. Keine Wiederholung bei 401 und Validierungsfehlern. Die Drosselung (0,6 s Abstand, unter 2 Anfragen je Sekunde) beruht auf der früheren Lexware-Dokumentation und konnte am 06.09.2026 nicht online verifiziert werden (developers.lexware.io aus der Arbeitsumgebung nicht erreichbar); bitte gegen die aktuelle Dokumentation prüfen.
 - **Stripe**: Idempotenzschlüssel und Versuchsjournal (`collection_attempts`, docs/payment-safety.md) unverändert; ein Datenabgleich löst keine Zahlung aus.
 - Tests: `scratchpad/test_sync_lock.php` (Doppelstart, Budget, verlorene Sperre, Fortsetzung) und `test_sync_perf.php`.
+
+## Nachtrag 07.09.2026: Performance-Überarbeitung, Phase 1 (Version 4.39)
+
+Grundlage ist die Bestandsaufnahme vom 07.09.2026 (Engpassliste mit 14 Punkten, Zielbild 100 bis 500 aktive Firmen). Phase 1
+setzt die Maßnahmen um, die ohne Verifikation der Lexware-Dokumentation sicher sind: messen, entzerren, fair verteilen und im
+Adminbereich sichtbar machen. Verhalten, das von unbestätigten API-Eigenschaften abhängt, bleibt bewusst unverändert.
+
+### Umgesetzt
+
+| Nr. | Maßnahme | Umsetzung | Wirkung |
+|---|---|---|---|
+| 1 | Baseline-Messpunkte (Lücken 1, 2, 6 der Bestandsaufnahme) | Migration 029: `job_runs.queue_wait_ms` (Fälligkeit bis Reservierung, gesetzt in `job_execute()`), `sync_runs.detail_calls`, `contact_calls`, `api_ms_max` (längster Einzelaufruf, `LexofficeClient::$requestMsMax`, ebenso `SevdeskClient`), `cursor_bytes_max` (größter Cursor, gemessen in `sync_state_step()` beim Speichern) | erstmals Wartezeit in der Warteschlange, Einzelabrufe je Lauf und Cursorgröße dauerhaft messbar |
+| 2 | Vollabgleich entzerren (Engpass 6) | `queue.full_sync_window_hours` (Vorgabe 4): `scheduler_full_sync_hour()` verteilt Firmen über ein Fenster ab `full_sync_hour` mit stabilem Versatz (`crc32` der Firmenkennung); Fenster 1 = altes Verhalten; Umbruch über Mitternacht berücksichtigt | keine gemeinsame Nachtstunde für alle Firmen, jede Firma behält ihre Stunde (im Adminbereich angezeigt) |
+| 3 | Fairness zwischen Firmen (Engpass 8) | `queue.sync_fair_seconds` (Vorgabe 120, 0 = aus): läuft ein Sync-Job länger und warten fällige Sync-Jobs ANDERER Firmen (`queue_waiting_count(QUEUE_SYNC_TYPES, Firma)`), gibt er den Worker per `JobRequeueException` ab (Fortsetzung ohne Fehlversuch, Cursor bleibt) | eine Firma mit großem Bestand kann einen Worker nicht mehr bis zu 10 Minuten am Stück belegen, solange andere warten |
+| 4 | Seitengröße konfigurierbar (Engpass 5) | `sync.page_size` (Vorgabe 100, Obergrenze 250 im Code, `LexofficeClient::pageSize()`) | Erhöhung möglich, sobald das Maximum der Lexware-API am Primärtext bestätigt ist; bis dahin bleibt 100 |
+| 5 | Adminbereich System, Reiter „Synchronisation & Performance“ | `app/sync_perf.php`: Läufe, Dauer, Aufrufe, Detail- und Kontaktabrufe, übersprungene Rechnungen, Antwortzeit je Aufruf, längster Aufruf, Drosselung, Wiederholungen, Wartezeit in der Warteschlange, Cursorgröße (24 Stunden und 7 Tage); Worker je Pool; Firmen mit dem größten Aufwand; wirksame Konfiguration mit Quelle; Verteilung des Vollabgleichs; Circuit Breaker | Betreiber sieht Engpässe ohne Serverzugriff; Grundlage für die Bemessung weiterer Worker |
+
+Prüfungen: `bash tools/scheduler-sync-check.sh` (Fälle 10a bis 10c: Verteilung, Fairness, Reiter) und `bash tools/sevdesk-check.sh`.
+
+### Bewusst nicht umgesetzt (offene Prüffragen, Stand 07.09.2026)
+
+- **Lexware-Webhooks (Event Subscriptions):** Ereigniskatalog, Nutzdatenformat, Signaturkopf und Verfahren (RSA-SHA512 gegenüber
+  HMAC-SHA256 in einer Fundstelle) sind nicht am Primärtext verifiziert; eine Signaturprüfung auf Annahmen wäre ein
+  Sicherheitsrisiko. Vorbereitung: Skizze in `scratchpad/recherche/lexware-limits.md` (nicht im Repository), Umsetzung erst
+  nach Prüfung der Dokumentation mit ungehindertem Netzzugang.
+- **Sammelabrufe für Rechnungsdetails:** kein belegter Endpunkt. Der Detailabruf je Rechnung (Engpass 1) bleibt der größte
+  Kostenblock beim Erstimport.
+- **Seitengröße über 100:** Sekundärquellen nennen 100 oder 250 als Maximum (Widerspruch). Vorgabe bleibt 100.
+- **Rate-Limit-Wert:** 2 Anfragen je Sekunde und Schlüssel ist weiterhin eine Annahme; der Client hält 0,6 s Mindestabstand
+  plus `api_call_gate()` (2/s je Firma, 50/s gesamt).
+- **Worker-Anzahl:** zwei Lexware-Worker sind keine bemessene Größe. Bemessung erst nach Auswertung der neuen Kennzahlen
+  (Wartezeit in der Warteschlange, Auslastung je Pool) über mindestens eine Woche Produktionsbetrieb; Skalierung über
+  zusätzliche Dienste in `deploy/vps/docker-compose.yml` unter Beachtung der globalen Drosselung.
+- **Cursor-Auslagerung, N+1-Abfragen, Transaktionen während HTTP** (Engpässe 10, 11, 14): erst nach Messung; die neue
+  Cursorgröße zeigt, ob eine Auslagerung nötig ist.
+
+### Konfiguration
+
+`shared/config.php`, Block `queue`: `full_sync_window_hours` (1 bis 12, Vorgabe 4), `sync_fair_seconds` (0 = aus, Vorgabe 120);
+Block `sync`: `page_size` (1 bis 250, Vorgabe 100). Änderungen ohne Deployment erreichen Scheduler und Worker erst nach
+`deploy/vps/scripts/restart-workers.sh`. Rückrollen ohne Codeänderung: `full_sync_window_hours = 1`, `sync_fair_seconds = 0`.

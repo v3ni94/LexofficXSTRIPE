@@ -316,11 +316,13 @@
     "loeschung": "nicht gefunden im durchsuchten Code (moeglich, aber nicht lokalisiert)",
     "geld_zeit_extern": "Betraege: keine; Zeit: started_at, heartbeat_at, finished_at DATETIME, duration_ms; externe IDs: keine",
     "migrationen": [
-      "017_monitoring.sql (CREATE TABLE)"
+      "017_monitoring.sql (CREATE TABLE)",
+      "029_sync_performance.sql"
     ],
     "besonderheiten": "job_key beschreibt laut Kommentar den fachlichen Auftrag (z. B. sync:<firma>:<start>).",
     "spalten_erlaeuterung": {
-      "error_category": "bereinigte Fehlerkategorie (siehe monitor_category()), keine Rohtexte"
+      "error_category": "bereinigte Fehlerkategorie (siehe monitor_category()), keine Rohtexte",
+      "queue_wait_ms": "Wartezeit eines Warteschlangenjobs von der Fälligkeit (available_at) bis zur Reservierung durch einen Worker, in Millisekunden (Migration 029); NULL bei Cron- und Webläufen"
     }
   },
   "monitor_checks": {
@@ -515,16 +517,22 @@
       "app/sync_state.php sync_run_open() (cancelled bei ueberlappendem neuem Lauf), sync_run_attach(), sync_run_finish()"
     ],
     "gelesen_durch": [
-      "invoices.php (Synchronisationshistorie), admin-system.php"
+      "invoices.php (Synchronisationshistorie), admin-system.php",
+      "app/sync_perf.php (Adminbereich System, Reiter Synchronisation & Performance, 4.39)"
     ],
     "loeschung": "nicht gefunden; ON DELETE CASCADE ueber tenant_id bei Loeschung der Firma",
     "geld_zeit_extern": "Betraege: keine; Zeit: started_at (lokale Zeit wie sync_state laut Kommentar Zeile 371), finished_at DATETIME, duration_ms, api_ms, throttle_ms; externe IDs: correlation_id, job_id (Bezug zur jobs-Tabelle)",
     "migrationen": [
-      "013_sync_performance.sql (vermutlich, da Kennzahlenspalten wie steps/checked/api_calls zur Sync-Performance-Migration passen; im Code nicht abschliessend bestaetigt) und 014_sync_lock_owner.sql (worker_id-Bezug)"
+      "013_sync_performance.sql (vermutlich, da Kennzahlenspalten wie steps/checked/api_calls zur Sync-Performance-Migration passen; im Code nicht abschliessend bestaetigt) und 014_sync_lock_owner.sql (worker_id-Bezug)",
+      "029_sync_performance.sql"
     ],
     "besonderheiten": "triggered_by unterscheidet manual | auto | full | admin | cron (schema.sql-Kommentar Zeile 367).",
     "spalten_erlaeuterung": {
-      "checked/created/updated/removed/skipped": "Kennzahlen der verglichenen bzw. veraenderten Rechnungen/Kontakte je Lauf"
+      "checked/created/updated/removed/skipped": "Kennzahlen der verglichenen bzw. veraenderten Rechnungen/Kontakte je Lauf",
+      "detail_calls": "Einzelabrufe Rechnungsdetail im Lauf (Migration 029)",
+      "contact_calls": "Einzelabrufe Kontakt im Lauf (Migration 029)",
+      "api_ms_max": "längster einzelner API-Aufruf in Millisekunden (Migration 029)",
+      "cursor_bytes_max": "größter gespeicherter Cursor (JSON) des Laufs in Byte (Migration 029)"
     }
   },
   "api_circuits": {

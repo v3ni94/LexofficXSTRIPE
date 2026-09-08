@@ -68,6 +68,14 @@ Job-Handler zentral in `job_handle()` (`app/jobs.php:51-65`); Pools/Zuordnung in
   einem verwaisten Lauf ohne Fortschritt (`stale`-Fortsetzung, `app/jobs.php:387-398`, kein Warten bis
   zur nächsten regulären Fälligkeit). `dedupe_key` `sync:<tenant_id>` verhindert Doppelstarts
   (`app/jobs.php:394, 404, 412`).
+- **Fairness (4.39):** `queue.sync_fair_seconds` (Standard 120, 0 = aus): nach dieser Laufzeit gibt `job_sync_run()` den
+  Worker ab, sobald fällige Synchronisationsjobs anderer Firmen warten (`queue_waiting_count(QUEUE_SYNC_TYPES, Firma)`),
+  per `JobRequeueException` ohne Fehlversuch; der Cursor bleibt erhalten.
+- **Vollabgleich entzerrt (4.39):** `queue.full_sync_window_hours` (Standard 4): `scheduler_full_sync_hour()` verteilt die
+  Firmen mit stabilem Versatz (crc32 der Firmenkennung) über das Fenster ab `full_sync_hour`; 1 = alle zur selben Stunde.
+- **Messpunkte (4.39, Migration 029):** `job_runs.queue_wait_ms` (Fälligkeit bis Reservierung, `job_execute()`),
+  `sync_runs.detail_calls`, `contact_calls`, `api_ms_max`, `cursor_bytes_max`; Anzeige im Adminbereich System, Reiter
+  „Synchronisation & Performance“ (`app/sync_perf.php`). Details: `docs/sync-performance.md`, Nachtrag 4.39.
 - **Zeitbudget je Versuch:** `queue.sync_attempt_seconds`, Standard 600 s
   (`app/config.example.php:221`), zusätzlich begrenzt auf `queue.sync_max_steps_attempt`, Standard 60
   Schritte (`app/config.example.php:222`, geprüft `app/jobs.php:41-42, 168`).

@@ -171,6 +171,28 @@ function queue_type_is_money(?string $type): bool
     return in_array((string)$type, QUEUE_MONEY_TYPES, true);
 }
 
+/** Anzahl wartender Jobs der Typen (queued/retry, faellig), optional ohne eine Firma (Fairness zwischen Firmen, 4.39). */
+function queue_waiting_count(array $types, ?string $excludeTenantId = null): int
+{
+    if (!queue_available() || $types === []) {
+        return 0;
+    }
+    $marks = implode(',', array_fill(0, count($types), '?'));
+    $sql = "SELECT COUNT(*) FROM jobs WHERE status IN ('queued','retry') AND available_at <= ? AND type IN ($marks)";
+    $params = array_merge([queue_utc(queue_now())], array_values($types));
+    if ($excludeTenantId !== null) {
+        $sql .= ' AND (tenant_id IS NULL OR tenant_id <> ?)';
+        $params[] = $excludeTenantId;
+    }
+    try {
+        $st = db()->prepare($sql);
+        $st->execute($params);
+        return (int)$st->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
 /** Job laden (ohne Mandantenfilter, nur für Worker und Plattformadministration). */
 function queue_get(string $id): ?array
 {

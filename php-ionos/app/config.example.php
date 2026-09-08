@@ -237,7 +237,9 @@ return [
         'sync_max_steps_attempt' => 60,
         'collections_seconds'    => 120,  // Zeitbudget je Durchlauf der Einzugsverarbeitung
         'auto_sync_hours'        => 6,    // regelmäßiger Delta-Abgleich je Firma (NORMAL)
-        'full_sync_hour'         => 3,    // Stunde des nächtlichen Vollabgleichs (LOW), lokale Zeit
+        'full_sync_hour'         => 3,    // Beginn des nächtlichen Vollabgleichs (LOW), lokale Zeit
+        'full_sync_window_hours' => 4,    // Vollabgleich über dieses Fenster verteilen (je Firma feste Stunde ab full_sync_hour); 1 = alle zur selben Stunde (4.39)
+        'sync_fair_seconds'      => 120,  // Sync-Job gibt den Worker nach dieser Zeit ab, wenn Jobs anderer Firmen warten; 0 = aus (4.39)
         'prune_days'             => 30,   // abgeschlossene Jobs aufbewahren
         'lexoffice_per_second'   => 2,    // Aufrufe je Sekunde JE API-Schlüssel, also je Firma (Annahme zur Lexware-API, zu verifizieren)
         'lexoffice_global_per_second' => 50, // Obergrenze über alle Firmen zusammen (Schutz der eigenen Worker), 0 = keine
@@ -276,6 +278,7 @@ return [
     //   'status_publish' => ['file' => '/opt/smarteinzug/shared/status/status.json'],
     'status_publish' => [],
     'sync' => [
+        'page_size'             => 100,  // Einträge je Seite der Lexware-Belegliste (1 bis 250; Maximum der API mit der Dokumentation verifizieren, 4.39)
         'step_seconds'          => 8,
         'step_max'              => 40,
         'step_max_api_calls'    => 60,   // höchstens so viele Lexware-Aufrufe je Schritt

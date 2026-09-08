@@ -5,9 +5,9 @@
     "summary": "Funktionsübersicht: sevdesk auf Stand 4.38, Wechselsperre aufheben; neues Kapitel Leitfaden Scharfschaltung (Go-live) mit Stripe-Einrichtung."
   },
   "entwickler": {
-    "revision": "r7",
-    "date": "07.09.2026",
-    "summary": "sevdesk Phase 2 (4.38): Endpunktregister, Freigabetermin, Jobtyp sync_run_sevdesk und worker-sevdesk, Einstellungen sevdesk, Berechtigung companies.manage, Datenwörterbuch Migration 028."
+    "revision": "r8",
+    "date": "08.09.2026",
+    "summary": "Performance Phase 1 (4.39): Messpunkte Migration 029, Vollabgleichsfenster, Fairness, Seitengröße, Reiter Synchronisation & Performance, Bemessung der Worker."
   },
   "kunden": {
     "revision": "r3",

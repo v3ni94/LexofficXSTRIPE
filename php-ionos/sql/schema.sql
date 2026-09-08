@@ -241,6 +241,7 @@ CREATE TABLE IF NOT EXISTS job_runs (
     throttle_ms       INT          NOT NULL DEFAULT 0,
     retries           INT          NOT NULL DEFAULT 0,
     skipped_starts    INT          NOT NULL DEFAULT 0,
+    queue_wait_ms     INT          NULL,                 -- Wartezeit in der Warteschlange bis zur Reservierung (Migration 029)
     peak_memory_bytes INT UNSIGNED NULL,
     error_category    VARCHAR(60)  NULL,
     KEY ix_jobruns_type_started (job_type, started_at),
@@ -383,8 +384,12 @@ CREATE TABLE IF NOT EXISTS sync_runs (
     errors         INT          NOT NULL DEFAULT 0,
     retries        INT          NOT NULL DEFAULT 0,
     api_calls      INT          NOT NULL DEFAULT 0,
+    detail_calls   INT          NOT NULL DEFAULT 0,           -- Einzelabrufe Rechnungsdetail (Migration 029)
+    contact_calls  INT          NOT NULL DEFAULT 0,           -- Einzelabrufe Kontakt (Migration 029)
     api_ms         INT          NOT NULL DEFAULT 0,
     throttle_ms    INT          NOT NULL DEFAULT 0,
+    api_ms_max     INT          NOT NULL DEFAULT 0,           -- laengster Einzelaufruf (Migration 029)
+    cursor_bytes_max INT        NOT NULL DEFAULT 0,           -- groesster Cursor des Laufs (Migration 029)
     error_category VARCHAR(60)  NULL,
     error_text     VARCHAR(500) NULL,                         -- bereinigt
     KEY ix_syncruns_tenant (tenant_id, started_at),

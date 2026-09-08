@@ -34,7 +34,7 @@ $cfg = monitor_config();
 $canEdit = monitor_can_edit($ctx);
 $available = monitor_available();
 
-$tabs = ['uebersicht' => 'Übersicht', 'dienste' => 'Dienste', 'aktivitaet' => 'Aktivität', 'jobs' => 'Jobs', 'server' => 'Server',
+$tabs = ['uebersicht' => 'Übersicht', 'dienste' => 'Dienste', 'aktivitaet' => 'Aktivität', 'jobs' => 'Jobs', 'performance' => 'Synchronisation & Performance', 'server' => 'Server',
          'verfuegbarkeit' => 'Verfügbarkeit', 'stoerungen' => 'Störungen und Wartung', 'versionen' => 'Versionen & Dokumentation'];
 $tabParam = is_string($_GET['tab'] ?? null) ? (string)$_GET['tab'] : '';
 if ($tabParam === 'dokumentation') { $tabParam = 'versionen'; } // alter Reiter, Links bleiben gueltig
@@ -751,6 +751,8 @@ $queueGlobalOn = feature_enabled('queue');
 </div>
 <?php endif; // queueOk ?>
 <?php endif; ?>
+
+<?php if ($tab === 'performance'): require_once __DIR__ . '/app/sync_perf.php'; require_once __DIR__ . '/app/invoice_source_switch.php'; echo sync_perf_render(); endif; ?>
 
 <?php if ($tab === 'server'): ?>
 <?php

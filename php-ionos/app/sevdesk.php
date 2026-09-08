@@ -52,6 +52,7 @@ final class SevdeskClient
     public int $requestCount = 0;
     public float $requestMs = 0.0;
     public float $throttleMs = 0.0;
+    public float $requestMsMax = 0.0;
     public int $retryCount = 0;
     /** Letzter HTTP-Status (Diagnose ohne Geheimnisse). */
     public int $lastStatus = 0;
@@ -109,7 +110,9 @@ final class SevdeskClient
         $err = curl_error($ch);
         curl_close($ch);
         $this->requestCount++;
-        $this->requestMs += (microtime(true) - $t0) * 1000;
+        $elapsedMs = (microtime(true) - $t0) * 1000;
+        $this->requestMs += $elapsedMs;
+        $this->requestMsMax = max($this->requestMsMax, $elapsedMs);
         $this->lastStatus = $status;
         $instrument = static function (string $state, ?string $category) {
             if (function_exists('monitor_event')) {

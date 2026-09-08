@@ -856,7 +856,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --scale wo
 
 `worker-lexware-1`/`worker-lexware-2` sind feste, einzelne Dienste (zwei Container in
 `docker-compose.prod.yml`, siehe `deploy/vps/README.md`); `--scale` eignet sich für die übrigen,
-namentlich einzelnen Pools (`worker-mail`, `worker-stripe`, `worker-maintenance`).
+namentlich einzelnen Pools (`worker-mail`, `worker-stripe`, `worker-maintenance`, `worker-sevdesk`).
+
+**Bemessung (seit 4.39):** Ob ein Pool zu klein ist, zeigt der Adminbereich System, Reiter „Synchronisation &
+Performance“: steigt die Wartezeit in der Warteschlange (Fälligkeit bis Reservierung) und sind alle Worker des Pools
+dauerhaft beschäftigt, fehlt Kapazität. Vor einer Erhöhung der Lexware-Worker die globale Drosselung
+(`queue.lexoffice_global_per_second`) prüfen, sonst warten mehr Worker auf dieselbe Obergrenze. Der nächtliche
+Vollabgleich verteilt sich über `queue.full_sync_window_hours` Stunden; die Verteilung je Stunde steht im selben Reiter.
 
 ## Dead Letter behandeln
 

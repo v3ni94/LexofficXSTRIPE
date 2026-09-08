@@ -66,7 +66,8 @@ function _sync_parse_datetime($value): ?string
 function _sync_empty_metrics(): array
 {
     return ['steps' => 0, 'api_calls' => 0, 'api_ms' => 0, 'throttle_ms' => 0, 'retries' => 0,
-        'detail_calls' => 0, 'contact_calls' => 0, 'skipped_unchanged' => 0, 'contacts_reused' => 0, 'started_at' => time()];
+        'detail_calls' => 0, 'contact_calls' => 0, 'skipped_unchanged' => 0, 'contacts_reused' => 0, 'started_at' => time(),
+        'api_ms_max' => 0, 'cursor_bytes_max' => 0];
 }
 
 /** Messwerte des Clients (nur beim echten Lexware-Client verfügbar) in die Laufmetrik übernehmen. */
@@ -83,6 +84,7 @@ function _sync_collect_client_metrics(InvoiceSource $lex, array &$metrics, int $
     $metrics['api_ms'] += (int)round($client->requestMs - $ms0);
     $metrics['throttle_ms'] += (int)round($client->throttleMs - $thr0);
     $metrics['retries'] += $client->retryCount - $ret0;
+    $metrics['api_ms_max'] = max((int)($metrics['api_ms_max'] ?? 0), (int)round((float)($client->requestMsMax ?? 0)));
 }
 
 /**

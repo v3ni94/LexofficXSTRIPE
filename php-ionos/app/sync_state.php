@@ -181,10 +181,18 @@ function sync_state_step(string $tenantId, int $batchSize = 0): array
             // Fortschritt nur speichern, wenn die Sperre noch uns gehört. Wurde sie in der
             // Zwischenzeit von einem anderen Prozess übernommen (Zeitüberschreitung), wird der
             // Cursor dieses Schritts verworfen; die Datenänderungen selbst sind idempotente Upserts.
+            // Cursorgroesse messen (Baseline 4.39): groesster gespeicherter Cursor des Laufs, im Cursor selbst fortgeschrieben
+            $cursorJson = json_encode($step['cursor']);
+            $bytes = strlen((string)$cursorJson);
+            if (isset($step['cursor']['metrics']) && is_array($step['cursor']['metrics'])) {
+                $step['cursor']['metrics']['cursor_bytes_max'] = max((int)($step['cursor']['metrics']['cursor_bytes_max'] ?? 0), $bytes);
+                $step['result']['metrics']['cursor_bytes_max'] = $step['cursor']['metrics']['cursor_bytes_max'];
+                $cursorJson = json_encode($step['cursor']);
+            }
             $upd = $pdo->prepare(
                 'UPDATE sync_state SET cursor_json = ?, lock_until = NULL, lock_owner = NULL, last_step_at = NOW(), result_json = ? WHERE tenant_id = ? AND lock_owner = ?'
             );
-            $upd->execute([json_encode($step['cursor']), json_encode($step['result']), $tenantId, $owner]);
+            $upd->execute([$cursorJson, json_encode($step['result']), $tenantId, $owner]);
             if ($upd->rowCount() !== 1) {
                 job_run_finish($runId, 'unknown', $jobMetrics, 'lock_lost');
                 return _sync_lock_lost($tenantId, $owner, $step['result']);
@@ -419,12 +427,14 @@ function sync_run_finish(string $tenantId, string $status, array $result, ?strin
         db()->prepare(
             "UPDATE sync_runs SET status = ?, finished_at = NOW(), duration_ms = TIMESTAMPDIFF(SECOND, started_at, NOW()) * 1000,
                     steps = ?, checked = ?, created = ?, updated = ?, removed = ?, skipped = ?, errors = ?, retries = ?, api_calls = ?, api_ms = ?, throttle_ms = ?,
+                    detail_calls = ?, contact_calls = ?, api_ms_max = ?, cursor_bytes_max = ?,
                     error_category = ?, error_text = ?
              WHERE tenant_id = ? AND status = 'running'"
         )->execute([
             in_array($status, ['success', 'partial', 'failed', 'cancelled'], true) ? $status : 'partial',
             (int)($m['steps'] ?? 0), (int)($result['synced'] ?? 0), (int)($result['new'] ?? 0), (int)($result['updated'] ?? 0), (int)($result['removed'] ?? 0),
             (int)($m['skipped_unchanged'] ?? 0), $status === 'failed' ? 1 : 0, (int)($m['retries'] ?? 0), (int)($m['api_calls'] ?? 0), (int)($m['api_ms'] ?? 0), (int)($m['throttle_ms'] ?? 0),
+            (int)($m['detail_calls'] ?? 0), (int)($m['contact_calls'] ?? 0), (int)($m['api_ms_max'] ?? 0), (int)($m['cursor_bytes_max'] ?? 0),
             $category !== null ? mb_substr($category, 0, 60) : null,
             $errorText !== null ? mb_substr(function_exists('log_sanitize') ? log_sanitize($errorText) : $errorText, 0, 500) : null,
             $tenantId,

@@ -157,6 +157,19 @@ function job_run_start(string $type, ?string $key = null, ?string $tenantId = nu
     }
 }
 
+/** Wartezeit in der Warteschlange (Millisekunden) am Jobbeginn festhalten (Migration 029; fehlt die Spalte, still). */
+function job_run_set_queue_wait(?string $id, int $ms): void
+{
+    if ($id === null) {
+        return;
+    }
+    try {
+        db()->prepare('UPDATE job_runs SET queue_wait_ms = ? WHERE id = ?')->execute([max(0, $ms), $id]);
+    } catch (Throwable $e) {
+        // Diagnose darf den Job nicht stören
+    }
+}
+
 function job_run_heartbeat(?string $id, array $progress = []): void
 {
     if ($id === null) {

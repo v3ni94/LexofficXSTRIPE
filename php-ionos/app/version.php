@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.38';
+const APP_VERSION = '4.39';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.39', 'date' => '08.09.2026', 'title' => 'Performance-Überarbeitung der Synchronisation, Phase 1: Messpunkte, entzerrter Vollabgleich, Fairness, Adminreiter',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Adminbereich System, Reiter „Synchronisation & Performance“: Läufe, Dauer, API-Aufrufe, Detail- und Kontaktabrufe, übersprungene Rechnungen, Antwortzeit je Aufruf, Drosselung, Wiederholungen, Wartezeit in der Warteschlange und Cursorgröße für 24 Stunden und 7 Tage; Worker je Pool; Firmen mit dem größten Aufwand; wirksame Konfiguration mit Quelle; Verteilung des nächtlichen Vollabgleichs; Circuit Breaker. Neue Messpunkte in Migration 029.'],
+            ['type' => 'Geändert', 'text' => 'Der nächtliche Vollabgleich verteilt sich über ein Fenster (Vorgabe vier Stunden ab 3 Uhr); jede Firma behält ihre feste Stunde. Ein Synchronisationsjob gibt den Worker nach 120 Sekunden ab, sobald Jobs anderer Firmen warten (Fortsetzung ohne Fehlversuch). Seitengröße der Lexware-Belegliste konfigurierbar (Vorgabe 100, höchstens 250). Alles ohne Deployment zurücknehmbar (Konfiguration).'],
+            ['type' => 'Geändert', 'text' => 'Bewusst nicht umgesetzt, weil die Lexware-Dokumentation nicht am Primärtext geprüft werden konnte: Webhooks (Signaturverfahren unbestätigt), Sammelabrufe, größere Seiten. Die offenen Prüffragen stehen in der Entwicklerdokumentation.'],
+         ]],
         ['version' => '4.38', 'date' => '07.09.2026', 'title' => 'sevdesk Phase 2: Adapter, Verbindung je Firma, eigener Worker, Freigabetermin, Wechselsperre aufheben',
          'entries' => [
             ['type' => 'Neu', 'text' => 'sevdesk-Adapter hinter der bestehenden Rechnungsquelle (nur lesend): offene und teilbezahlte Rechnungen, Positionen, Kontakte mit Kundennummer und E-Mail, Änderungserkennung. Gebaut nach Sekundärquellen ohne Testkonto: Jede Annahme ist im Endpunktregister der Dokumentation mit Prüffrage vermerkt. Der offene Restbetrag und damit jeder SEPA-Einzug für sevdesk-Rechnungen bleiben gesperrt, bis der Betreiber die Zahlungsfelder mit einem sevdesk-Konto bestätigt hat (Schalter sevdesk_api_verified) und Einzüge freigibt (sevdesk_collections).'],
