@@ -71,6 +71,7 @@ CHAPTERS = [
     ('seo/04-keyword-map.md', None),
     ('seo/05-massnahmenplan.md', None),
     ('seo/06-mess-und-pflegekonzept.md', None),
+    ('seo/07-abschlussbericht.md', None),
 ]
 
 
