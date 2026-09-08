@@ -80,7 +80,7 @@
         <li class="step"><span class="step-number">1</span><div><h3>Firmenaccount registrieren</h3><p>Mit geschäftlicher E-Mail-Adresse registrieren und die verpflichtende Zwei-Faktor-Authentifizierung einrichten.</p></div></li>
         <li class="step"><span class="step-number">2</span><div><h3>Lexware Office verbinden</h3><p>Public-API-Schlüssel erzeugen und in SmartEinzug hinterlegen. Nach Angaben von Lexware ist derzeit der Tarif Lexware Office XL erforderlich, bitte im eigenen Konto prüfen.</p></div></li>
         <li class="step"><span class="step-number">3</span><div><h3>Eigenes Stripe-Konto verbinden</h3><p>Secret Key hinterlegen. SEPA-Lastschrift muss im Stripe-Konto freigeschaltet sein.</p></div></li>
-        <li class="step"><span class="step-number">4</span><div><h3>Verbindungen prüfen</h3><p>SmartEinzug meldet, ob Rechnungen geladen und Zahlungen übergeben werden können.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Verbindungen prüfen</h3><p>SmartEinzug meldet, ob der Zugriff auf beide Konten funktioniert.</p></div></li>
         <li class="step"><span class="step-number">5</span><div><h3>Ersten Einzug freigeben</h3><p>Rechnung auswählen, Mandat prüfen, sofort oder terminiert einziehen.</p></div></li>
       </ol>
     </div>
@@ -91,7 +91,7 @@
       <span class="eyebrow">Stripe</span>
       <h2>Webhook einrichten, damit Stripe den Status zurückmeldet</h2>
       <span class="bar" aria-hidden="true"></span>
-      <p>Nach dem Verbinden Ihres Stripe-Kontos richten Sie einmalig einen Webhook ein. Darüber meldet Stripe, ob eine Lastschrift eingereicht, erfolgreich, fehlgeschlagen, zurückgebucht oder erstattet wurde. Ohne Webhook aktualisiert SmartEinzug den Status nur beim manuellen Abgleich und im Hintergrundlauf.</p>
+      <p>Nach dem Verbinden Ihres Stripe-Kontos richten Sie einmalig einen Webhook ein. Darüber meldet Stripe, ob eine Lastschrift eingereicht, erfolgreich, fehlgeschlagen, zurückgebucht oder erstattet wurde. Ohne Webhook erkennt SmartEinzug Erfolg und Fehlschlag nur, wenn Sie den Abgleich über den Button Status mit Stripe abgleichen anstoßen; Rücklastschriften und Erstattungen werden ohne Webhook nicht erkannt.</p>
       <div class="tiles">
         <div class="tile"><h3>1. Endpunkt anlegen</h3><p>Stripe-Dashboard, Entwickler, Webhooks, "Endpunkt hinzufügen". Adresse: https://app.smart-einzug.de/stripe-webhook.php</p></div>
         <div class="tile"><h3>2. Genau sieben Ereignisse</h3><p>payment_intent.processing, payment_intent.succeeded, payment_intent.payment_failed, charge.dispute.created, charge.refunded, charge.refund.updated, checkout.session.completed. Nicht "alle Ereignisse" wählen, das erzeugt nur Leerlauf.</p></div>
@@ -124,7 +124,7 @@
         <li><strong>Warum kann Lexware Office nicht selbst per SEPA einziehen?</strong> Lexware Office verwaltet Rechnungen, führt aber keine Lastschriften aus. SmartEinzug übernimmt diesen Schritt über Ihr eigenes Stripe-Konto.</li>
         <li><strong>Brauche ich zwingend ein eigenes Stripe-Konto?</strong> Ja. Der Einzug läuft ausschließlich über Ihr Stripe-Konto, das Geld fließt direkt an Sie.</li>
         <li><strong>Welcher Lexware-Tarif ist nötig?</strong> Nach Angaben von Lexware der Tarif Lexware Office XL für die Public API, bitte im eigenen Konto prüfen.</li>
-        <li><strong>Was kostet SmartEinzug?</strong> UNLIMITED START zum Einführungspreis 25,00 EUR netto je vier Wochen für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden, zuzüglich Umsatzsteuer und der Stripe-Gebühren Ihres eigenen Kontos.</li>
+        <li><strong>Was kostet SmartEinzug?</strong> SmartEinzug wird im Tarif UNLIMITED START angeboten, Abrechnung je vier Wochen, netto zuzüglich Umsatzsteuer und der Stripe-Gebühren Ihres eigenen Kontos. Den aktuellen Preis sehen Sie auf der Registrierungsseite und vor Abschluss in der Bestellübersicht Ihres Firmenaccounts.</li>
         <li><strong>Ist sevdesk bereits angebunden?</strong> Nein, eine sevdesk-Integration befindet sich in Planung und ist derzeit nicht verfügbar. Der Start ist für Ende September 2026 geplant; eine kostenlose Vormerkung ist unter <a href="/integrationen/sevdesk/">Integrationen, sevdesk</a> möglich.</li>
       </ul>
     </div>

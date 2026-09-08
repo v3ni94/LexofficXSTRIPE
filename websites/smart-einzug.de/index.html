@@ -42,13 +42,7 @@
   "@type": "SoftwareApplication",
   "name": "SmartEinzug",
   "applicationCategory": "BusinessApplication",
-  "operatingSystem": "Web",
-  "offers": {
-    "@type": "Offer",
-    "price": "25.00",
-    "priceCurrency": "EUR",
-    "description": "je 4 Wochen"
-  }
+  "operatingSystem": "Web"
 }
 </script>
 <script type="application/ld+json">
@@ -107,7 +101,7 @@
         </div>
         <p class="hero-note">Voraussetzungen: Lexware Office XL (nach Angaben von Lexware für die Public API erforderlich, bitte im eigenen Konto prüfen) und ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto.</p>
         <ul class="kennzeichen">
-          <li>Einführungspreis 25,00 EUR statt 50,00 EUR je 4 Wochen*</li>
+          <li>Ein Tarif, Abrechnung je vier Wochen</li>
           <li>Keine Jahresbindung</li>
           <li>Unbegrenzte Mitarbeiter</li>
         </ul>
@@ -126,7 +120,7 @@
           <tbody>
             <tr><td>RE-3301</td><td>Nordkontor GmbH</td><td class="num">890,00 €</td><td><span class="badge badge-success">Eingezogen</span></td><td></td></tr>
             <tr><td>RE-3302</td><td>Fritz Bauelemente</td><td class="num">1.475,20 €</td><td><span class="badge badge-info">Im Einzug</span></td><td></td></tr>
-            <tr><td>RE-3303</td><td>Ateliergarten KG</td><td class="num">312,50 €</td><td><span class="badge badge-warn">Terminiert</span></td><td></td></tr>
+            <tr><td>RE-3303</td><td>Ateliergarten KG</td><td class="num">312,80 €</td><td><span class="badge badge-warn">Terminiert</span></td><td></td></tr>
             <tr><td>RE-3304</td><td>Blume &amp; Söhne</td><td class="num">64,90 €</td><td><span class="badge badge-warn">Mandat prüfen</span></td><td><span class="mock-btn">Freigeben</span></td></tr>
           </tbody>
         </table>
@@ -147,7 +141,7 @@
         <div class="trust-item"><span class="icon"><svg><use href="#i-euro"/></svg></span><div><strong>SEPA auf Zuruf oder terminiert</strong><span>Einzelne Rechnung, mehrere zugleich oder auf einen festen Tag geplant.</span></div></div>
         <div class="trust-item"><span class="icon"><svg><use href="#i-sync"/></svg></span><div><strong>Rückmeldung ohne Handarbeit</strong><span>Erfolg, Fehlschlag und Rücklastschrift kommen automatisch von Stripe zurück.</span></div></div>
         <div class="trust-item"><span class="icon"><svg><use href="#i-users"/></svg></span><div><strong>Mehrere Mitarbeiter</strong><span>Ein Firmenaccount, mehrere persönliche Zugänge, keine geteilten Passwörter.</span></div></div>
-        <div class="trust-item"><span class="icon"><svg><use href="#i-plan"/></svg></span><div><strong>Ein Einführungspreis</strong><span>25,00 EUR netto je vier Wochen für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden.</span></div></div>
+        <div class="trust-item"><span class="icon"><svg><use href="#i-plan"/></svg></span><div><strong>Ein Tarif</strong><span>UNLIMITED START mit unbegrenzten Einzügen und Mitarbeiterzugängen, Abrechnung je vier Wochen. Die Konditionen sehen Sie vor dem Abschluss in der Bestellübersicht.</span></div></div>
       </div>
       <div class="cta-row">
         <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="trust">Jetzt Account erstellen</a>
@@ -200,7 +194,7 @@
         <p class="eyebrow">Ablauf</p>
         <h2>Einrichtung in drei Schritten</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Alle drei Schritte durchlaufen Sie direkt im Anschluss an die Registrierung, geführt und ohne Vorwissen.</p>
+        <p>Alle drei Schritte durchlaufen Sie direkt im Anschluss an die Registrierung.</p>
       </div>
       <ol class="steps">
         <li class="step"><span class="step-number">1</span><div><h3>Account anlegen</h3><p>Registrieren Sie Ihren Firmenaccount und richten Sie die verpflichtende Zwei-Faktor-Authentifizierung ein.</p></div></li>
@@ -217,7 +211,7 @@
   <section class="section" id="sevdesk">
     <div class="container">
       <div class="info-box">
-        <p class="eyebrow">Demnächst: SEPA-Lastschriften für sevdesk</p>
+        <p class="eyebrow">In Vorbereitung: SEPA-Lastschriften für sevdesk</p>
         <p>SmartEinzug soll künftig auch offene sevdesk-Rechnungen mit Ihrem eigenen Stripe-Konto verbinden. Der Start ist für Ende September 2026 geplant. Lassen Sie sich unverbindlich informieren, sobald die Anbindung verfügbar ist. Lexware Office ist bereits heute verfügbar.</p>
         <div class="cta-row">
           <a href="/integrationen/sevdesk/#vormerken" class="btn btn-outline" data-cta="sevdesk-teaser">Für sevdesk vormerken</a>
@@ -236,9 +230,9 @@
       </div>
       <div class="tiles">
         <div class="tile"><span class="icon"><svg><use href="#i-file"/></svg></span><h3>Offene Rechnungen</h3><p>Fällige und überfällige Rechnungen aus Lexware Office an einem Ort, mit Betrag, Fälligkeit und Kunde.</p></div>
-        <div class="tile"><span class="icon"><svg><use href="#i-list"/></svg></span><h3>SEPA-Mandate</h3><p>Mandatsreferenz je Kunde, Gültigkeit im Blick, handschriftlicher Nachweis optional hinterlegbar.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-list"/></svg></span><h3>SEPA-Mandate</h3><p>Mandatsreferenz je Kunde, Gültigkeit im Blick, Unterschriftsnachweis je Mandat erfassbar und in der Standardeinstellung Voraussetzung für den Einzug.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-card"/></svg></span><h3>Zahlungsdaten je Kunde</h3><p>IBAN und Zahlungsmethode direkt bei Stripe registriert, Historie nachvollziehbar.</p></div>
-        <div class="tile"><span class="icon"><svg><use href="#i-clock"/></svg></span><h3>Sofort oder terminiert</h3><p>Einzug auslösen oder auf einen Werktag legen, inklusive Vorabankündigung an den Kunden.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-clock"/></svg></span><h3>Sofort oder terminiert</h3><p>Einzug auslösen oder auf einen Werktag legen, optional mit Vorabankündigung per E-Mail an den Kunden.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-sync"/></svg></span><h3>Automatischer Status</h3><p>Eingezogen, fehlgeschlagen oder zurückgebucht: Stripe meldet den Status ohne Zutun zurück.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-shield"/></svg></span><h3>Pflicht-2FA</h3><p>Jeder Benutzeraccount ist zwingend mit Zwei-Faktor-Authentifizierung abgesichert.</p></div>
       </div>
@@ -263,10 +257,9 @@
         </div>
         <div class="price-card">
           <div class="plan-head">
-            <p class="plan-name">UNLIMITED START <span class="plan-badge">50 % Rabatt, nur für kurze Zeit</span></p>
-            <p class="plan-was">Bisher <s>50,00 EUR</s> je 4 Wochen</p>
-            <p class="plan-price">25,00 EUR<small>je 4 Wochen*</small></p>
-            <p class="plan-billing">Einführungspreis für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden. Der Preis bleibt für diese Accounts bestehen, solange das Abonnement läuft.</p>
+            <p class="plan-name">UNLIMITED START</p>
+            <p class="plan-price">Ein Tarif<small>Abrechnung je vier Wochen</small></p>
+            <p class="plan-billing">Bereits angelegte Firmenaccounts behalten ihre Konditionen, solange das Abonnement läuft. Die aktuellen Konditionen sehen Sie vor dem Abschluss in der Bestellübersicht.</p>
           </div>
           <div class="plan-body">
             <ul class="checklist two-col">
@@ -284,7 +277,7 @@
             <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="pricing">Jetzt registrieren</a>
           </div>
         </div>
-        <p class="price-note">* Alle Preise netto zzgl. gesetzlicher Umsatzsteuer, zuzüglich der Stripe-Gebühren Ihres eigenen Stripe-Kontos. Der Einführungspreis von 25,00 EUR gilt für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden, und bleibt für diese Accounts erhalten. Bisheriger Preis für denselben Leistungsumfang: 50,00 EUR je 4 Wochen. Keine Jahresbindung, kündbar zum Ende der laufenden Vierwochenperiode.</p>
+        <p class="price-note">Der Tarifpreis versteht sich netto zuzüglich gesetzlicher Umsatzsteuer; die Gebühren Ihres eigenen Stripe-Kontos rechnet Stripe direkt mit Ihnen ab. Die aktuellen Konditionen sehen Sie vor dem Abschluss in der Bestellübersicht Ihres Firmenaccounts. Keine Jahresbindung, kündbar zum Ende der laufenden Vierwochenperiode.</p>
       </div>
     </div>
   </section>
@@ -304,7 +297,7 @@
         <details><summary>Werden bereits bezahlte Rechnungen erneut verarbeitet?</summary><p class="faq-answer">Nein. Die Synchronisation mit Lexware Office erfolgt inkrementell, bereits abgeschlossene Rechnungen werden nicht fortlaufend erneut abgerufen.</p></details>
         <details><summary>Kann ich mehrere Mitarbeiter einladen?</summary><p class="faq-answer">Ja, im Tarif UNLIMITED START ist die Anzahl der Mitarbeiter im Firmenaccount nicht begrenzt.</p></details>
         <details><summary>Wie lange läuft der Vertrag?</summary><p class="faq-answer">Es besteht keine Jahresbindung. Das Abonnement ist zum Ende der jeweils laufenden Vierwochenperiode kündbar.</p></details>
-        <details><summary>Fallen neben dem Grundpreis weitere Kosten an?</summary><p class="faq-answer">Zusätzlich zum Einführungspreis von 25,00 EUR netto je vier Wochen rechnet Stripe die Gebühren Ihres eigenen Stripe-Kontos direkt mit Ihnen ab.</p></details>
+        <details><summary>Fallen neben dem Grundpreis weitere Kosten an?</summary><p class="faq-answer">Zusätzlich zum Tarifpreis rechnet Stripe die Gebühren Ihres eigenen Stripe-Kontos direkt mit Ihnen ab. SmartEinzug berechnet keine Kosten je Einzug.</p></details>
       </div>
       <div class="cta-row" style="justify-content:center">
         <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="faq">Jetzt registrieren</a>
@@ -315,11 +308,11 @@
   <section class="closing">
     <div class="container">
       <p class="eyebrow">Nächster Schritt</p>
-      <h2>Bereit, Ihre Lexware-Office-Rechnungen automatisch einzuziehen?</h2>
+      <h2>Bereit, Ihre Lexware-Office-Rechnungen per SEPA-Lastschrift einzuziehen?</h2>
       <span class="bar" aria-hidden="true"></span>
-      <p class="lead">Konten verbinden, Rechnungen mit gültigem Mandat freigeben, Stripe erledigt den Rest.</p>
+      <p class="lead">Konten verbinden, Rechnungen mit gültigem Mandat freigeben, Stripe führt die Lastschrift über Ihr Konto aus.</p>
       <div class="cta-row">
-        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="final">Jetzt zum Einführungspreis von 25,00 EUR starten</a>
+        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="final">Jetzt registrieren</a>
         <a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de" class="btn btn-outline">Zum Login</a>
       </div>
     </div>

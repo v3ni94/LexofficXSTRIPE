@@ -66,6 +66,7 @@
       <h1>So funktioniert SmartEinzug</h1>
       <span class="bar" aria-hidden="true"></span>
       <p class="lead">Vom leeren Firmenaccount bis zum ersten ausgeführten SEPA-Einzug führt Sie SmartEinzug in drei Schritten.</p>
+      <p class="hero-note">Voraussetzungen: Lexware Office XL (nach Angaben von Lexware für die Public API erforderlich, bitte im eigenen Konto prüfen) und ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto.</p>
     </div>
   </header>
 
@@ -78,7 +79,7 @@
       </div>
       <ol class="steps">
         <li class="step"><span class="step-number">1</span><div><h3>Account anlegen</h3><p>Sie registrieren einen Firmenaccount mit Ihrer geschäftlichen E-Mail-Adresse. Direkt im Anschluss richten Sie die verpflichtende Zwei-Faktor-Authentifizierung ein, weitere Mitarbeiter lassen sich später jederzeit einladen.</p></div></li>
-        <li class="step"><span class="step-number">2</span><div><h3>Konten verbinden</h3><p>In Lexware Office erzeugen Sie unter Einstellungen, Erweiterungen, Public API einen neuen API-Schlüssel und hinterlegen ihn in SmartEinzug. Anschließend tragen Sie den Secret Key Ihres eigenen Stripe-Kontos ein. SmartEinzug prüft beide Verbindungen und meldet, ob offene Rechnungen geladen und Zahlungen an Stripe übergeben werden können.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Konten verbinden</h3><p>In Lexware Office erzeugen Sie unter Einstellungen, Erweiterungen, Public API einen neuen API-Schlüssel und hinterlegen ihn in SmartEinzug. Anschließend tragen Sie den Secret Key Ihres eigenen Stripe-Kontos ein. SmartEinzug prüft beide Verbindungen und meldet, ob der Zugriff auf beide Konten funktioniert.</p></div></li>
         <li class="step"><span class="step-number">3</span><div><h3>Rechnungen mit gültigem Mandat freigeben</h3><p>Aus der Liste offener Rechnungen wählen Sie einen Vorgang aus, prüfen das hinterlegte SEPA-Mandat der Kundin oder des Kunden und geben den Einzug frei, sofort oder terminiert. Stripe führt die Lastschrift aus und meldet den Status automatisch zurück.</p></div></li>
       </ol>
     </div>
@@ -93,6 +94,8 @@
           <span class="bar" aria-hidden="true"></span>
           <p>Nach der einmaligen Einrichtung läuft der Abgleich zwischen Lexware Office und SmartEinzug serverseitig im Hintergrund weiter. Neue offene Rechnungen erscheinen automatisch, bereits erledigte Vorgänge werden nicht erneut angefasst.</p>
           <p>Öffnen Sie SmartEinzug erneut, sehen Sie unmittelbar den aktuellen Stand: welche Rechnungen offen sind, welche Einzüge laufen und wo eine Rückmeldung von Stripe noch aussteht.</p>
+          <h3>Freigeben, Einreichen und Geldeingang</h3>
+          <p>Diese drei Schritte sind getrennt. Mit der Freigabe merken Sie einen Einzug vor oder terminieren ihn. Eingereicht wird gebündelt im nächtlichen Einreichfenster; bis dahin können Sie den Einzug stornieren. Nach der Einreichung führt Stripe die Lastschrift über Ihr Konto aus. Zwischen Einreichung und Gutschrift liegen Bankarbeitstage; die Auszahlung erfolgt von Stripe an Ihr Geschäftskonto.</p>
         </div>
         <div class="split-visual">
           <div class="visual-card">
