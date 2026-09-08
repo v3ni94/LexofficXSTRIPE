@@ -24,7 +24,7 @@ try {
     }
     if (isset($opts['retry'])) {
         $freigabe = migrations_release((string)$opts['retry'], 'cli-retry');
-        cli_out('Freigegeben zur Wiederholung: ' . $freigabe . ' (Eintrag failed/unknown entfernt, protokolliert).');
+        cli_out('Freigegeben zur Wiederholung: ' . $freigabe . ' (Eintrag auf pending gesetzt, protokolliert).');
     }
     $r = migrations_run('cli');
     cli_out(sprintf('Migrationen: %d eingespielt, %d offen', count($r['applied'] ?? []), count($r['pending'] ?? [])));

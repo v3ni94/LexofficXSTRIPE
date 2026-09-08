@@ -184,8 +184,8 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
 - **Performance, Phase 2 (nach einer Woche Messwerten):** Bemessung der Lexware-Worker, Lexware-Webhooks und Seitengröße erst nach
   Prüfung der Dokumentation am Primärtext (`docs/sync-performance.md`, Nachtrag 4.39).
 
-0. **Betreiber, zuerst:** Migrationsblockade lösen (siehe Bekannte Fehler, Läufe #73/#74): `bin/migrate.php --retry=028` im Release 4.40,
-   dann Re-run des Workflows; danach im Adminbereich prüfen, dass Version 4.40 in der Fußzeile steht.
+0. **Betreiber:** Migrationsblockade am 08.09.2026, 14:11 Uhr gelöst (`--retry=028`: 028 und 029 eingespielt, 0 offen). Offen: Re-run des
+   Workflows für 4.40 (fd500a4), danach im Adminbereich prüfen, dass Version 4.40 in der Fußzeile steht.
 0. **Betreiber (nach Deployment 4.37):** Migration 027 setzt bestehenden Superadmin-Konten die Rolle Administrator. Unter Adminbereich,
    „Benutzer und Rechte“ Mitarbeiter einladen (Mailversand muss aktiv sein); für den Fall, dass ein Mitarbeiter ohne Firma sich anmeldet,
    landet er direkt im Adminbereich (Adminhost). Erster Test: Einladung an eine eigene Zweitadresse mit Rolle Mitarbeiter, Passwort setzen,
