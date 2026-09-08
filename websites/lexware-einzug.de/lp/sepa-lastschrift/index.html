@@ -68,9 +68,9 @@
           <a href="https://app.smart-einzug.de/register.php?src=lp-sepa-lastschrift" class="btn btn-primary" data-cta="hero">Jetzt registrieren</a>
         </div>
         <ul class="kennzeichen">
-          <li>Einführungspreis 25,00 EUR statt 50,00 EUR je 4 Wochen*</li>
-          <li>Unbegrenzte Einzüge</li>
-          <li>Unbegrenzte Mitarbeiter</li>
+          <li>Ein Tarif, Abrechnung je vier Wochen</li>
+          <li>Keine Jahresbindung</li>
+          <li>Unbegrenzte Einzüge und Mitarbeiter</li>
         </ul>
         <p class="hero-note">Voraussetzungen: ein Lexware-Office-Konto mit Zugang zur Public API und ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto.</p>
       </div>
@@ -122,7 +122,7 @@
       </div>
       <div class="tiles">
         <div class="tile"><span class="icon"><svg><use href="#i-file"/></svg></span><h3>Offene Rechnungen im Blick</h3><p>Alle offenen und überfälligen Rechnungen aus Lexware Office mit Betrag, Fälligkeit und Kunde in einer Liste.</p></div>
-        <div class="tile"><span class="icon"><svg><use href="#i-sync"/></svg></span><h3>Serverseitige Synchronisation</h3><p>Der Abgleich mit Lexware Office läuft im Hintergrund und inkrementell, ohne doppelte Erfassung bereits bezahlter Rechnungen.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-sync"/></svg></span><h3>Serverseitige Synchronisation</h3><p>Der Abgleich mit Lexware Office läuft im Hintergrund, in der Regel mehrmals täglich und inkrementell, ohne doppelte Erfassung bereits bezahlter Rechnungen.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-card"/></svg></span><h3>Zahlungsabwicklung über Ihr Stripe-Konto</h3><p>Die SEPA-Lastschrift führt Stripe über Ihr eigenes Konto aus, Sie behalten die Kontrolle über die Zahlungsabwicklung.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-euro"/></svg></span><h3>SEPA-Mandatsverwaltung</h3><p>Mandatsreferenz und Kunde zentral hinterlegen und passenden Rechnungen zuordnen, bevor ein Einzug freigegeben wird.</p></div>
       </div>
@@ -133,7 +133,7 @@
     <div class="container">
       <div class="pricing-wrap">
         <div>
-          <p class="eyebrow">Preis</p>
+          <p class="eyebrow">Konditionen</p>
           <h2>Ein Tarif, alles enthalten</h2>
           <span class="bar" aria-hidden="true"></span>
           <p class="lead">Keine Einrichtungsgebühr, keine Kosten je Einzug, keine Begrenzung der Mitarbeiter.</p>
@@ -144,10 +144,9 @@
         </div>
         <div class="price-card">
           <div class="plan-head">
-            <p class="plan-name">UNLIMITED START <span class="plan-badge">50 % Rabatt, nur für kurze Zeit</span></p>
-            <p class="plan-was">Bisher <s>50,00 EUR</s> je 4 Wochen</p>
-            <p class="plan-price">25,00 EUR<small>je 4 Wochen*</small></p>
-            <p class="plan-billing">Einführungspreis für alle Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden. Der Preis bleibt für diese Accounts bestehen, solange das Abonnement läuft. Keine Jahresbindung. Kündbar zum Ende der laufenden Vierwochenperiode.</p>
+            <p class="plan-name">UNLIMITED START</p>
+            <p class="plan-price">Ein Tarif, alles enthalten<small>Abrechnung je vier Wochen*</small></p>
+            <p class="plan-billing">Netto zuzüglich der gesetzlichen Umsatzsteuer. Den aktuellen Preis und alle Konditionen sehen Sie vor Vertragsschluss in der Bestellübersicht Ihres Firmenaccounts. Keine Jahresbindung, kündbar zum Ende der laufenden Vierwochenperiode.</p>
           </div>
           <div class="plan-body">
             <ul class="checklist two-col">
@@ -161,7 +160,7 @@
             <a href="https://app.smart-einzug.de/register.php?src=lp-sepa-lastschrift" class="btn btn-primary btn-block" data-cta="pricing">Jetzt registrieren</a>
           </div>
         </div>
-        <p class="price-note">* Alle Preise netto zzgl. gesetzlicher Umsatzsteuer und zzgl. der Gebühren Ihres eigenen Stripe-Kontos. Der Einführungspreis von 25,00 EUR gilt für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden, und bleibt für diese Accounts erhalten. Bisheriger Preis für denselben Leistungsumfang: 50,00 EUR je 4 Wochen. Ab dem Stichtag gilt dieser Preis wieder für neue Accounts.</p>
+        <p class="price-note">* Alle Preise netto zuzüglich der gesetzlichen Umsatzsteuer und zuzüglich der Gebühren Ihres eigenen Stripe-Kontos, die Stripe direkt mit Ihnen abrechnet. Die Registrierung ist ohne Zahlungsdaten möglich; das Abonnement schließt der Inhaber im Firmenaccount ab und sieht dabei Preis, Laufzeit und Kündigungsregel vor der Bestätigung. Bereits angelegte Firmenaccounts behalten ihre Konditionen, solange das Abonnement läuft.</p>
       </div>
     </div>
   </section>
@@ -178,7 +177,7 @@
         <details><summary>Ist SmartEinzug ein Produkt von Lexware?</summary><p class="faq-answer">Nein. SmartEinzug ist eine unabhängige Softwarelösung mit einer Schnittstelle zu Lexware Office und kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p></details>
         <details><summary>Welche Voraussetzungen brauche ich?</summary><p class="faq-answer">Sie benötigen ein Lexware-Office-Konto mit Zugang zur Public API und ein für SEPA-Lastschriften freigeschaltetes eigenes Stripe-Konto.</p></details>
         <details><summary>Wie kommen meine offenen Rechnungen in die Anwendung?</summary><p class="faq-answer">Nach dem Verbinden Ihres Kontos ruft SmartEinzug Ihre offenen Rechnungen über die Public API von Lexware Office ab und stellt sie zur Auswahl bereit.</p></details>
-        <details><summary>Was kostet SmartEinzug?</summary><p class="faq-answer">Der Tarif UNLIMITED START kostet zum Einführungspreis 25,00 EUR netto je 4 Wochen, bisher 50,00 EUR. Der Einführungspreis gilt für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden, und bleibt für diese bestehen. Hinzu kommen die Gebühren Ihres eigenen Stripe-Kontos.</p></details>
+        <details><summary>Was kostet SmartEinzug?</summary><p class="faq-answer">SmartEinzug wird im Tarif UNLIMITED START mit unbegrenzten SEPA-Einzügen und unbegrenzten Mitarbeitern angeboten, abgerechnet je vier Wochen, netto zuzüglich der gesetzlichen Umsatzsteuer. Den aktuellen Preis sehen Sie auf der Registrierungsseite und vor Abschluss in der Bestellübersicht Ihres Firmenaccounts. Hinzu kommen die Gebühren Ihres eigenen Stripe-Kontos, die Stripe direkt mit Ihnen abrechnet.</p></details>
         <details><summary>Wie kündige ich?</summary><p class="faq-answer">Keine Jahresbindung. Kündbar zum Ende der laufenden Vierwochenperiode. Details regeln die Allgemeinen Geschäftsbedingungen.</p></details>
       </div>
       <div class="cta-row" style="justify-content:center">

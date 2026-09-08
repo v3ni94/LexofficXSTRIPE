@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lastschrifteinzug für Lexware Office automatisieren</title>
-<meta name="description" content="So automatisieren Sie den wiederkehrenden Lastschrifteinzug für Ihre Lexware-Office-Rechnungen: Hintergrundsynchronisation, Auswahl, Terminierung und Status.">
+<title>Lastschrifteinzug für Lexware-Office-Rechnungen organisieren</title>
+<meta name="description" content="So organisieren Sie den wiederkehrenden Lastschrifteinzug für Ihre Lexware-Office-Rechnungen: Hintergrundsynchronisation, Auswahl, Terminierung, Statusrückmeldung.">
 <link rel="canonical" href="https://lexware-einzug.de/lexware-office-lastschrifteinzug">
-<meta property="og:title" content="Lastschrifteinzug für Lexware Office automatisieren">
-<meta property="og:description" content="So automatisieren Sie den wiederkehrenden Lastschrifteinzug für Ihre Lexware-Office-Rechnungen: Hintergrundsynchronisation, Auswahl, Terminierung und Status.">
+<meta property="og:title" content="Lastschrifteinzug für Lexware-Office-Rechnungen organisieren">
+<meta property="og:description" content="So organisieren Sie den wiederkehrenden Lastschrifteinzug für Ihre Lexware-Office-Rechnungen: Hintergrundsynchronisation, Auswahl, Terminierung, Statusrückmeldung.">
 <meta property="og:url" content="https://lexware-einzug.de/lexware-office-lastschrifteinzug">
 <meta property="og:type" content="article">
 <meta property="og:image" content="https://lexware-einzug.de/assets/img/og-image.png?v=20260907d">
@@ -74,7 +74,7 @@
     <header class="hero">
       <div class="container">
         <p class="eyebrow">Prozess</p>
-        <h1>Lastschrifteinzug für Lexware-Office-Rechnungen automatisieren</h1>
+        <h1>Lastschrifteinzug für Lexware-Office-Rechnungen organisieren</h1>
         <span class="bar" aria-hidden="true"></span>
         <p class="lead">Wie der wiederkehrende SEPA-Lastschrifteinzug im Alltag abläuft, wenn Ihre Rechnungen aus Lexware Office stammen.</p>
         <div class="cta-row">
@@ -89,18 +89,18 @@
         <h2>Vom Rechnungsversand bis zum Einzug</h2>
         <span class="bar" aria-hidden="true"></span>
         <p>In vielen Unternehmen wiederholt sich derselbe Ablauf: Eine Rechnung wird in Lexware Office erstellt, der Kunde soll per SEPA-Lastschrift zahlen, und jemand muss dafür sorgen, dass der Einzug tatsächlich stattfindet. Ohne eine Verbindung zwischen Rechnungswesen und Zahlungsabwicklung bedeutet das häufig manuelle Zwischenschritte, etwa das Zusammensuchen offener Beträge oder das erneute Erfassen von Kundendaten in einem Zahlungssystem.</p>
-        <p>SmartEinzug übernimmt diesen Abgleich. Die Anwendung synchronisiert die für den Einzug relevanten Rechnungen aus Lexware Office und führt sie mit den in Stripe hinterlegten Zahlungsinformationen Ihrer Kunden zusammen.</p>
+        <p>SmartEinzug übernimmt diesen Abgleich. Die Anwendung synchronisiert die für den Einzug relevanten Rechnungen aus Lexware Office und führt sie mit den in SmartEinzug hinterlegten und bei Stripe registrierten Bankverbindungen Ihrer Kunden zusammen.</p>
       </div>
     </section>
 
     <section class="section section-alt">
       <div class="container">
-        <h2>Automatisiert im Hintergrund</h2>
+        <h2>Synchronisation im Hintergrund</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Die Synchronisation zwischen Lexware Office und SmartEinzug läuft serverseitig im Hintergrund. Sie müssen die Anwendung dafür nicht dauerhaft geöffnet lassen. Beim nächsten Aufruf sehen Sie den aktuellen Stand Ihrer Rechnungen, Kunden und Einzüge.</p>
+        <p>Die Synchronisation zwischen Lexware Office und SmartEinzug läuft serverseitig im Hintergrund, in der Regel mehrmals täglich. Sie müssen die Anwendung dafür nicht dauerhaft geöffnet lassen. Beim nächsten Aufruf sehen Sie den aktuellen Stand Ihrer Rechnungen, Kunden und Einzüge.</p>
         <p>Dabei wird nicht bei jedem Lauf der gesamte Rechnungsbestand erneut verarbeitet. Änderungen werden inkrementell erfasst, bereits abgeschlossene Vorgänge bleiben unangetastet.</p>
-        <h3>Individuell einstellbar</h3>
-        <p>In den Einzugseinstellungen legen Sie fest, ab wann eine Rechnung für einen Einzug angeboten wird, wie viele Tage nach Fälligkeit gewartet wird, mit welchem Vorlauf ein Einzug geplant wird und welcher Verwendungszweck dabei verwendet wird. So passt sich der Ablauf an Ihre kaufmännischen Abläufe an, statt umgekehrt.</p>
+        <h3>Vorabankündigung und Terminierung steuern</h3>
+        <p>Sie legen je Firma fest, ob Ihre Kunden vor einem terminierten Einzug eine Vorabankündigung per E-Mail erhalten und mit welcher Frist (1 bis 30 Tage), und ob Einzüge nur mit erfasster Unterschrift auf dem Mandat möglich sind. Einzüge terminieren Sie je Rechnung oder gesammelt auf einen Werktag; der Verwendungszweck enthält automatisch Firmenname, Rechnungs- und Kundennummer.</p>
       </div>
     </section>
 
@@ -117,7 +117,7 @@
       <div class="container">
         <h2>Wiederkehrenden Einzug einrichten</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p class="lead" style="color:#D6D5D3;">Richten Sie Ihre Einzugseinstellungen einmal ein und lassen Sie den Ablauf anschließend automatisiert laufen.</p>
+        <p class="lead" style="color:#D6D5D3;">Terminieren Sie Einzüge je Rechnung oder gesammelt auf einen Werktag; die Einreichung am Termin und die Statusrückmeldung übernimmt SmartEinzug im Hintergrund.</p>
         <div class="cta-row">
           <a href="https://app.smart-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="lastschrifteinzug-bottom">Jetzt registrieren</a>
         </div>

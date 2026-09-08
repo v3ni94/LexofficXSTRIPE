@@ -79,7 +79,7 @@
     <div class="container hero-grid">
       <div>
         <p class="eyebrow">Lexware Office &amp; SEPA-Lastschrift</p>
-        <h1><span class="nowrap">SEPA-Lastschriften</span> mit Lexware Office: in wenigen Minuten startklar.</h1>
+        <h1><span class="nowrap">SEPA-Lastschriften</span> mit Lexware Office: verbinden, auswählen, einziehen.</h1>
         <span class="bar" aria-hidden="true"></span>
         <p class="lead">Lexware Office verbinden. Stripe verbinden. Offene Forderungen auswählen und Lastschriften auslösen, zentral über lexware-einzug.de.</p>
         <div class="cta-row">
@@ -88,9 +88,9 @@
         </div>
         <p class="hero-note">Voraussetzungen: ein Lexware-Office-Konto mit Zugang zur Public API, ein eigenes Stripe-Konto und gültige SEPA-Mandate Ihrer Kunden.</p>
         <ul class="kennzeichen">
-          <li>Einführungspreis 25,00 EUR statt 50,00 EUR je 4 Wochen*</li>
-          <li>Unbegrenzte Einzüge</li>
-          <li>Unbegrenzte Mitarbeiter</li>
+          <li>Ein Tarif, Abrechnung je vier Wochen</li>
+          <li>Keine Jahresbindung</li>
+          <li>Unbegrenzte Einzüge und Mitarbeiter</li>
         </ul>
       </div>
 
@@ -179,7 +179,7 @@
     <div class="container">
       <div class="section-head center">
         <p class="eyebrow">Ablauf</p>
-        <h2>In drei Schritten startklar</h2>
+        <h2>So richten Sie den Lastschrifteinzug ein</h2>
         <span class="bar" aria-hidden="true"></span>
         <p>Die Einrichtung führt Sie direkt nach der Registrierung durch alle Verbindungen. Danach arbeiten Sie aus einer Oberfläche.</p>
       </div>
@@ -202,16 +202,16 @@
           <p class="eyebrow">Datenstand</p>
           <h2>Ihre Rechnungen bleiben synchron</h2>
           <span class="bar" aria-hidden="true"></span>
-          <p>Die Synchronisierung zwischen Lexware Office und SmartEinzug läuft serverseitig im Hintergrund. Die Webseite muss dafür nicht geöffnet bleiben.</p>
+          <p>Die Synchronisierung zwischen Lexware Office und SmartEinzug läuft serverseitig im Hintergrund, in der Regel mehrmals täglich. Die Webseite muss dafür nicht geöffnet bleiben.</p>
           <p>Öffnen Sie SmartEinzug erneut, sehen Sie den aktuellen Stand Ihrer Rechnungen und Einzüge. Dabei wird nicht bei jedem Lauf der gesamte historische Rechnungsbestand erneut verarbeitet, Änderungen werden inkrementell erfasst.</p>
         </div>
         <div class="split-visual">
           <div class="visual-card">
             <ul class="timeline">
               <li class="done"><strong>08:00 Neue Rechnungen abgerufen</strong>3 neue, 12 unverändert</li>
-              <li class="done"><strong>08:01 Bezahlte Rechnungen erkannt</strong>RE-2026-0139 in Lexware Office als bezahlt markiert</li>
+              <li class="done"><strong>08:01 Bezahlte Rechnungen erkannt</strong>RE-2026-0139 in Lexware Office als bezahlt erkannt, nicht mehr eingezogen</li>
               <li class="done"><strong>08:02 Einzugsstatus von Stripe übernommen</strong>2 Einzüge erfolgreich, 0 Rücklastschriften</li>
-              <li><strong>Nächster Abgleich läuft automatisch</strong>Sie sehen beim nächsten Öffnen den aktuellen Stand</li>
+              <li><strong>Nächster Abgleich läuft im Hintergrund</strong>In der Regel mehrmals täglich, Sie sehen beim nächsten Öffnen den aktuellen Stand</li>
             </ul>
           </div>
         </div>
@@ -230,7 +230,7 @@
       </div>
       <div class="tiles">
         <div class="tile"><span class="icon"><svg><use href="#i-file"/></svg></span><h3>Offene Rechnungen</h3><p>Alle offenen und überfälligen Rechnungen aus Lexware Office in einer Liste, mit Betrag, Fälligkeit und Kunde.</p></div>
-        <div class="tile"><span class="icon"><svg><use href="#i-list"/></svg></span><h3>SEPA-Mandate</h3><p>Mandatsdokument je Kunde erzeugen, Mandatsreferenz automatisch vergeben, Unterschrift und Gültigkeit im Blick behalten.</p></div>
+        <div class="tile"><span class="icon"><svg><use href="#i-list"/></svg></span><h3>SEPA-Mandate</h3><p>Mandatsdokument je Kunde erzeugen und vom Kunden auf Papier unterschreiben lassen, Unterschrift erfassen oder das unterschriebene Mandat als Scan hochladen. Die Mandatsreferenz vergibt die Anwendung automatisch.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-card"/></svg></span><h3>Zahlungsinformationen</h3><p>IBAN je Kunde hinterlegen, Zahlungsmethode direkt bei Stripe registrieren, Historie nachvollziehbar.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-clock"/></svg></span><h3>Fälligkeiten und geplante Einzüge</h3><p>Sofort einziehen oder auf einen Werktag terminieren, Vorabankündigung an den Kunden inklusive.</p></div>
         <div class="tile"><span class="icon"><svg><use href="#i-sync"/></svg></span><h3>Einzugsstatus</h3><p>Im Einzug, eingezogen oder fehlgeschlagen: Der Status kommt automatisch von Stripe zurück.</p></div>
@@ -239,19 +239,20 @@
 
       <div class="split" style="margin-top:56px">
         <div>
-          <h3 style="font-size:1.4rem">Individuelle Einzugseinstellungen</h3>
+          <h3 style="font-size:1.4rem">SEPA-Einstellungen je Firma</h3>
           <span class="bar" aria-hidden="true"></span>
-          <p>Sie legen fest, ab wann eine Rechnung für einen Einzug angeboten wird, wie viele Tage nach Fälligkeit gewartet wird, mit welchem Vorlauf ein Einzug geplant wird und welcher Verwendungszweck dabei verwendet wird.</p>
+          <p>Sie legen je Firma fest, ob Ihre Kunden vor einem terminierten Einzug eine Vorabankündigung per E-Mail erhalten und mit welcher Frist (1 bis 30 Tage), und ob Einzüge nur mit erfasster Unterschrift auf dem Mandat möglich sind. Dazu hinterlegen Sie Ihre Gläubiger-Identifikationsnummer für das Mandatsdokument und ein Präfix für Ihre Mandatsreferenzen.</p>
+          <p>Einzüge terminieren Sie je Rechnung oder gesammelt auf einen Werktag; der Verwendungszweck enthält automatisch Firmenname, Rechnungs- und Kundennummer.</p>
           <div class="cta-row">
-            <a href="https://app.smart-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="settings">Einzug automatisieren</a>
+            <a href="https://app.smart-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="settings">Einzüge terminieren</a>
           </div>
         </div>
         <div class="split-visual">
-          <div class="visual-card" role="img" aria-label="Beispiel für Einzugseinstellungen">
-            <div class="setting"><span>Vorabankündigung an Kunden</span><span class="val">14 Tage</span></div>
-            <div class="setting"><span>Einzug frühestens nach Fälligkeit</span><span class="val">3 Tage</span></div>
-            <div class="setting"><span>Verwendungszweck</span><span class="val">Firma SEPA RE-Nr KD-Nr</span></div>
-            <div class="setting"><span>Nur mit erfasstem Mandat einziehen</span><span class="toggle" aria-hidden="true"></span></div>
+          <div class="visual-card" role="img" aria-label="Beispiel für SEPA-Einstellungen einer Firma">
+            <div class="setting"><span>Vorabankündigung per E-Mail</span><span class="val">Aktiv, Frist 14 Tage</span></div>
+            <div class="setting"><span>Handschriftlicher Nachweis erforderlich</span><span class="toggle" aria-hidden="true"></span></div>
+            <div class="setting"><span>Gläubiger-Identifikationsnummer</span><span class="val">Hinterlegt</span></div>
+            <div class="setting"><span>Präfix der Mandatsreferenz</span><span class="val">FIRMA</span></div>
           </div>
         </div>
       </div>
@@ -313,7 +314,7 @@
       <div class="pricing-wrap">
         <div>
           <p class="eyebrow">Konditionen</p>
-          <h2>Preise</h2>
+          <h2>Tarif und Konditionen</h2>
           <span class="bar" aria-hidden="true"></span>
           <p class="lead">Ein Tarif, alles enthalten. Keine Einrichtungsgebühr, keine Kosten je Einzug, keine Begrenzung der Mitarbeiter.</p>
           <div class="price-aside" style="margin-top:28px">
@@ -323,10 +324,9 @@
         </div>
         <div class="price-card">
           <div class="plan-head">
-            <p class="plan-name">UNLIMITED START <span class="plan-badge">50 % Rabatt, nur für kurze Zeit</span></p>
-            <p class="plan-was">Bisher <s>50,00 EUR</s> je 4 Wochen</p>
-            <p class="plan-price">25,00 EUR<small>je 4 Wochen*</small></p>
-            <p class="plan-billing">Einführungspreis für alle Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden. Der Preis bleibt für diese Accounts bestehen, solange das Abonnement läuft. Keine Jahresbindung. Kündbar zum Ende der laufenden Vierwochenperiode.</p>
+            <p class="plan-name">UNLIMITED START</p>
+            <p class="plan-price">Ein Tarif, alles enthalten<small>Abrechnung je vier Wochen*</small></p>
+            <p class="plan-billing">Netto zuzüglich der gesetzlichen Umsatzsteuer. Den aktuellen Preis und alle Konditionen sehen Sie vor Vertragsschluss in der Bestellübersicht Ihres Firmenaccounts. Keine Jahresbindung, kündbar zum Ende der laufenden Vierwochenperiode.</p>
           </div>
           <div class="plan-body">
             <ul class="checklist two-col">
@@ -344,7 +344,7 @@
             <a href="https://app.smart-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary btn-block" data-cta="pricing">Jetzt registrieren</a>
           </div>
         </div>
-        <p class="price-note">* Alle Preise netto zzgl. gesetzlicher Umsatzsteuer. Der Einführungspreis von 25,00 EUR gilt für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden, und bleibt für diese Accounts erhalten. Bisheriger Preis für denselben Leistungsumfang: 50,00 EUR je 4 Wochen. Ab dem Stichtag gilt dieser Preis wieder für neue Accounts.</p>
+        <p class="price-note">* Alle Preise netto zuzüglich der gesetzlichen Umsatzsteuer und zuzüglich der Gebühren Ihres eigenen Stripe-Kontos, die Stripe direkt mit Ihnen abrechnet. Die Registrierung ist ohne Zahlungsdaten möglich; das Abonnement schließt der Inhaber im Firmenaccount ab und sieht dabei Preis, Laufzeit und Kündigungsregel vor der Bestätigung. Bereits angelegte Firmenaccounts behalten ihre Konditionen, solange das Abonnement läuft.</p>
       </div>
     </div>
   </section>
@@ -366,8 +366,11 @@
         <details><summary>Kann ich mehrere Mitarbeiter hinzufügen?</summary><p class="faq-answer">Ja, im Starttarif UNLIMITED START ist die Anzahl der Mitarbeiter unbegrenzt.</p></details>
         <details><summary>Benötigt jeder Mitarbeiter einen eigenen Login?</summary><p class="faq-answer">Ja, jeder Mitarbeiter erhält einen eigenen persönlichen Login innerhalb des Firmenaccounts.</p></details>
         <details><summary>Ist die Zwei-Faktor-Authentifizierung verpflichtend?</summary><p class="faq-answer">Ja, jeder Benutzeraccount wird zwingend mit einer Zwei-Faktor-Authentifizierung abgesichert.</p></details>
-        <details><summary>Kann ich mein Abonnement kündigen?</summary><p class="faq-answer">Ja. Die Kündigung ist über den Firmen- beziehungsweise Abonnementbereich Ihres Accounts entsprechend den Vertragsbedingungen möglich.</p></details>
-        <details><summary>Was kostet die Anwendung?</summary><p class="faq-answer">Der Tarif UNLIMITED START kostet zum Einführungspreis 25,00 EUR netto je vier Wochen statt bisher 50,00 EUR. Der Einführungspreis gilt für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden, und bleibt für diese bestehen.</p></details>
+        <details><summary>Kann ich mein Abonnement kündigen?</summary><p class="faq-answer">Ja, jederzeit zum Ende der laufenden Vierwochenperiode, ohne Jahresbindung. Die Kündigung merkt der Inhaber im Abonnementbereich des Firmenaccounts vor; der Zugriff bleibt bis zum Periodenende bestehen.</p></details>
+        <details><summary>Was kostet die Anwendung?</summary><p class="faq-answer">SmartEinzug wird im Tarif UNLIMITED START mit unbegrenzten SEPA-Einzügen und unbegrenzten Mitarbeitern angeboten, abgerechnet je vier Wochen, netto zuzüglich der gesetzlichen Umsatzsteuer. Den aktuellen Preis sehen Sie auf der Registrierungsseite und vor Abschluss in der Bestellübersicht Ihres Firmenaccounts. Es gibt keinen weiteren öffentlichen Tarif.</p></details>
+        <details><summary>Fallen neben dem Tarifpreis weitere Kosten an?</summary><p class="faq-answer">SmartEinzug berechnet keine Einrichtungsgebühr und keine Gebühr je Einzug. Die Gebühren Ihres eigenen Stripe-Kontos rechnet Stripe direkt mit Ihnen ab.</p></details>
+        <details><summary>Wann wird eine Lastschrift eingereicht und wann ist das Geld da?</summary><p class="faq-answer">Drei Zeitpunkte sind zu unterscheiden. Freigeben: Sie lösen den Einzug je Rechnung oder gesammelt aus oder terminieren ihn auf einen Werktag. Einreichen: SmartEinzug übergibt vorgemerkte und fällige Einzüge in der Regel gebündelt im nächtlichen Einreichfenster an Stripe; bis dahin können Sie den Einzug stornieren. Geldeingang: Die Belastung beim Kunden und die Gutschrift richten sich nach den Verarbeitungszeiten von Stripe und der beteiligten Banken an Bankarbeitstagen; die Auszahlung auf Ihr Geschäftskonto nimmt Stripe nach seinen Bedingungen vor. Bis dahin zeigt SmartEinzug den Status In Bearbeitung.</p></details>
+        <details><summary>Wie erteilt mein Kunde das SEPA-Mandat?</summary><p class="faq-answer">Sie erzeugen in SmartEinzug ein Mandatsdokument für den Kunden und lassen es unterschreiben. Anschließend erfassen Sie Datum und Ort der Unterschrift oder laden das unterschriebene Mandat als PDF, JPG oder PNG hoch. Das Original bewahren Sie weiterhin selbst auf.</p></details>
         <details><summary>Gibt es eine Begrenzung der Einzüge?</summary><p class="faq-answer">Im Starttarif UNLIMITED START ist die Anzahl der SEPA-Einzüge nicht begrenzt.</p></details>
       </div>
       <div class="cta-row" style="justify-content:center">
@@ -383,7 +386,7 @@
       <span class="bar" aria-hidden="true"></span>
       <p class="lead">Lexware Office verbinden, Stripe anbinden und offene Rechnungen zentral verwalten.</p>
       <div class="cta-row">
-        <a href="https://app.smart-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="final">Jetzt zum Einführungspreis von 25,00 EUR starten</a>
+        <a href="https://app.smart-einzug.de/register.php?src=lexware-einzug.de" class="btn btn-primary" data-cta="final">Jetzt registrieren</a>
         <a href="https://app.smart-einzug.de/login.php?src=lexware-einzug.de" class="btn btn-outline">Zum Login</a>
       </div>
     </div>
