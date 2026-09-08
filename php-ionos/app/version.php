@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.39';
+const APP_VERSION = '4.40';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.40', 'date' => '08.09.2026', 'title' => 'Migration 028 korrigiert, Freigabe fehlgeschlagener Migrationen per --retry, Migrationsprüfung gegen den Vorzustand',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Deployments 4.38 und 4.39 scheiterten in der Migrationsphase (Läufe #73, #74): Migration 028 schrieb einen zu langen Wert in die Versionsspalte der Anbieter-Registry (20 Zeichen). Der Wert ist gekürzt, die Erläuterung steht im Hinweisfeld. Die laufende Anwendung war nicht betroffen; das alte Release lief unverändert weiter.'],
+            ['type' => 'Neu', 'text' => 'bin/migrate.php --retry=NNN gibt eine fehlgeschlagene oder ungeklärte Migration ausdrücklich zur Wiederholung frei (Status pending, protokolliert) und spielt die korrigierte Datei vollständig erneut ein, auch wenn Teile bereits wirksam waren. Kein Datenbankzugang mehr nötig; weiterhin keine automatische Wiederholung.'],
+            ['type' => 'Neu', 'text' => 'tools/migrations-check.sh prüft Migrationen gegen den echten Vorzustand (schema.sql des Commits vor der ältesten neuen Migration), vergleicht die migrierte Struktur mit dem aktuellen schema.sql und prüft Idempotenz und --retry. Marker für die Migrationen 020 bis 029 ergänzt.'],
+         ]],
         ['version' => '4.39', 'date' => '08.09.2026', 'title' => 'Performance-Überarbeitung der Synchronisation, Phase 1: Messpunkte, entzerrter Vollabgleich, Fairness, Adminreiter',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Adminbereich System, Reiter „Synchronisation & Performance“: Läufe, Dauer, API-Aufrufe, Detail- und Kontaktabrufe, übersprungene Rechnungen, Antwortzeit je Aufruf, Drosselung, Wiederholungen, Wartezeit in der Warteschlange und Cursorgröße für 24 Stunden und 7 Tage; Worker je Pool; Firmen mit dem größten Aufwand; wirksame Konfiguration mit Quelle; Verteilung des nächtlichen Vollabgleichs; Circuit Breaker. Neue Messpunkte in Migration 029.'],

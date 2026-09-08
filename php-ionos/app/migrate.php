@@ -52,7 +52,47 @@ function migrations_markers(): array
         '017' => ['monitor_checks', null],
         '018' => ['jobs', null],
         '019' => ['organizations', 'quota_warning_period_start'],
+        '020' => ['interest_registrations', null],
+        '021' => ['users', 'welcome_mail_pending'],
+        '023' => ['legal_documents', null],
+        '024' => ['integrations', 'invoice_source_changed_at'],
+        '025' => ['consent_records', null],
+        '027' => ['platform_roles', null],
+        '028' => ['integrations', 'sevdesk_connected'],
+        '029' => ['sync_runs', 'cursor_bytes_max'],
     ];
+}
+
+/**
+ * Ausdrueckliche Freigabe einer fehlgeschlagenen oder ungeklaerten Migration zur Wiederholung (bin/migrate.php --retry=NNN).
+ * Die Zeile wird auf status = 'pending' gesetzt, NICHT geloescht: Nach einem Teilerfolg (DDL wirksam, Datenanweisung
+ * fehlgeschlagen, Fall Migration 028, Lauf #73) wuerde ein geloeschter Eintrag ueber den Marker wieder als "eingespielt"
+ * gelten und die restlichen Anweisungen nie ausfuehren. Mit 'pending' fuehrt der naechste Lauf die (korrigierte,
+ * wiederholbar formulierte) Datei vollstaendig erneut aus. Nur fuer failed und unknown; jede Freigabe steht im audit_log
+ * (migration_released). Bewusst KEINE Automatik: Der Aufruf ist eine Entscheidung des Betreibers.
+ */
+function migrations_release(string $version, string $by = 'cli'): string
+{
+    if (!preg_match('/^\d{3}$/', $version)) {
+        throw new RuntimeException('Ungültige Migrationsnummer (drei Ziffern erwartet, z. B. 028).');
+    }
+    $match = null;
+    foreach (migrations_status() as $m) {
+        if ($m['version'] === $version) {
+            $match = $m;
+        }
+    }
+    if ($match === null) {
+        throw new RuntimeException('Keine Migrationsdatei mit der Nummer ' . $version . ' vorhanden.');
+    }
+    if (!in_array($match['state'], ['failed', 'unknown'], true)) {
+        throw new RuntimeException('Migration ' . $match['filename'] . ' ist im Zustand "' . $match['state'] . '"; freigegeben werden nur failed oder unknown.');
+    }
+    db()->prepare("UPDATE schema_migrations SET status = 'pending', error_text = CONCAT_WS(' | ', error_text, 'zur Wiederholung freigegeben'), finished_at = NULL WHERE version = ? AND status IN ('failed', 'unknown')")->execute([$version]);
+    if (function_exists('audit_log')) {
+        audit_log(null, ['user_id' => null, 'email' => $by], 'migration_released', 'database', $version, ['datei' => $match['filename'], 'vorher' => $match['state'], 'fehler' => mb_substr((string)($match['error'] ?? ''), 0, 300)]);
+    }
+    return $match['filename'];
 }
 
 function migrations_dir(): string
@@ -153,6 +193,7 @@ function migrations_status(): array
                 'success' => 'applied',
                 'failed'  => 'failed',
                 'running' => 'running',
+                'pending' => 'pending', // ausdruecklich zur Wiederholung freigegeben (migrations_release), Marker zaehlen nicht
                 default   => 'unknown',
             };
         } elseif (isset($markers[$version]) && _migration_marker_present($markers[$version])) {

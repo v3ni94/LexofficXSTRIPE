@@ -5,9 +5,9 @@
     "summary": "Funktionsübersicht: sevdesk auf Stand 4.38, Wechselsperre aufheben; neues Kapitel Leitfaden Scharfschaltung (Go-live) mit Stripe-Einrichtung."
   },
   "entwickler": {
-    "revision": "r8",
+    "revision": "r9",
     "date": "08.09.2026",
-    "summary": "Performance Phase 1 (4.39): Messpunkte Migration 029, Vollabgleichsfenster, Fairness, Seitengröße, Reiter Synchronisation & Performance, Bemessung der Worker."
+    "summary": "Migrationen: Vorfall 028 (Läufe #73/#74), Freigabe per --retry, Prüfsuite migrations-check gegen den Vorzustand."
   },
   "kunden": {
     "revision": "r3",

@@ -809,8 +809,8 @@ INSERT IGNORE INTO integration_providers (code, name, kind, status, capabilities
      '["read_customers","read_open_invoices","read_open_amount","detect_changes"]', 'v1',
      'Public API (nach Angaben von Lexware Tarif XL erforderlich, im eigenen Konto prüfen). Kein Schreibzugriff auf Zahlungen.'),
     ('sevdesk', 'sevdesk', 'invoice_system', 'development',
-     '["read_customers","read_open_invoices","detect_changes"]', 'v1 (Systemversion 2.0)',
-     'Adapter nach Sekundaerquellen gebaut (07.09.2026), nicht mit Testkonto verifiziert. Lesen ab Freigabe (sevdesk_connect oder sevdesk_release_at); offener Restbetrag und Einzug erst nach Bestaetigung (sevdesk_api_verified, sevdesk_collections). Kein Schreibzugriff.'),
+     '["read_customers","read_open_invoices","detect_changes"]', 'v1',
+     'sevdesk-API v1, Systemversion 2.0 (Annahme). Adapter nach Sekundaerquellen gebaut (07.09.2026), nicht mit Testkonto verifiziert. Lesen ab Freigabe (sevdesk_connect oder sevdesk_release_at); offener Restbetrag und Einzug erst nach Bestaetigung (sevdesk_api_verified, sevdesk_collections). Kein Schreibzugriff.'),
     ('stripe', 'Stripe', 'payment_provider', 'released',
      '["sepa_debit","payment_intents","setup_checkout","mandates","webhooks"]', '2024-06-20',
      'Eigenes Stripe-Konto des Kunden, SEPA-Lastschrift muss dort freigeschaltet sein.');
