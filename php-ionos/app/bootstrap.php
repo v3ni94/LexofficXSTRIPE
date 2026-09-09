@@ -316,6 +316,7 @@ function uuid4(): string
 
 require_once __DIR__ . '/version.php';
 require_once __DIR__ . '/log.php';
+require_once __DIR__ . '/tracking.php';
 if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('X-Correlation-Id: ' . correlation_id());
 }

@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.56';
+const APP_VERSION = '4.57';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.57', 'date' => '10.09.2026', 'title' => 'Google-Tag in der Anwendung, begrenzt auf die öffentlichen Registrierungsseiten',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Auf Vorgabe des Betreibers ist die Google-Ads-Kennung jetzt auch in der Anwendung hinterlegt (app/tracking.php, assets/js/consent.js). Sie wirkt ausschließlich auf den öffentlichen Seiten register.php und vormerken.php und dort erst nach ausdrücklicher Einwilligung im Banner; vorher wird kein Google-Skript geladen und kein Cookie gesetzt. Die Kennungen kommen aus der Konfiguration (analytics.enabled, ga_id, ads_id) und werden gegen das von Google vergebene Format geprüft.'],
+            ['type' => 'Neu', 'text' => 'Bewusste Grenze: Innerhalb eines Firmenaccounts findet keine Messung statt. Angemeldete Seiten und Seiten mit Token in der Adresse binden nie ein Google-Skript ein, weil ihre Adressen Kennungen zu Kunden, Rechnungen und Mandaten tragen; diese Daten verarbeitet die Müller Holding AG im Auftrag ihrer Kunden, eine Übermittlung an Google wäre ein neuer Unterauftragsverarbeiter. php tools/app-tracking-check.php erzwingt die Grenze (31 Fälle) und läuft im GitHub-Workflow mit.'],
+            ['type' => 'Geändert', 'text' => 'Die Datenschutzerklärung auf smart-einzug.de beschreibt die Anwendung jetzt gesondert: keine Messung im Firmenaccount, Ausnahme nur die beiden öffentlichen Seiten vor der Anmeldung, eigene Einwilligung mit Widerruf über die Fußzeile.'],
+         ]],
         ['version' => '4.56', 'date' => '10.09.2026', 'title' => 'Technisches SEO-Audit der Marketingseiten, Prüfer für die interne Verlinkung',
          'entries' => [
             ['type' => 'Neu', 'text' => 'tools/seo-linkcheck.py prüft die interne Verlinkung aller fünf Inhaltsdomains gegen den Dateibestand: defekte interne Links und indexierbare Seiten ohne eingehenden Link sind Fehler, weniger als zwei eingehende Links eine Warnung. Der GitHub-Workflow führt den Prüfer zusammen mit seo-map-check aus, sobald websites/ geändert wurde. Anlass: Die Zusammenführung vom 08.09.2026 hatte eine Seite ohne eingehenden Link zurückgelassen.'],

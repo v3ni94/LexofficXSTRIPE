@@ -544,6 +544,7 @@
    "8a. Cookies und Einwilligung",
    "8b. Google Analytics 4",
    "8c. Google Ads Conversion-Messung",
+   "8c bis. Reichweitenmessung in der Anwendung app.smart-einzug.de",
    "8d. Google Search Console",
    "9. Sicherheits-E-Mails",
    "10. Speicherdauer",
@@ -557,7 +558,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 1267,
+  "woerter_hauptinhalt": 1433,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -595,8 +596,9 @@
   ],
   "pruefwoerter": {
    "partner_offiziell": 1,
+   "mandat": 1,
    "zwei_faktor": 3,
-   "dsgvo": 5,
+   "dsgvo": 6,
    "sevdesk": 2,
    "lexware_office": 1,
    "lexware_allgemein": 2,

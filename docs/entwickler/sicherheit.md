@@ -353,6 +353,27 @@ Keine der oben genannten Konfigurationsdateien wird eingecheckt: `app/config.php
 `.htaccess`/`.gitignore` geschützt (`config.example.php:6-7`), `shared/config.php` liegt auf dem VPS
 außerhalb der Releases (`app/bootstrap.php:16-18`).
 
+## Google-Tag der Anwendung (`app/tracking.php`, seit 4.57)
+
+Vorgabe des Betreibers vom 10.09.2026: Die Google-Ads-Kennung soll auch in der Anwendung hinterlegt sein, damit eine Registrierung als Conversion messbar wird. Weil die Anwendung Kundendaten führt, gilt eine enge, im Code festgelegte Grenze.
+
+**Wo das Tag wirkt.** Ausschließlich auf den Seiten in `TRACKING_PUBLIC_PAGES`, derzeit `register.php` und `vormerken.php`. Beide sind ohne Anmeldung erreichbar und tragen keine Kennung in der Adresse. `layout_header()` gibt das Skript nur aus, wenn die aufrufende Seite es ausdrücklich über `$opts['tracking']` freigibt.
+
+**Wo es nie wirkt und warum.**
+
+| Ausgeschlossen | Grund |
+|---|---|
+| alle Seiten nach der Anmeldung | Der Seitenpfad enthält Kennungen zu Kunden, Rechnungen, Mandaten und Einzügen. Diese Daten verarbeitet die Müller Holding AG im Auftrag ihrer Kunden. Eine Übermittlung an Google wäre ein neuer Unterauftragsverarbeiter und damit ein Verstoß gegen den Auftragsverarbeitungsvertrag samt Anlage 3. |
+| `reset-password.php`, `invite.php`, `twofa-verify.php`, `support-login.php` | Diese Adressen tragen ein Token. Ein Token, das über den Seitenpfad oder den Verweis an Google gelangt, ist ein Sicherheitsvorfall. |
+| `login.php` | Anmeldeseite, für Werbemessung nicht nötig. |
+| Adminbereich und Schnittstellen | keine Werbemessung, kein Nutzen. |
+
+**Einwilligung.** `assets/js/consent.js` blendet ein Banner ein und lädt das Google-Skript erst nach „Alle akzeptieren“. Vorher wird kein Google-Skript geladen und kein Cookie gesetzt. Die Entscheidung liegt 12 Monate im `localStorage` der Herkunft `app.smart-einzug.de` und ist über „Cookie-Einstellungen“ in der Fußzeile widerrufbar. Sie gilt getrennt von der Einwilligung auf smart-einzug.de, weil `localStorage` an die Herkunft gebunden ist; ein Besucher wird deshalb beim Wechsel auf die Anwendung erneut gefragt. `ad_personalization` bleibt in jedem Fall auf `denied`.
+
+**Konfiguration.** `analytics.enabled`, `analytics.ga_id`, `analytics.ads_id` in `shared/config.php`. Ohne `enabled` passiert nichts. Die Kennungen werden gegen die von Google vergebenen Formate geprüft (`G-…`, `AW-…`), damit eine falsch gepflegte Konfiguration keine fremde Kennung einschleust.
+
+**Eine weitere Seite aufzunehmen ist keine Kleinigkeit.** `TRACKING_PUBLIC_PAGES` zu erweitern heißt, für die neue Seite zu prüfen, ob ihre Adresse personenbezogene oder mandantenbezogene Kennungen tragen kann, und die Auftragsverarbeitung neu zu bewerten. `php tools/app-tracking-check.php` (31 Fälle) hält die Grenze fest und läuft im GitHub-Workflow mit.
+
 ## Offene Prüfpunkte
 
 1. **Frage:** Soll für App- und Adminhost ebenfalls eine Content-Security-Policy eingeführt werden

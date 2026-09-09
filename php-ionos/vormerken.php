@@ -33,7 +33,7 @@ function vormerken_public_path(string $provider): string
 function vormerken_page(string $title, array $paragraphs, string $backPath, ?string $backLabel = null, ?array $form = null, int $status = 200): void
 {
     http_response_code($status);
-    layout_header($title);
+    layout_header($title, null, ['tracking' => true]);
     ?>
 <div class="auth-wrap">
     <div class="card">

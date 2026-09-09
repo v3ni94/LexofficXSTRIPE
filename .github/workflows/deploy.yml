@@ -207,6 +207,7 @@ jobs:
           lauf php tools/totp-policy-check.php
           lauf php tools/billing-setup-check.php
           lauf php tools/host-separation-check.php
+          lauf php tools/app-tracking-check.php
           lauf php tools/admin-period-check.php
           lauf php tools/docs-access-check.php
           lauf php tools/mail-ci-check.php

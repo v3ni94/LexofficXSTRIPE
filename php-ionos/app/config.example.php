@@ -303,5 +303,17 @@ return [
     ],
 
     // --- Zeitzone ---
+    // Google-Tag der Anwendung (app.smart-einzug.de). Vorgabe Betreiber 10.09.2026.
+    // Das Tag laedt AUSSCHLIESSLICH auf den oeffentlichen Seiten register.php und
+    // vormerken.php und dort erst nach ausdruecklicher Einwilligung im Banner.
+    // Angemeldete Seiten bleiben ohne Google-Skript, weil ihre Adressen Kunden- und
+    // Rechnungskennungen tragen (Auftragsverarbeitung, siehe app/tracking.php).
+    // 'enabled' false schaltet alles ab, unabhaengig von den Kennungen.
+    'analytics' => [
+        'enabled' => false,
+        'ga_id' => '',            // Format G-XXXXXXXXXX, leer lassen wenn nicht gewuenscht
+        'ads_id' => '',           // Format AW-000000000, leer lassen wenn nicht gewuenscht
+    ],
+
     'timezone' => 'Europe/Berlin',
 ];
