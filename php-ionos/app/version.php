@@ -8,12 +8,20 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.54';
+const APP_VERSION = '4.55';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.55', 'date' => '10.09.2026', 'title' => 'Technisches SEO-Audit der Marketingseiten, Prüfer für die interne Verlinkung',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'tools/seo-linkcheck.py prüft die interne Verlinkung aller fünf Inhaltsdomains gegen den Dateibestand: defekte interne Links und indexierbare Seiten ohne eingehenden Link sind Fehler, weniger als zwei eingehende Links eine Warnung. Der GitHub-Workflow führt den Prüfer zusammen mit seo-map-check aus, sobald websites/ geändert wurde. Anlass: Die Zusammenführung vom 08.09.2026 hatte eine Seite ohne eingehenden Link zurückgelassen.'],
+            ['type' => 'Behoben', 'text' => 'Die verwaiste Seite lexware-office-lastschrifteinzug ist wieder aus der Startseite und aus lexware-sepa-einzug verlinkt. Vier weitere Seiten mit nur einem eingehenden Link haben zusätzliche Verweise aus thematisch passenden Anleitungen und Beiträgen erhalten; jede indexierbare Seite hat jetzt mindestens zwei.'],
+            ['type' => 'Behoben', 'text' => 'AGB- und Funktionsseite von lexware-einzug.de trugen denselben Titel und dieselbe Beschreibung wie die Seiten der Hauptdomain. Beide sind jetzt eindeutig; über alle fünf Domains gibt es keine doppelten Titel oder Beschreibungen mehr.'],
+            ['type' => 'Geändert', 'text' => 'Das Fußzeilenlogo lädt auf 33 Seiten verzögert (loading lazy, decoding async); das Kopfzeilenlogo bleibt unverändert, weil es im sichtbaren Bereich liegt. Acht ungenutzte SmartEinzug-Logodateien wurden von lexware-einzug.de und lexoffice-einzug.de entfernt, was zugleich die Leadseiten-Entscheidung umsetzt, dort kein SmartEinzug-Logo vorzuhalten.'],
+            ['type' => 'Neu', 'text' => 'Vollständiges technisches Audit in docs/seo: Projektkontext, Audit, Seitenmatrix und Weiterleitungsverzeichnis als CSV, Bericht zu strukturierten Daten, inhaltliche Lücken, Prüfliste und Prüfbefehle. Die Kapitel sind in der SEO- und Marketingdokumentation im Adminbereich enthalten.'],
+         ]],
         ['version' => '4.54', 'date' => '10.09.2026', 'title' => 'Google-Ads-Tag auch auf smart-einzug.de',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Die Google-Ads-Kennung AW-18431688840 gilt auf Vorgabe des Betreibers jetzt für lexware-einzug.de und smart-einzug.de (assets/js/site.js, Zuordnung je Hostname). Wie bisher lädt gtag.js erst nach Einwilligung im Cookie-Banner, nie direkt im HTML; der Bannertext nennt Google Ads automatisch, Content-Security-Policy und Datenschutzerklärung der Hauptdomain enthielten die nötigen Angaben bereits.'],

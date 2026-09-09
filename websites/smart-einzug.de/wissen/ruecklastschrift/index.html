@@ -129,6 +129,7 @@
         <h2>Wie die Rücklastschrift in SmartEinzug ankommt</h2>
         <span class="bar" aria-hidden="true"></span>
         <p>Den Status eines Einzugs erhält SmartEinzug auf zwei Wegen: über den Stripe-Webhook Ihrer Firma und über die Schaltfläche „Status mit Stripe abgleichen“. Der Abgleich erkennt Erfolg und Fehlschlag laufender Einzüge. Rücklastschriften und Erstattungen erkennt ausschließlich der Webhook.</p>
+        <p>Zum zeitlichen Ablauf zwischen Einreichung, Rückmeldung und endgültigem Status siehe <a href="/wissen/zahlungsstatus-einer-lastschrift/">Warum eine Lastschrift nicht sofort als bezahlt gilt</a>.</p>
       </div>
       <ol class="steps">
         <li class="step"><span class="step-number">1</span><div><h3>Stripe meldet das Ereignis</h3><p>Stripe sendet das Ereignis charge.dispute.created an den Webhook-Endpunkt. SmartEinzug ordnet es Ihrer Firma zu, prüft die Signatur mit dem hinterlegten Webhook-Secret und verwirft die Meldung, wenn die Prüfung scheitert.</p></div></li>
@@ -247,7 +248,7 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
-      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48" loading="lazy" decoding="async"></span>
       <nav class="footer-nav" aria-label="Rechtliches">
         <ul>
           <li><a href="/impressum/">Impressum</a></li>

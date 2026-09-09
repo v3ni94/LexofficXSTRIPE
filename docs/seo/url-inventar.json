@@ -177,7 +177,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 1937,
+  "woerter_hauptinhalt": 1979,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -207,7 +207,9 @@
    "https://smart-einzug.de/so-funktionierts/",
    "https://smart-einzug.de/wissen/",
    "https://smart-einzug.de/wissen/ruecklastschrift/",
-   "https://smart-einzug.de/wissen/sepa-mandat/"
+   "https://smart-einzug.de/wissen/sepa-mandat/",
+   "https://smart-einzug.de/wissen/voraussetzungen-sepa-lastschrift/",
+   "https://smart-einzug.de/wissen/zahlungsstatus-einer-lastschrift/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -236,10 +238,10 @@
    "vorabankuendigung": 5,
    "glaeubiger_id": 2,
    "mandat": 37,
-   "rueckschreibung_buchhaltung": 1,
+   "rueckschreibung_buchhaltung": 3,
    "lexware_office": 11,
-   "sofort_geld": 3,
-   "einzug_datum_frist": 3
+   "sofort_geld": 4,
+   "einzug_datum_frist": 4
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
@@ -363,7 +365,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 958,
+  "woerter_hauptinhalt": 985,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -390,7 +392,8 @@
    "https://smart-einzug.de/preise/",
    "https://smart-einzug.de/sicherheit/",
    "https://smart-einzug.de/so-funktionierts/",
-   "https://smart-einzug.de/wissen/"
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/kunden-und-rechnungen-zuordnen/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -417,7 +420,7 @@
    "mandat": 1,
    "rueckschreibung_buchhaltung": 1,
    "verschluesselung": 1,
-   "lexware_office": 27,
+   "lexware_office": 28,
    "lexware_allgemein": 10,
    "tarif_xl_public_api": 8,
    "sofort_geld": 1,
@@ -554,7 +557,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 1180,
+  "woerter_hauptinhalt": 1267,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -2109,7 +2112,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 1,
+  "links_intern_eingehend": 2,
   "verwaist": false
  },
  {
@@ -2406,7 +2409,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 1313,
+  "woerter_hauptinhalt": 1332,
   "jsonld_typen": [
    "Article",
    "BreadcrumbList",
@@ -2438,7 +2441,8 @@
    "https://smart-einzug.de/so-funktionierts/",
    "https://smart-einzug.de/wissen/",
    "https://smart-einzug.de/wissen/sepa-mandat/",
-   "https://smart-einzug.de/wissen/vorabankuendigung/"
+   "https://smart-einzug.de/wissen/vorabankuendigung/",
+   "https://smart-einzug.de/wissen/zahlungsstatus-einer-lastschrift/"
   ],
   "links_extern_hosts": [
    "app.smart-einzug.de"
@@ -2467,8 +2471,9 @@
    "ruecklastschrift": 22,
    "vorabankuendigung": 2,
    "mandat": 8,
-   "rueckschreibung_buchhaltung": 2,
+   "rueckschreibung_buchhaltung": 3,
    "lexware_office": 7,
+   "sofort_geld": 1,
    "einzug_datum_frist": 1
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
@@ -2846,7 +2851,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 1,
+  "links_intern_eingehend": 2,
   "verwaist": false
  },
  {
@@ -2931,7 +2936,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 1,
+  "links_intern_eingehend": 3,
   "verwaist": false
  },
  {
@@ -3560,10 +3565,10 @@
   "datei": "agb.html",
   "url": "https://lexware-einzug.de/agb",
   "seitentyp": "rechtliches_kontakt",
-  "title": "Allgemeine Geschäftsbedingungen | SmartEinzug",
-  "title_laenge": 45,
-  "description": "AGB von SmartEinzug: Vertragsgegenstand, Leistungsumfang, Preise und Abrechnung, Laufzeit und Kündigung sowie das Verhältnis zu Stripe und Lexware Office.",
-  "description_laenge": 154,
+  "title": "AGB für die Nutzung von SmartEinzug | lexware-einzug.de",
+  "title_laenge": 55,
+  "description": "Vertragsbedingungen des Softwareanbieters Müller Holding AG für SmartEinzug: Gegenstand, Leistungsumfang, Abrechnung, Laufzeit, Kündigung und Verhältnis zu Stripe.",
+  "description_laenge": 163,
   "h1": [
    "Allgemeine Geschäftsbedingungen"
   ],
@@ -3791,12 +3796,12 @@
   "datei": "funktionen.html",
   "url": "https://lexware-einzug.de/funktionen",
   "seitentyp": "produktseite",
-  "title": "Funktionen von SmartEinzug",
-  "title_laenge": 26,
-  "description": "Alle Funktionen von SmartEinzug im Überblick: Lexware-Office-Anbindung, Stripe, SEPA-Mandate, Einzugsarten, Statusabgleich, Team und Sicherheit.",
-  "description_laenge": 144,
+  "title": "SmartEinzug: Funktionen für Lexware Office",
+  "title_laenge": 42,
+  "description": "Alle SmartEinzug: Funktionen für Lexware Office im Überblick: Lexware-Office-Anbindung, Stripe, SEPA-Mandate, Einzugsarten, Statusabgleich, Team und Sicherheit.",
+  "description_laenge": 160,
   "h1": [
-   "Funktionen von SmartEinzug"
+   "SmartEinzug: Funktionen für Lexware Office"
   ],
   "h2": [
    "Lexware Office und Stripe verbinden",
@@ -3810,7 +3815,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 257,
+  "woerter_hauptinhalt": 284,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -3829,6 +3834,7 @@
    "https://lexware-einzug.de/faq",
    "https://lexware-einzug.de/funktionen",
    "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-sepa-einzug",
    "https://lexware-einzug.de/preise"
   ],
   "links_extern_hosts": [
@@ -3862,10 +3868,10 @@
    "ruecklastschrift": 1,
    "vorabankuendigung": 2,
    "glaeubiger_id": 2,
-   "mandat": 6,
+   "mandat": 7,
    "zwei_faktor": 2,
    "verschluesselung": 1,
-   "lexware_office": 5,
+   "lexware_office": 7,
    "lexware_allgemein": 1,
    "sofort_geld": 1
   },
@@ -3971,7 +3977,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 1489,
+  "woerter_hauptinhalt": 1511,
   "jsonld_typen": [
    "Organization",
    "SoftwareApplication",
@@ -3996,6 +4002,7 @@
    "https://lexware-einzug.de/faq",
    "https://lexware-einzug.de/funktionen",
    "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-lastschrifteinzug",
    "https://lexware-einzug.de/lexware-sepa-einzug",
    "https://lexware-einzug.de/preise"
   ],
@@ -4063,7 +4070,7 @@
    "rueckschreibung_buchhaltung": 1,
    "zwei_faktor": 5,
    "lexware_office": 23,
-   "lexware_allgemein": 11,
+   "lexware_allgemein": 12,
    "tarif_xl_public_api": 3,
    "stripe_gebuehr": 1,
    "sofort_geld": 2,
@@ -4157,8 +4164,8 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 0,
-  "verwaist": true
+  "links_intern_eingehend": 2,
+  "verwaist": false
  },
  {
   "domain": "lexware-einzug.de",
@@ -4354,7 +4361,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 557,
+  "woerter_hauptinhalt": 570,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -4373,6 +4380,7 @@
    "https://lexware-einzug.de/faq",
    "https://lexware-einzug.de/funktionen",
    "https://lexware-einzug.de/impressum",
+   "https://lexware-einzug.de/lexware-office-lastschrifteinzug",
    "https://lexware-einzug.de/lexware-office-sepa-mandat",
    "https://lexware-einzug.de/preise"
   ],
@@ -4407,14 +4415,14 @@
    "zwei_faktor": 1,
    "verschluesselung": 1,
    "lexware_office": 13,
-   "lexware_allgemein": 9,
+   "lexware_allgemein": 10,
    "tarif_xl_public_api": 3,
    "sofort_geld": 1,
    "einzug_datum_frist": 1
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 1,
+  "links_intern_eingehend": 2,
   "verwaist": false
  },
  {

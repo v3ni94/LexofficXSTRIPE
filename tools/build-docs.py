@@ -72,6 +72,9 @@ DOCUMENTS = [
         'chapters': [
             'seo/README.md', 'seo/01-bestandsaufnahme.md', 'seo/02-faktenregister.md', 'seo/03-aussagenpruefung.md',
             'seo/04-keyword-map.md', 'seo/05-massnahmenplan.md', 'seo/06-mess-und-pflegekonzept.md', 'seo/07-abschlussbericht.md',
+            'seo/SEO_PROJECT_CONTEXT.md', 'seo/SEO_AUDIT.md', 'seo/SEO_SCHEMA_REPORT.md',
+            'seo/SEO_CONTENT_OPPORTUNITIES.md', 'seo/SEO_QA_CHECKLIST.md', 'seo/SEO_QA_COMMANDS.md',
+            'seo/SEO_CHANGELOG.md',
         ],
     },
 ]

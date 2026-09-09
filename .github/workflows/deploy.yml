@@ -222,6 +222,19 @@ jobs:
         shell: bash
         run: python3 tools/site-qa.py
 
+      # Interne Verlinkung: defekte Links und verwaiste Seiten. Die Zusammenfuehrung
+      # vom 08.09.2026 hat eine Seite ohne eingehenden Link zurueckgelassen; das faengt
+      # diese Pruefung kuenftig ab.
+      - name: Interne Verlinkung pruefen (seo-linkcheck)
+        if: needs.changes.outputs.websites == 'true'
+        shell: bash
+        run: python3 tools/seo-linkcheck.py
+
+      - name: Themen- und URL-Zuordnung pruefen (seo-map-check)
+        if: needs.changes.outputs.websites == 'true'
+        shell: bash
+        run: python3 tools/seo-map-check.py
+
       - name: Dokumentation erzeugen
         id: docs
         if: hashFiles('tools/build-docs.py') != ''
