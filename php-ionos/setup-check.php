@@ -20,7 +20,7 @@ header('X-Robots-Tag: noindex');
 $preConfig = null;
 $configLoadError = null;
 // Denselben Pfad wie app/bootstrap.php ermitteln: Auf dem VPS liegt die Konfiguration ausserhalb des
-// Release-Verzeichnisses (Umgebungsvariable SMARTEINZUG_CONFIG). Bis 4.53 suchte diese Seite nur
+// Release-Verzeichnisses (Umgebungsvariable SMARTEINZUG_CONFIG). Bis 4.54 suchte diese Seite nur
 // app/config.php neben dem Code; dort gibt es sie auf dem VPS nicht, deshalb griff das Token-Gate nie und
 // die Systempruefung war oeffentlich abrufbar (Befund der Gesamtpruefung 09.09.2026).
 $configPath = (string)(getenv('SMARTEINZUG_CONFIG') ?: (__DIR__ . '/app/config.php'));

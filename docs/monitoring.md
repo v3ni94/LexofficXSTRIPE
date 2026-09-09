@@ -108,7 +108,7 @@ scratchpad/e2e_saas.php, Abschnitt 28: Zugriffsschutz für Seite und Datenendpun
 
 Nicht geprüft (keine Testumgebung): TLS-Prüfung gegen echte Hosts, SMTP-Fehler, Stripe- und Lexware-Störungen mit echten Diensten, Alarmmails mit echtem Versand, Eigenlast auf dem IONOS-Server.
 
-## Unabhängiger Alarmkanal (Totmannschalter, seit 4.54)
+## Unabhängiger Alarmkanal (Totmannschalter, seit 4.55)
 
 **Befund der Gesamtprüfung vom 09.09.2026:** Die Alarmierung lief ausschließlich im überwachten System. Stand
 der Scheduler, fiel die Datenbank aus oder war der Server nicht erreichbar, unterblieb jede Meldung. Zusätzlich

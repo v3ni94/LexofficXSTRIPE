@@ -340,7 +340,7 @@ try {
     }
 } catch (Throwable $e) {
     // HTTP 500 statt 200: Stripe wiederholt die Zustellung. Die Beanspruchung wird zurueckgenommen, damit die
-    // Wiederholung nicht als "bereits verarbeitet" abgewiesen wird. Bis 4.53 verschluckte dieser Zweig jeden
+    // Wiederholung nicht als "bereits verarbeitet" abgewiesen wird. Bis 4.54 verschluckte dieser Zweig jeden
     // Fehler mit 200; ein Statuswechsel (Erfolg, Fehlschlag, Ruecklastschrift) konnte dauerhaft ausbleiben.
     error_log('Stripe-Webhook: unerwarteter Fehler: ' . $e->getMessage());
     if (!empty($eventClaimed)) {

@@ -14,7 +14,7 @@ const DATENSCHUTZ_VERSION = 'datenschutz-2026-09';
 const CONSENT_SUBJECTS = [
     'agb' => 'Allgemeine Geschäftsbedingungen',
     'datenschutz' => 'Datenschutzerklärung',
-    // Zustimmung zur zahlungspflichtigen Bestellung (Abonnement). Bis 4.53 stand sie nur im Protokoll
+    // Zustimmung zur zahlungspflichtigen Bestellung (Abonnement). Bis 4.54 stand sie nur im Protokoll
     // (audit_log), das nach 90 Tagen geloescht wird; als Nachweis gegenueber dem Kunden war das zu wenig
     // (Befund der Gesamtpruefung 09.09.2026).
     'bestellung' => 'Zahlungspflichtige Bestellung (Abonnement)',

@@ -8,13 +8,13 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.54';
+const APP_VERSION = '4.55';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
-        ['version' => '4.54', 'date' => '09.09.2026', 'title' => 'Empfehlungen der Gesamtprüfung umgesetzt: Webhooks, Support-Modus, Sicherheit, Nachweise, Alarmierung',
+        ['version' => '4.55', 'date' => '09.09.2026', 'title' => 'Empfehlungen der Gesamtprüfung umgesetzt: Webhooks, Support-Modus, Sicherheit, Nachweise, Alarmierung',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Webhooks: Scheitert die Verarbeitung einer Meldung von Stripe, wird sie jetzt wiederholt statt still verworfen. Bisher wurde jeder Fehler mit „in Ordnung“ quittiert; eine Kündigung oder eine bezahlte Bestellung konnte dadurch dauerhaft unbemerkt bleiben. Doppelte Zustellungen und vertauschte Reihenfolgen erkennt die Anwendung jetzt auch bei den Einzügen.'],
             ['type' => 'Behoben', 'text' => 'Support-Modus: Im Namen einer Firma lassen sich keine Bankverbindungen mehr ändern, keine Mandate erzeugen oder widerrufen, kein Not-Stopp aufheben, keine Firmendaten mit Geldbezug ändern, das Buchhaltungssystem nicht wechseln und keine Verträge akzeptieren. Die Sperren liegen jetzt in den Funktionen selbst.'],
@@ -22,6 +22,10 @@ function app_changelog(): array
             ['type' => 'Neu', 'text' => 'Nachweis der zahlungspflichtigen Bestellung: Tarif, Nettopreis, Periode und die Fassung der AGB werden dauerhaft festgehalten (Migration 031). Bisher stand die Zustimmung nur im Protokoll, das nach 90 Tagen gelöscht wird, und die Fassung wurde aus dem Tagesdatum gebildet.'],
             ['type' => 'Neu', 'text' => 'Alarmierung: Eine Störungsmeldung gilt erst als erledigt, wenn sie wirklich versendet wurde. Zusätzlich kann ein unabhängiger Alarmkanal eingerichtet werden (monitoring.heartbeat_url): Bleibt das regelmäßige Signal aus, weil der Server oder die Hintergrundverarbeitung steht, schlägt ein externer Dienst Alarm.'],
             ['type' => 'Neu', 'text' => 'Prüfung tools/payment-safety-check.php auf 69 Fälle erweitert; Anleitung zur Zustellbarkeit von E-Mails (SPF, DKIM, DMARC) in der Entwicklerdokumentation.'],
+         ]],
+        ['version' => '4.54', 'date' => '10.09.2026', 'title' => 'Google-Ads-Tag auch auf smart-einzug.de',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die Google-Ads-Kennung AW-18431688840 gilt auf Vorgabe des Betreibers jetzt für lexware-einzug.de und smart-einzug.de (assets/js/site.js, Zuordnung je Hostname). Wie bisher lädt gtag.js erst nach Einwilligung im Cookie-Banner, nie direkt im HTML; der Bannertext nennt Google Ads automatisch, Content-Security-Policy und Datenschutzerklärung der Hauptdomain enthielten die nötigen Angaben bereits.'],
          ]],
         ['version' => '4.53', 'date' => '09.09.2026', 'title' => 'Alias-Domains sepa-einzug.de und sepaeinzug.de',
          'entries' => [

@@ -101,14 +101,14 @@ Adminbereich sagten zu, dass Einzüge ohne `sevdesk_collections` gesperrt sind. 
 nirgends abgefragt; allein `sevdesk_api_verified` entschied. `collections_source_blocked()` prüft ihn jetzt vor dem
 sofortigen und vor dem terminierten Einzug.
 
-## 5f. Webhooks: Wiederholung statt stillem Verlust (Version 4.54)
+## 5f. Webhooks: Wiederholung statt stillem Verlust (Version 4.55)
 
-Beide Webhook-Endpunkte quittierten bis 4.53 jeden Verarbeitungsfehler mit HTTP 200 und hatten das Ereignis zu
+Beide Webhook-Endpunkte quittierten bis 4.54 jeden Verarbeitungsfehler mit HTTP 200 und hatten das Ereignis zu
 diesem Zeitpunkt bereits als verarbeitet vermerkt. Stripe wiederholt nach einer 200 nie, und ein Nachsenden aus
 dem Dashboard lief in „bereits verarbeitet“. Ein Statuswechsel konnte damit dauerhaft verloren gehen: eine
 gekündigte Firma blieb aktiv, eine zahlende Firma gesperrt, eine Rücklastschrift unvermerkt.
 
-Seit 4.54 gilt für `stripe-webhook.php` und `billing-webhook.php` dasselbe Muster, umgesetzt im gemeinsamen
+Seit 4.55 gilt für `stripe-webhook.php` und `billing-webhook.php` dasselbe Muster, umgesetzt im gemeinsamen
 Modul `app/webhook_events.php`:
 
 | Schritt | Verhalten |

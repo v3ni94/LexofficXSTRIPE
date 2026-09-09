@@ -1478,7 +1478,7 @@ function monitor_alerts_evaluate(): array
         $failStreak = count($last) >= (int)$cfg['alert_fail_streak'] && count(array_filter(array_slice($last, 0, (int)$cfg['alert_fail_streak']), fn($s) => $s === 'fail')) === (int)$cfg['alert_fail_streak'];
         $okStreak = count($last) >= (int)$cfg['alert_ok_streak'] && count(array_filter(array_slice($last, 0, (int)$cfg['alert_ok_streak']), fn($s) => $s === 'ok')) === (int)$cfg['alert_ok_streak'];
         if (!$open && $failStreak) {
-            // Marke erst NACH erfolgreichem Versand setzen: Bis 4.53 wurde sie vorher gesetzt; scheiterte der
+            // Marke erst NACH erfolgreichem Versand setzen: Bis 4.54 wurde sie vorher gesetzt; scheiterte der
             // Versand (Postfach voll, SMTP gestoert, Mailversand ausgeschaltet), galt der Alarm als erledigt und
             // wurde nie wiederholt. Genau bei einer Stoerung des Mailwegs blieb die Meldung damit aus
             // (Befund der Gesamtpruefung 09.09.2026).

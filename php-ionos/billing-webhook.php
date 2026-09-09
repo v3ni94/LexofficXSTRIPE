@@ -35,7 +35,7 @@ try {
     error_log('Billing-Webhook ' . ($event['type'] ?? '?') . ': ' . $result);
 } catch (Throwable $e) {
     // HTTP 500 statt 200: Stripe wiederholt die Zustellung, und die Beanspruchung des Ereignisses wurde in
-    // billing_handle_event() zurueckgenommen, sodass die Wiederholung wirklich verarbeitet. Bis 4.53 wurde
+    // billing_handle_event() zurueckgenommen, sodass die Wiederholung wirklich verarbeitet. Bis 4.54 wurde
     // jeder Fehler mit 200 quittiert; ein Statuswechsel (Kuendigung, bezahlte Bestellung) konnte dauerhaft
     // verloren gehen (Befund der Gesamtpruefung 09.09.2026).
     error_log('Billing-Webhook Fehler: ' . $e->getMessage());
