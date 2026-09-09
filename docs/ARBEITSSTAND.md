@@ -200,6 +200,16 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
    `Parse error ... config.php on line 19` ab, weil `shared/config.php` in genau diesem Moment von Hand bearbeitet wurde
    (`'environment' => 'prod'` ohne abschließendes Komma). Gewollte Wirkung: laufende Container unverändert, kein Rollback.
    Die Datei ist korrigiert (`php -l` grün), Umgebung meldet jetzt `prod`. Deployment über „Run workflow“ erneut auslösen.
+0. **Umsatzsteuer im Checkout: geklärt und in Ordnung (09.09.2026).** Ablauf des Vorfalls, alle Zeiten UTC: Der erste echte
+   Kauf um 00:20 Uhr wurde ohne Umsatzsteuer belastet (25,00 EUR statt 29,75 EUR), weil im Stripe-Konto zu diesem Zeitpunkt
+   keine Steuerregistrierung hinterlegt war; der Beleg nennt das als „Steuerpflicht: nicht registriert“. Die Registrierung
+   für Deutschland wurde gegen 00:30 Uhr nachgetragen. Die anschließend beobachteten 0,00 EUR auf der Bezahlseite waren
+   kein Fehler: Stripe weist die Steuer erst aus, wenn der Kunde seine Rechnungsadresse eingegeben hat. Mit vollständiger
+   Adresse rechnet der Checkout korrekt 25,00 EUR netto zuzüglich 4,75 EUR Umsatzsteuer, Gesamt 29,75 EUR (vom Betreiber
+   bestätigt). Der Kauf vom 00:20 Uhr wurde erstattet, die Stripe-Gebühr von 0,63 EUR bleibt als Kosten des Tests.
+   Ein von Hand angelegter Steuersatz (`txr_…`) wirkt neben Stripe Tax nicht und sollte archiviert werden.
+   Aus dem Vorfall entstanden die Prüfungen 4.47 bis 4.49 (Registrierung vorhanden, Standard-Steuercode, Art der
+   Registrierung); `bin/billing-check.php` hätte den Ausgangszustand von Anfang an als Fehler gemeldet.
 0. **Abrechnung scharf geschaltet (09.09.2026, ca. 02:20 Uhr):** `billing.enabled = true`, erste echte Bestellung
    durchgelaufen (Status `active`, Webhook hat den Status selbst gesetzt). Zwei Firmen (WEB2MEDIA GmbH, M&B Consulting GmbH)
    stehen noch auf `pending` und sind gesperrt: befreien oder Abonnement abschließen. **Fehlbetrag beim ersten Kauf:**
