@@ -53,7 +53,12 @@ meldet, wie viele Firmen beim Scharfschalten gesperrt würden. Schlüssel ersche
   anlegen. `bin/billing-check.php` liest seit 4.47 `/tax/registrations` mit und meldet eine fehlende
   Registrierung als Fehler.
 - Produktsteuercode im Dashboard prüfen (Software als Dienstleistung). Der Code wird bewusst nicht vom
-  Werkzeug gesetzt, damit keine falsche Einstufung entsteht.
+  Werkzeug gesetzt, damit keine falsche Einstufung entsteht; es gilt dann der Standard-Steuercode aus den
+  Stripe-Tax-Einstellungen. Ist dort ein nicht steuerbarer Code hinterlegt, weist der Checkout 0,00 EUR
+  Steuer aus, obwohl Registrierung und Rechnungsadresse stimmen. `bin/billing-check.php` nennt den Code seit
+  4.48 und warnt, wenn keiner gesetzt ist.
+- Die Steuer erscheint im Checkout erst, wenn der Kunde seine Rechnungsadresse eingegeben hat. Vor diesem
+  Schritt zeigt Stripe die Zeile „Steuer 0,00 EUR“; das ist kein Fehler.
 - Kundenportal konfigurieren und speichern; die Anwendung verlinkt es für Rechnungen, Zahlungsmethode
   und Kündigung. Ohne gespeicherte Konfiguration scheitert der Aufruf des Portals.
 

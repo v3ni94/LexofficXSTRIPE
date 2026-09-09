@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.47';
+const APP_VERSION = '4.48';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.48', 'date' => '09.09.2026', 'title' => 'Prüfung nennt den Standard-Steuercode des Stripe-Kontos',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'bin/billing-check.php weist den Standard-Steuercode aus und warnt, wenn keiner hinterlegt ist. Ohne passende Einstufung der Leistung berechnet Stripe 0,00 EUR Steuer, obwohl Registrierung und Rechnungsadresse stimmen. Der Steuercode je Produkt bleibt bewusst offen, damit keine falsche Einstufung durch das Werkzeug entsteht.'],
+         ]],
         ['version' => '4.47', 'date' => '09.09.2026', 'title' => 'Prüfung der Abrechnung erkennt fehlende Steuerregistrierung',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Beim ersten echten Kauf wurden 25,00 EUR statt 29,75 EUR belastet: Stripe berechnet Umsatzsteuer nur für Länder mit aktiver Steuerregistrierung, unabhängig davon, dass Stripe Tax den Status „active“ meldet und die Preise als Nettopreise angelegt sind. Die Prüfung sah das bisher nicht.'],

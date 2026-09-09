@@ -223,7 +223,7 @@ preg_match('/\$preisIdBleibt && \$betragOderPeriodeNeu\) \{\s*throw new RuntimeE
     ? ok('Prüfung liegt vor dem UPDATE') : bad('Prüfung liegt nach dem UPDATE');
 
 echo "\nH) Stripe Tax: Registrierung entscheidet, ob überhaupt Umsatzsteuer berechnet wird\n";
-$taxAktiv = ['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']]];
+$taxAktiv = ['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']], 'defaults' => ['tax_code' => 'txcd_muster']];
 $regDe = ['data' => [['status' => 'active', 'country' => 'DE', 'type' => 'standard']]];
 $regKeine = ['data' => []];
 $r = billing_check_tax($taxAktiv, $regDe);
@@ -242,6 +242,10 @@ $r = billing_check_tax(['status' => 'active'], $regDe);
 (bool)array_filter($r['errors'], fn($l) => str_contains($l, 'Hauptsitz')) ? ok('fehlende Adresse des Hauptsitzes ist ein Fehler') : bad('fehlender Hauptsitz nicht gemeldet');
 $r = billing_check_tax($taxAktiv, ['data' => [['status' => 'active', 'country' => 'de'], ['status' => 'active', 'country' => 'DE']]]);
 $r['laender'] === ['DE'] ? ok('Länder werden großgeschrieben und nicht doppelt gezählt') : bad('Länderliste: ' . implode(',', $r['laender']));
+
+$r = billing_check_tax(['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']]], $regDe);
+(bool)array_filter($r['warnings'], fn($l) => str_contains($l, 'Standard-Steuercode')) ? ok('fehlender Standard-Steuercode wird gemeldet') : bad('fehlender Steuercode nicht gemeldet');
+(bool)array_filter(billing_check_tax($taxAktiv, $regDe)['info'], fn($l) => str_contains($l, 'txcd_muster')) ? ok('vorhandener Steuercode wird ausgewiesen') : bad('Steuercode nicht ausgewiesen');
 
 $checkSrc = file_get_contents($root . '/php-ionos/bin/billing-check.php');
 (str_contains($checkSrc, "'/tax/registrations'") && str_contains($checkSrc, 'billing_check_tax('))

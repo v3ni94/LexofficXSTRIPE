@@ -165,6 +165,18 @@ function billing_check_tax(array $settings, array $registrations): array
     if ($status !== 'active') {
         $r['errors'][] = sprintf('Stripe Tax ist nicht aktiv (Status %s), automatic_tax ist aber eingeschaltet. Checkout mit automatischer Steuer schlägt dann fehl.', $status);
     }
+    // Standard-Steuercode des Kontos: Unser Werkzeug setzt bewusst keinen Steuercode je Produkt, damit keine
+    // falsche Einstufung entsteht; dann gilt der Standard aus den Stripe-Tax-Einstellungen. Ist dort ein nicht
+    // steuerbarer Code hinterlegt, berechnet Stripe 0,00 EUR, obwohl Registrierung und Adresse stimmen.
+    $code = (string)($settings['defaults']['tax_code'] ?? '');
+    if ($code === '') {
+        $r['warnings'][] = 'Stripe Tax: kein Standard-Steuercode hinterlegt. Ohne ihn kann Stripe die Leistung nicht '
+            . 'einstufen und berechnet unter Umständen keine Steuer. Im Dashboard unter Steuern, Einstellungen einen '
+            . 'Code für elektronisch erbrachte Dienstleistungen (Software als Dienstleistung) wählen.';
+    } else {
+        $r['info'][] = 'Stripe Tax: Standard-Steuercode ' . $code . '.';
+    }
+
     $head = (array)($settings['head_office']['address'] ?? []);
     $land = strtoupper((string)($head['country'] ?? ''));
     if ($land === '') {
