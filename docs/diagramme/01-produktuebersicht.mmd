@@ -1,0 +1,18 @@
+flowchart LR
+  subgraph K[Kunde: Firma mit Buchhaltung]
+    B[Buchhaltung<br/>Lexware Office]
+    S[Stripe-Konto der Firma<br/>SEPA-Basislastschrift]
+    D[Debitor<br/>Kunde der Firma]
+  end
+  subgraph SE[SmartEinzug, Müller Holding AG]
+    APP[Kundenanwendung<br/>app.smart-einzug.de]
+    ADM[Adminbereich<br/>admin.smart-einzug.de]
+    WEB[Websites<br/>smart-einzug.de, Leadseiten]
+  end
+  B -- "offene Rechnungen, Kontakte (nur lesend)" --> APP
+  APP -- "Mandat, Betrag, Verwendungszweck" --> S
+  S -- "Webhooks: Status, Rücklastschrift, Erstattung" --> APP
+  APP -- "Mandatsdokument, Vorabankündigung" --> D
+  D -- "SEPA-Mandat (Portal, digital, Upload)" --> APP
+  WEB -- "Registrierung" --> APP
+  ADM -- "Monitoring, Freigaben, Rechtsdokumente" --> APP

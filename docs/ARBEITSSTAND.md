@@ -1,16 +1,19 @@
 # Arbeitsstand SmartEinzug (LexofficXSTRIPE)
 
-Stand: 07.09.2026, Branch `claude/setup-lexsepa-monorepo-v5ZcZ`. Diese Datei ist der Einstieg für die Fortsetzung der Arbeit
+Stand: 08.09.2026, Branch `claude/setup-lexsepa-monorepo-v5ZcZ`. Diese Datei ist der Einstieg für die Fortsetzung der Arbeit
 und wird bei jedem Arbeitspaket aktualisiert. Sie enthält keine Zugangsdaten. Angaben, die nicht aus Code, Tests oder
 Git-Historie belegbar sind, tragen den Vermerk „unsicher“.
 
 ## 1. Aktueller Auftrag
 
-Laufende Session (Auftrag III und Folgepakete): Betrieb und Deployment auf dem Hostinger-VPS absichern, Adminbereich und
-Statusseite vervollständigen, Abrechnung scharf schalten, sevdesk-Vorankündigung mit Vormerkung, Dokumentation.
-Verbindliche Vorgaben des Betreibers: keine produktiven Serveraktionen durch die Session; jeder Push auf den Branch löst
-den GitHub-Workflow und damit ein Produktionsdeployment aus. Für den Dokumentationsschritt vom 07.09.2026 gilt
-ausdrücklich: kein Push, kein Deployment.
+Masterprompt-Ergänzung „Vollständiges Dokumentationssystem“ (07.09.2026): drei dauerhaft gepflegte Dokumentationen im Adminbereich
+(Versionen & Dokumentation), PDF im CI der Müller Holding AG, Zugriffsschutz je Klassifizierung, Historie, Kundenhandbuch in der
+Kundenanwendung, Diagramme als Mermaid-Quellen, Prüfungen im Workflow, Dokumentationspflicht in CLAUDE.md. Stand: Erstfassungen
+(Revision r1) aller drei Dokumente erzeugt und ausgeliefert; fachliche Prüfung durch Geschäftsführung, Screenshots für das
+Kundenhandbuch, DNS-Nachweis und Wiederherstellungstest offen (siehe `docs/entwickler/abdeckung-und-offene-punkte.md`).
+Arbeitsteilung seit 07.09.2026: dieser Chat arbeitet nur im Backend (`php-ionos/`, `deploy/`, `tools/`, `docs/`); `websites/`
+bearbeitet ein anderer Chat (DETM-Leadseiten als Patch übergeben). Frühere Aufträge (Mail, Rechtsdokumente, Buchhaltungssystem-
+Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 ## 2. Verbindliche Entscheidungen
 
@@ -23,6 +26,14 @@ ausdrücklich: kein Push, kein Deployment.
   Rechnungssystem, keine zweite Anwendung (Empfehlung in `docs/integrations.md`, vom Betreiber noch nicht bestätigt).
   Öffentlich gilt „in Planung, Start geplant zum 30.09.2026“ (Termin vom Betreiber vorgegeben), nur Vormerkung, kein Preis,
   kein Kaufbutton, keine Aussagen zu sevdesk-Tarifen.
+- sevdesk-Pilot (Entscheidung 08.09.2026): Bis zum 30.09.2026 dürfen nur Firmen mit einem Administrator-Mitglied (Timo Müller) sowie
+  Firmen aus `sevdesk_pilot_orgs` sevdesk verbinden; danach alle. Freigabe früher für alle: `sevdesk_connect = 1`.
+- sevdesk (Entscheidung 07.09.2026, Aufgabe 3): Phase 2 OHNE Testkonto umgesetzt. Verbinden und Lesen werden automatisch am
+  30.09.2026 freigegeben (`sevdesk_release_at`; `sevdesk_connect` = 1 schaltet früher frei, = 0 sperrt). Einzüge für sevdesk-Rechnungen
+  bleiben gesperrt, bis der Betreiber die Zahlungsfelder mit einem echten sevdesk-Konto bestätigt (`sevdesk_api_verified` = 1) und
+  `sevdesk_collections` = 1 setzt; das ist eine bewusste Abweichung vom Wunsch „alles zum 30.09.“, weil ohne verifizierten Restbetrag
+  Fehlbeträge möglich wären. Keine weitere Subdomain nötig: eine Anwendung, ein Adminbereich; Marketing je System läuft über Seiten
+  beziehungsweise Leaddomains (`signup_domain`).
 - Leadseiten lexware-einzug.de und lexoffice-einzug.de sollen auf DETM Management Consulting FZCO laufen (eigenständige
   Leadseiten ohne SmartEinzug-Logo, Provision nach Herkunft). Impressumsdaten fehlen, nichts erfinden.
 
@@ -35,6 +46,26 @@ ausdrücklich: kein Push, kein Deployment.
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
 | 4.19 | Masterplan Phase 1: Landingpage nach Masterplan 6 (zwei Formulare, Voraussetzungen, Abgrenzung), Startseiten-Teaser, Vorregistrierung mit getrennten Token A/B, Name, Einwilligung v3, freiwillige Angaben, Sperrvermerk, Betaeinladung, Kennzahlen; Admin Suche/Filter/CSV/Aktionen; Freigabeschalter `app/integration_state.php`; `register.php?integration=`; Adapter-Gerüst `app/sevdesk.php`; `docs/sevdesk.md` mit Bestandsaufnahme | 40b6e14 | ja, 07.09.2026; Deployment b5fcd8d laut Serverausgabe erfolgreich (28 s, alle Container healthy), Migration 020 applied |
 | 4.20 | sevdesk-Seite als vollständige SEO-Inhaltsseite (FAQ-Markup); Bereinigung schützt vollständige Altreleases ohne Nachweis | b029920 | ja |
+| 4.41 | Code-Review 4.35 bis 4.40 (neun Befunde): `platform_user_invite` bestehender Konten über `platform_user_set_role`, Systemrollen support/staff ohne `docs.*`/`users.manage`, `email_verified_at` bei Einladung, `worker-sevdesk` in restart-workers/deploy/rollback, Fairness nur eigener Jobtyp, Systemprüfung der Verbindungsaktionen in settings.php, `last_sync` nach System, `sync_perf_full_sync_plan` wie Scheduler, Hinweistext Vormerkungen | siehe git log | platform-roles-check 88/0, scheduler-sync-check 59/0, totp-policy-check 73/0, redis-deploy-check 111/0, deploy-runner-check 35/0, compose-check 0 |
+| 4.43 | Zeitraumsteuerung Adminbereich: `app/admin_period.php` (Voreinstellungen, freier Bereich, Sitzungsvorgabe, Vorzeitraum, Auflösung, SQL-Buckets, Auswahlleiste), admin.php Kennzahlen/Funnel/Diagramme mit Zeitraum und Vergleich, admin-system Verfügbarkeit und Performance mit Zeitraum, `sync_perf` mit from/to, CSS, `tools/admin-period-check.php` (44/0) | siehe git log | admin-period-check 44/0, scheduler-sync-check 59/0, docs-build-check |
+| 4.44 | Vorabankündigung als Vorlage `mail_tpl_prenotification()` und `mail_prenotification_sample()` (`app/mailer.php`), `_send_prenotification()` nutzt sie; Musterversand `test_prenotification` in admin-system.php (nur eigene Adresse, MUSTER-Betreff, Audit), `bin/mail-check.php --vorabankuendigung --send|--html`; Doku handbuch 8.4 (Inhalt, Stripe-Hinweis), email-system, mail-einrichtung, sicherheit, monitoring | siehe git log | mail-ci-check 46/0, totp-policy-check 76/0 |
+| 4.45 | Downgrade-Schutz: `deploy/vps/scripts/lib/release-version.sh` (Versionsvergleich), Einbindung in `deploy.sh` vor Übernahme des Deploy-Ordners und erstem Compose-Aufruf, `SMARTEINZUG_ALLOW_DOWNGRADE=1`, Sandbox kopiert die Bibliothek; `tools/release-version-check.sh` (23/0); 06-betrieb.md Abschnitt „Kein Downgrade durch erneut gestartete alte Läufe“ | siehe git log | release-version-check 23/0, deploy-runner-check, compose-check 0 Fehler |
+| 4.46 | Preisänderung: `billing_setup_price_needs_replacement()` und `transfer_lookup_key` in `app/billing_setup.php`, `--preis-neu` in `bin/billing-setup-stripe.php` (Ersatzpreis, Eintrag, Archivierung, Hinweis auf Bestandsabos), Sperre in `admin.php` (Betrag/Periode geändert bei gleicher Preis-ID wird nicht gespeichert), `docs/abrechnung.md` Kapitel „Weitere Tarife anlegen“ und „Preis eines Tarifs ändern“ | siehe git log | billing-setup-check 69/0 |
+| 4.47 | Steuerprüfung: `billing_check_tax()` in `app/billing_setup.php` (Status, Hauptsitz, aktive Registrierungen), `bin/billing-check.php` liest `/tax/registrations`; `docs/abrechnung.md` Schritt 2 ergänzt | siehe git log | billing-setup-check 78/0 |
+| 4.48 | `billing_check_tax()` prüft zusätzlich den Standard-Steuercode (`defaults.tax_code`); `docs/abrechnung.md` um Steuercode und Anzeigeverhalten des Checkouts ergänzt | siehe git log | billing-setup-check 80/0 |
+| 4.49 | `billing_check_tax()` liest die Art jeder Registrierung (`country_options`), meldet eine reine OSS-Registrierung im Land des Hauptsitzes als Fehler; Ausgabe nennt Land und Art | siehe git log | billing-setup-check 83/0 |
+| 4.50 | `admin_host_separated()` in `app/bootstrap.php`; `app/layout.php` zeigt die Balken Abonnement, Testmodus und Support nur in der Kundenanwendung und verlinkt absolut über `app_base_url()`; `tools/host-separation-check.php` (25/0) | siehe git log | host-separation-check 25/0 |
+| 4.42 | sevdesk-Pilot (Entscheidung 08.09.2026): `sevdesk_connect = 'pilot'` (Migration 030, Vorgabe), `integration_pilot_mode/_pilot_tenant/_connect_allowed` in `app/integration_state.php`, tenant-bewusst in Factory, Einstellungen, Wechsel, Scheduler, Registrierung, Performance-Reiter; Texte; Tests (sevdesk-check 124/0) | siehe git log | sevdesk-check 124/0, migrations-check 12/0, scheduler-sync-check 59/0 |
+| 4.41 | Review-Befunde 4.35 bis 4.40: Einladung bestehender Konten über `platform_user_set_role`, Systemrollen support/staff ohne docs.*/users.manage, `worker-sevdesk` in restart-workers/deploy/rollback, Fairness nur eigener Jobtyp, Systemprüfung der Verbindungsaktionen in settings.php, letzte Synchronisation je System, Vollabgleichsplan wie Scheduler, eingeladene Benutzer mit bestätigter Adresse, Hinweistext Vormerkungen | siehe git log | platform-roles-check 88/0, scheduler-sync-check 59/0, sevdesk-check 110/0, docs-build-check |
+| 4.40 | Migration 028 korrigiert (`api_version` = 'v1'), `migrations_release()` + `bin/migrate.php --retry=NNN` (Status pending statt DELETE, Audit), Marker 020 bis 029, `tools/migrations-check.sh` (Vorzustand aus Git, Strukturvergleich, Idempotenz, --retry), docs/migrations.md (Vorfall, Freigabeweg), CLAUDE.md | siehe git log | migrations-check 12/0, sevdesk-check, docs-build-check |
+| 4.39 | Performance Phase 1: Migration 029 (`job_runs.queue_wait_ms`, `sync_runs.detail_calls/contact_calls/api_ms_max/cursor_bytes_max`), `job_execute` misst Wartezeit, `LexofficeClient`/`SevdeskClient` `requestMsMax`, Cursorgröße in `sync_state_step`, `scheduler_full_sync_hour()` mit `queue.full_sync_window_hours`, Fairness `queue.sync_fair_seconds` + `queue_waiting_count()`, `sync.page_size` (max 250), `app/sync_perf.php` + Reiter „Synchronisation & Performance“; Doku sync-performance.md (Nachtrag), jobs.md, 06-betrieb.md, Datenwörterbuch, CLAUDE.md | siehe git log | scheduler-sync-check (10a bis 10c), sevdesk-check, worker-signal-check, totp-policy-check, php -l |
+| 4.38 | sevdesk Phase 2 ohne Testkonto: `app/sevdesk.php` (Client mit Header-Token, api_call_gate, Circuit Breaker, Monitoring; Adapter mit Lexware-Strukturen, Status- und Fälligkeitsabbildung, Restbetrag nur mit `sevdesk_api_verified`), Freigabetermin `sevdesk_release_at` (Vorgabe 30.09.2026, `integration_switch` mit Vorrang expliziter Werte), Migration 028 (integrations.sevdesk_*, invoice_source_lock_reset_at, Registry development, Freigabetermin), Einstellungen sevdesk (verbinden/prüfen/trennen), Onboarding und Kundenseiten mit dynamischem Label (Sonnet-Agent), Jobtyp `sync_run_sevdesk`/Pool `sevdesk`/`worker-sevdesk` (prod+staging), Scheduler nach Buchhaltungssystem, `QUEUE_SYNC_TYPES`, Adminaktion Wechselsperre aufheben (`companies.manage`, Pflichtgrund, Audit), Monitoring-Komponente sevdesk, AVV-Entwurf Anlage 1 A2 (Fassung entwurf-2), Doku (Sonnet-Agent: sevdesk.md Endpunktregister, integrations, handbuch 5.1a, jobs, 06-betrieb, unternehmensdoku), CLAUDE.md; neue Suite `tools/sevdesk-check.sh` (Stub-Server) | siehe git log | sevdesk-check 110/0, scheduler-sync-check 35/0, invoice-source-check 42/0, legal-check 66/0, platform-roles-check 83/0, interest-check 133/0, totp-policy-check 73/0, compose-check 0, staging-isolation 0, php -l |
+| 4.37 | Plattform-Benutzer und Rechte: `app/platform.php` (PLATFORM_PERMISSIONS, Systemrollen, platform_can/require_platform, Einladung, Schutzregeln), Migration 027 (`platform_roles`, `users.platform_role`), `admin-users.php`, Plattformkontext ohne Firma (`_current_user_platform`, `platform_only`, `platform_home_url`), Rechteprüfung in allen Adminseiten und im Support-Modus, Navigation nach Rechten, Dokumentationsrechte über docs.admin/docs.technical; Doku sicherheit.md (neuer Abschnitt), schnittstellen, unternehmensdoku, monitoring, Datenwörterbuch, CLAUDE.md; neues `tools/platform-roles-check.sh` | siehe git log | platform-roles-check 83/0, totp-policy-check 73/0, docs-access-check 23/0, legal-check 66/0, scheduler-sync-check 35/0, interest-check 133/0, invoice-source-check 42/0, php -l |
+| 4.36 | Zweitbestätigung (2FA) nur für Wichtiges nach Vorstandsbeschluss: `QUEUE_MONEY_TYPES`/`queue_type_is_money()`, geteilte Zweige (incident_publish, org_sync_pause, platform_pause nur Aufheben, admin-legal nur publish/retire), zehn Aktionen ohne Code, Formularfelder angepasst; Mobilbefund admin-legal (table-wrap); Doku sicherheit.md (Tabelle), payment-safety 5c, monitoring, unternehmensdoku, schnittstellen, 06-betrieb, integrations, qa, CLAUDE.md; neues `tools/totp-policy-check.php` | siehe git log | totp-policy-check 73/0, legal-check, scheduler-sync-check, php -l |
+| 4.35 | Workflow-Datei repariert: `VPS_RETRY_STATE_FILE` mit festem Pfad statt `runner.temp` in der Job-Umgebung (Lauf #69 „Invalid workflow file“, 4.34 startete gar nicht); Dokumentationsauswirkung: `docs/vps/06-betrieb.md` (Regel zu Kontexten auf Job-Ebene), Revision entwickler r4 | siehe git log | YAML-Parse, github-ssh-retry-check 43/0, github-poll-check 25/0, compose-check 0 Fehler |
+| 4.34 | Zustimmungsnachweis AGB/Datenschutz (Migration 025, `app/consent.php`), Reiterleiste `layout_subnav()`, Dokumentationskarten, Dokumentationsrechte für Plattformadministratoren, Indizes (Migration 026), automatischer zweiter Anlauf `deploy-vps` bei Verbindungsfehler | siehe git log | legal-check 64/0, docs-access-check 23/0, github-ssh-retry-check, github-poll-check |
+| 4.33 | Host-Trennung: Adminseiten per Muster `admin-*.php` (admin-legal.php lieferte 404) | siehe git log | php -l |
+| 4.32 | Dokumentationssystem: drei Dokumentationen (Unternehmen, Entwickler/Betrieb, Kunden) aus docs/, Generator mit CI-PDF (Logo je Seite, Deckblatt, Abschlussblatt, TOC, Querformat), HTML mit Suche, Kapitel-PDFs, Manifest Schema 2, Zugriffsstufen (`app/docs.php`, `docs.technical_readers`), `handbuch.php`, Archiv in `shared/docs-archive` (deploy.sh), 14 Mermaid-Schaubilder, Datenwörterbuch-Generator, Datenbankkapitel mit Kompendium-Prüfung, Dokumentationspflicht in CLAUDE.md | siehe git log | docs-build-check, Sichtprüfung PDF |
 | 4.31 | Buchhaltungssystem je Firma: Anzeige, Vorauswahl bei Registrierung, Wechsel in Einstellungen mit Vier-Wochen-Sperre, Trennung der alten Verbindung, Audit (Migration 024) | siehe git log | invoice-source-check 42/0 |
 | 4.30 | Rechtsdokumente (AVV, Verschwiegenheit § 203 StGB) mit Zustimmungsnachweis, Registrierung, Dashboard, Adminverwaltung, Entwurfstexte mit Datenanlage aus Codeinventur; Protokoll 20 Zeilen/Export/90 Tage | siehe git log | legal-check 56/0 |
 | 4.28 | `restart-workers.sh` mit Deploy-Sperre (`.deploy.lock`), kein Zusammentreffen mit Deployments mehr | siehe git log | bash -n, interest-check |
@@ -57,20 +88,23 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 `.../datenschutz/index.html`, `.../assets/css/site.css` (Asset-Hashes aller Seiten der Domain neu), `.../sitemap.xml`,
 `tools/interest-check.sh`, `tools/lib/interest-sim.php`, `tools/build-docs.py`, `docs/integrations.md`, `docs/einwilligungen.md`, `php-ionos/cron.php`, `CLAUDE.md`, `php-ionos/app/version.php`.
 
-## 4. Getestet (lokal, 07.09.2026)
+## 4. Getestet (lokal, Gesamtlauf 08.09.2026 nach 4.39: alle Suiten grün)
 
 | Suite | Ergebnis |
 |---|---|
 | `bash tools/github-ssh-retry-check.sh` | 43 bestanden, 0 fehlgeschlagen |
 | `bash tools/github-poll-check.sh` | 25 / 0 |
-| `bash tools/redis-deploy-check.sh` | 109 / 0 (Szenarien 18 und 19 neu) |
+| `bash tools/redis-deploy-check.sh` | 111 / 0 |
 | `bash tools/deploy-runner-check.sh` | 35 / 0 |
-| `bash tools/scheduler-sync-check.sh` | 35 / 0 |
+| `bash tools/scheduler-sync-check.sh` | 59 / 0 (Fälle 10a bis 10c seit 4.39) |
 | `bash tools/worker-signal-check.sh` | 17 / 0 |
 | `bash tools/invoice-source-check.sh` | 42 / 0 (temporäre MariaDB) |
-| `bash tools/legal-check.sh` | 56 / 0 (temporäre MariaDB) |
+| `bash tools/legal-check.sh` | 66 / 0 (temporäre MariaDB) |
 | `bash tools/interest-check.sh` | 133 / 0 (statische Prüfung „keine stille Bestätigung“ seit 4.24 fälschlich rot, weil sie den lesenden Vergleich `=== 'confirmed'` traf; Muster auf schreibende Zuweisung eingegrenzt) (temporäre MariaDB, Fassung 4.24) |
 | `php tools/mail-ci-check.php` | 32 / 0 |
+| `php tools/totp-policy-check.php` | 73 / 0 (neu in 4.36) |
+| `bash tools/platform-roles-check.sh` | 83 / 0 (neu in 4.37, temporäre MariaDB) |
+| `bash tools/sevdesk-check.sh` | 110 / 0 (neu in 4.38, HTTP-Stub plus temporäre MariaDB) |
 | `php tools/pricing-check.php`, `php tools/billing-setup-check.php` | 13 / 0, 55 / 0 |
 | `python3 tools/site-qa.py` | 0 Fehler, 4 Warnungen (bekannte Überschriftendoppelungen zwischen Domains) |
 | `python3 tools/compose-check.py`, `docs-build-check.py`, `staging-isolation-check.py` | 0 Fehler |
@@ -124,6 +158,20 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
   lieferte `journalctl -u ssh` für 24 Stunden keinen einzigen Fehlversuch. Entweder protokolliert sshd unter einer anderen
   Einheit oder fail2ban sieht keine Fehlversuche (dann wirkungslos). Prüfschritte in `docs/vps/06-betrieb.md`.
 
+- **Läufe #73 (4.38) und #74 (4.39) fehlgeschlagen, 08.09.2026, Phase Migration:** Migration 028 schrieb `'v1 (Systemversion 2.0)'` in
+  `integration_providers.api_version` VARCHAR(20) („Data too long“); die ALTER-Anweisungen davor waren wirksam, die Zeile steht auf
+  `failed`, 4.39 blieb dadurch blockiert. Laufende Container unverändert (4.37 aktiv). Behoben in 4.40. **Betreiber:** nach dem
+  Ausrollen von 4.40 (der Lauf scheitert zunächst weiter an der Blockade) einmalig im Container ausführen:
+  `export RELEASE_SHA=<sha von 4.40>; docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env run --rm --no-deps -T php php bin/migrate.php --retry=028`,
+  danach den GitHub-Lauf von 4.40 erneut starten (Re-run). Erwartung: 028 vollständig, 029 eingespielt, Cutover auf 4.40.
+- **sevdesk-Adapter unverifiziert (4.38):** Endpunkte, Felder, Statuscodes, Zeitzone der Zeitstempel, Paginierung und Rate-Limit stammen
+  aus Sekundärquellen (Register in `docs/sevdesk.md`). Möglich ist, dass der Verbindungstest oder die Liste am echten Konto fehlschlägt
+  (dann klare Fehlermeldung, kein Datenverlust, kein Geldfluss). Vor `sevdesk_api_verified` = 1 zwingend mit Testkonto prüfen:
+  Basisadresse, Header, `status`-Werte 200/750/1000, `sumGross`/`paidAmount`, `payDate`/`timeToPay`, `update`, `embed=contact`,
+  `InvoicePos`-Filter, `CommunicationWay`-Typ EMAIL, Belegtyp-Bedeutungen (MA, TR, AR, ER, WKR), Gutschriften.
+- **Lauf #69 (4.34) „Invalid workflow file“:** `runner.temp` in der Job-Umgebung von `deploy-vps`; GitHub lehnte die Datei ab,
+  kein Job lief, 4.34 wurde nicht deployt. Behoben in 4.35 (fester Pfad). Der Lauf für 4.35 muss grün werden und holt die
+  Migrationen 025 und 026 nach; Ergebnis aus der Session nicht einsehbar (GitHub-API gesperrt), vom Betreiber zu bestätigen.
 - **Vorfall 07.09.2026:** Die Bereinigung von 4.17 löschte beim Deployment b5fcd8d das Altrelease bdd42e0 (4.16), weil es
   keine Markerdatei trug. Behoben in 4.20 (vollständige Altreleases werden nachträglich gekennzeichnet). bdd42e0 ist
   verloren; Rollback-Ziele sind 54caa37 (4.17) und die folgenden Releases.
@@ -134,6 +182,64 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 
+Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Releases 4.33 bis 4.39, alle gepusht):
+
+- **Betreiber, Deployment prüfen:** Läufe für 4.35 bis 4.39 im GitHub-Workflow (aus der Session nicht einsehbar); Migrationen 025
+  bis 029 laufen isoliert vor dem Cutover. Nach dem Deployment `restart-workers.sh` ist nicht nötig (kein Konfigurationswechsel).
+- **Betreiber, Rechte:** unter Adminbereich, Benutzer und Rechte, erste Mitarbeiter einladen (Mailversand aktiv); Rolle Mitarbeiter
+  Support für Supportkräfte; eigene Rollen bei Bedarf.
+- **Betreiber, sevdesk:** Testkonto beschaffen; Prüffragen des Endpunktregisters (`docs/sevdesk.md`, 5b) abarbeiten; erst dann
+  `sevdesk_api_verified = 1`, Pilotfirmen, `sevdesk_collections = 1`. Ohne Eingriff wird am 30.09.2026 nur die Verbindung frei.
+- **Betreiber, Go-live:** Leitfaden Scharfschaltung (Unternehmensdokumentation, Kapitel 2, auch als Kapitel-PDF) Schritt für Schritt;
+  Stripe-Konto der Müller Holding AG, Rechtsdokumente nach anwaltlicher Prüfung, Wiederherstellungstest, DNS-Nachweis.
+- **Frontend-Chat:** `php tools/pricing-check.php` Abschnitt D ist rot wegen fester Preisangaben auf `websites/` (kein Backend-Thema);
+  bitte dort bereinigen, damit der Workflow die Prüfung wieder mitlaufen kann.
+- **Performance, Phase 2 (nach einer Woche Messwerten):** Bemessung der Lexware-Worker, Lexware-Webhooks und Seitengröße erst nach
+  Prüfung der Dokumentation am Primärtext (`docs/sync-performance.md`, Nachtrag 4.39).
+
+0. **Lauf #82 (4.45) fehlgeschlagen, 08.09.2026 23:55 UTC:** Die Candidate-Prüfung brach mit
+   `Parse error ... config.php on line 19` ab, weil `shared/config.php` in genau diesem Moment von Hand bearbeitet wurde
+   (`'environment' => 'prod'` ohne abschließendes Komma). Gewollte Wirkung: laufende Container unverändert, kein Rollback.
+   Die Datei ist korrigiert (`php -l` grün), Umgebung meldet jetzt `prod`. Deployment über „Run workflow“ erneut auslösen.
+0. **Umsatzsteuer im Checkout: geklärt und in Ordnung (09.09.2026).** Ablauf des Vorfalls, alle Zeiten UTC: Der erste echte
+   Kauf um 00:20 Uhr wurde ohne Umsatzsteuer belastet (25,00 EUR statt 29,75 EUR), weil im Stripe-Konto zu diesem Zeitpunkt
+   keine Steuerregistrierung hinterlegt war; der Beleg nennt das als „Steuerpflicht: nicht registriert“. Die Registrierung
+   für Deutschland wurde gegen 00:30 Uhr nachgetragen. Die anschließend beobachteten 0,00 EUR auf der Bezahlseite waren
+   kein Fehler: Stripe weist die Steuer erst aus, wenn der Kunde seine Rechnungsadresse eingegeben hat. Mit vollständiger
+   Adresse rechnet der Checkout korrekt 25,00 EUR netto zuzüglich 4,75 EUR Umsatzsteuer, Gesamt 29,75 EUR (vom Betreiber
+   bestätigt). Der Kauf vom 00:20 Uhr wurde erstattet, die Stripe-Gebühr von 0,63 EUR bleibt als Kosten des Tests.
+   Ein von Hand angelegter Steuersatz (`txr_…`) wirkt neben Stripe Tax nicht und sollte archiviert werden.
+   Aus dem Vorfall entstanden die Prüfungen 4.47 bis 4.49 (Registrierung vorhanden, Standard-Steuercode, Art der
+   Registrierung); `bin/billing-check.php` hätte den Ausgangszustand von Anfang an als Fehler gemeldet.
+0. **Abrechnung scharf geschaltet (09.09.2026, ca. 02:20 Uhr):** `billing.enabled = true`, erste echte Bestellung
+   durchgelaufen (Status `active`, Webhook hat den Status selbst gesetzt). Zwei Firmen (WEB2MEDIA GmbH, M&B Consulting GmbH)
+   stehen noch auf `pending` und sind gesperrt: befreien oder Abonnement abschließen. **Fehlbetrag beim ersten Kauf:**
+   25,00 EUR statt 29,75 EUR, weil im Stripe-Konto keine aktive Steuerregistrierung hinterlegt war; ohne sie berechnet
+   Stripe keine Umsatzsteuer. Registrierung im Dashboard nachtragen, danach `bin/billing-check.php` (prüft das seit 4.47).
+   Weiter offen: Auszahlungen im Stripe-Konto sind pausiert (überfällige Verifizierungsaufgabe), AGB- und Datenschutzlink
+   unter öffentliche Unternehmensinformationen.
+0. **Stripe-Plattformabrechnung eingerichtet (08./09.09.2026):** Live-Konto der Müller Holding AG (`acct_1UCRt4…`),
+   Live-Schlüssel und Webhook-Geheimnis in `shared/config.php`, Webhook mit den fünf Ereignissen, Stripe Tax aktiv,
+   Kundenportal konfiguriert, Produkt und Preis angelegt (`price_1UDYzd…`, 25,00 EUR netto je 28 Tage, `tax_behavior`
+   exclusive), Preis-ID in `plans`. `bin/billing-check.php`: 0 Fehler, 2 Warnungen. Offen vor `billing.enabled = true`:
+   Auszahlungen im Stripe-Konto freischalten (Aufgabe „Payouts paused“), AGB- und Datenschutzlink unter öffentliche
+   Unternehmensinformationen, Entscheidung zu den drei Firmen ohne Abonnement (Hausverwaltung Müller GmbH, WEB2MEDIA GmbH,
+   M&B Consulting GmbH: befreien oder Abonnement abschließen lassen).
+0. **Vorfall 08.09.2026, 21:05 bis 21:37 UTC (Downgrade auf 4.38):** Die früher fehlgeschlagenen Läufe #73 bis #79 wurden in GitHub
+   erneut gestartet („Re-run“); jeder deployte seinen alten Commit, zuletzt 4.38 (d435ca4). `.release_history` belegt die Reihenfolge
+   075d617 (4.44) → 6514eb8 → 4b9f331 → d8f666f → 6de4972 → d435ca4; die Bereinigung löschte Release 075d617. Datenbank unverändert
+   (028 bis 030 eingespielt). Behebung: Push 4.45 rollt den aktuellen Stand aus, Downgrade-Schutz in `deploy.sh`. Nach dem Deployment
+   im Adminbereich prüfen: Fußzeile 4.45, `restart-workers.sh` nennt worker-sevdesk.
+0. **Deployment 08.09.2026, Abend:** Lauf #79 (4.43) scheiterte im ersten SSH-Schritt („Connection timed out“, vier Versuche, Server nie
+   erreicht, nichts verändert). Der automatische zweite Anlauf (#81, auto_retry=1) und der Push-Lauf zu 4.44 (#80) liefen beide grün
+   (deploy-vps success 20:31 und 20:35 UTC); 4.44 enthält 4.43, nichts nachzuholen. Muster wie #51 und #58 (Runner-Adresse oder kurze
+   Netzstörung, `docs/vps/06-betrieb.md`, „SSH-Fehler des Deployments“); Prüfschritte 1 bis 7 dort nur nötig, wenn es sich häuft.
+0. **Betreiber:** Migrationsblockade am 08.09.2026, 14:11 Uhr gelöst (`--retry=028`: 028 und 029 eingespielt, 0 offen). Offen: Re-run des
+   Workflows für 4.40 (fd500a4), danach im Adminbereich prüfen, dass Version 4.40 in der Fußzeile steht.
+0. **Betreiber (nach Deployment 4.37):** Migration 027 setzt bestehenden Superadmin-Konten die Rolle Administrator. Unter Adminbereich,
+   „Benutzer und Rechte“ Mitarbeiter einladen (Mailversand muss aktiv sein); für den Fall, dass ein Mitarbeiter ohne Firma sich anmeldet,
+   landet er direkt im Adminbereich (Adminhost). Erster Test: Einladung an eine eigene Zweitadresse mit Rolle Mitarbeiter, Passwort setzen,
+   2FA einrichten, prüfen, dass Not-Stopp, Tarife und Benutzerverwaltung ausgeblendet und per Direktaufruf verweigert werden.
 1. **Betreiber:** Ankunft der Testmail prüfen, nach etwa einer Stunde die nachgesendete Bestätigungsmail der eigenen Vormerkung
    (Button „Vormerkung bestätigen“, danach Bestätigt-Mail mit Abmeldelink) und die Statusseite (Komponente E-Mail) kontrollieren.
 1c. **Betreiber/Rechtsanwalt:** Entwurfstexte AVV und Verschwiegenheitsvereinbarung prüfen (`app/legal_drafts.php`, Adminbereich
@@ -144,6 +250,12 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
    Entscheidung zu Testkonto und Kombitarif für Mandanten mit zwei Buchhaltungen (zwei Firmenaccounts, Multiaccount).
 1e. Offen zum Systemwechsel: Adminaktion zum Aufheben der Vier-Wochen-Sperre (derzeit nur per Datenbank), Verbindungsseite für
    sevdesk nach Freigabe des Adapters.
+1f. **Betreiber:** erledigt am 07.09.2026 (Entwicklerdokumentation ist seit 4.34 für Plattformadministratoren ohne Leserliste sichtbar). Alt: `docs.technical_readers` in `shared/config.php` mit der eigenen Adresse füllen (sonst ist die Entwicklerdokumentation
+   im Adminbereich für niemanden abrufbar), danach `restart-workers.sh`. Prüfen: Adminbereich, System, Versionen & Dokumentation.
+1g. **Betreiber:** DNS-Nachweis `dig +short app.smart-einzug.de` (erwartet 72.61.80.67), Altinstanz `sepa.muellerhv.de` und IONOS-Cronjob
+   abschalten; Ergebnis in `docs/entwickler/hosts.md` und `docs/vps/08-hostinger-coolify.md` nachtragen (Nachweisstufe).
+1h. Entschieden am 07.09.2026 (Abwägung delegiert): Indizes umgesetzt (Migration 026), Übriges zurückgestellt oder Betreiberaufgabe
+   (`docs/entwickler/datenbank.md`, Abschnitt 8.0).
 1a. **Betreiber:** sevdesk-Testkonto nach `docs/sevdesk.md`, Abschnitt 5a (Tarif mit API-Zugang, Token nur über sicheren Kanal).
 1b. **Betreiber:** DETM Management Consulting FZCO: vollständige Anschrift, Registerangaben, vertretungsberechtigte Person,
    E-Mail und Telefon für das Impressum; Entscheidung, wie der Provisionsnachweis je Herkunftsdomain erfolgen soll
@@ -158,12 +270,12 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
    nicht gesperrt, setzt `notified_at`). Rechtliche Prüfung der Texte (Einwilligung v3, Datenschutz 3a, Sperrvermerk).
 
 
-## 7. Frontend-Branch `claude/frontend-smart-einzug-egsouk` (Stand 08.09.2026, kein Deployment aus diesem Branch)
+## 7. Frontend-Branch `claude/frontend-smart-einzug-egsouk` (Stand 09.09.2026, kein Deployment aus diesem Branch)
 
 Auftrag: Masterprompt „SEO-, Content- und Landingpage-Ausbau für SmartEinzug“ vom 07.09.2026 (Bestandsaufnahme, Faktenregister, Bereinigung, Keyword-Map, Maßnahmenplan). Arbeitsordner `docs/seo/`, Einstieg `docs/seo/README.md`.
 
 Entscheidungen des Betreibers (07.09.2026): keine Preisbeträge auf den Marketingseiten bis zur Freigabe; lexoffice-einzug.de und lexware-einzug.de als Leadseiten der DETM Management Consulting FZCO ohne SmartEinzug-Logo (Pflichtangaben offen); neue Leaddomains sevdesk-einzug.de (Vormerkung) und sevdesk-sepa.de (SEPA-Wissen) mit getrennten Inhalten; lastschrift-einfach.de ist nur eine Weiterleitung auf smart-abrechnen.de. Entscheidung vom 08.09.2026: zurückgestellte Maßnahmen (Zusammenführung M4, lastschrift-einfach.de, AGB ohne Beträge, Version) auch ohne Rankingdaten umsetzen, weil die Seiten offiziell noch nicht online sind.
 
-Umgesetzt: Inventarwerkzeug `tools/seo-inventory.py`, Keyword-Map `docs/seo/keyword-map.json` mit `tools/seo-map-check.py` (28 Cluster, 72 Seiten, 0 Fehler), `tools/build-sitemaps.py` mit lastmod aus Git, `tools/pricing-check.php` Abschnitt D, `tools/lead-assets.py`, Faktenregister (191 Einträge), Aussagenprüfung (241 Befunde, 58 verworfen), DETM-Umstellung der Leadseiten, sevdesk-Domains, Bereinigung der Werbeaussagen und Preisentfernung (Phase 2), neun neue Seiten der Hauptdomain (Anleitungen, Wissen, Sicherheit) und Ausbau der Integrationsseiten (Phase 3b), Abschlussbericht `docs/seo/07-abschlussbericht.md`. M4 umgesetzt (acht Artikel nach `smart-einzug.de/wissen/` verlagert, 19 Seiten der Leaddomains per 301 weitergeleitet, `.htaccess` beider Leaddomains), lastschrift-einfach.de auf `.htaccess` und 404 reduziert und aus den Website-Werkzeugen entfernt, AGB Abschnitt 7 auf drei Domains ohne Beträge (Entwurf, Prüfvorbehalt), `APP_VERSION` 4.32 mit Changelog. Stand 08.09.2026: 62 Seiten auf fünf Domains, site-qa 0 Fehler (2 Warnungen), pricing-check 14/14, seo-map-check 0 Fehler, docs-build-check 0 Fehler.
+Umgesetzt: Inventarwerkzeug `tools/seo-inventory.py`, Keyword-Map `docs/seo/keyword-map.json` mit `tools/seo-map-check.py` (28 Cluster, 72 Seiten, 0 Fehler), `tools/build-sitemaps.py` mit lastmod aus Git, `tools/pricing-check.php` Abschnitt D, `tools/lead-assets.py`, Faktenregister (191 Einträge), Aussagenprüfung (241 Befunde, 58 verworfen), DETM-Umstellung der Leadseiten, sevdesk-Domains, Bereinigung der Werbeaussagen und Preisentfernung (Phase 2), neun neue Seiten der Hauptdomain (Anleitungen, Wissen, Sicherheit) und Ausbau der Integrationsseiten (Phase 3b), Abschlussbericht `docs/seo/07-abschlussbericht.md`. M4 umgesetzt (acht Artikel nach `smart-einzug.de/wissen/` verlagert, 19 Seiten der Leaddomains per 301 weitergeleitet, `.htaccess` beider Leaddomains), lastschrift-einfach.de auf `.htaccess` und 404 reduziert und aus den Website-Werkzeugen entfernt, AGB Abschnitt 7 auf drei Domains ohne Beträge (Entwurf, Prüfvorbehalt), `APP_VERSION` 4.51 mit Changelog (nach Merge des Backend-Stands 4.50 am 09.09.2026; Konflikte in `version.php`, `CLAUDE.md`, `tools/build-docs.py` aufgelöst, SEO-Kapitel als viertes Dokument `marketing` im Dokumentationssystem). Stand 08.09.2026: 62 Seiten auf fünf Domains, site-qa 0 Fehler (2 Warnungen), pricing-check 14/14, seo-map-check 0 Fehler, docs-build-check 0 Fehler.
 
-Vor dem Merge in den Backend-Branch zu klären: DETM-Impressumsangaben, `signup_domains` in Produktion um die sevdesk-Domains ergänzen, IONOS-Zuordnung der neuen Domains, anwaltliche Prüfung der AGB-Entwürfe, Freigabe der Preisdarstellung, Konflikt in `php-ionos/app/version.php` (4.32) mit dem Backend-Branch auflösen. `deploy.yml`: Der Job `deploy-webhosting` spiegelt die Website-Ordner seit dem 08.09.2026 mit `--delete` (Entscheidung Betreiber; Ausnahmen Verifizierungsdateien von Google und Bing sowie `.well-known`, Ordner `app` weiterhin ohne Löschung); vor dem ersten Lauf prüfen, ob in den Website-Ordnern des Hosters Dateien liegen, die nicht im Repository sind. Offene Fragen an den Betreiber stehen in `docs/seo/02-faktenregister.md`, Abschnitt „Offene Fragen“.
+Vor dem Merge in den Backend-Branch zu klären: DETM-Impressumsangaben, `signup_domains` in Produktion um die sevdesk-Domains ergänzen, IONOS-Zuordnung der neuen Domains, anwaltliche Prüfung der AGB-Entwürfe, Freigabe der Preisdarstellung, Der Backend-Branch (8e7ceda) ist in den Frontend-Branch gemergt; die Übernahme in den Backend-Branch per Pull Request ist konfliktfrei und löst den Job `deploy-webhosting` aus. `deploy.yml`: Der Job `deploy-webhosting` spiegelt die Website-Ordner seit dem 08.09.2026 mit `--delete` (Entscheidung Betreiber; Ausnahmen Verifizierungsdateien von Google und Bing sowie `.well-known`, Ordner `app` weiterhin ohne Löschung); vor dem ersten Lauf prüfen, ob in den Website-Ordnern des Hosters Dateien liegen, die nicht im Repository sind. Offene Fragen an den Betreiber stehen in `docs/seo/02-faktenregister.md`, Abschnitt „Offene Fragen“.

@@ -74,7 +74,7 @@ $fromPage = preg_replace('/[^a-z0-9._-]/i', '', (string)($_GET['von'] ?? ''));
 layout_header('Hilfe', $ctx);
 ?>
 <h1>Hilfe-Center</h1>
-<p class="page-sub">Anleitungen, Antworten auf häufige Fragen und der direkte Weg zum Support. <a href="#anfragen">Zu meinen Anfragen</a></p>
+<p class="page-sub">Anleitungen, Antworten auf häufige Fragen und der direkte Weg zum Support. <a href="handbuch.php">Benutzerhandbuch (Webansicht und PDF)</a> · <a href="#anfragen">Zu meinen Anfragen</a></p>
 
 <div class="help-layout">
     <aside class="help-nav card">

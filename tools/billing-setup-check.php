@@ -186,5 +186,81 @@ preg_match("/\('unlimited_start',\s*'UNLIMITED START',\s*(\d+),\s*(\d+)/", $sche
     ? ok('Tarif UNLIMITED START im Schema: 2500 Cent je 28 Tage (Grundlage der Preisprüfung)')
     : bad('Tarifzeile im Schema nicht wie erwartet gefunden');
 
+echo "\nG) Preisänderung: Ersatzpreis statt stiller Abweichung\n";
+$planNeu = ['code' => 'unlimited_start', 'name' => 'UNLIMITED START', 'price_cents' => 3000, 'period_days' => 28,
+            'active' => 1, 'public_visible' => 1, 'stripe_price_id' => 'price_123'];
+billing_setup_price_needs_replacement($goodPrice, $planNeu) ? ok('geänderter Betrag verlangt einen neuen Preis') : bad('Betragsänderung nicht erkannt');
+!billing_setup_price_needs_replacement($goodPrice, $plan) ? ok('unveränderter Tarif verlangt keinen neuen Preis') : bad('unnötiger Ersatzpreis');
+$periodeNeu = ['code' => 'unlimited_start', 'name' => 'UNLIMITED START', 'price_cents' => 2500, 'period_days' => 30,
+               'active' => 1, 'public_visible' => 1, 'stripe_price_id' => 'price_123'];
+billing_setup_price_needs_replacement($goodPrice, $periodeNeu) ? ok('geänderte Periode verlangt einen neuen Preis') : bad('Periodenänderung nicht erkannt');
+$fremdWaehrung = ['object' => 'price', 'id' => 'price_x', 'active' => true, 'currency' => 'chf', 'unit_amount' => 2500,
+                  'type' => 'recurring', 'tax_behavior' => 'exclusive', 'recurring' => ['interval' => 'day', 'interval_count' => 28, 'usage_type' => 'licensed']];
+billing_setup_price_needs_replacement($fremdWaehrung, $plan) ? ok('fremde Währung verlangt einen neuen Preis') : bad('Währung nicht erkannt');
+$archiviert = ['object' => 'price', 'id' => 'price_a', 'active' => false, 'currency' => 'eur', 'unit_amount' => 2500,
+               'type' => 'recurring', 'tax_behavior' => 'exclusive', 'recurring' => ['interval' => 'day', 'interval_count' => 28, 'usage_type' => 'licensed']];
+!billing_setup_price_needs_replacement($archiviert, $plan) ? ok('archivierter Preis mit passendem Betrag ist kein Ersatzfall (eigener Fehlerfall)') : bad('Archivierung falsch eingeordnet');
+
+$ersatz = billing_setup_price_params($planNeu, 'prod_1', true);
+($ersatz['transfer_lookup_key'] ?? '') === 'true' ? ok('Ersatzpreis übernimmt den lookup_key (transfer_lookup_key)') : bad('transfer_lookup_key fehlt');
+($ersatz['lookup_key'] === 'lexsepa_unlimited_start' && $ersatz['unit_amount'] === 3000 && $ersatz['tax_behavior'] === 'exclusive')
+    ? ok('Ersatzpreis: gleicher lookup_key, neuer Betrag, weiterhin Nettopreis') : bad('Ersatzpreis-Parameter falsch');
+!array_key_exists('transfer_lookup_key', billing_setup_price_params($plan, 'prod_1'))
+    ? ok('Erstanlage ohne transfer_lookup_key') : bad('Erstanlage überträgt einen lookup_key');
+
+$tool = file_get_contents($root . '/php-ionos/bin/billing-setup-stripe.php');
+str_contains($tool, "--preis-neu gilt immer genau einem Tarif") ? ok('--preis-neu nur zusammen mit --tarif') : bad('--preis-neu ohne Tarifbindung');
+(strpos($tool, 'billing_setup_store_price_id($code, (string)$new[\'id\'])') < strpos($tool, "'/prices/' . rawurlencode(\$oldId), ['active' => 'false']"))
+    ? ok('erst neue Preis-ID eintragen, dann den alten Preis archivieren') : bad('Reihenfolge Eintragen/Archivieren');
+str_contains($tool, 'Laufende Abonnements behalten den alten') ? ok('Hinweis auf laufende Abonnements in der Ausgabe') : bad('Hinweis auf Bestandsabos fehlt');
+
+$adminSrc = file_get_contents($root . '/php-ionos/admin.php');
+(str_contains($adminSrc, '$preisIdBleibt') && str_contains($adminSrc, '$betragOderPeriodeNeu') && str_contains($adminSrc, 'Stripe-Preise sind unveränderlich'))
+    ? ok('Adminbereich lehnt Preisänderung bei gleichbleibender Stripe-Preis-ID ab') : bad('Adminschutz fehlt');
+preg_match('/\$preisIdBleibt && \$betragOderPeriodeNeu\) \{\s*throw new RuntimeException/', $adminSrc)
+    ? ok('Adminschutz wirft ab, bevor UPDATE plans ausgeführt wird') : bad('Adminschutz greift nicht vor dem Speichern');
+(strpos($adminSrc, '$preisIdBleibt =') < strpos($adminSrc, 'UPDATE plans SET name = ?'))
+    ? ok('Prüfung liegt vor dem UPDATE') : bad('Prüfung liegt nach dem UPDATE');
+
+echo "\nH) Stripe Tax: Registrierung entscheidet, ob überhaupt Umsatzsteuer berechnet wird\n";
+$taxAktiv = ['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']], 'defaults' => ['tax_code' => 'txcd_muster']];
+$regDe = ['data' => [['status' => 'active', 'country' => 'DE', 'country_options' => ['de' => ['type' => 'standard']]]]];
+$regOss = ['data' => [['status' => 'active', 'country' => 'DE', 'country_options' => ['de' => ['type' => 'oss_union']]]]];
+$regKeine = ['data' => []];
+$r = billing_check_tax($taxAktiv, $regDe);
+($r['errors'] === [] && $r['warnings'] === [] && $r['laender'] === ['DE']) ? ok('aktiv mit deutscher Registrierung: ohne Beanstandung') : bad('DE-Registrierung: ' . implode(' | ', array_merge($r['errors'], $r['warnings'])));
+$r = billing_check_tax($taxAktiv, $regKeine);
+(count($r['errors']) === 1 && str_contains($r['errors'][0], 'keine aktive Steuerregistrierung'))
+    ? ok('aktiv ohne Registrierung: Fehler (Kunde zahlt sonst nur netto)') : bad('fehlende Registrierung nicht als Fehler gemeldet');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'expired', 'country' => 'DE']]]);
+count($r['errors']) === 1 ? ok('abgelaufene Registrierung zählt nicht als aktiv') : bad('abgelaufene Registrierung akzeptiert');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'active', 'country' => 'AT']]]);
+(count($r['errors']) === 0 && count($r['warnings']) === 1 && str_contains($r['warnings'][0], 'DE'))
+    ? ok('Registrierung nur im Ausland: Warnung für das Land des Hauptsitzes') : bad('Auslandsfall: ' . implode(' | ', array_merge($r['errors'], $r['warnings'])));
+$r = billing_check_tax(['status' => 'pending', 'head_office' => ['address' => ['country' => 'DE']]], $regDe);
+(count($r['errors']) === 1 && str_contains($r['errors'][0], 'nicht aktiv')) ? ok('Status pending bleibt ein Fehler') : bad('Status pending nicht gemeldet');
+$r = billing_check_tax(['status' => 'active'], $regDe);
+(bool)array_filter($r['errors'], fn($l) => str_contains($l, 'Hauptsitz')) ? ok('fehlende Adresse des Hauptsitzes ist ein Fehler') : bad('fehlender Hauptsitz nicht gemeldet');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'active', 'country' => 'de'], ['status' => 'active', 'country' => 'DE']]]);
+$r['laender'] === ['DE'] ? ok('Länder werden großgeschrieben und nicht doppelt gezählt') : bad('Länderliste: ' . implode(',', $r['laender']));
+
+$r = billing_check_tax(['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']]], $regDe);
+(bool)array_filter($r['warnings'], fn($l) => str_contains($l, 'Standard-Steuercode')) ? ok('fehlender Standard-Steuercode wird gemeldet') : bad('fehlender Steuercode nicht gemeldet');
+(bool)array_filter(billing_check_tax($taxAktiv, $regDe)['info'], fn($l) => str_contains($l, 'txcd_muster')) ? ok('vorhandener Steuercode wird ausgewiesen') : bad('Steuercode nicht ausgewiesen');
+
+$r = billing_check_tax($taxAktiv, $regOss);
+(count($r['errors']) === 1 && str_contains($r['errors'][0], 'One-Stop-Shop'))
+    ? ok('nur OSS-Registrierung im eigenen Land: Fehler (inländische Umsätze bleiben ohne Steuer)') : bad('OSS-Fall: ' . implode(' | ', $r['errors']));
+billing_check_tax($taxAktiv, $regDe)['typen'] === ['DE (standard)'] ? ok('Art der Registrierung wird ausgewiesen') : bad('Registrierungsart fehlt');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'active', 'country' => 'AT', 'country_options' => ['at' => ['type' => 'oss_union']]]]]);
+(count($r['errors']) === 0) ? ok('OSS im Ausland ist kein Fehler (nur Warnung wegen fehlender Inlandsregistrierung)') : bad('OSS Ausland faelschlich als Fehler');
+
+$checkSrc = file_get_contents($root . '/php-ionos/bin/billing-check.php');
+(str_contains($checkSrc, "'/tax/registrations'") && str_contains($checkSrc, 'billing_check_tax('))
+    ? ok('bin/billing-check.php liest die Registrierungen und wertet sie aus') : bad('Registrierungsprüfung nicht eingebunden');
+$billingSrc = file_get_contents($root . '/php-ionos/app/billing.php');
+(str_contains($billingSrc, "'automatic_tax'") && str_contains($billingSrc, "'billing_address_collection' => 'required'"))
+    ? ok('Checkout fordert Rechnungsadresse und automatische Steuer an') : bad('Checkout-Parameter für die Steuer fehlen');
+
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail > 0 ? 1 : 0);

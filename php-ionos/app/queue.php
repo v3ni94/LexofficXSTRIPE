@@ -97,6 +97,7 @@ function queue_type_defaults(string $type): array
 {
     $map = [
         'sync_run'         => ['max_attempts' => 6, 'heartbeat_ttl' => 300],
+        'sync_run_sevdesk' => ['max_attempts' => 6, 'heartbeat_ttl' => 300], // gleiche Logik, eigener Worker-Pool (4.38)
         'collections_due'  => ['max_attempts' => 5, 'heartbeat_ttl' => 600],
         'unclear_attempts' => ['max_attempts' => 5, 'heartbeat_ttl' => 300],
         'mail'             => ['max_attempts' => 3, 'heartbeat_ttl' => 120],
@@ -149,6 +150,47 @@ function queue_push(string $type, array $payload = [], array $opts = []): array
     }
     app_log('info', 'Job eingereiht', ['job_id' => $id, 'type' => $type, 'company_id' => $opts['tenant_id'] ?? null, 'user_id' => $opts['user_id'] ?? null, 'priority' => $priority, 'correlation_id' => $correlation]);
     return ['id' => $id, 'created' => true];
+}
+
+/**
+ * Jobtypen, die Geld bewegen (Einreichung von Lastschriften, Klärung unklarer Versuche). Eingriffe in solche
+ * Jobs über den Adminbereich (erneut versuchen, abbrechen, schließen, Reservierung freigeben) verlangen eine
+ * Zweitbestätigung per 2FA-Code; alle anderen Jobtypen (Synchronisation, Mail, Monitoring, Wartung) nicht
+ * (Vorgabe des Vorstands vom 07.09.2026: Zweitbestätigung nur für Login, Support-Modus, Wartung aktivieren,
+ * Not-Stopp aufheben und Geldfluss). Nicht mit WORKER_NO_FORCED_ABORT_TYPES verwechseln: dort geht es um die
+ * Notbremse des Workers, hier um die Freigabe durch einen Menschen.
+ */
+const QUEUE_MONEY_TYPES = ['collections_due', 'unclear_attempts'];
+
+/** Synchronisationsjobs je Buchhaltungssystem (gleicher Handler job_sync_run, getrennte Worker-Pools, gemeinsamer dedupe_key sync:<firma>). */
+const QUEUE_SYNC_TYPES = ['sync_run', 'sync_run_sevdesk'];
+
+/** Bewegt dieser Jobtyp Geld (Zweitbestätigung für Admin-Eingriffe erforderlich)? */
+function queue_type_is_money(?string $type): bool
+{
+    return in_array((string)$type, QUEUE_MONEY_TYPES, true);
+}
+
+/** Anzahl wartender Jobs der Typen (queued/retry, faellig), optional ohne eine Firma (Fairness zwischen Firmen, 4.39). */
+function queue_waiting_count(array $types, ?string $excludeTenantId = null): int
+{
+    if (!queue_available() || $types === []) {
+        return 0;
+    }
+    $marks = implode(',', array_fill(0, count($types), '?'));
+    $sql = "SELECT COUNT(*) FROM jobs WHERE status IN ('queued','retry') AND available_at <= ? AND type IN ($marks)";
+    $params = array_merge([queue_utc(queue_now())], array_values($types));
+    if ($excludeTenantId !== null) {
+        $sql .= ' AND (tenant_id IS NULL OR tenant_id <> ?)';
+        $params[] = $excludeTenantId;
+    }
+    try {
+        $st = db()->prepare($sql);
+        $st->execute($params);
+        return (int)$st->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
 }
 
 /** Job laden (ohne Mandantenfilter, nur für Worker und Plattformadministration). */
@@ -294,7 +336,7 @@ function queue_fail(array $job, string $error, string $category, bool $retryable
     if (($job['type'] ?? '') === 'mail') {
         queue_prune_payload((string)$job['id']);
     }
-    if (($job['type'] ?? '') === 'sync_run' && !empty($job['tenant_id'])) {
+    if (in_array((string)($job['type'] ?? ''), QUEUE_SYNC_TYPES, true) && !empty($job['tenant_id'])) {
         // Synchronisation endgültig gescheitert: Lauf schließen, damit kein verwaister Zustand bleibt
         try {
             require_once __DIR__ . '/sync_state.php';
@@ -352,7 +394,7 @@ function queue_cancel(string $id, ?array $actor): bool
         if (($job['type'] ?? '') === 'mail') {
             queue_prune_payload($id);
         }
-        if (($job['type'] ?? '') === 'sync_run' && !empty($job['tenant_id'])) {
+        if (in_array((string)($job['type'] ?? ''), QUEUE_SYNC_TYPES, true) && !empty($job['tenant_id'])) {
             try {
                 require_once __DIR__ . '/sync_state.php';
                 $s = sync_state_get((string)$job['tenant_id']);
@@ -562,13 +604,18 @@ function queue_failed_jobs(int $limit = 50, bool $includeClosed = false): array
 }
 
 /** Aktiver Job eines Typs für eine Firma (für die Nutzeranzeige, mandantengefiltert). */
-function queue_tenant_active(string $tenantId, string $type): ?array
+function queue_tenant_active(string $tenantId, string|array $type): ?array
 {
     if (!queue_available()) {
         return null;
     }
-    $st = db()->prepare("SELECT * FROM jobs WHERE tenant_id = ? AND type = ? AND status IN ('queued','processing','retry') ORDER BY created_at DESC LIMIT 1");
-    $st->execute([$tenantId, $type]);
+    $types = array_values(array_filter(array_map('strval', (array)$type), static fn(string $t): bool => $t !== ''));
+    if ($types === []) {
+        return null;
+    }
+    $marks = implode(',', array_fill(0, count($types), '?'));
+    $st = db()->prepare("SELECT * FROM jobs WHERE tenant_id = ? AND type IN ($marks) AND status IN ('queued','processing','retry') ORDER BY created_at DESC LIMIT 1");
+    $st->execute(array_merge([$tenantId], $types));
     $row = $st->fetch();
     if ($row) {
         $row['payload_data'] = json_decode((string)$row['payload'], true) ?: [];
@@ -578,7 +625,7 @@ function queue_tenant_active(string $tenantId, string $type): ?array
 
 function queue_type_label(string $type): string
 {
-    return ['sync_run' => 'Synchronisation Lexware Office', 'collections_due' => 'Einzugsverarbeitung', 'unclear_attempts' => 'Klärung unklarer Einzugsversuche', 'mail' => 'E-Mail-Versand',
+    return ['sync_run' => 'Synchronisation Lexware Office', 'sync_run_sevdesk' => 'Synchronisation sevdesk', 'collections_due' => 'Einzugsverarbeitung', 'unclear_attempts' => 'Klärung unklarer Einzugsversuche', 'mail' => 'E-Mail-Versand',
             'monitor_collect' => 'Monitoring-Sammler', 'maintenance' => 'Wartungsaufgaben', 'alerts' => 'Alarmierung', 'mandate_reminders' => 'Mandats-Erinnerungen'][$type] ?? $type;
 }
 

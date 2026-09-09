@@ -4,6 +4,18 @@ Zu jeder gespeicherten Einwilligung wird die Fassungskennung (`consent_text`) un
 Der zugehörige Wortlaut steht hier. Bei jeder Textänderung: neue Fassung anlegen, `INTEREST_CONSENT_VERSION` in
 `php-ionos/app/interest.php` hochzählen, Seite und diese Datei am selben Tag ändern.
 
+## agb-2026-09 und datenschutz-2026-09 (ab 4.34, Registrierung in der Kundenanwendung)
+
+Bei der Registrierung bestätigt der Inhaber im Formular (`register.php`, Pflichtfeld): „Ich akzeptiere die AGB und habe die
+Datenschutzerklärung zur Kenntnis genommen.“ Verlinkt sind die Seiten `/agb` und `/datenschutz` der Marketing-Website
+(Fassungen dort, Pflege durch das Frontend). Seit 4.34 speichert die Anwendung dazu je Benutzer zwei Zeilen in
+`consent_records` (Gegenstand `agb` beziehungsweise `datenschutz`, Fassung `AGB_VERSION`/`DATENSCHUTZ_VERSION` aus
+`app/consent.php`, UTC-Zeitpunkt, Weg `registration`, Quellseite, E-Mail, keine IP). Anzeige: Firma unter Rechtliches
+(„Zustimmungen zu AGB und Datenschutzerklärung“), Benutzer unter Sicherheit („Meine Zustimmungen“). Ändert das Frontend den
+Text der AGB oder der Datenschutzerklärung, ist die jeweilige Konstante hochzuzählen und hier die neue Fassung mit Datum zu
+vermerken. Fassung agb-2026-09: Stand der Website vom 07.09.2026 (Einführungspreis mit rollierendem Stichtag, AVV-Klarstellung).
+Fassung datenschutz-2026-09: Stand vom 07.09.2026 (Abschnitt 3a Vormerkung, Müller Holding AG als Verantwortliche der Anwendung).
+
 ## vormerkung-v3 (ab 07.09.2026, smart-einzug.de/integrationen/sevdesk/, Zweck launch_info)
 
 Ich möchte von der Müller Holding AG per E-Mail über den Entwicklungsstand und den Start der sevdesk-Anbindung von

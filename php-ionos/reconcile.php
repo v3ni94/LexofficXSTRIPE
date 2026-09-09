@@ -10,9 +10,11 @@ require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/crypto.php';
 require_once __DIR__ . '/app/invoice_source.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 
 $ctx = require_login();
 $tenantId = $ctx['org_id'];
+$isrcLabel = invoice_source_current($tenantId)['label'];
 $pdo = db();
 
 $error = null;
@@ -81,15 +83,15 @@ if ($lexList !== null) {
 
 layout_header('Abgleich', $ctx);
 ?>
-<h1>Abgleich mit Lexware Office</h1>
-<p class="page-sub">Vergleicht die Rechnungsnummern aus Lexware Office (aktuell offen/überfällig) mit dem
+<h1>Abgleich mit <?= e($isrcLabel) ?></h1>
+<p class="page-sub">Vergleicht die Rechnungsnummern aus <?= e($isrcLabel) ?> (aktuell offen/überfällig) mit dem
     lokalen Datenbestand. Prüft nur Nummern und Status, keine Beträge (dafür wäre ein Einzelabruf je
     Rechnung nötig, das würde zu lange dauern).</p>
 
 <div class="card">
     <form method="post">
         <?= csrf_field() ?>
-        <button type="submit" class="btn">Jetzt mit Lexware Office abgleichen</button>
+        <button type="submit" class="btn">Jetzt mit <?= e($isrcLabel) ?> abgleichen</button>
     </form>
 
     <?php if ($error): ?>
@@ -100,7 +102,7 @@ layout_header('Abgleich', $ctx);
     <div class="card-grid" style="margin-top: 20px;">
         <div class="stat-card">
             <div class="stat-value"><?= count($lexList) ?></div>
-            <div class="stat-label">Offene Posten laut Lexware Office (gerade abgerufen)</div>
+            <div class="stat-label">Offene Posten laut <?= e($isrcLabel) ?> (gerade abgerufen)</div>
         </div>
         <div class="stat-card">
             <div class="stat-value"><?= $localCount ?></div>
@@ -118,7 +120,7 @@ layout_header('Abgleich', $ctx);
     <?php else: ?>
 
         <?php if ($missingLocally): ?>
-        <h2 style="margin-top: 24px;">In Lexware Office offen, aber nicht im Portal
+        <h2 style="margin-top: 24px;">In <?= e($isrcLabel) ?> offen, aber nicht im Portal
             (<?= count($missingLocally) ?>)</h2>
         <p class="hint">Diese Rechnungen fehlen lokal oder haben einen anderen Status.
             Empfehlung: auf "Rechnungen" erneut synchronisieren.</p>
@@ -127,7 +129,7 @@ layout_header('Abgleich', $ctx);
         <?php endif; ?>
 
         <?php if ($staleLocally): ?>
-        <h2 style="margin-top: 24px;">Im Portal offen, laut Lexware Office aber nicht mehr
+        <h2 style="margin-top: 24px;">Im Portal offen, laut <?= e($isrcLabel) ?> aber nicht mehr
             (<?= count($staleLocally) ?>)</h2>
         <p class="hint">Diese Rechnungen sind vermutlich zwischenzeitlich bezahlt oder storniert
             worden, das Portal hat es noch nicht mitbekommen. Empfehlung: auf "Rechnungen" erneut

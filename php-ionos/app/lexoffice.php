@@ -38,6 +38,8 @@ class LexofficeClient
     /** Messwerte dieser Client-Instanz (Instrumentierung der Synchronisation, keine Inhalte). */
     public int $requestCount = 0;
     public float $requestMs = 0.0;
+    /** Laengster einzelner Aufruf in Millisekunden (Naeherung an die Latenzverteilung, 4.39). */
+    public float $requestMsMax = 0.0;
     public float $throttleMs = 0.0;
     public int $retryCount = 0;
 
@@ -119,7 +121,9 @@ class LexofficeClient
             $err = curl_error($ch);
             curl_close($ch);
             $this->requestCount++;
-            $this->requestMs += (microtime(true) - $t0) * 1000;
+            $elapsedMs = (microtime(true) - $t0) * 1000;
+            $this->requestMs += $elapsedMs;
+            $this->requestMsMax = max($this->requestMsMax, $elapsedMs); // laengster Einzelaufruf (Baseline 4.39)
             if ($status === 429 || in_array($status, [500, 502, 503], true)) {
                 $this->retryCount++;
             }
@@ -212,6 +216,16 @@ class LexofficeClient
     }
 
     /**
+     * Seitengroesse der Voucherliste: config sync.page_size, Vorgabe 100, hoechstens 250 (Sekundaerquellen nennen 100 bis
+     * 250 als Maximum der Lexware-API; der Wert ist mit der offiziellen Dokumentation zu verifizieren, docs/sync-performance.md).
+     */
+    public static function pageSize(): int
+    {
+        $v = (int)((array)config('sync', []))['page_size'] ?? 100;
+        return max(1, min(250, $v > 0 ? $v : 100));
+    }
+
+    /**
      * Eine einzelne Seite der Voucherliste abrufen (für die schrittweise
      * Synchronisation, damit ein HTTP-Request nicht durch viele
      * gedrosselte API-Aufrufe das Zeitlimit des Hostings überschreitet).
@@ -221,7 +235,7 @@ class LexofficeClient
         return $this->request('/voucherlist', [
             'voucherType'   => 'invoice',
             'voucherStatus' => $voucherStatus,
-            'size'          => 100,
+            'size'          => self::pageSize(),
             'page'          => $page,
         ]);
     }

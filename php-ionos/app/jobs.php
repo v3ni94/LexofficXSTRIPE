@@ -21,16 +21,19 @@ require_once __DIR__ . '/mailer.php';
 // Signalmodell der Worker (Stop-Signale, kooperativer Abbruch, Notbremse); definiert
 // WorkerShutdownException als Sonderfall von JobRequeueException (queue.php ist bereits geladen).
 require_once __DIR__ . '/worker_signals.php';
+require_once __DIR__ . '/invoice_source.php';
+require_once __DIR__ . '/integration_state.php';
 
 /** Worker-Pools und die Jobtypen, die sie bearbeiten. */
 function jobs_pools(): array
 {
     return [
         'lexware'     => ['sync_run'],
+        'sevdesk'     => ['sync_run_sevdesk'], // eigener Container worker-sevdesk (4.38); gleicher Handler, getrennte Drosselung
         'stripe'      => ['collections_due', 'unclear_attempts'],
         'mail'        => ['mail', 'alerts', 'mandate_reminders'],
         'maintenance' => ['monitor_collect', 'maintenance'],
-        'all'         => ['sync_run', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'monitor_collect', 'maintenance'],
+        'all'         => ['sync_run', 'sync_run_sevdesk', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'monitor_collect', 'maintenance'],
     ];
 }
 
@@ -43,8 +46,26 @@ function jobs_config(): array
         'collections_seconds'     => max(20, (int)($c['collections_seconds'] ?? 120)),
         'auto_sync_hours'         => max(1, (int)($c['auto_sync_hours'] ?? 6)),
         'full_sync_hour'          => max(0, min(23, (int)($c['full_sync_hour'] ?? 3))),
+        // Vollabgleich entzerren (4.39): Firmen werden ueber ein Fenster von n Stunden ab full_sync_hour verteilt
+        // (stabiler Hash der Firmenkennung), statt alle zur selben Stunde. 1 = altes Verhalten.
+        'full_sync_window_hours'  => max(1, min(12, (int)($c['full_sync_window_hours'] ?? 4))),
+        // Fairness (4.39): laeuft ein Sync-Job laenger als n Sekunden und warten Jobs anderer Firmen, gibt er den
+        // Worker ab (Fortsetzung ohne Fehlversuch). 0 = aus.
+        'sync_fair_seconds'       => max(0, (int)($c['sync_fair_seconds'] ?? 120)),
         'prune_days'              => max(7, (int)($c['prune_days'] ?? 30)),
     ];
+}
+
+/**
+ * Stunde des naechtlichen Vollabgleichs einer Firma (lokale Zeit): full_sync_hour plus stabiler Versatz aus der
+ * Firmenkennung innerhalb von full_sync_window_hours. Damit verteilt sich die Nachtlast, und jede Firma behaelt
+ * ihre Stunde (keine Zufallsstreuung, reproduzierbar im Adminbereich anzeigbar).
+ */
+function scheduler_full_sync_hour(string $tenantId, array $cfg): int
+{
+    $window = max(1, (int)($cfg['full_sync_window_hours'] ?? 1));
+    $offset = $window > 1 ? (crc32($tenantId) % $window) : 0;
+    return ((int)$cfg['full_sync_hour'] + $offset) % 24;
 }
 
 /** Zentrale Verteilung. */
@@ -52,6 +73,7 @@ function job_handle(array $job, string $workerId): array
 {
     switch ((string)$job['type']) {
         case 'sync_run':          return job_sync_run($job, $workerId);
+        case 'sync_run_sevdesk':  return job_sync_run($job, $workerId); // sevdesk-Firmen, invoice_source_for_tenant() waehlt den Adapter
         case 'collections_due':   return job_collections_due($job);
         case 'unclear_attempts':  return job_unclear_attempts($job);
         case 'mail':              return job_mail($job);
@@ -115,6 +137,8 @@ function job_sync_run(array $job, string $workerId): array
     if (isset($job['_deadline'])) {
         $deadline = min($deadline, (float)$job['_deadline']); // Inline-Betrieb: Zeitbudget des Cron-Aufrufs
     }
+    $startedAt = microtime(true);
+    $fairSeconds = (int)($cfg['sync_fair_seconds'] ?? 0);
     $steps = 0;
     $skips = 0;
     while (true) {
@@ -167,6 +191,12 @@ function job_sync_run(array $job, string $workerId): array
         }
         if (microtime(true) >= $deadline || $steps >= $cfg['sync_max_steps_attempt']) {
             throw new JobRequeueException('Zeitbudget je Versuch erreicht, Fortsetzung eingeplant');
+        }
+        // Fairness zwischen Firmen (4.39): Nach sync_fair_seconds den Worker abgeben, sobald Synchronisationsjobs
+        // ANDERER Firmen warten. Der eigene Job geht ohne Fehlversuch ans Ende der Warteschlange (Cursor bleibt).
+        // Nur Jobs desselben Typs zaehlen: Der Pool lexware kann keine sevdesk-Jobs uebernehmen und umgekehrt (Review 4.41).
+        if ($fairSeconds > 0 && microtime(true) - $startedAt >= $fairSeconds && queue_waiting_count([(string)$job['type']], $tenantId) > 0) {
+            throw new JobRequeueException('Faire Verteilung: Synchronisationen anderer Firmen warten, Fortsetzung eingeplant');
         }
     }
     return ['status' => 'partially_completed', 'result' => ['steps' => $steps, 'note' => 'Lauf wurde anderweitig beendet']];
@@ -359,14 +389,18 @@ function scheduler_auto_sync(array $cfg, int $now): array
 {
     $queued = [];
     try {
+        // Je Firma genau ein Buchhaltungssystem (integrations.invoice_source): Lexware-Firmen mit verbundenem Schluessel,
+        // sevdesk-Firmen nur, wenn verbunden UND die Anbindung fuer diese Firma freigegeben ist (Schalter, Pilot, Termin).
         $rows = db()->query(
-            "SELECT o.id, o.sync_paused, s.status AS sync_status,
+            "SELECT o.id, o.sync_paused, s.status AS sync_status, COALESCE(i.invoice_source, 'lexware_office') AS invoice_source,
                     TIMESTAMPDIFF(SECOND, COALESCE(s.finished_at, s.updated_at), NOW()) AS age_seconds,
                     TIMESTAMPDIFF(SECOND, s.updated_at, NOW()) AS state_age_seconds
              FROM organizations o
              JOIN integrations i ON i.tenant_id = o.id
              LEFT JOIN sync_state s ON s.tenant_id = o.id
-             WHERE o.deleted_at IS NULL AND o.onboarding_completed = 1 AND i.lexoffice_connected = 1"
+             WHERE o.deleted_at IS NULL AND o.onboarding_completed = 1
+               AND ((COALESCE(i.invoice_source, 'lexware_office') = 'lexware_office' AND i.lexoffice_connected = 1)
+                 OR (i.invoice_source = 'sevdesk' AND i.sevdesk_connected = 1))"
         )->fetchAll();
     } catch (Throwable $e) {
         return [];
@@ -377,11 +411,15 @@ function scheduler_auto_sync(array $cfg, int $now): array
         if ((int)$o['sync_paused'] === 1 || !queue_enabled($tid)) {
             continue;
         }
+        $type = INVOICE_SOURCE_SYNC_JOB_TYPES[(string)$o['invoice_source']] ?? 'sync_run';
+        if ($type === 'sync_run_sevdesk' && !integration_connect_allowed('sevdesk', $tid)) {
+            continue; // sevdesk fuer diese Firma nicht freigegeben (Schalter 0 oder Pilot ohne Administrator): kein Abruf
+        }
         if (($o['sync_status'] ?? null) === 'running') {
             // Läuft wirklich (Fortschritt in den letzten Minuten) oder hängt ein aktiver Job daran: nichts einreihen.
             // Ein verwaister Lauf ohne Job wird als Fehler geschlossen, damit die Firma nicht dauerhaft ausfällt.
             $fresh = $o['state_age_seconds'] !== null && (int)$o['state_age_seconds'] < SYNC_STALE_MINUTES * 60;
-            if ($fresh || queue_tenant_active($tid, 'sync_run')) {
+            if ($fresh || queue_tenant_active($tid, QUEUE_SYNC_TYPES)) {
                 continue;
             }
             db()->prepare("UPDATE sync_state SET status = 'error', lock_until = NULL, lock_owner = NULL, finished_at = NOW(), last_error = 'Lauf ohne Fortschritt vom Scheduler geschlossen' WHERE tenant_id = ? AND status = 'running'")->execute([$tid]);
@@ -391,7 +429,7 @@ function scheduler_auto_sync(array $cfg, int $now): array
             // ansetzt. Ohne diese Zeile blieb die Firma nach einem abgebrochenen Lauf (z.B. hart beendeter
             // Worker) bis zu auto_sync_hours Stunden ohne Synchronisation, was im Monitoring als dauerhaft
             // "wartende Aufgabe" erschien. Der dedupe_key verhindert Doppeleintraege.
-            $r = queue_push('sync_run', ['triggered_by' => 'stale-fortsetzung'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
+            $r = queue_push($type, ['triggered_by' => 'stale-fortsetzung'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
             if ($r['created']) {
                 $queued[] = 'sync_run:fortsetzung:' . $tid;
             }
@@ -400,8 +438,8 @@ function scheduler_auto_sync(array $cfg, int $now): array
         $ageSeconds = $o['age_seconds'] !== null ? (int)$o['age_seconds'] : null;
         $fullMark = monitor_mark_get('sched_full_' . $tid);
         $today = date('Y-m-d', $now);
-        if ($hourLocal === $cfg['full_sync_hour'] && $fullMark !== $today) {
-            $r = queue_push('sync_run', ['triggered_by' => 'full', 'full' => true], ['tenant_id' => $tid, 'priority' => 'low', 'dedupe_key' => 'sync:' . $tid]);
+        if ($hourLocal === scheduler_full_sync_hour($tid, $cfg) && $fullMark !== $today) {
+            $r = queue_push($type, ['triggered_by' => 'full', 'full' => true], ['tenant_id' => $tid, 'priority' => 'low', 'dedupe_key' => 'sync:' . $tid]);
             if ($r['created']) {
                 monitor_mark('sched_full_' . $tid, $today); // Marker nur, wenn der Vollabgleich wirklich eingereiht wurde
                 $queued[] = 'sync_run:full:' . $tid;
@@ -409,7 +447,7 @@ function scheduler_auto_sync(array $cfg, int $now): array
             continue;
         }
         if ($ageSeconds === null || $ageSeconds >= $cfg['auto_sync_hours'] * 3600) {
-            $r = queue_push('sync_run', ['triggered_by' => 'auto'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
+            $r = queue_push($type, ['triggered_by' => 'auto'], ['tenant_id' => $tid, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $tid]);
             if ($r['created']) {
                 $queued[] = 'sync_run:auto:' . $tid;
             }
@@ -455,6 +493,11 @@ function job_execute(array $job, string $workerId): string
 {
     correlation_id_set($job['correlation_id'] ?: null);
     $runId = job_run_start('queue:' . $job['type'], (string)$job['id'], $job['tenant_id'] ?? null, PHP_SAPI === 'cli' ? 'worker' : 'cron');
+    // Wartezeit in der Warteschlange (4.39): Faelligkeit (available_at) bis jetzt (Reservierung liegt Millisekunden zurueck).
+    $availableAt = queue_ts($job['available_at'] ?? null);
+    if ($availableAt !== null) {
+        job_run_set_queue_wait($runId, max(0, (queue_now() - $availableAt) * 1000));
+    }
     $t0 = microtime(true);
     try {
         // Nur waehrend job_handle() darf die Notbremse (SIGALRM, app/worker_signals.php) eine

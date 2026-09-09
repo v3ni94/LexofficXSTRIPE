@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  participant SCH as Scheduler
+  participant Q as Warteschlange (Redis)
+  participant W as worker-lexware
+  participant ST as sync_state (DB)
+  participant LX as Lexware Office API
+  participant DB as MariaDB
+  SCH->>Q: sync_run je Firma (lexoffice_connected = 1, Plan aus jobs.php)
+  Q->>W: Job sync_run
+  W->>ST: Lauf sperren (sync_state, Cursor), Doppelstart abweisen
+  loop Listing, seitenweise (open, overdue)
+    W->>LX: GET /voucherlist voucherType=invoice, size=100, page=n
+    LX-->>W: Belegkennung, Nummer, Status, Änderungszeitpunkt
+  end
+  loop je neuer oder geänderter Beleg
+    W->>LX: GET /invoices/id
+    W->>LX: GET /contacts/id (nur Name, Kundennummer, eine E-Mail)
+    W->>DB: customers upsert, invoices upsert (line_items_json, Stichwort)
+  end
+  W->>LX: Recheck: GET /invoices/id für verschwundene Rechnungen (paid, voided)
+  W->>DB: integrations.lexoffice_last_sync, sync_runs
+  W->>ST: Lauf abschließen, Cursor leeren
+  Note over W,ST: Worker hart beendet? Scheduler schließt verwaisten Lauf und reiht Fortsetzung sofort ein.

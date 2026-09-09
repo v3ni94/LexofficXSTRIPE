@@ -18,6 +18,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/platform.php';
+
 if (get_included_files()[0] === __FILE__) {
     http_response_code(403);
     exit('Forbidden');
@@ -53,7 +55,16 @@ function current_user(): ?array
 
     $userId = $_SESSION['user_id'] ?? null;
     $orgId  = $_SESSION['org_id'] ?? null;
-    if (!$userId || !$orgId) {
+    if (!$userId) {
+        return null;
+    }
+    if (!$orgId && empty($_SESSION['support_session_id'])) {
+        // Plattform-Benutzer ohne Firmenmitgliedschaft (Mitarbeiter, Administratoren des Betreibers): eigener
+        // Kontext ohne Firma, nur fuer Adminseiten und Kontoseiten (app/platform.php, require_login()).
+        $ctx = _current_user_platform((string)$userId);
+        return $ctx;
+    }
+    if (!$orgId) {
         return null;
     }
 
@@ -77,7 +88,7 @@ function current_user(): ?array
 
     $stmt = db()->prepare(
         'SELECT u.id AS user_id, u.email, u.display_name, u.first_name, u.last_name,
-                u.totp_enabled, u.email_verified_at, u.is_superadmin, u.session_epoch, u.last_login_at,
+                u.totp_enabled, u.email_verified_at, u.is_superadmin, u.platform_role, u.session_epoch, u.last_login_at,
                 o.id AS org_id, o.name AS org_name, o.mandate_prefix, o.use_hvm_ci,
                 o.onboarding_completed, o.onboarding_step,
                 o.plan_code, o.subscription_status, o.subscription_period_end, o.cancel_at_period_end,
@@ -123,7 +134,7 @@ function _current_user_support(string $userId, string $orgId, string $supportId)
     if ($valid) {
         $stmt = db()->prepare(
             'SELECT u.id AS user_id, u.email, u.display_name, u.first_name, u.last_name,
-                    u.totp_enabled, u.email_verified_at, u.is_superadmin, u.session_epoch, u.last_login_at,
+                    u.totp_enabled, u.email_verified_at, u.is_superadmin, u.platform_role, u.session_epoch, u.last_login_at,
                     o.id AS org_id, o.name AS org_name, o.mandate_prefix, o.use_hvm_ci,
                     o.onboarding_completed, o.onboarding_step,
                     o.plan_code, o.subscription_status, o.subscription_period_end, o.cancel_at_period_end,
@@ -131,11 +142,16 @@ function _current_user_support(string $userId, string $orgId, string $supportId)
                     o.creditor_identifier, o.pre_notification_days, o.send_pre_notification,
                     o.require_signed_mandate
              FROM users u, organizations o
-             WHERE u.id = ? AND u.is_active = 1 AND u.is_superadmin = 1 AND u.totp_enabled = 1
+             WHERE u.id = ? AND u.is_active = 1 AND u.totp_enabled = 1
                AND o.id = ? AND o.deleted_at IS NULL'
         );
         $stmt->execute([$userId, $orgId]);
         $row = $stmt->fetch();
+        // Der Support-Modus setzt die Berechtigung support.sessions voraus (Superadmin oder Plattformrolle);
+        // wird sie waehrend der Sitzung entzogen, endet der Zugriff mit der naechsten Anfrage.
+        if ($row && !platform_can($row, 'support.sessions')) {
+            $row = null;
+        }
         if ($row && (int)($_SESSION['session_epoch'] ?? -1) === (int)$row['session_epoch']) {
             $row['role'] = 'admin';
             $row['member_status'] = 'active';
@@ -154,8 +170,58 @@ function _current_user_support(string $userId, string $orgId, string $supportId)
     if ($prevOrg !== '' && switch_company($userId, $prevOrg)) {
         return current_user_reload();
     }
+    if (_platform_user_without_org($userId)) {
+        $_SESSION['org_id'] = null;
+        return current_user_reload();
+    }
     auth_logout();
     return null;
+}
+
+/**
+ * Plattformkontext eines Benutzers ohne Firma: Zugang nur mit Superadmin-Kennzeichen oder Plattformrolle
+ * (ohne 2FA fuehrt require_login() zur Einrichtung). Firmenfelder sind leer, die Rolle heisst "platform";
+ * Kundenseiten leiten in den Adminbereich (require_login()).
+ */
+function _current_user_platform(string $userId): ?array
+{
+    $stmt = db()->prepare(
+        'SELECT u.id AS user_id, u.email, u.display_name, u.first_name, u.last_name,
+                u.totp_enabled, u.email_verified_at, u.is_superadmin, u.platform_role, u.session_epoch, u.last_login_at
+         FROM users u WHERE u.id = ? AND u.is_active = 1 AND (u.is_superadmin = 1 OR u.platform_role IS NOT NULL)'
+    );
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    if (!$row || (int)($_SESSION['session_epoch'] ?? -1) !== (int)$row['session_epoch']) {
+        auth_logout();
+        return null;
+    }
+    if ((int)$row['is_superadmin'] !== 1 && platform_role_get((string)$row['platform_role']) === null) {
+        auth_logout();
+        return null;
+    }
+    return $row + [
+        'org_id' => null, 'org_name' => 'Plattform', 'mandate_prefix' => null, 'use_hvm_ci' => 0,
+        'onboarding_completed' => 1, 'onboarding_step' => null, 'plan_code' => null, 'subscription_status' => null,
+        'subscription_period_end' => null, 'cancel_at_period_end' => 0, 'billing_exempt' => 1, 'signup_domain' => null,
+        'street' => null, 'zip' => null, 'city' => null, 'country' => null, 'creditor_identifier' => null,
+        'pre_notification_days' => null, 'send_pre_notification' => 0, 'require_signed_mandate' => 0,
+        'role' => 'platform', 'member_status' => 'active', 'platform_only' => true,
+    ];
+}
+
+/** Hat der Benutzer Plattformzugang (Superadmin oder Rolle), aber keine aktive Firmenmitgliedschaft? */
+function _platform_user_without_org(string $userId): bool
+{
+    $st = db()->prepare(
+        "SELECT (u.is_superadmin = 1 OR u.platform_role IS NOT NULL) AS platform,
+                (SELECT COUNT(*) FROM organization_members m JOIN organizations o ON o.id = m.organization_id AND o.deleted_at IS NULL
+                  WHERE m.user_id = u.id AND m.status = 'active') AS orgs
+         FROM users u WHERE u.id = ? AND u.is_active = 1"
+    );
+    $st->execute([$userId]);
+    $r = $st->fetch();
+    return $r && (int)$r['platform'] === 1 && (int)$r['orgs'] === 0;
 }
 
 /** Kontext nach einem Firmenwechsel innerhalb derselben Anfrage neu laden. */
@@ -168,7 +234,7 @@ function current_user_reload(): ?array
     }
     $stmt = db()->prepare(
         'SELECT u.id AS user_id, u.email, u.display_name, u.first_name, u.last_name,
-                u.totp_enabled, u.email_verified_at, u.is_superadmin, u.session_epoch, u.last_login_at,
+                u.totp_enabled, u.email_verified_at, u.is_superadmin, u.platform_role, u.session_epoch, u.last_login_at,
                 o.id AS org_id, o.name AS org_name, o.mandate_prefix, o.use_hvm_ci,
                 o.onboarding_completed, o.onboarding_step,
                 o.plan_code, o.subscription_status, o.subscription_period_end, o.cancel_at_period_end,
@@ -214,7 +280,18 @@ function require_login(): array
             redirect('twofa-setup.php');
         }
     }
+    if (!empty($ctx['platform_only']) && !in_array($script, $exempt, true) && !is_admin_script($script)
+        && !in_array($script, ['security.php', 'avatar.php', 'support-login.php', 'support-end.php', 'handbuch.php'], true)) {
+        // Plattform-Benutzer ohne Firma: Kundenseiten (Dashboard, Rechnungen, ...) gibt es fuer sie nicht.
+        redirect(platform_home_url());
+    }
     return $ctx;
+}
+
+/** Startseite des Adminbereichs (Adminhost, falls konfiguriert). */
+function platform_home_url(): string
+{
+    return admin_base_url() !== '' ? admin_base_url() . '/admin.php' : 'admin.php';
 }
 
 /** Erzwingt Login und leitet zum Onboarding, solange es nicht abgeschlossen ist. */
@@ -273,14 +350,26 @@ function require_owner(): array
     return $ctx;
 }
 
-/** Nur Plattform-Administratoren (users.is_superadmin = 1) mit aktiver 2FA. */
-function require_superadmin(): array
+/**
+ * Adminbereich: Plattformzugang (Superadmin oder Plattformrolle, aktive 2FA) und die genannte Berechtigung
+ * aus PLATFORM_PERMISSIONS (app/platform.php). Seiten pruefen zusaetzlich je Aktion mit platform_can().
+ */
+function require_platform(string $permission = 'admin.view'): array
 {
     $ctx = require_login();
-    if (!(int)$ctx['is_superadmin'] || !(int)$ctx['totp_enabled']) {
+    if (!platform_access($ctx)) {
         forbidden_page($ctx, 'Kein Zugriff.');
     }
+    if (!platform_can($ctx, $permission)) {
+        forbidden_page($ctx, 'Für diesen Bereich fehlt Ihrer Rolle die Berechtigung (' . $permission . '). Ein Administrator kann sie unter Benutzer und Rechte vergeben.');
+    }
     return $ctx;
+}
+
+/** Bisheriger Name: Zutritt zum Adminbereich. Neue Seiten nutzen require_platform('<recht>'). */
+function require_superadmin(): array
+{
+    return require_platform('admin.view');
 }
 
 function forbidden_page(array $ctx, string $message): void
@@ -288,8 +377,9 @@ function forbidden_page(array $ctx, string $message): void
     http_response_code(403);
     require_once __DIR__ . '/layout.php';
     layout_header('Kein Zugriff', $ctx);
+    $toAdmin = !empty($ctx['platform_only']) || on_admin_host();
     echo '<div class="card"><h1>Kein Zugriff</h1><p>' . e($message) . '</p>'
-       . '<p><a class="btn" href="dashboard.php">Zurück zum Dashboard</a></p></div>';
+       . '<p><a class="btn" href="' . e($toAdmin ? platform_home_url() : 'dashboard.php') . '">' . ($toAdmin ? 'Zum Adminbereich' : 'Zurück zum Dashboard') . '</a></p></div>';
     layout_footer($ctx);
     exit;
 }
@@ -558,9 +648,10 @@ function session_finish_login(array $user, ?string $preferredOrgId = null, array
         $stmt->execute([$user['id']]);
         $orgId = $stmt->fetchColumn() ?: null;
     }
-    if (!$orgId) {
+    if (!$orgId && !((int)($user['is_superadmin'] ?? 0) === 1 || ($user['platform_role'] ?? null) !== null)) {
         return false;
     }
+    // Ohne Firma, aber mit Plattformzugang: Anmeldung in den Plattformkontext (org_id NULL, app/platform.php).
 
     $pdo->prepare('UPDATE users SET last_login_at = NOW(), failed_login_count = 0, locked_until = NULL WHERE id = ?')
         ->execute([$user['id']]);
@@ -1567,5 +1658,11 @@ function registration_requests_cleanup(): void
 /** Ziel nach erfolgreicher Anmeldung: offener Registrierungsvorgang oder Dashboard. */
 function post_login_target(): string
 {
-    return !empty($_SESSION['register_continue']) ? 'register-fortsetzen.php' : 'dashboard.php';
+    if (!empty($_SESSION['register_continue'])) {
+        return 'register-fortsetzen.php';
+    }
+    if (!empty($_SESSION['user_id']) && empty($_SESSION['org_id'])) {
+        return platform_home_url(); // Plattform-Benutzer ohne Firma
+    }
+    return 'dashboard.php';
 }

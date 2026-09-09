@@ -50,7 +50,7 @@ function monitor_config(): array
         'latency_warn_ms'         => array_merge(['db' => 500, 'php_app' => 3000, 'web_ui' => 3000, 'admin_ui' => 3000], (array)($c['latency_warn_ms'] ?? [])),
         'error_rate_warn_pct'     => (float)($c['error_rate_warn_pct'] ?? 10.0),
         'min_sample'              => max(1, (int)($c['min_sample'] ?? 20)),
-        'freshness'               => array_merge(['php_app' => 900, 'db' => 900, 'web_ui' => 900, 'admin_ui' => 900, 'cron' => 900, 'mail' => 3600, 'lexoffice' => 7200, 'stripe' => 7200, 'deploy' => 7200, 'sftp' => 86400, 'db_size' => 86400, 'storage' => 86400], (array)($c['freshness'] ?? [])),
+        'freshness'               => array_merge(['php_app' => 900, 'db' => 900, 'web_ui' => 900, 'admin_ui' => 900, 'cron' => 900, 'mail' => 3600, 'lexoffice' => 7200, 'sevdesk' => 7200, 'stripe' => 7200, 'deploy' => 7200, 'sftp' => 86400, 'db_size' => 86400, 'storage' => 86400], (array)($c['freshness'] ?? [])),
         'test_mail_to'            => trim((string)($c['test_mail_to'] ?? '')),
         'app_url_override'        => isset($c['app_url_override']) ? rtrim((string)$c['app_url_override'], '/') : null,
         'editors'                 => array_map('mb_strtolower', array_values(array_filter((array)($c['editors'] ?? [])))),
@@ -154,6 +154,19 @@ function job_run_start(string $type, ?string $key = null, ?string $tenantId = nu
         return $id;
     } catch (Throwable $e) {
         return null;
+    }
+}
+
+/** Wartezeit in der Warteschlange (Millisekunden) am Jobbeginn festhalten (Migration 029; fehlt die Spalte, still). */
+function job_run_set_queue_wait(?string $id, int $ms): void
+{
+    if ($id === null) {
+        return;
+    }
+    try {
+        db()->prepare('UPDATE job_runs SET queue_wait_ms = ? WHERE id = ?')->execute([max(0, $ms), $id]);
+    } catch (Throwable $e) {
+        // Diagnose darf den Job nicht stören
     }
 }
 
@@ -586,6 +599,7 @@ function monitor_collect(array $opts = []): array
             ['cron',     fn() => _mon_check_cron($cfg), 900],
             ['mail',     fn() => _mon_check_mail(), 3600],
             ['lexoffice',fn() => _mon_check_integration('lexoffice', $cfg), 7200],
+            ['sevdesk',  fn() => _mon_check_integration('sevdesk', $cfg), 7200],
             ['stripe',   fn() => _mon_check_integration('stripe', $cfg), 7200],
             ['deploy',   fn() => _mon_check_deploy(), 7200],
             ['backup',   fn() => _mon_check_backup(), 86400],
@@ -608,7 +622,7 @@ function monitor_collect(array $opts = []): array
             }
             monitor_event($component, (string)$r['status'], isset($r['ms']) ? (int)$r['ms'] : null, $r['category'] ?? null, 'internal', $valid,
                 isset($r['value']) && $r['value'] !== null ? (float)$r['value'] : null,
-                str_starts_with($component, 'tls:') ? 'Tage' : ($component === 'cron' ? 's' : ($component === 'backup' ? 'MB' : (in_array($component, ['lexoffice', 'stripe'], true) ? '%' : null))));
+                str_starts_with($component, 'tls:') ? 'Tage' : ($component === 'cron' ? 's' : ($component === 'backup' ? 'MB' : (in_array($component, ['lexoffice', 'sevdesk', 'stripe'], true) ? '%' : null))));
             $summary['checks'][$component] = $r['status'];
         }
         // SFTP kann aus der Anwendung nicht geprüft werden (keine Deployment-Zugangsdaten in der Web-App)
@@ -708,6 +722,7 @@ function monitor_component_defs(): array
         'cron'     => ['name' => 'Cronjobs / Aufgabenverarbeitung', 'source' => 'Startzeit des letzten Cron-Laufs (job_runs) gegen Sollintervall', 'note' => 'Verspätung nach Sollintervall mit Toleranz.'],
         'mail'     => ['name' => 'E-Mail', 'source' => 'Marker der letzten Übergabe an den Versandweg und des letzten Fehlers', 'note' => 'Übergabe an den Versandweg, kein Zustellnachweis.'],
         'lexoffice'=> ['name' => 'Lexware-Anbindung', 'source' => 'API-Zähler der Synchronisationsschritte der letzten 24 Stunden', 'note' => 'Ein ungültiger Schlüssel einer Firma zählt nicht als Plattformstörung.'],
+        'sevdesk'  => ['name' => 'sevdesk-Anbindung', 'source' => 'Instrumentierte API-Aufrufe des sevdesk-Adapters der letzten 24 Stunden (sevdesk_api)', 'note' => 'Ohne verbundene sevdesk-Firmen dauerhaft „keine Daten“. Ein abgelehnter Token einer Firma zählt nicht als Störung.'],
         'stripe'   => ['name' => 'Stripe-Anbindung', 'source' => 'Instrumentierte API-Aufrufe und Webhook-Verarbeitung der letzten 24 Stunden', 'note' => 'Fachlich abgelehnte Zahlungen zählen nicht als Ausfall.'],
         'deploy'   => ['name' => 'Deployment / Migrationen', 'source' => 'schema_migrations und Marker des Migrationsendpunkts', 'note' => 'Nur lesend, keine Ausführung.'],
         'backup'   => ['name' => 'Sicherungen', 'source' => 'Ergebnisdatei backup-status.json: auf dem VPS aus der lokalen Kopie der Coolify-Datenbankbackups (Zeitpunkt, Größe der neuesten Sicherung), sonst aus einem Backup-Skript', 'note' => 'Ohne Datei nicht eingerichtet. Der externe Upload (Hetzner Object Storage) und der Wiederherstellungstest werden in Coolify geprüft, nicht hier.'],
@@ -1418,7 +1433,8 @@ function monitor_incident_publish(array $ctx, string $id, bool $publish): void
 /** Darf dieser Plattformadministrator Überwachungseinstellungen ändern und Meldungen veröffentlichen? */
 function monitor_can_edit(array $ctx): bool
 {
-    if (!(int)($ctx['is_superadmin'] ?? 0)) {
+    require_once __DIR__ . '/platform.php';
+    if (!platform_can($ctx, 'monitoring.edit')) {
         return false;
     }
     $editors = monitor_config()['editors'];

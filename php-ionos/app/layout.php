@@ -84,8 +84,15 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
         <?php if ($ctx && on_admin_host()): ?>
         <nav class="main-nav" aria-label="Hauptnavigation">
             <a href="admin.php" class="nav-admin">Plattform-Administration</a>
-            <a href="admin-support.php" class="nav-admin">Support</a>
-            <a href="<?= e(app_base_url()) ?>/dashboard.php" title="Zur Kundenanwendung">Kundenanwendung</a>
+            <?php if (platform_can($ctx, 'support.view')): ?><a href="admin-support.php" class="nav-admin">Support</a><?php endif; ?>
+            <?php if (platform_can($ctx, 'monitoring.view')): ?><a href="admin-system.php" class="nav-admin">System</a><?php endif; ?>
+            <?php if (platform_can($ctx, 'users.manage')): ?><a href="admin-users.php" class="nav-admin">Benutzer</a><?php endif; ?>
+            <?php if (empty($ctx['platform_only'])): ?><a href="<?= e(app_base_url()) ?>/dashboard.php" title="Zur Kundenanwendung">Kundenanwendung</a><?php endif; ?>
+        </nav>
+        <?php elseif ($ctx && !empty($ctx['platform_only'])): ?>
+        <nav class="main-nav" aria-label="Hauptnavigation">
+            <a href="<?= e(platform_home_url()) ?>" class="nav-admin">Adminbereich</a>
+            <a href="security.php">Sicherheit</a>
         </nav>
         <?php elseif ($ctx): ?>
         <nav class="main-nav" aria-label="Hauptnavigation">
@@ -96,8 +103,8 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
             <a href="sepa-pflegen.php">SEPA Pflegen</a>
             <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php" title="Einzüge dieser Firma sofort anhalten">Not-Stopp</a><?php endif; ?>
             <a href="hilfe.php?von=<?= e(current_script()) ?>" title="Anleitungen, häufige Fragen, Support-Anfrage">Hilfe</a>
-            <?php if (!empty($ctx['is_superadmin'])): ?>
-                <a href="<?= e(admin_base_url() !== '' ? admin_base_url() . '/admin.php' : 'admin.php') ?>" class="nav-admin">Admin</a>
+            <?php if (platform_access($ctx)): ?>
+                <a href="<?= e(platform_home_url()) ?>" class="nav-admin">Admin</a>
             <?php endif; ?>
         </nav>
         <div class="user-menu">
@@ -140,19 +147,27 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
     <?php foreach (flash_pull() as $msg): ?>
         <div class="flash flash-<?= e($msg['type']) ?>"><?= e($msg['message']) ?></div>
     <?php endforeach; ?>
-    <?php if ($ctx && !empty($ctx['support_mode'])): ?>
+    <?php
+    // Kundenbezogene Hinweisbalken nur in der Kundenanwendung: Auf einem getrennten Adminhost sind
+    // subscription.php, settings.php und support-end.php nicht erreichbar (enforce_host_rules), ein
+    // Balken dort wuerde ins Leere fuehren. Links trotzdem absolut auf die Kundenanwendung setzen,
+    // damit sie auch im Uebergangsmodus und bei kuenftigen Hostwechseln stimmen.
+    $kundenBanner = !admin_host_separated();
+    $appBase = app_base_url();
+    ?>
+    <?php if ($kundenBanner && $ctx && !empty($ctx['support_mode'])): ?>
         <div class="flash flash-warn support-banner"><strong>SUPPORT-MODUS.</strong> Sie arbeiten als Plattform-Support in der Firma
             <strong><?= e($ctx['org_name']) ?></strong> (Rolle Administrator). Einzüge, IBAN-Änderungen und Zugangsdaten sind gesperrt,
             alle Aktionen werden mit Support-Vermerk protokolliert. Endet um <?= e(date('H:i', strtotime((string)$ctx['support_expires_at']))) ?> Uhr.
-            <a href="support-end.php">Support beenden</a>
+            <a href="<?= e($appBase) ?>/support-end.php">Support beenden</a>
         </div>
     <?php endif; ?>
-    <?php if ($ctx && integration_stripe_test_mode($ctx['org_id'])): ?>
+    <?php if ($kundenBanner && $ctx && integration_stripe_test_mode($ctx['org_id'])): ?>
         <div class="flash flash-warn testmode-banner"><strong>TESTMODUS.</strong> Diese Firma ist mit einem Stripe-Testschlüssel verbunden. Es werden keine echten Lastschriften ausgeführt.
-            <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Live-Schlüssel hinterlegen</a><?php endif; ?>
+            <?php if (can_manage_settings($ctx)): ?><a href="<?= e($appBase) ?>/settings.php">Live-Schlüssel hinterlegen</a><?php endif; ?>
         </div>
     <?php endif; ?>
-    <?php if ($ctx && billing_enabled() && (int)($ctx['billing_exempt'] ?? 0) !== 1 && current_script() !== 'subscription.php'): ?>
+    <?php if ($kundenBanner && $ctx && billing_enabled() && (int)($ctx['billing_exempt'] ?? 0) !== 1 && current_script() !== 'subscription.php'): ?>
         <?php if (!subscription_allows_operation($ctx)): ?>
             <?php $subPlan = plan_for_org($ctx); $subEnded = ($ctx['subscription_status'] ?? '') === 'canceled' || ($ctx['subscription_status'] ?? '') === 'past_due'; ?>
             <div class="sub-banner" role="status">
@@ -162,14 +177,14 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                     Tarif <?= e($subPlan['name']) ?>, <?= format_eur_cents((int)$subPlan['price_cents']) ?> netto je <?= (int)$subPlan['period_days'] ?> Tage, jederzeit zum Periodenende kündbar.
                 </div>
                 <?php if ($ctx['role'] === 'owner'): ?>
-                    <a class="btn" href="subscription.php?bestellen=1"><?= $subEnded ? 'Vertrag aktivieren' : 'Jetzt freischalten' ?></a>
+                    <a class="btn" href="<?= e($appBase) ?>/subscription.php?bestellen=1"><?= $subEnded ? 'Vertrag aktivieren' : 'Jetzt freischalten' ?></a>
                 <?php else: ?>
                     <span class="hint">Nur der Inhaber des Firmenaccounts kann das Abonnement abschließen.</span>
                 <?php endif; ?>
             </div>
         <?php elseif ((int)($ctx['cancel_at_period_end'] ?? 0) === 1 && !empty($ctx['subscription_period_end'])): ?>
             <div class="flash flash-warn">Ihr Abonnement ist zum <?= format_date($ctx['subscription_period_end']) ?> gekündigt. Bis dahin bleibt der Zugriff bestehen.
-                <?php if ($ctx['role'] === 'owner'): ?><a href="subscription.php">Kündigung zurücknehmen</a><?php endif; ?></div>
+                <?php if ($ctx['role'] === 'owner'): ?><a href="<?= e($appBase) ?>/subscription.php">Kündigung zurücknehmen</a><?php endif; ?></div>
         <?php endif; ?>
     <?php endif; ?>
     <?php
@@ -192,8 +207,8 @@ function layout_footer(?array $ctx = null): void
     </div>
     <?php endif; ?>
     <div class="footer-inner footer-legal">
-        <span><?= e($product) ?> ist ein Dienst der <?= e($op['name'] ?? 'Müller Holding AG') ?>,
-            <?= e($op['street'] ?? '') ?>, <?= e($op['zip_city'] ?? '') ?>.
+        <?php $opAddr = implode(', ', array_filter([trim((string)($op['street'] ?? '')), trim((string)($op['zip_city'] ?? ''))], static fn(string $v): bool => $v !== '')); ?>
+        <span><?= e($product) ?> ist ein Dienst der <?= e($op['name'] ?? 'Müller Holding AG') ?><?= $opAddr !== '' ? ', ' . e($opAddr) : '' ?>.
             <a href="impressum.php">Impressum</a>
             <?php if (($su = rtrim(trim((string)config('status_page_url', '')), '/')) !== ''): ?> · <a href="<?= e($su) ?>/" rel="noopener">Systemstatus</a><?php endif; ?>
             <?php if ($mk !== ''): ?>
@@ -203,7 +218,7 @@ function layout_footer(?array $ctx = null): void
         </span>
         <span class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</span>
         <span class="footer-version">
-            <?php if ($ctx && !empty($ctx['is_superadmin']) && on_admin_host() && defined('APP_VERSION')): ?>
+            <?php if ($ctx && platform_access($ctx) && on_admin_host() && defined('APP_VERSION')): ?>
                 <a href="admin-system.php?tab=versionen">Version <?= e(APP_VERSION) ?></a>
             <?php elseif (defined('APP_VERSION')): ?>
                 Version <?= e(APP_VERSION) ?>
@@ -216,13 +231,56 @@ function layout_footer(?array $ctx = null): void
     <?php
 }
 
+/**
+ * Untermenü als Reiterleiste. $items: ['schluessel' => ['label' => ..., 'href' => ..., 'ext' => bool]] oder ['label' => href];
+ * $active: Schlüssel des aktiven Reiters. Reiter ohne Schlüsselgleichheit werden als Links dargestellt (ext = weiterführend).
+ */
+function layout_subnav(array $items, ?string $active = null, string $aria = 'Unterbereiche'): string
+{
+    $out = '<nav class="subnav" aria-label="' . e($aria) . '">';
+    foreach ($items as $key => $item) {
+        if (!is_array($item)) {
+            $item = ['label' => (string)$key, 'href' => (string)$item];
+            $key = (string)$key;
+        }
+        $isActive = $active !== null && (string)$key === $active;
+        $cls = trim(($isActive ? 'active' : '') . (!empty($item['ext']) ? ' subnav-ext' : ''));
+        $out .= '<a href="' . e((string)$item['href']) . '"' . ($cls !== '' ? ' class="' . $cls . '"' : '') . ($isActive ? ' aria-current="page"' : '') . '>' . e((string)$item['label']) . '</a>';
+    }
+    return $out . '</nav>';
+}
+
 function role_label(string $role): string
 {
     return match ($role) {
-        'owner'  => 'Inhaber',
-        'admin'  => 'Administrator',
-        default  => 'Mitarbeiter',
+        'owner'    => 'Inhaber',
+        'admin'    => 'Administrator',
+        'platform' => 'Plattform-Benutzer',
+        default    => 'Mitarbeiter',
     };
+}
+
+/**
+ * Reiterleiste der Adminbereiche, gefiltert nach den Berechtigungen des Kontexts (app/platform.php).
+ * Schluessel: admin, support, system, legal, users.
+ */
+function admin_subnav_items(array $ctx): array
+{
+    $items = [
+        'admin'   => ['label' => 'Plattform-Administration', 'href' => 'admin.php', 'perm' => 'admin.view'],
+        'support' => ['label' => 'Support', 'href' => 'admin-support.php', 'perm' => 'support.view'],
+        'system'  => ['label' => 'System', 'href' => 'admin-system.php', 'perm' => 'monitoring.view'],
+        'legal'   => ['label' => 'Rechtsdokumente', 'href' => 'admin-legal.php', 'perm' => 'legal.view'],
+        'users'   => ['label' => 'Benutzer und Rechte', 'href' => 'admin-users.php', 'perm' => 'users.manage'],
+    ];
+    $out = [];
+    foreach ($items as $k => $it) {
+        if (platform_can($ctx, $it['perm'])) {
+            unset($it['perm']);
+            $out[$k] = $it;
+        }
+    }
+    return $out;
 }
 
 /** Status eines Einzugs / einer Rechnung als Badge rendern. */

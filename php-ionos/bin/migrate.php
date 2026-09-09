@@ -4,8 +4,10 @@
  * Verwendet denselben Runner wie migrate.php (app/migrate.php): gemeinsame Sperre, Zustände,
  * keine automatische Wiederholung fehlgeschlagener Migrationen.
  *
- *   php bin/migrate.php            offene Migrationen einspielen
- *   php bin/migrate.php --status   nur Stand anzeigen
+ *   php bin/migrate.php              offene Migrationen einspielen
+ *   php bin/migrate.php --status     nur Stand anzeigen
+ *   php bin/migrate.php --retry=NNN  fehlgeschlagene/ungeklaerte Migration NNN ausdruecklich zur Wiederholung freigeben
+ *                                    (Datei vorher korrigieren und ausrollen), danach offene Migrationen einspielen
  * Exit-Codes: 0 ok, 1 fehlgeschlagen oder blockiert, 2 Sperre belegt
  */
 define('LOG_SERVICE', 'cli');
@@ -19,6 +21,10 @@ try {
             cli_out(sprintf('%s  %-10s %s', $m['version'], $m['state'], $m['filename'] ?? ''));
         }
         exit(0);
+    }
+    if (isset($opts['retry'])) {
+        $freigabe = migrations_release((string)$opts['retry'], 'cli-retry');
+        cli_out('Freigegeben zur Wiederholung: ' . $freigabe . ' (Eintrag auf pending gesetzt, protokolliert).');
     }
     $r = migrations_run('cli');
     cli_out(sprintf('Migrationen: %d eingespielt, %d offen', count($r['applied'] ?? []), count($r['pending'] ?? [])));

@@ -1,0 +1,55 @@
+erDiagram
+  organizations ||--o{ organization_members : "hat Mitglieder"
+  users ||--o{ organization_members : "gehört zu"
+  organizations ||--|| integrations : "Verbindungen, invoice_source"
+  organizations ||--o{ customers : "Debitoren"
+  customers ||--o{ customer_ibans : "Bankverbindungen"
+  customers ||--o{ sepa_mandates : "Mandate"
+  customers ||--o{ invoices : "Rechnungen"
+  invoices ||--o{ payment_collections : "Einzüge"
+  sepa_mandates ||--o{ payment_collections : "verwendetes Mandat"
+  customer_ibans ||--o{ payment_collections : "verwendete IBAN"
+  customers ||--o{ mandate_requests : "digitale Anforderung"
+  sepa_mandates ||--o{ mandate_files : "Belege"
+  organizations ||--o{ legal_acceptances : "Zustimmungen"
+  legal_documents ||--o{ legal_acceptances : "Fassung"
+  plans ||--o{ organizations : "Tarif (plan_code, per Code)"
+  organizations {
+    char36 id PK
+    varchar name
+    varchar mandate_prefix
+    varchar plan_code
+    varchar subscription_status
+    tinyint professional_secrecy
+  }
+  integrations {
+    char36 tenant_id FK
+    varchar invoice_source
+    datetime invoice_source_changed_at
+    text lexoffice_api_key_encrypted
+    text stripe_secret_key_encrypted
+  }
+  invoices {
+    char36 id PK
+    char36 tenant_id FK
+    char36 lexoffice_invoice_id
+    decimal total_gross_amount
+    decimal open_amount
+    varchar lexoffice_status
+    varchar collection_status
+  }
+  payment_collections {
+    char36 id PK
+    char36 invoice_id FK
+    char36 mandate_id FK
+    int amount_cents
+    varchar stripe_status
+    varchar stripe_payment_intent_id
+  }
+  sepa_mandates {
+    char36 id PK
+    char36 customer_id FK
+    varchar mandate_reference
+    varchar status
+    varchar stripe_mandate_id
+  }

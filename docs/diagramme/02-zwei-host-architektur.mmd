@@ -1,0 +1,32 @@
+flowchart TB
+  subgraph IONOS[IONOS Webhosting]
+    W1[smart-einzug.de<br/>statisch]
+    W2[lexoffice-einzug.de<br/>lexware-einzug.de<br/>statisch]
+    SMTP[IONOS SMTP<br/>smtp.ionos.de:587]
+  end
+  subgraph HOST[Hostinger VPS KVM 8, Ubuntu 24.04, Coolify]
+    TR[Coolify-Proxy Traefik<br/>TLS, Let's Encrypt]
+    subgraph STACK[Docker-Stack smarteinzug]
+      CADDY[caddy<br/>app, admin, api, status]
+      PHP[php-fpm<br/>Anwendung]
+      SCH[scheduler]
+      WK[worker lexware x2,<br/>stripe, mail, maintenance]
+      MET[metrics]
+      RD[(redis<br/>Warteschlange)]
+    end
+    DB[(Coolify-MariaDB<br/>privat, kein Port)]
+    BK[Coolify-Backups]
+  end
+  OBJ[(Hetzner Object Storage<br/>Backup-Ziel laut Doku)]
+  GH[GitHub Actions<br/>deploy.yml]
+  TR --> CADDY --> PHP
+  PHP --> DB
+  PHP --> RD
+  SCH --> RD --> WK
+  WK --> DB
+  MET --> DB
+  PHP -- "SMTP TLS" --> SMTP
+  WK -- "SMTP TLS" --> SMTP
+  BK --> OBJ
+  GH -- "SFTP" --> IONOS
+  GH -- "SSH, rsync, deploy-runner" --> HOST

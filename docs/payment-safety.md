@@ -91,12 +91,18 @@ Ereignisse `charge.refunded` (Objekt Charge, Feld `amount_refunded` = Gesamtstan
 
 | Seite | Aktion | Formularfeld |
 |---|---|---|
-| `admin.php` | `platform_pause` (Plattform-Not-Stopp setzen und aufheben) | "Aktueller 2FA-Code" |
-| `admin.php` | `org_plan` (Tarif einer Firma ändern) | "Aktueller 2FA-Code" je Zeile |
+| `admin.php` | `platform_pause` nur beim **Aufheben** (`pause=0`); das Aktivieren des plattformweiten Not-Stopps ist seit 4.36 ohne Hürde | "Aktueller 2FA-Code" (nur sichtbar, wenn der Not-Stopp aktiv ist) |
 | `notstopp.php` | `resume` (Not-Stopp der Firma aufheben; zusätzlich Bestätigungshäkchen) | "Aktueller 2FA-Code" |
+| `collections.php` | `process_due_now` (Einreichung außerhalb des Fensters erzwingen) | "2FA-Code" |
+| `stripe-import.php` | `apply` (Zahlungen aus Stripe auf Rechnungen übernehmen) | "2FA-Code" |
+| `admin-system.php` | `job_retry_now`, `job_cancel`, `job_close`, `job_release` nur für geldbewegende Jobtypen (`QUEUE_MONEY_TYPES`: `collections_due`, `unclear_attempts`, `queue_type_is_money()` in `app/queue.php`); andere Jobtypen ohne Code | "2FA" (nur bei diesen Jobtypen sichtbar) |
 | `team.php` | `transfer_ownership` (zusätzlich Passwort) | "Aktueller 2FA-Code" |
 
-Die Aktivierung des Not-Stopps je Firma bleibt bewusst ohne Zweitbestätigung, damit im Notfall keine Hürde besteht.
+Die Aktivierung des Not-Stopps bleibt bewusst ohne Zweitbestätigung (je Firma und seit 4.36 auch plattformweit), damit im Notfall
+keine Hürde besteht. Der Tarifwechsel einer Firma (`org_plan`) und die Tarifpflege (`plan_update`) verlangen seit 4.36 keinen
+2FA-Code mehr (Beschluss des Vorstands vom 07.09.2026: Zweitbestätigung nur für Wichtiges); CSRF-Schutz, Superadmin-Pflicht und
+Audit bleiben. Vollständiger Geltungsbereich: `docs/entwickler/sicherheit.md`, Abschnitt „Geltungsbereich der Zweitbestätigung“;
+Prüfung: `php tools/totp-policy-check.php`.
 
 ## 5d. Bestandsrechnungen (Befund `app/sync.php`)
 

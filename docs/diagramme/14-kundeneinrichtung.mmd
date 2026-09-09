@@ -1,0 +1,10 @@
+flowchart LR
+  A[1 Registrierung<br/>E-Mail, Passwort, Firma, Mandatspräfix,<br/>AGB, AVV wenn veröffentlicht] --> B[2 E-Mail bestätigen<br/>Willkommensmail mit Link]
+  B --> C[3 Zwei-Faktor einrichten<br/>Authenticator, Recovery-Codes]
+  C --> D[4 Einrichtung: Firmendaten,<br/>Gläubiger-ID, SEPA-Regeln]
+  D --> E[5 Lexware Office verbinden<br/>API-Schlüssel, Verbindungstest]
+  E --> F[6 Stripe verbinden<br/>geheimer Schlüssel, Webhook-Secret]
+  F --> G[7 Synchronisation<br/>Kunden und offene Rechnungen]
+  G --> H[8 Mandate erfassen<br/>Portal, digital, Upload]
+  H --> I[9 Einzüge anlegen<br/>Sofort, Sammel, terminiert]
+  I --> J[10 Status verfolgen<br/>Webhooks, Klärung, Export]

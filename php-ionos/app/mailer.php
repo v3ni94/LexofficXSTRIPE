@@ -604,6 +604,49 @@ function mail_tpl_security(string $headline, array $lines, ?string $actionUrl = 
     return ['subject' => $subject, 'text' => $layout['text'], 'html' => $layout['html']];
 }
 
+/**
+ * Vorabankündigung (Pre-Notification) einer SEPA-Lastschrift an den Kunden der Firma.
+ * Inhalt: Rechnung, Betrag, Einzugstermin, Zahlungsempfänger, Mandatsreferenz, Gläubiger-Identifikationsnummer,
+ * Hinweis auf den Zahlungsdienstleister. Einzige Quelle der Vorlage; genutzt von _send_prenotification()
+ * (app/collections.php) sowie vom Musterversand (admin-system.php, bin/mail-check.php --vorabankuendigung).
+ */
+function mail_tpl_prenotification(array $org, array $invoice, array $mandate, int $amountCents, string $dueDate, ?string $footerNote = null): array
+{
+    $orgName = (string)($org['name'] ?? '');
+    $voucher = (string)($invoice['voucher_number'] ?? '');
+    $creditorId = trim((string)($org['creditor_identifier'] ?? ''));
+    $lines = [
+        'Sehr geehrte Damen und Herren, wir kündigen hiermit den Einzug folgender Lastschrift an:',
+        sprintf('Rechnung %s über %s, Fälligkeit/Einzug am %s.', $voucher, format_eur_cents($amountCents), format_date($dueDate)),
+        sprintf('Zahlungsempfänger: %s. Mandatsreferenz: %s.%s', $orgName, (string)($mandate['mandate_reference'] ?? ''),
+            $creditorId !== '' ? ' Gläubiger-Identifikationsnummer: ' . $creditorId . '.' : ''),
+        'Der Einzug erfolgt über den Zahlungsdienstleister Stripe. Bitte sorgen Sie für ausreichende Kontodeckung.',
+    ];
+    $note = $orgName;
+    if ($footerNote !== null && trim($footerNote) !== '') {
+        $note = trim($footerNote) . ' ' . $orgName;
+    }
+    $layout = mail_layout('Vorabankündigung SEPA-Lastschrift', $lines, null, $note);
+    return ['subject' => 'Vorabankündigung SEPA-Lastschrift ' . $voucher, 'text' => $layout['text'], 'html' => $layout['html']];
+}
+
+/**
+ * Musterdaten für den Testversand der Vorabankündigung (kein echter Kunde, keine echte Rechnung).
+ * Firmenname und Gläubiger-ID kommen aus der übergebenen Firma, damit der Betreiber die Mail so sieht,
+ * wie sie ein Kunde dieser Firma erhielte.
+ */
+function mail_prenotification_sample(array $org): array
+{
+    $due = (new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->modify('+14 days')->format('Y-m-d');
+    return [
+        'org' => ['name' => (string)($org['name'] ?? 'Muster GmbH'), 'creditor_identifier' => (string)($org['creditor_identifier'] ?? 'DE98ZZZ09999999999')],
+        'invoice' => ['voucher_number' => 'RE-MUSTER-0001'],
+        'mandate' => ['mandate_reference' => 'MUSTER-MANDAT-0001'],
+        'amount_cents' => 123456,
+        'due_date' => $due,
+    ];
+}
+
 /** Wiederherstellungscodes wurden neu erzeugt. */
 function mail_tpl_recovery_codes_regenerated(string $when): array
 {

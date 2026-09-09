@@ -134,6 +134,24 @@ if ($view): ?>
     <?php endif; ?>
 </div>
 
+<?php require_once __DIR__ . '/app/consent.php'; $consents = consent_list_for_org($tenantId); ?>
+<div class="card" id="zustimmungen">
+    <h2>Zustimmungen zu AGB und Datenschutzerklärung</h2>
+    <?php if (!$consents): ?>
+        <p class="hint">Für diese Firma liegt noch kein gespeicherter Zustimmungsnachweis vor (Registrierungen vor Version 4.34 haben AGB und Datenschutzerklärung im Formular bestätigt; der Zeitpunkt ist der der Registrierung).</p>
+    <?php else: ?>
+        <table class="table">
+            <thead><tr><th>Gegenstand</th><th>Fassung</th><th>Akzeptiert am</th><th>Durch</th><th>Weg</th></tr></thead>
+            <tbody>
+            <?php foreach ($consents as $c): ?>
+                <tr><td><?= e(consent_subject_label((string)$c['subject'])) ?></td><td><?= e((string)$c['version']) ?></td><td><?= e(format_datetime($c['accepted_at'])) ?> UTC</td><td><?= e((string)$c['user_email']) ?></td><td><?= e(consent_method_label((string)$c['method'])) ?></td></tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <p class="hint">Die Fassungen sind in der Dokumentation der Einwilligungstexte archiviert. Ihre persönlichen Zustimmungen sehen Sie auch unter Sicherheit.</p>
+    <?php endif; ?>
+</div>
+
 <div class="card">
     <h2>Weitere Dokumente</h2>
     <ul>

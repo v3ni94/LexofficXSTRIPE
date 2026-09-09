@@ -6,13 +6,23 @@
  *   php bin/billing-setup-stripe.php                  Trockenlauf: zeigt nur, was angelegt würde
  *   php bin/billing-setup-stripe.php --apply          legt an (Testschlüssel)
  *   php bin/billing-setup-stripe.php --apply --live-bestaetigt   legt an, auch mit Live-Schlüssel
- *   php bin/billing-setup-stripe.php --tarif=code     nur diesen Tarif
+ *   php bin/billing-setup-stripe.php --tarif=code     nur diesen Tarif (auch nicht oeffentliche Tarife)
+ *   php bin/billing-setup-stripe.php --tarif=code --preis-neu --apply
+ *                                                     Ersatzpreis nach einer Preisaenderung anlegen
  *
  * Wiederholbar: Vor jeder Anlage wird über den lookup_key (lexsepa_<tarifcode>) geprüft, ob der Preis
  * bereits existiert; dann wird er nur verwendet, nicht neu erzeugt. Beträge und Perioden stammen
  * ausschließlich aus der Tabelle "plans"; dieses Werkzeug erfindet keine Preise. Bestehende Stripe-Preise
  * werden nie geändert (in Stripe sind Betrag und Intervall eines Preises unveränderlich): Ein Tarif mit
  * anderem Betrag braucht einen neuen Preis, den bin/billing-check.php dann als Abweichung meldet.
+ *
+ * Preisaenderung (--preis-neu, nur zusammen mit --tarif): Weicht der hinterlegte Stripe-Preis in Betrag,
+ * Periode oder Waehrung vom Tarif ab, wird auf demselben Stripe-Produkt ein NEUER Preis mit dem Betrag aus
+ * der Tabelle "plans" angelegt, der lookup_key vom alten Preis uebernommen (transfer_lookup_key), der alte
+ * Preis archiviert und die neue Preis-ID in "plans" eingetragen. Wirkung: Neue Bestellungen laufen ab
+ * sofort ueber den neuen Betrag. LAUFENDE Abonnements behalten den alten Preis, bis sie in Stripe oder
+ * ueber einen Tarifwechsel in der Anwendung umgestellt werden; das ist eine kaufmaennische Entscheidung
+ * (Preisanpassung gegenueber Bestandskunden) und geschieht bewusst nicht automatisch.
  */
 declare(strict_types=1);
 require __DIR__ . '/_cli.php';
@@ -22,6 +32,11 @@ require_once dirname(__DIR__) . '/app/billing_setup.php';
 $opts = cli_opts($argv);
 $apply = isset($opts['apply']);
 $onlyPlan = isset($opts['tarif']) && is_string($opts['tarif']) ? (string)$opts['tarif'] : '';
+$replace = isset($opts['preis-neu']);
+if ($replace && $onlyPlan === '') {
+    fwrite(STDERR, "Abbruch: --preis-neu gilt immer genau einem Tarif und verlangt --tarif=CODE.\n");
+    exit(2);
+}
 $b = (array)config('billing', []);
 $mode = billing_key_mode((string)($b['stripe_secret_key'] ?? ''));
 
@@ -72,8 +87,26 @@ foreach ($plans as $plan) {
         billing_format_cents((int)$plan['price_cents']), (int)$plan['period_days'], $lookup);
 
     if (!empty($plan['stripe_price_id'])) {
-        printf("  bereits hinterlegt: %s (keine Anlage; Prüfung über bin/billing-check.php)\n\n", (string)$plan['stripe_price_id']);
+        if (!$replace) {
+            printf("  bereits hinterlegt: %s (keine Anlage; Prüfung über bin/billing-check.php)\n", (string)$plan['stripe_price_id']);
+            printf("  Betrag oder Periode geändert? Ersatzpreis anlegen mit --tarif=%s --preis-neu\n\n", $code);
+            continue;
+        }
+        if ($client === null) {
+            printf("  Trockenlauf ohne Schlüssel: Ersatzpreis %s wäre auf demselben Produkt anzulegen.\n\n",
+                billing_format_cents((int)$plan['price_cents']));
+            continue;
+        }
+        try {
+            $errors += billing_setup_replace_price($client, $plan, (string)$plan['stripe_price_id'], $apply, $created);
+        } catch (Throwable $e) {
+            $errors++;
+            printf("  FEHLER: %s\n\n", $e->getMessage());
+        }
         continue;
+    }
+    if ($replace) {
+        printf("  Kein Stripe-Preis hinterlegt: --preis-neu ist hier gegenstandslos, es wird regulär angelegt.\n");
     }
     if ($client === null) {
         $params = billing_setup_price_params($plan, '<neues Produkt>');
@@ -154,6 +187,7 @@ foreach ($plans as $plan) {
 if ($done === 0) {
     echo "Kein passender Tarif gefunden (buchbar heißt active=1 und public_visible=1).\n";
 }
+
 printf("%d Tarif(e) betrachtet, %d Stripe-Objekt(e) angelegt, %d Abweichung(en)/Fehler.\n", $done, $created, $errors);
 if (!$apply) {
     echo "Trockenlauf beendet. Für die Anlage: --apply (mit Live-Schlüssel zusätzlich --live-bestaetigt).\n";
@@ -173,4 +207,65 @@ function billing_setup_store_price_id(string $planCode, string $priceId): void
     audit_log(null, ['email' => 'cli:billing-setup-stripe'], 'admin_plan_changed', 'plan', $planCode,
         ['aenderungen' => ['stripe_price_id' => ['alt' => null, 'neu' => $priceId]]]);
     app_log('warning', 'Stripe-Preis-ID eines Tarifs gesetzt', ['plan' => $planCode, 'price_id' => $priceId, 'source' => 'bin/billing-setup-stripe.php']);
+}
+
+/**
+ * Ersatzpreis nach einer Preisaenderung anlegen (siehe Kopfkommentar, --preis-neu).
+ * Reihenfolge bewusst: neuen Preis MIT transfer_lookup_key anlegen, erst danach den alten archivieren und
+ * die Preis-ID eintragen. Bricht ein Schritt ab, bleibt der alte, funktionierende Preis eingetragen.
+ * @return int Anzahl Fehler
+ */
+function billing_setup_replace_price(object $client, array $plan, string $oldId, bool $apply, int &$created): int
+{
+    $code = (string)$plan['code'];
+    $old = (array)$client->call('GET', '/prices/' . rawurlencode($oldId), ['expand' => ['product']]);
+    $product = (array)($old['product'] ?? []);
+    $productId = (string)($product['id'] ?? '');
+    printf("  hinterlegt: %s (%s, Produkt \"%s\")\n", $oldId,
+        isset($old['unit_amount']) ? billing_format_cents((int)$old['unit_amount']) : 'ohne festen Betrag',
+        (string)($product['name'] ?? '?'));
+
+    if (!billing_setup_price_needs_replacement($old, $plan)) {
+        $check = billing_check_price($old, $plan);
+        foreach ($check['errors'] as $l) {
+            printf("  ABWEICHUNG: %s\n", $l);
+        }
+        printf("  Betrag, Periode und Währung stimmen bereits mit dem Tarif überein: kein Ersatzpreis nötig.\n\n");
+        return $check['errors'] ? 1 : 0;
+    }
+    if ($productId === '') {
+        printf("  FEHLER: Zum hinterlegten Preis ist kein Produkt lesbar. Preis-ID im Adminbereich prüfen.\n\n");
+        return 1;
+    }
+
+    $params = billing_setup_price_params($plan, $productId, true);
+    if (!$apply) {
+        printf("  würde Ersatzpreis anlegen: %s\n", json_encode($params, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        printf("  würde danach %s archivieren und die neue Preis-ID in plans eintragen.\n\n", $oldId);
+        return 0;
+    }
+
+    $new = (array)$client->call('POST', '/prices', $params);
+    $created++;
+    printf("  Ersatzpreis angelegt: %s (%s)\n", (string)$new['id'], billing_format_cents((int)$new['unit_amount']));
+    $post = billing_check_price($new, $plan);
+    if ($post['errors']) {
+        foreach ($post['errors'] as $l) {
+            printf("  ABWEICHUNG nach der Anlage: %s\n", $l);
+        }
+        printf("  Der alte Preis bleibt eingetragen und aktiv. Bitte den neuen Preis in Stripe prüfen.\n\n");
+        return count($post['errors']);
+    }
+    billing_setup_store_price_id($code, (string)$new['id']);
+    printf("  Preis-ID in plans eingetragen.\n");
+    try {
+        $client->call('POST', '/prices/' . rawurlencode($oldId), ['active' => 'false']);
+        printf("  Alter Preis %s archiviert.\n", $oldId);
+    } catch (Throwable $e) {
+        printf("  HINWEIS: Alter Preis %s konnte nicht archiviert werden (%s). Das ist unkritisch, er wird nicht mehr verwendet.\n",
+            $oldId, $e->getMessage());
+    }
+    printf("  WICHTIG: Neue Bestellungen laufen über den neuen Betrag. Laufende Abonnements behalten den alten\n");
+    printf("           Preis, bis sie in Stripe oder über einen Tarifwechsel umgestellt werden.\n\n");
+    return 0;
 }

@@ -55,13 +55,14 @@ function support_session_redeem(string $token): ?array
     }
     $pdo = db();
     $stmt = $pdo->prepare(
-        'SELECT s.*, u.is_superadmin, u.is_active, u.totp_enabled, u.session_epoch, u.email
+        'SELECT s.*, u.is_superadmin, u.platform_role, u.is_active, u.totp_enabled, u.session_epoch, u.email, s.admin_user_id AS user_id
          FROM support_sessions s JOIN users u ON u.id = s.admin_user_id
          WHERE s.token_hash = ? AND s.redeemed_at IS NULL AND s.ended_at IS NULL AND s.redeem_expires_at > NOW()'
     );
     $stmt->execute([token_hash($token)]);
     $row = $stmt->fetch();
-    if (!$row || (int)$row['is_superadmin'] !== 1 || (int)$row['is_active'] !== 1 || (int)$row['totp_enabled'] !== 1) {
+    require_once __DIR__ . '/platform.php';
+    if (!$row || (int)$row['is_active'] !== 1 || (int)$row['totp_enabled'] !== 1 || !platform_can($row, 'support.sessions')) {
         return null;
     }
     $upd = $pdo->prepare('UPDATE support_sessions SET redeemed_at = NOW(), token_hash = NULL WHERE id = ? AND redeemed_at IS NULL');

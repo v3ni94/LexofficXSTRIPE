@@ -1,0 +1,14 @@
+flowchart LR
+  SCH[scheduler<br/>bin/scheduler.php, alle 30 s] -->|Plan aus app/jobs.php| Q[(Redis-Warteschlange<br/>jobs, job_runs in MariaDB)]
+  Q --> L1[worker-lexware-1<br/>sync_run]
+  Q --> L2[worker-lexware-2<br/>sync_run]
+  Q --> S[worker-stripe<br/>collections_due, unclear_attempts]
+  Q --> M[worker-mail<br/>mail, alerts, mandate_reminders]
+  Q --> W[worker-maintenance<br/>monitor_collect, maintenance: Bereinigung,<br/>Nachsenden von Mails, audit_cleanup]
+  MET[metrics<br/>bin/host-metrics.php] --> DB[(MariaDB)]
+  L1 --> DB
+  S --> DB
+  M --> DB
+  W --> DB
+  W --> ST[shared/status/status.json<br/>Statusseite]
+  CR[cron.php<br/>nur IONOS-Webhosting,<br/>auf dem VPS nicht nötig] -.-> DB

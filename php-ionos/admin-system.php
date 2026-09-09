@@ -1,7 +1,7 @@
 <?php
 /**
  * Adminbereich "System": technische Betriebsübersicht (Auftrag II, Abschnitt 7).
- * Zugriff nur für Plattformadministratoren (require_superadmin). Ändern von Überwachungseinstellungen,
+ * Zugriff mit Berechtigung monitoring.view (require_platform, app/platform.php). Ändern von Überwachungseinstellungen,
  * Veröffentlichen von Störungsmeldungen und Testversand zusätzlich nur für konfigurierte Bearbeiter
  * (monitoring.editors) mit frischer 2FA-Bestätigung. Seitenaufrufe lösen keine neuen Prüfungen aus;
  * "Jetzt prüfen" führt ausschließlich die freigegebenen, begrenzten Diagnosen aus.
@@ -29,19 +29,22 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     }
 }
 
-$ctx = require_superadmin();
+$ctx = require_platform('monitoring.view');
 $cfg = monitor_config();
 $canEdit = monitor_can_edit($ctx);
 $available = monitor_available();
 
-$tabs = ['uebersicht' => 'Übersicht', 'dienste' => 'Dienste', 'aktivitaet' => 'Aktivität', 'jobs' => 'Jobs', 'server' => 'Server',
-         'verfuegbarkeit' => 'Verfügbarkeit', 'stoerungen' => 'Störungen und Wartung', 'versionen' => 'Versionen', 'dokumentation' => 'Dokumentation'];
+$tabs = ['uebersicht' => 'Übersicht', 'dienste' => 'Dienste', 'aktivitaet' => 'Aktivität', 'jobs' => 'Jobs', 'performance' => 'Synchronisation & Performance', 'server' => 'Server',
+         'verfuegbarkeit' => 'Verfügbarkeit', 'stoerungen' => 'Störungen und Wartung', 'versionen' => 'Versionen & Dokumentation'];
 $tabParam = is_string($_GET['tab'] ?? null) ? (string)$_GET['tab'] : '';
+if ($tabParam === 'dokumentation') { $tabParam = 'versionen'; } // alter Reiter, Links bleiben gueltig
 $tab = isset($tabs[$tabParam]) ? $tabParam : 'uebersicht';
 $windows = monitor_windows();
 $wParam = is_string($_GET['w'] ?? null) ? (string)$_GET['w'] : '';
 $w = isset($windows[$wParam]) ? $wParam : '1h';
 $d = is_scalar($_GET['d'] ?? null) && in_array((int)$_GET['d'], [7, 30, 90], true) ? (int)$_GET['d'] : 30;
+require_once __DIR__ . '/app/admin_period.php';
+$period = admin_period_from_request($_GET, '30t'); // Zeitraum fuer Verfuegbarkeit und Performance (4.43); Fenster w bleibt fuer Live-Ansichten
 $back = 'admin-system.php?tab=' . $tab . '&w=' . $w . '&d=' . $d;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -67,7 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Verlauf ergänzt.');
             $back = 'admin-system.php?tab=stoerungen#inc-' . (string)($_POST['incident_id'] ?? '');
         } elseif ($action === 'incident_publish' || $action === 'incident_unpublish') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            if ($action === 'incident_publish') {
+                // Veröffentlichen einer Störungs- oder Wartungsmeldung ("Wartung aktivieren") mit Zweitbestätigung;
+                // Zurückziehen ohne (Vorstand 07.09.2026, Zweitbestätigung nur für Wichtiges).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            }
             monitor_incident_publish($ctx, (string)($_POST['incident_id'] ?? ''), $action === 'incident_publish');
             if ($cfg['publish']) {
                 status_publish(monitor_public_snapshot());
@@ -75,12 +82,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', $action === 'incident_publish' ? 'Meldung veröffentlicht.' : 'Meldung zurückgezogen.');
             $back = 'admin-system.php?tab=stoerungen';
         } elseif ($action === 'publish_now') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Überträgt bereits öffentliche Kennzahlen; keine Zweitbestätigung (seit 4.36), CSRF und Audit bleiben.
             $r = status_publish(monitor_public_snapshot());
             audit_log(null, $ctx, 'status_published_manual', 'monitor', null, $r);
             flash_set('success', 'Statusdaten übertragen: ' . ($r ? http_build_query($r, '', ', ') : 'kein Ziel konfiguriert'));
         } elseif ($action === 'test_mail') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Diagnosefunktion ohne Wirkung auf Kunden oder Geld; keine Zweitbestätigung (seit 4.36).
             if ($cfg['test_mail_to'] === '') {
                 throw new RuntimeException('Keine Testadresse konfiguriert (monitoring.test_mail_to).');
             }
@@ -89,12 +96,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ok = mail_send($cfg['test_mail_to'], $tpl['subject'], $tpl['text'], $tpl['html']);
             audit_log(null, $ctx, 'monitor_test_mail', 'monitor', null, ['accepted' => $ok]);
             flash_set($ok ? 'success' : 'error', $ok ? 'Testnachricht an den Versandweg übergeben (Annahme, kein Zustellnachweis).' : 'Der Versandweg hat die Testnachricht nicht angenommen.');
+        } elseif ($action === 'test_prenotification') {
+            // Muster der Vorabankündigung an die eigene Adresse des angemeldeten Administrators (nie frei wählbar):
+            // Musterrechnung, Mustermandat, kein echter Kunde, kein Einzug. Diagnose ohne Geldwirkung, keine Zweitbestätigung.
+            require_once __DIR__ . '/app/mailer.php';
+            if (!mail_enabled()) {
+                throw new RuntimeException('Der Mailversand ist nicht aktiv (mail.enabled).');
+            }
+            $ownEmail = (string)($ctx['email'] ?? '');
+            if (!filter_var($ownEmail, FILTER_VALIDATE_EMAIL)) {
+                throw new RuntimeException('Für Ihr Konto ist keine gültige E-Mail-Adresse hinterlegt.');
+            }
+            $sampleOrg = ['name' => (string)($ctx['org_name'] ?? '') !== '' ? (string)$ctx['org_name'] : 'Muster GmbH',
+                          'creditor_identifier' => (string)($ctx['creditor_identifier'] ?? '')];
+            $d = mail_prenotification_sample($sampleOrg);
+            $tpl = mail_tpl_prenotification($d['org'], $d['invoice'], $d['mandate'], $d['amount_cents'], $d['due_date'],
+                'Musterversand aus dem Adminbereich vom ' . date('d.m.Y H:i') . ' Uhr, kein echter Einzug.');
+            $ok = mail_send($ownEmail, 'MUSTER ' . $tpl['subject'], $tpl['text'], $tpl['html']);
+            audit_log(null, $ctx, 'monitor_test_prenotification', 'monitor', null, ['accepted' => $ok, 'to' => mail_addr_ref($ownEmail)]);
+            flash_set($ok ? 'success' : 'error', $ok ? 'Muster der Vorabankündigung an Ihre Adresse übergeben (Annahme, kein Zustellnachweis).' : 'Der Versandweg hat das Muster nicht angenommen.');
         } elseif ($action === 'job_retry_now' || $action === 'job_cancel' || $action === 'job_close') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             if (!queue_available()) {
                 throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
             }
             $jobId = (string)($_POST['job_id'] ?? '');
+            $jobRow = queue_get($jobId);
+            if ($jobRow === null) {
+                throw new RuntimeException('Job nicht gefunden.');
+            }
+            if (queue_type_is_money($jobRow['type'] ?? null)) {
+                // Eingriff in einen geldbewegenden Job (Einreichung, Klärung): Zweitbestätigung (Geldfluss).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            }
             if ($action === 'job_retry_now') {
                 $r = queue_retry_now($jobId, $ctx);
                 flash_set($r['ok'] ? 'success' : 'error', $r['message']);
@@ -109,16 +142,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'job_release') {
             // Reservierung eines Jobs freigeben, dessen Worker sich nicht mehr meldet: zurueck in die
             // Warteschlange OHNE Fehlversuch. Nur bei abgelaufenem Heartbeat zulaessig (siehe queue.php).
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             if (!queue_available()) {
                 throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
+            }
+            $jobRow = queue_get((string)($_POST['job_id'] ?? ''));
+            if ($jobRow === null) {
+                throw new RuntimeException('Job nicht gefunden.');
+            }
+            if (queue_type_is_money($jobRow['type'] ?? null)) {
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             }
             $r = queue_release_one((string)($_POST['job_id'] ?? ''), $ctx);
             flash_set($r['ok'] ? 'success' : 'error', $r['message']);
             $back = 'admin-system.php?tab=jobs#wartend';
         } elseif ($action === 'sync_enqueue') {
             // Offenen Synchronisationslauf fortsetzen: Job einreihen (dedupe_key verhindert Doppeleintraege).
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Nur Jobtyp sync_run (Lesevorgang gegenüber Lexware Office, kein Geldfluss): keine Zweitbestätigung (seit 4.36).
             if (!queue_available()) {
                 throw new RuntimeException('Für die Warteschlange fehlt noch die Datenbankmigration 018.');
             }
@@ -132,14 +171,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ((int)$orgRow['sync_paused'] === 1) {
                 throw new RuntimeException('Für diese Firma ist die Synchronisation pausiert (Wartungsmodus).');
             }
-            $r = queue_push('sync_run', ['triggered_by' => 'admin'], ['tenant_id' => $orgId, 'user_id' => $ctx['user_id'] ?? null, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $orgId]);
+            $r = queue_push(invoice_source_sync_job_type($orgId), ['triggered_by' => 'admin'], ['tenant_id' => $orgId, 'user_id' => $ctx['user_id'] ?? null, 'priority' => 'normal', 'dedupe_key' => 'sync:' . $orgId]);
             audit_log($orgId, $ctx, 'sync_enqueued_admin', 'organization', $orgId, ['job_id' => $r['id'], 'created' => (bool)$r['created']]);
             flash_set('success', $r['created'] ? 'Fortsetzung der Synchronisation eingereiht.' : 'Für diese Firma ist bereits ein Synchronisationsjob aktiv.');
             $back = 'admin-system.php?tab=jobs#wartend';
         } elseif ($action === 'org_sync_pause' || $action === 'org_sync_resume') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             $orgId = (string)($_POST['org_id'] ?? '');
             $pause = $action === 'org_sync_pause';
+            if ($pause) {
+                // Wartungsmodus einer Firma aktivieren: Zweitbestätigung ("Wartung nur mit 2FA aktivieren");
+                // Fortsetzen ohne (Vorstand 07.09.2026).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            }
             $reason = trim((string)($_POST['reason'] ?? ''));
             if ($pause && $reason === '') {
                 throw new RuntimeException('Bitte einen Grund für die Wartung angeben.');
@@ -155,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', $pause ? 'Synchronisation für diese Firma pausiert.' : 'Synchronisation für diese Firma wieder freigegeben.');
             $back = 'admin-system.php?tab=jobs';
         } elseif ($action === 'org_queue_flag_on' || $action === 'org_queue_flag_off') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+            // Technische Betriebskonfiguration ohne Geldfluss; keine Zweitbestätigung (seit 4.36), Audit in tenant_feature_set().
             $orgId = (string)($_POST['org_id'] ?? '');
             $chk = db()->prepare('SELECT id FROM organizations WHERE id = ? AND deleted_at IS NULL');
             $chk->execute([$orgId]);
@@ -212,11 +255,8 @@ layout_header('System', $ctx);
     <?php if ($cfg['status_page_url'] !== ''): ?><a class="btn btn-secondary" href="<?= e($cfg['status_page_url']) ?>" target="_blank" rel="noopener">Öffentliche Statusseite</a><?php endif; ?>
 </div>
 
-<nav class="admin-subnav" aria-label="Systembereiche">
-    <?php foreach ($tabs as $k => $label): ?>
-        <a href="admin-system.php?tab=<?= e($k) ?>&amp;w=<?= e($w) ?>&amp;d=<?= $d ?>"<?= $k === $tab ? ' class="active" aria-current="page"' : '' ?>><?= e($label) ?></a><?= array_key_last($tabs) === $k ? '' : ' · ' ?>
-    <?php endforeach; ?>
-</nav>
+<?php $subnavItems = []; foreach ($tabs as $k => $label) { $subnavItems[$k] = ['label' => $label, 'href' => 'admin-system.php?tab=' . $k . '&w=' . $w . '&d=' . $d]; }
+echo layout_subnav($subnavItems, $tab, 'Systembereiche'); ?>
 
 <?php if ($tab === 'uebersicht' || $tab === 'aktivitaet'): ?>
 <div class="mon-windows">Zeitfenster:
@@ -361,8 +401,12 @@ layout_header('System', $ctx);
     </dl>
     <?php if ($canEdit && $cfg['test_mail_to'] !== ''): ?>
     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="test_mail">
-        <label for="tm_code">2FA-Code</label> <input type="text" id="tm_code" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code">
         <button type="submit" class="btn btn-secondary">Testnachricht senden</button></form>
+    <?php endif; ?>
+    <?php if ($canEdit): ?>
+    <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="test_prenotification">
+        <button type="submit" class="btn btn-secondary" title="Sendet die Vorabankündigung mit Musterrechnung und Mustermandat an Ihre eigene Adresse. Kein Kunde, kein Einzug.">Muster der Vorabankündigung an mich senden</button></form>
+    <p class="hint">Das Muster zeigt die E-Mail, die Kunden einer Firma bei aktiver Vorabankündigung beim Terminieren eines Einzugs erhalten (Betreff mit Vorsatz MUSTER, Musterrechnung RE-MUSTER-0001).</p>
     <?php endif; ?>
 </div>
 <?php endif; ?>
@@ -550,11 +594,12 @@ $queueGlobalOn = feature_enabled('queue');
                 <td class="hint"><?= e((string)($j['last_error'] ?: '-')) ?></td>
                 <td>
                     <?php if ($canEdit): ?>
+                    <?php $money = queue_type_is_money($j['type'] ?? null); ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_retry_now"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Jetzt ausführen</button></form>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_cancel"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Abbrechen</button></form>
                     <?php else: ?><span class="hint">Nur mit Bearbeitungsrecht</span><?php endif; ?>
                 </td>
@@ -582,7 +627,7 @@ $queueGlobalOn = feature_enabled('queue');
                 <td>
                     <?php if ($canEdit): ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_release"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if (queue_type_is_money($j['type'] ?? null)): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Reservierung freigeben</button></form>
                     <?php else: ?><span class="hint">Nur mit Bearbeitungsrecht</span><?php endif; ?>
                 </td>
@@ -610,7 +655,6 @@ $queueGlobalOn = feature_enabled('queue');
                 <td>
                     <?php if ($canEdit && $r['job'] === null && (int)($r['sync_paused'] ?? 0) !== 1): ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="sync_enqueue"><input type="hidden" name="org_id" value="<?= e((string)$r['tenant_id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
                         <button type="submit" class="btn btn-sm btn-secondary">Fortsetzung einreihen</button></form>
                     <?php elseif ($r['job'] !== null): ?><span class="hint">Job wartet bereits</span>
                     <?php elseif (!$canEdit): ?><span class="hint">Nur mit Bearbeitungsrecht</span>
@@ -654,14 +698,15 @@ $queueGlobalOn = feature_enabled('queue');
                 <td><?= e(mon_local($j['finished_at'])) ?></td>
                 <td>
                     <?php if ($canEdit): ?>
+                    <?php $money = queue_type_is_money($j['type'] ?? null); ?>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_retry_now"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Erneut versuchen</button></form>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_cancel"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-secondary">Abbrechen</button></form>
                     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="job_close"><input type="hidden" name="job_id" value="<?= e($j['id']) ?>">
-                        <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
+                        <?php if ($money): ?><input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA" title="Geldbewegender Job: Zweitbestätigung"><?php endif; ?>
                         <button type="submit" class="btn btn-sm btn-danger">Dauerhaft schließen</button></form>
                     <?php else: ?>
                         <span class="hint">Nur mit Bearbeitungsrecht (monitoring.editors)</span>
@@ -689,7 +734,6 @@ $queueGlobalOn = feature_enabled('queue');
                         <span class="hint">Nur mit Bearbeitungsrecht</span>
                     <?php elseif ($oPaused): ?>
                         <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="org_sync_resume"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
-                            <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
                             <button type="submit" class="btn btn-sm">Fortsetzen</button></form>
                     <?php else: ?>
                         <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="org_sync_pause"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
@@ -720,7 +764,6 @@ $queueGlobalOn = feature_enabled('queue');
                         <span class="hint">Durch globales Flag festgelegt</span>
                     <?php else: ?>
                         <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="<?= $tenantOn ? 'org_queue_flag_off' : 'org_queue_flag_on' ?>"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
-                            <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA">
                             <button type="submit" class="btn btn-sm <?= $tenantOn ? 'btn-secondary' : '' ?>"><?= $tenantOn ? 'Deaktivieren' : 'Aktivieren' ?></button></form>
                     <?php endif; ?>
                 </td>
@@ -734,6 +777,9 @@ $queueGlobalOn = feature_enabled('queue');
 </div>
 <?php endif; // queueOk ?>
 <?php endif; ?>
+
+<?php if ($tab === 'performance'): require_once __DIR__ . '/app/sync_perf.php'; require_once __DIR__ . '/app/invoice_source_switch.php';
+    echo admin_period_selector('admin-system.php?tab=performance', $period); echo sync_perf_render($period); endif; ?>
 
 <?php if ($tab === 'server'): ?>
 <?php
@@ -873,15 +919,16 @@ $srvStateLabels = ['ok' => 'System OK', 'degraded' => 'System Warning', 'fail' =
 <?php endif; ?>
 
 <?php if ($tab === 'verfuegbarkeit'): ?>
-<div class="mon-windows">Zeitraum:
-    <?php foreach ([7, 30, 90] as $dd): ?><a href="admin-system.php?tab=verfuegbarkeit&amp;d=<?= $dd ?>"<?= $dd === $d ? ' class="active"' : '' ?>><?= $dd ?> Tage</a><?php endforeach; ?>
-    <span class="hint">Zeitgewichtet aus periodischen Prüfungen (Gültigkeit je Messung begrenzt). Formel: Verfügbarkeit = T_ok / (T_ok + T_ausfall); Messabdeckung = (T_ok + T_ausfall) / Fenster. Unbekannte Zeit zählt weder als Erfolg noch als Ausfall. Wartung wird nicht herausgerechnet.</span>
-</div>
+<?= admin_period_selector('admin-system.php?tab=verfuegbarkeit', $period) ?>
+<p class="hint">Zeitgewichtet aus periodischen Prüfungen (Gültigkeit je Messung begrenzt). Formel: Verfügbarkeit = T_ok / (T_ok + T_ausfall); Messabdeckung = (T_ok + T_ausfall) / Fenster. Unbekannte Zeit zählt weder als Erfolg noch als Ausfall. Wartung wird nicht herausgerechnet.
+<?php if ($period['to']->getTimestamp() < $now - 86400): ?> Hinweis: Der Verlauf je Tag und die öffentliche Verfügbarkeit beziehen sich auf die letzten <?= (int)$period['days'] ?> Tage bis heute; die Tabellen darunter auf den gewählten Zeitraum.<?php endif; ?></p>
 <?php
 $firstRaw = $available ? mon_ts(db()->query('SELECT MIN(checked_at) FROM monitor_checks')->fetchColumn() ?: null) : null;
 $firstDay = $available ? (db()->query('SELECT MIN(day) FROM monitor_daily')->fetchColumn() ?: null) : null;
 $since = $firstRaw !== null ? mon_local(mon_utc($firstRaw)) : ($firstDay ? $firstDay : 'noch keine Daten');
-$winFrom = $now - $d * 86400;
+$d = max(1, min(366, (int)$period['days']));
+$winFrom = $period['from']->getTimestamp();
+$winTo = min($now, $period['to']->getTimestamp());
 ?>
 <div class="card">
     <h2>Nutzerfunktionen (öffentliche Komponenten)</h2>
@@ -890,7 +937,7 @@ $winFrom = $now - $d * 86400;
         <thead><tr><th>Funktion</th><th>Verfügbarkeit (beobachtet)</th><th>Messabdeckung</th><th>Verfügbare Stunden</th><th>Ausfall</th><th>Unbekannt</th><th>Verlauf <?= $d ?> Tage</th></tr></thead>
         <tbody>
         <?php foreach (monitor_public_components() as $key => $def): $a = monitor_public_availability($key, $d); $hist = monitor_public_daily_history($key, $d); $worst = null;
-            foreach ($def['internal'] as $ic) { $u = monitor_uptime($ic, $winFrom, $now); if ($worst === null || ($u['availability_pct'] ?? 101) < ($worst['availability_pct'] ?? 101)) { $worst = $u; } } ?>
+            foreach ($def['internal'] as $ic) { $u = monitor_uptime($ic, $winFrom, $winTo); if ($worst === null || ($u['availability_pct'] ?? 101) < ($worst['availability_pct'] ?? 101)) { $worst = $u; } } ?>
             <tr><td><?= e($def['name']) ?><div class="hint"><?= e(implode(', ', $def['internal'])) ?></div></td>
                 <td><?= $worst ? monitor_pct($worst['availability_pct']) : 'Keine Daten' ?><?php if ($worst && $worst['availability_pct'] !== null): ?><div class="hint">konservativ inkl. unbekannter Zeit: <?= e(number_format((float)$worst['conservative_min_pct'], 3, ',', '.')) ?> %</div><?php endif; ?></td>
                 <td><?= $worst ? e(number_format((float)$worst['coverage_pct'], 2, ',', '.')) . ' %' : '-' ?></td>
@@ -906,7 +953,7 @@ $winFrom = $now - $d * 86400;
     <div class="table-wrap"><table>
         <thead><tr><th>Komponente</th><th>Verfügbarkeit</th><th>Messabdeckung</th><th>Prüfungen / Fehlprüfungen</th><th>Letzte erkannte Störung</th><th>Seit letztem bestätigten Ausfall</th></tr></thead>
         <tbody>
-        <?php foreach (monitor_components_overview() as $c): if (in_array($c['key'], ['db_size', 'storage', 'sftp'], true)) continue; $u = monitor_uptime($c['key'], $winFrom, $now);
+        <?php foreach (monitor_components_overview() as $c): if (in_array($c['key'], ['db_size', 'storage', 'sftp'], true)) continue; $u = monitor_uptime($c['key'], $winFrom, $winTo);
             $lastFail = $available ? (db()->prepare("SELECT checked_at FROM monitor_checks WHERE component = ? AND status = 'fail' ORDER BY checked_at DESC LIMIT 1")) : null;
             $lf = null; if ($lastFail) { $lastFail->execute([$c['key']]); $lf = $lastFail->fetchColumn() ?: null; } ?>
             <tr><td><?= e($c['name']) ?></td><td><?= monitor_pct($u['availability_pct']) ?></td><td><?= e(number_format((float)$u['coverage_pct'], 2, ',', '.')) ?> %</td><td><?= (int)$u['checks'] ?> / <?= (int)$u['fails'] ?></td>
@@ -944,7 +991,7 @@ $winFrom = $now - $d * 86400;
                 <label>Interne Notiz <input type="text" name="internal_note" maxlength="2000"></label>
                 <button type="submit" class="btn btn-sm btn-secondary">Verlauf ergänzen</button></form>
             <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="<?= (int)$inc['published'] ? 'incident_unpublish' : 'incident_publish' ?>"><input type="hidden" name="incident_id" value="<?= e($inc['id']) ?>">
-                <label>2FA-Code <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code"></label>
+                <?php if (!(int)$inc['published']): ?><label>2FA-Code <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code"></label><?php endif; ?>
                 <button type="submit" class="btn btn-sm <?= (int)$inc['published'] ? 'btn-secondary' : '' ?>"><?= (int)$inc['published'] ? 'Zurückziehen' : 'Veröffentlichen' ?></button></form>
         </div>
         <?php endif; ?>
@@ -981,13 +1028,18 @@ $winFrom = $now - $d * 86400;
         <dt>Öffentliche Seite</dt><dd><?= $cfg['status_page_url'] !== '' ? '<a href="' . e($cfg['status_page_url']) . '" target="_blank" rel="noopener">' . e($cfg['status_page_url']) . '</a>' : 'Nicht konfiguriert (status_page_url)' ?></dd>
     </dl>
     <form method="post" class="inline-form"><?= csrf_field() ?><input type="hidden" name="action" value="publish_now">
-        <label>2FA-Code <input type="text" name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code"></label>
         <button type="submit" class="btn btn-secondary">Snapshot jetzt übertragen</button></form>
 </div>
 <?php endif; ?>
 <?php endif; ?>
 
-<?php if ($tab === 'versionen'): ?>
+<?php if ($tab === 'versionen'): require_once __DIR__ . '/app/docs.php';
+    // Dokumentationsstand je Softwareversion: aktueller Build plus Archiv
+    $docsRevByVersion = [];
+    $mCur = docs_manifest();
+    if (is_array($mCur)) { $docsRevByVersion[(string)$mCur['version']] = implode(', ', array_map(static fn($d) => (string)$d['code'] . ' ' . (string)$d['revision'], (array)$mCur['documents'])); }
+    foreach (docs_archive_list() as $ar) { $docsRevByVersion[$ar['version']] = $docsRevByVersion[$ar['version']] ?? implode(', ', array_map(static fn($d) => (string)$d['code'] . ' ' . (string)$d['revision'], $ar['documents'])); }
+?>
 <div class="card">
     <h2>Anwendungsversion</h2>
     <p><strong><?= e(product_name()) ?> <?= e(APP_VERSION) ?></strong><?= ($verBi = app_build_info()) ? ' · Build ' . e($verBi) : ' · Build nicht hinterlegt (app/build.txt wird vom Deployment geschrieben)' ?></p>
@@ -996,7 +1048,7 @@ $winFrom = $now - $d * 86400;
     <h2>Änderungsverlauf</h2>
     <?php foreach (app_changelog() as $rel): ?>
     <div class="mon-incident">
-        <h3 class="mon-h3">Version <?= e($rel['version']) ?> · <?= e($rel['date']) ?> · <?= e($rel['title']) ?></h3>
+        <h3 class="mon-h3">Version <?= e($rel['version']) ?> · <?= e($rel['date']) ?> · <?= e($rel['title']) ?><?php if (isset($docsRevByVersion[$rel['version']])): ?> <span class="hint">· Dokumentation: <?= e($docsRevByVersion[$rel['version']]) ?></span><?php endif; ?></h3>
         <ul class="mon-updates">
             <?php foreach ($rel['entries'] as $entry): ?>
             <li><?= admin_changelog_badge($entry['type']) ?> <?= e($entry['text']) ?></li>
@@ -1007,55 +1059,76 @@ $winFrom = $now - $d * 86400;
 </div>
 <?php endif; ?>
 
-<?php if ($tab === 'dokumentation'): ?>
-<div class="card">
-    <h2>Technische Dokumentation</h2>
-    <?php
-    $docsManifestPath = __DIR__ . '/app/docs-build/manifest.json';
-    $docsManifest = is_file($docsManifestPath) ? json_decode((string)@file_get_contents($docsManifestPath), true) : null;
-    ?>
+<?php if ($tab === 'versionen'): require_once __DIR__ . '/app/docs.php';
+    $docsManifest = docs_manifest(); $docsArchive = docs_archive_list(); $docsReaders = docs_technical_readers();
+    $docsVersionMismatch = is_array($docsManifest) && (string)($docsManifest['version'] ?? '') !== APP_VERSION;
+    $docsLabels = ['technical' => 'streng vertraulich, nur technische Leser', 'admin' => 'intern, Plattformadministratoren', 'customer' => 'kundenbezogen, freigegeben für angemeldete Kunden'];
+?>
+<div class="card" id="dokumentation">
+    <h2>Dokumentation</h2>
     <?php if (!is_array($docsManifest)): ?>
-        <p class="hint">Noch nicht erzeugt (tools/build-docs.py, wird beim Deployment ausgeführt).</p>
+        <p class="hint">Noch nicht erzeugt. Die Dokumentation entsteht im GitHub-Workflow (Job test, <code>tools/build-docs.py</code>) und wird mit dem Release ausgeliefert. Erzeugungsstatus und Neustart: Workflow-Lauf in GitHub Actions prüfen beziehungsweise erneut starten (Re-run); die Anwendung erzeugt keine PDFs zur Laufzeit.</p>
     <?php else: ?>
-        <dl class="kv">
-            <dt>Version</dt><dd><?= e((string)($docsManifest['version'] ?? '-')) ?></dd>
-            <dt>Erzeugt</dt><dd><?= e((string)($docsManifest['generated_at'] ?? '-')) ?> (UTC)</dd>
-            <dt>Commit</dt><dd><?= e((string)($docsManifest['commit'] ?? 'unbekannt')) ?></dd>
-        </dl>
-        <div class="table-wrap"><table>
-            <thead><tr><th>Datei</th><th>Dokument</th><th>Art</th><th>Größe</th><th>Download</th></tr></thead>
-            <tbody>
-            <?php if (empty($docsManifest['files'])): ?><tr><td colspan="5" class="hint">Keine Dateien im Manifest.</td></tr><?php endif; ?>
-            <?php foreach ((array)($docsManifest['files'] ?? []) as $df): ?>
-                <?php $dfTitle = trim((string)($df['title'] ?? '')); ?>
-                <tr>
-                    <td><?= e((string)($df['name'] ?? '-')) ?></td>
-                    <td><?= $dfTitle !== '' ? e($dfTitle) : '<span class="hint">erzeugte Dokumentation</span>' ?></td>
-                    <td><?= e(strtoupper((string)($df['kind'] ?? '-'))) ?></td>
-                    <td><?= isset($df['bytes']) ? monitor_bytes((int)$df['bytes']) : '-' ?></td>
-                    <td><a href="admin-doc.php?f=<?= e(rawurlencode((string)($df['name'] ?? ''))) ?>">Öffnen</a></td>
-                </tr>
-            <?php endforeach; ?>
-            </tbody></table></div>
-        <p class="hint">Zeilen mit Angabe unter „Dokument“ sind unveränderte Originalunterlagen (Anlagen aus
-        <code>docs/anlagen/</code>); die übrigen Dateien erzeugt <code>tools/build-docs.py</code> bei jedem
-        Deployment aus den Markdown-Quellen. Jeder Abruf wird im Audit protokolliert.</p>
+        <?php if ($docsVersionMismatch): ?>
+            <div class="flash flash-warn"><strong>Dokumentationsstand passt nicht zur laufenden Version.</strong> Manifest Version <?= e((string)$docsManifest['version']) ?>, Anwendung <?= e(APP_VERSION) ?>. Die Dokumentation gilt als veraltet, bis ein Deployment mit neuem Build erfolgt.</div>
+        <?php endif; ?>
+        <?php if (($docsManifest['status'] ?? '') !== 'complete'): ?>
+            <div class="flash flash-warn"><strong>Erzeugung unvollständig:</strong> <?= e(implode(', ', (array)($docsManifest['missing'] ?? []))) ?>. Letzter vollständiger Stand: siehe Archiv unten.</div>
+        <?php endif; ?>
+        <p class="hint">Softwarestand <?= e((string)$docsManifest['version']) ?> · Commit <?= e((string)$docsManifest['commit']) ?> · erzeugt <?= e(str_replace('T', ' ', substr((string)$docsManifest['generated_at'], 0, 16))) ?> UTC · Erzeugung <?= ($docsManifest['status'] ?? '') === 'complete' ? 'vollständig' : 'unvollständig' ?>.
+        Entwickler- und Unternehmensdokumentation sehen Plattformadministratoren; Mitarbeiter- und Supportrollen nicht.</p>
+        <div class="doc-cards">
+        <?php foreach ((array)$docsManifest['documents'] as $d): $allowed = docs_can_access($ctx, (string)$d['access']); ?>
+            <div class="doc-card">
+                <h3><?= e((string)$d['title']) ?></h3>
+                <dl class="doc-meta">
+                    <dt>Zielgruppe</dt><dd><?= e((string)$d['audience']) ?></dd>
+                    <dt>Vertraulichkeit</dt><dd><?= e((string)$d['classification']) ?><br><span class="hint"><?= e($docsLabels[$d['access']] ?? (string)$d['access']) ?></span></dd>
+                    <dt>Softwarestand</dt><dd>Version <?= e((string)$docsManifest['version']) ?>, Commit <?= e((string)$docsManifest['commit']) ?></dd>
+                    <dt>Revision</dt><dd><?= e((string)$d['revision']) ?> vom <?= e((string)$d['revision_date']) ?><?= !empty($d['revision_summary']) ? '<br><span class="hint">' . e((string)$d['revision_summary']) . '</span>' : '' ?></dd>
+                    <dt>Prüfdatum</dt><dd><?= e(substr((string)$docsManifest['generated_at'], 0, 10)) ?> (Erzeugung)<br><span class="hint">fachliche Prüfung: siehe Revisionsvermerk</span></dd>
+                    <dt>Status</dt><dd><?= $docsVersionMismatch ? '<span class="badge badge-danger">veraltet</span>' : '<span class="badge badge-success">aktuell</span>' ?></dd>
+                    <dt>Umfang</dt><dd><?= count((array)$d['chapters']) ?> Kapitel, PDF <?= monitor_bytes((int)($d['pdf_bytes'] ?? 0)) ?></dd>
+                </dl>
+                <?php if ($allowed): ?>
+                    <div class="doc-actions">
+                        <a class="btn" href="admin-doc.php/<?= e((string)$d['html']) ?>" target="_blank" rel="noopener">Lesen</a>
+                        <a class="btn btn-secondary" href="admin-doc.php?f=<?= e(rawurlencode((string)$d['pdf'])) ?>">Gesamt-PDF</a>
+                    </div>
+                    <details><summary>Kapitel als PDF (<?= count((array)$d['chapters']) ?>)</summary><ol>
+                    <?php foreach ((array)$d['chapters'] as $ch): ?><li><a href="admin-doc.php?f=<?= e(rawurlencode((string)$ch['pdf'])) ?>"><?= e((string)$ch['title']) ?></a></li><?php endforeach; ?>
+                    </ol></details>
+                <?php else: ?>
+                    <p class="doc-locked">Keine Leseberechtigung (<?= e((string)$d['access']) ?>).</p>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+        </div>
+        <h3>Anlagen und Schaubilder</h3>
+        <ul>
+        <?php foreach ((array)$docsManifest['files'] as $df): if (!empty($df['doc']) || !str_ends_with((string)$df['name'], '.pdf')) { continue; } ?>
+            <li><a href="admin-doc.php?f=<?= e(rawurlencode((string)$df['name'])) ?>"><?= e((string)($df['title'] ?: $df['name'])) ?></a> (<?= monitor_bytes((int)$df['bytes']) ?>)</li>
+        <?php endforeach; ?>
+            <li>Schaubilder (SVG und PNG) sind in den Dokumenten eingebettet; Quellen im Repository unter <code>docs/diagramme/</code>.</li>
+        </ul>
+        <p class="hint">Jeder Abruf wird im Protokoll erfasst. Kunden erhalten das Benutzerhandbuch in der Kundenanwendung unter „Handbuch“ (Hilfe-Center). Regeln, Erzeugung und Rechte: Entwicklerdokumentation, Kapitel Dokumentationssystem.</p>
     <?php endif; ?>
 </div>
-<div class="card">
-    <h2>Markdown-Dokumente im Repository</h2>
-    <p class="hint">Nur als Pfadangabe (im Repository unter docs/, nicht mit ausgeliefert und über den Webserver nicht erreichbar).</p>
-    <?php
-    $docsDir = dirname(APP_ROOT) . '/docs';
-    $mdFiles = is_dir($docsDir) ? array_map('basename', glob($docsDir . '/*.md') ?: []) : [];
-    sort($mdFiles);
-    ?>
-    <?php if (!$mdFiles): ?>
-        <p class="hint">Verzeichnis docs/ liegt außerhalb des ausgelieferten Codes und ist von hier aus nicht einsehbar.</p>
+<div class="card" id="dokumentation-archiv">
+    <h2>Historische Fassungen</h2>
+    <?php if (!$docsArchive): ?>
+        <p class="hint">Kein Archiv vorhanden. Das Deployment legt ab Version 4.32 jeden ausgelieferten Dokumentationsstand unter <code>shared/docs-archive/&lt;Version&gt;_&lt;Commit&gt;/</code> ab.</p>
     <?php else: ?>
-        <ul>
-            <?php foreach ($mdFiles as $mdF): ?><li><code>docs/<?= e($mdF) ?></code></li><?php endforeach; ?>
-        </ul>
+        <div class="table-wrap"><table><thead><tr><th>Stand</th><th>Version</th><th>Commit</th><th>Erzeugt (UTC)</th><th>Dokumente (Revision)</th><th>Abruf</th></tr></thead><tbody>
+        <?php foreach ($docsArchive as $ar): ?>
+            <tr><td><?= e($ar['id']) ?></td><td><?= e($ar['version']) ?></td><td><?= e($ar['commit']) ?></td><td><?= e($ar['generated_at']) ?></td>
+                <td><?= e(implode(', ', array_map(static fn($d) => (string)$d['code'] . ' ' . (string)$d['revision'], $ar['documents']))) ?></td>
+                <td><?php foreach ($ar['documents'] as $d): if (!docs_can_access($ctx, (string)$d['access'])) { continue; } ?>
+                    <a href="admin-doc.php?archiv=<?= e(rawurlencode($ar['id'])) ?>&amp;f=<?= e(rawurlencode((string)$d['pdf'])) ?>"><?= e((string)$d['code']) ?>.pdf</a>
+                <?php endforeach; ?></td></tr>
+        <?php endforeach; ?>
+        </tbody></table></div>
+        <p class="hint">Änderungsübersicht je Fassung: Revisionsvermerk im Manifest (Feld revision_summary) und Änderungsverlauf oben. Zurückgezogene Fassungen werden nicht gelöscht, sondern im Manifest gekennzeichnet.</p>
     <?php endif; ?>
 </div>
 <?php endif; ?>

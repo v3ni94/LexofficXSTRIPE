@@ -66,7 +66,7 @@ OUT="$(run nachtfenster)"
 echo "6) Statisch: das Fenster wird nur beim Einreichen von Einzuegen geprueft"
 STELLEN="$(grep -rn "collections_window_open(" "$ROOT/php-ionos/app" "$ROOT/php-ionos"/*.php 2>/dev/null \
     | grep -v "function collections_window_open" | grep -v "docs-build" | wc -l)"
-UNERWARTET="$(grep -rln "collections_window_open(" "$ROOT/php-ionos/app" 2>/dev/null \
+UNERWARTET="$(grep -rln "collections_window_open(" "$ROOT/php-ionos/app" 2>/dev/null | grep -v "docs-build" \
     | grep -vE "collections\.php$" | tr '\n' ' ')"
 [[ -z "$UNERWARTET" ]] && ok "Fensterpruefung nur in app/collections.php ($STELLEN Verwendungen), nicht in jobs.php/sync_state.php" \
     || bad "Fensterpruefung auch in: $UNERWARTET"
@@ -96,19 +96,58 @@ OUT="$(run offene-laeufe)"
 [[ "$(feld "$OUT" haengt_nachher)" == "nein" ]] && ok "mit wartendem Job nicht mehr haengend" || bad "haengt_nachher=$(feld "$OUT" haengt_nachher)"
 [[ "$(feld "$OUT" firma)" == "Testfirma" ]] && ok "Firmenname fuer die Anzeige verknuepft" || bad "firma=$(feld "$OUT" firma)"
 
+echo "10a) Vollabgleich entzerrt (4.39): feste Stunde je Firma innerhalb des Fensters"
+OUT="$(run verteilung)"
+[[ "$(feld "$OUT" stunden)" == "3,4,5,6" ]] && ok "40 Firmen verteilen sich auf die Stunden 3 bis 6" || bad "stunden=$(feld "$OUT" stunden), erwartet 3,4,5,6"
+[[ "$(feld "$OUT" stabil)" == "1" ]] && ok "Stunde je Firma ist stabil" || bad "stabil=$(feld "$OUT" stabil)"
+[[ "$(feld "$OUT" fenster1_alle_3)" == "1" ]] && ok "Fenster 1 Stunde = altes Verhalten (alle um 3 Uhr)" || bad "fenster1_alle_3=$(feld "$OUT" fenster1_alle_3)"
+[[ "$(feld "$OUT" umbruch_ok)" == "1" ]] && ok "Fenster ueber Mitternacht (22 bis 1 Uhr)" || bad "umbruch_ok=$(feld "$OUT" umbruch_ok)"
+[[ "$(feld "$OUT" full_fremde_stunde)" == "0" ]] && ok "kein Vollabgleich zur fremden Stunde" || bad "full_fremde_stunde=$(feld "$OUT" full_fremde_stunde)"
+[[ "$(feld "$OUT" full_eigene_stunde)" == "1" ]] && ok "Vollabgleich zur eigenen Stunde eingereiht" || bad "full_eigene_stunde=$(feld "$OUT" full_eigene_stunde)"
+
+echo "10b) Fairness zwischen Firmen (4.39): wartende Sync-Jobs anderer Firmen"
+OUT="$(run fairness)"
+[[ "$(feld "$OUT" leer)" == "0" ]] && ok "leere Warteschlange: 0" || bad "leer=$(feld "$OUT" leer)"
+[[ "$(feld "$OUT" nur_eigene)" == "0" ]] && ok "eigener Job zaehlt nicht" || bad "nur_eigene=$(feld "$OUT" nur_eigene)"
+[[ "$(feld "$OUT" fremde)" == "1" ]] && ok "fremder Sync-Job zaehlt (auch sevdesk-Typ)" || bad "fremde=$(feld "$OUT" fremde)"
+[[ "$(feld "$OUT" alle)" == "2" ]] && ok "ohne Ausschluss beide" || bad "alle=$(feld "$OUT" alle)"
+[[ "$(feld "$OUT" mail_zaehlt_nicht)" == "1" ]] && ok "andere Jobtypen zaehlen nicht" || bad "mail_zaehlt_nicht=$(feld "$OUT" mail_zaehlt_nicht)"
+[[ "$(feld "$OUT" spaeter_faellig)" == "0" ]] && ok "spaeter faellige Jobs zaehlen nicht" || bad "spaeter_faellig=$(feld "$OUT" spaeter_faellig)"
+[[ "$(feld "$OUT" fair_seconds)" == "120" ]] && ok "Vorgabe sync_fair_seconds 120" || bad "fair_seconds=$(feld "$OUT" fair_seconds)"
+grep -qF "queue_waiting_count([(string)\$job['type']], \$tenantId) > 0" "$ROOT/php-ionos/app/jobs.php" && grep -q "Faire Verteilung" "$ROOT/php-ionos/app/jobs.php" && ok "job_sync_run gibt den Worker per JobRequeueException ab" || bad "Fairness-Abgabe fehlt in job_sync_run"
+
+echo "10c) Reiter Synchronisation & Performance (4.39)"
+OUT="$(run performance)"
+[[ "$(feld "$OUT" leer_runs)" == "0" && "$(feld "$OUT" leer_wait)" == "keine" ]] && ok "ohne Daten: 0 Laeufe, Wartezeit keine Daten" || bad "leer_runs=$(feld "$OUT" leer_runs) leer_wait=$(feld "$OUT" leer_wait)"
+[[ "$(feld "$OUT" runs)" == "1" && "$(feld "$OUT" api_calls)" == "80" ]] && ok "ein Lauf mit 80 Aufrufen gezaehlt" || bad "runs=$(feld "$OUT" runs) api_calls=$(feld "$OUT" api_calls)"
+[[ "$(feld "$OUT" ms_je_aufruf)" == "500" ]] && ok "mittlere Antwortzeit 500 ms" || bad "ms_je_aufruf=$(feld "$OUT" ms_je_aufruf)"
+[[ "$(feld "$OUT" wait_avg)" == "2500" ]] && ok "Wartezeit in der Warteschlange aus job_runs" || bad "wait_avg=$(feld "$OUT" wait_avg)"
+[[ "$(feld "$OUT" detail)" == "20" && "$(feld "$OUT" cursor)" == "20480" ]] && ok "Detailabrufe und Cursorgroesse" || bad "detail=$(feld "$OUT" detail) cursor=$(feld "$OUT" cursor)"
+[[ "$(feld "$OUT" top)" == "1" && "$(feld "$OUT" top_firma)" == "Testfirma" ]] && ok "Firmenliste mit Namen" || bad "top=$(feld "$OUT" top) top_firma=$(feld "$OUT" top_firma)"
+[[ "$(feld "$OUT" html_ok)" == "1" ]] && ok "Reiter rendert Kennzahlen, Konfiguration und Firma" || bad "html_ok=$(feld "$OUT" html_ok)"
+[[ "$(feld "$OUT" plan)" == "1" ]] && ok "Vollabgleichsplan zaehlt die verbundene Firma" || bad "plan=$(feld "$OUT" plan)"
+grep -q "'performance' => 'Synchronisation & Performance'" "$ROOT/php-ionos/admin-system.php" && grep -q "sync_perf_render(\$period)" "$ROOT/php-ionos/admin-system.php" && ok "Reiter in admin-system.php eingebunden" || bad "Reiter fehlt"
+php -r 'require "'"$ROOT"'/php-ionos/app/bootstrap.php";' >/dev/null 2>&1; true
+grep -q "self::pageSize()" "$ROOT/php-ionos/app/lexoffice.php" && grep -q "min(250" "$ROOT/php-ionos/app/lexoffice.php" && ok "Seitengroesse konfigurierbar, hoechstens 250" || bad "pageSize"
+
 echo "10) Statisch: Kennzahlen der Uebersicht sind verlinkt, Aktionen abgesichert"
 MV="$ROOT/php-ionos/app/monitor_view.php"; AS="$ROOT/php-ionos/admin-system.php"
 [[ "$(grep -c 'stat-card stat-link' "$MV")" -eq 5 ]] && ok "alle fuenf Kennzahlen sind anklickbar" || bad "$(grep -c 'stat-card stat-link' "$MV") von 5 Kennzahlen verlinkt"
 for ANKER in 'id="aktive-jobs"' 'id="wartend"' 'id="laufende"'; do
     grep -q "$ANKER" "$AS" && ok "Zielabschnitt vorhanden: $ANKER" || bad "Zielabschnitt fehlt: $ANKER"
 done
-for AKTION in job_release sync_enqueue; do
-    if grep -q "action === '$AKTION'" "$AS" && sed -n "/action === '$AKTION'/,/elseif/p" "$AS" | grep -q require_recent_totp; then
-        ok "Aktion $AKTION verlangt einen 2FA-Code"
-    else
-        bad "Aktion $AKTION fehlt oder ohne 2FA-Pruefung"
-    fi
-done
+# Zweitbestaetigung seit 4.36 nur fuer Geldfluss (Vorstand 07.09.2026): job_release verlangt den 2FA-Code nur bei
+# geldbewegenden Jobtypen (queue_type_is_money), sync_enqueue (nur Jobtyp sync_run) gar nicht. Vollstaendige Regel: tools/totp-policy-check.php.
+if grep -q "action === 'job_release'" "$AS" && sed -n "/action === 'job_release'/,/elseif/p" "$AS" | grep -q "queue_type_is_money" && sed -n "/action === 'job_release'/,/elseif/p" "$AS" | grep -q require_recent_totp; then
+    ok "Aktion job_release verlangt den 2FA-Code nur bei geldbewegenden Jobtypen"
+else
+    bad "Aktion job_release fehlt oder ohne typabhaengige 2FA-Pruefung"
+fi
+if grep -q "action === 'sync_enqueue'" "$AS" && ! sed -n "/action === 'sync_enqueue'/,/elseif/p" "$AS" | grep -q require_recent_totp; then
+    ok "Aktion sync_enqueue ohne 2FA-Code (nur Jobtyp sync_run, kein Geldfluss)"
+else
+    bad "Aktion sync_enqueue fehlt oder verlangt noch einen 2FA-Code"
+fi
 grep -q 'name="action" value="job_release"' "$AS" && grep -q 'csrf_field()' "$AS" && ok "Formulare mit CSRF-Feld vorhanden" || bad "Formular oder CSRF-Feld fehlt"
 
 echo

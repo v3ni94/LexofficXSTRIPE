@@ -114,6 +114,37 @@ if [[ ! -f "$DEPLOY_DIR/.env" ]]; then
     exit 1
 fi
 
+# Downgrade-Schutz (Vorfall 08.09.2026): Ein "Re-run" eines alten GitHub-Laufs deployt dessen alten Commit und
+# setzte Produktion so von 4.44 auf 4.38 zurueck, mit gruenen Laeufen. Ein Release mit kleinerer APP_VERSION als
+# das aktive wird deshalb abgewiesen; gleiche oder hoehere Version ist erlaubt. Bewusster Ruecksprung: rollback.sh
+# oder SMARTEINZUG_ALLOW_DOWNGRADE=1 im Handbetrieb. Logik und Tests: scripts/lib/release-version.sh,
+# tools/release-version-check.sh.
+RELEASE_VERSION_LIB="$RELEASE_DIR/deploy/vps/scripts/lib/release-version.sh"
+if [[ ! -f "$RELEASE_VERSION_LIB" ]]; then
+    echo "::warning:: $RELEASE_VERSION_LIB fehlt im Release, kein Downgrade-Schutz fuer diesen Lauf."
+elif [[ -L "$CURRENT_LINK" ]]; then
+    # shellcheck source=lib/release-version.sh
+    source "$RELEASE_DIR/deploy/vps/scripts/lib/release-version.sh"
+    AKTIV_DIR="$(readlink -f "$CURRENT_LINK" || true)"
+    set +e
+    DOWNGRADE_MSG="$(release_downgrade_check "$RELEASE_DIR" "${AKTIV_DIR:-}")"
+    DOWNGRADE_RC=$?
+    set -e
+    if [[ "$DOWNGRADE_RC" -eq 1 ]]; then
+        if [[ "${SMARTEINZUG_ALLOW_DOWNGRADE:-0}" == "1" ]]; then
+            echo "::warning:: $DOWNGRADE_MSG Downgrade ausdruecklich erlaubt (SMARTEINZUG_ALLOW_DOWNGRADE=1)."
+        else
+            echo "::error:: $DOWNGRADE_MSG Kein Deployment: Das waere ein Downgrade."
+            echo "::error:: Ursache ist meist ein erneut gestarteter ALTER GitHub-Lauf (Re-run deployt dessen alten Commit)."
+            echo "::error:: Aktuellen Stand ausrollen: Workflow 'Run workflow' auf dem Branch oder neuer Push. Bewusster"
+            echo "::error:: Ruecksprung: rollback.sh, oder SMARTEINZUG_ALLOW_DOWNGRADE=1 im Handbetrieb."
+            exit 1
+        fi
+    else
+        echo "Versionspruefung: $DOWNGRADE_MSG"
+    fi
+fi
+
 # Einen Wert aus deploy/.env lesen, OHNE die Datei auszufuehren (kein "source": Geheimnisse gelangen
 # so nicht in die Umgebung dieses Skripts und seiner Kindprozesse; docker compose liest die Datei
 # selbst ueber --env-file).
@@ -540,7 +571,7 @@ deploy_step "cutover"
 # 90 s. Ein danach noch laufender Container wird mit kurzer Frist regulaer gestoppt, damit "up -d" nicht
 # erneut auf die alte Frist von 660 s wartet.
 LEGACY_STOP_IDS=()
-for svc in scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail worker-maintenance metrics; do
+for svc in scheduler worker-lexware-1 worker-lexware-2 worker-sevdesk worker-stripe worker-mail worker-maintenance metrics; do
     cid="$("${COMPOSE[@]}" ps -q "$svc" 2>/dev/null | head -n1 || true)"
     [[ -n "$cid" ]] || continue
     stopcfg="$(docker inspect --format '{{.Config.StopSignal}} {{.Config.StopTimeout}}' "$cid" 2>/dev/null || true)"
@@ -627,9 +658,11 @@ done
 # der Rollback verweigert, zeigt die Buchfuehrung weiterhin auf das zuletzt bekannte GUTE Release.
 echo "Verifiziere die Release-Bindung aller PHP-Container (working_dir = $RELEASES_DIR/$SHA) ..."
 RELEASE_BOUND_SERVICES=(php scheduler worker-lexware-1 worker-stripe worker-mail worker-maintenance metrics)
-if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx worker-lexware-2; then
-    RELEASE_BOUND_SERVICES+=(worker-lexware-2)
-fi
+for optional_svc in worker-lexware-2 worker-sevdesk; do
+    if "${COMPOSE[@]}" config --services 2>/dev/null | grep -qx "$optional_svc"; then
+        RELEASE_BOUND_SERVICES+=("$optional_svc")
+    fi
+done
 BINDING_ERRORS=0
 for svc in "${RELEASE_BOUND_SERVICES[@]}"; do
     # "|| true": ein fehlschlagender Compose-Aufruf darf das Skript hier (nach dem Cutover!) nicht still
@@ -720,6 +753,21 @@ deploy_step "bereinigung"
 # wuerde aber einen der fuenf aufbewahrten Plaetze belegen und damit die Rollbacktiefe verringern.
 # Ausgenommen sind das aktuelle und das vorherige Release sowie Verzeichnisse der letzten Stunde
 # (dort koennte gerade ein paralleler Lauf uebertragen).
+# Dokumentationsstand archivieren (Historie unabhaengig von GitHub-Artefakten): Kopie von app/docs-build nach
+# shared/docs-archive/<Version>_<sha>/, nur wenn ein Manifest vorliegt; die letzten 20 Staende bleiben erhalten.
+if [[ -f "$RELEASE_DIR/app/docs-build/manifest.json" ]]; then
+    DOCS_VERSION="$(sed -n "s/.*\"version\": *\"\([^\"]*\)\".*/\1/p" "$RELEASE_DIR/app/docs-build/manifest.json" | head -n1)"
+    DOCS_ARCHIVE="$BASE/shared/docs-archive/${DOCS_VERSION:-unbekannt}_${SHA:0:12}"
+    if [[ ! -d "$DOCS_ARCHIVE" ]]; then
+        install -d -m 750 "$BASE/shared/docs-archive"
+        cp -a "$RELEASE_DIR/app/docs-build" "$DOCS_ARCHIVE.tmp" && mv "$DOCS_ARCHIVE.tmp" "$DOCS_ARCHIVE" \
+            && echo "Dokumentationsstand archiviert: $DOCS_ARCHIVE" || echo "::warning:: Dokumentationsstand konnte nicht archiviert werden."
+        ls -1dt "$BASE"/shared/docs-archive/*/ 2>/dev/null | tail -n +21 | xargs -r rm -rf
+    fi
+else
+    echo "Hinweis: Release ohne Dokumentationsbuild (app/docs-build/manifest.json fehlt), kein Archiv."
+fi
+
 echo "Entferne Reste abgebrochener Laeufe (Releases ohne Vollstaendigkeitsnachweis) ..."
 while IFS= read -r rest; do
     [[ -n "$rest" ]] || continue

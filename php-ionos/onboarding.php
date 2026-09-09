@@ -2,9 +2,11 @@
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
 require_once __DIR__ . '/app/layout.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 
 $ctx = require_login();
 $tenantId = $ctx['org_id'];
+$isrc = invoice_source_current($tenantId);
 $pdo = db();
 
 $stmt = $pdo->prepare('SELECT * FROM integrations WHERE tenant_id = ?');
@@ -43,9 +45,11 @@ if (billing_enabled() && !(int)$ctx['billing_exempt']) {
     ];
 }
 $steps[] = [
-    'title' => 'Lexware Office verbinden',
-    'desc'  => 'API-Schlüssel aus Lexware Office (Einstellungen > Erweiterungen > Public API) hinterlegen. Die Anleitung finden Sie direkt in den Einstellungen.',
-    'done'  => (bool)(int)$integration['lexoffice_connected'],
+    'title' => $isrc['label'] . ' verbinden',
+    'desc'  => $isrc['code'] === 'sevdesk'
+        ? 'API-Token aus sevdesk (Einstellungen, Benutzer) hinterlegen. Die Anleitung finden Sie direkt in den Einstellungen.'
+        : 'API-Schlüssel aus Lexware Office (Einstellungen > Erweiterungen > Public API) hinterlegen. Die Anleitung finden Sie direkt in den Einstellungen.',
+    'done'  => $isrc['code'] === 'sevdesk' ? (bool)(int)($integration['sevdesk_connected'] ?? 0) : (bool)(int)$integration['lexoffice_connected'],
     'link'  => can_manage_settings($ctx) ? 'settings.php' : null,
 ];
 $steps[] = [
@@ -57,7 +61,7 @@ $steps[] = [
 $steps[] = [
     'title' => 'Verbindungen prüfen',
     'desc'  => 'Beide Verbindungen wurden gegen die jeweilige API getestet. Unter Einstellungen sehen Sie Konto, Modus und Zeitpunkt der letzten Prüfung.',
-    'done'  => !empty($integration['lexoffice_last_verified_at']) && !empty($integration['stripe_last_verified_at']),
+    'done'  => ($isrc['code'] === 'sevdesk' ? !empty($integration['sevdesk_last_verified_at'] ?? null) : !empty($integration['lexoffice_last_verified_at'])) && !empty($integration['stripe_last_verified_at']),
     'link'  => can_manage_settings($ctx) ? 'settings.php' : null,
 ];
 $steps[] = [
@@ -69,8 +73,8 @@ $steps[] = [
 ];
 $steps[] = [
     'title' => 'Einrichtung abgeschlossen',
-    'desc'  => 'Erste Synchronisation der offenen Rechnungen und Kunden aus Lexware Office. Danach steht das Dashboard mit Einzugsübersicht bereit.',
-    'done'  => !empty($integration['lexoffice_last_sync']),
+    'desc'  => 'Erste Synchronisation der offenen Rechnungen und Kunden aus ' . $isrc['label'] . '. Danach steht das Dashboard mit Einzugsübersicht bereit.',
+    'done'  => $isrc['code'] === 'sevdesk' ? !empty($integration['sevdesk_last_sync'] ?? null) : !empty($integration['lexoffice_last_sync']),
     'link'  => $needsSubscription ? null : 'invoices.php',
 ];
 
@@ -79,7 +83,7 @@ $allDone = array_reduce($steps, fn($carry, $s) => $carry && ($s['done'] || !empt
 layout_header('Einrichtung', $ctx);
 ?>
 <h1>Willkommen bei <?= e($ctx['org_name']) ?></h1>
-<p class="page-sub"><?= e(product_name()) ?> verbindet Ihre Rechnungs- und Kundendaten aus Lexware Office mit Ihrem
+<p class="page-sub"><?= e(product_name()) ?> verbindet Ihre Rechnungs- und Kundendaten aus <?= e($isrc['label']) ?> mit Ihrem
     Stripe-Konto für den SEPA-Lastschrifteinzug. Bitte die folgenden Schritte abschließen.</p>
 
 <?php $doneCount = count(array_filter($steps, fn($s) => $s['done'])); ?>

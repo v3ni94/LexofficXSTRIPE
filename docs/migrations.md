@@ -62,9 +62,14 @@ Manuelle Klärung (nur mit Datenbankzugriff, z. B. phpMyAdmin):
 1. Tatsächlichen Zustand prüfen: Welche Anweisungen der Datei sind wirksam (Tabellen, Spalten vorhanden)? Die Migrationsdateien sind wiederholbar formuliert (`IF NOT EXISTS`), Teiländerungen sind daher in der Regel unschädlich.
 2. Ursache beheben (Datei korrigieren und erneut hochladen, Rechte, Speicher).
 3. Freigabe ausdrücklich erteilen:
-   - Erneut ausführen: `DELETE FROM schema_migrations WHERE version = 'NNN';`
-   - Als erledigt übernehmen (wenn alle Anweisungen nachweislich wirksam sind): `UPDATE schema_migrations SET status = 'success', finished_at = NOW(), error_text = NULL WHERE version = 'NNN';`
-4. Danach den Workflow erneut laufen lassen (Re-run in GitHub Actions) oder das nächste Deployment abwarten.
+   - Erneut ausführen (seit 4.40 bevorzugt, ohne Datenbankkonsole): `php bin/migrate.php --retry=NNN` im php-Container. Setzt die
+     Zeile auf `pending` und spielt die korrigierte Datei im selben Aufruf vollständig erneut ein; protokolliert als
+     `migration_released` im Audit. Ein `DELETE` der Zeile ist dafür NICHT geeignet: Nach einem Teilerfolg (Spalten angelegt,
+     Datenanweisung fehlgeschlagen) gilt die Migration über ihren Marker sonst als eingespielt und die restlichen Anweisungen
+     laufen nie (Vorfall Migration 028, Läufe #73 und #74, 08.09.2026).
+   - Als erledigt übernehmen (nur wenn alle Anweisungen nachweislich wirksam sind): `UPDATE schema_migrations SET status = 'success', finished_at = NOW(), error_text = NULL WHERE version = 'NNN';`
+4. Danach den Workflow erneut laufen lassen (Re-run in GitHub Actions) oder das nächste Deployment abwarten. Die korrigierte
+   Datei muss dabei bereits ausgerollt sein; `--retry` im alten Release würde die fehlerhafte Datei erneut ausführen.
 
 Es gibt keine automatische Rückabwicklung. MariaDB führt DDL nicht transaktional aus; deshalb die Klärung am tatsächlichen Datenbankzustand.
 
@@ -99,8 +104,26 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env 
 docker exec -it "$DB_CONTAINER" mariadb -u"$DB_USER" -p "$DB_NAME"
 ```
 
-Danach gelten die oben beschriebenen Freigabewege (`DELETE` für erneutes Ausführen, `UPDATE ... 'success'`
-für nachweislich wirksame Änderungen). Erst dann den GitHub-Lauf erneut starten.
+Freigabe zur Wiederholung direkt im Container (kein Datenbankzugang nötig; das Release mit der korrigierten Datei muss
+unter `releases/` liegen, deshalb `RELEASE_SHA` auf dessen Kennung setzen, nicht auf `current`):
+
+```bash
+export RELEASE_SHA="<sha des korrigierten Release>"
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env run --rm --no-deps -T php php bin/migrate.php --retry=NNN
+```
+
+Danach den GitHub-Lauf des korrigierten Release erneut starten (Re-run); er findet keine Blockade mehr. Alternativ
+gelten die oben beschriebenen Wege (`UPDATE ... 'success'` für nachweislich wirksame Änderungen).
+
+### Vorfall Migration 028 (Läufe #73 und #74, 08.09.2026)
+
+Migration 028 schrieb `'v1 (Systemversion 2.0)'` in `integration_providers.api_version` (`VARCHAR(20)`): „Data too long“.
+Die vorangehenden `ALTER TABLE` waren wirksam, die Zeile stand auf `failed`, 4.39 blieb blockiert. Korrektur in 4.40:
+Wert `v1`, Erläuterung in `notes`. Lehre: Migrationen müssen gegen den echten Vorzustand laufen, nicht nur gegen das
+aktuelle `schema.sql` (dort greift `UPDATE ... WHERE status = 'planned'` keine Zeile). Dafür gibt es seit 4.40
+`bash tools/migrations-check.sh`: baut die Datenbank aus dem `schema.sql` des Commits vor der ältesten neuen
+Migrationsdatei, führt `bin/migrate.php` mit dem aktuellen Code aus, vergleicht die Struktur mit dem aktuellen
+`schema.sql` (Spalten, Typen, Indizes) und prüft Idempotenz sowie `--retry`. Läuft vor jedem Release mit Migration.
 
 ## Deployment-Ablauf
 

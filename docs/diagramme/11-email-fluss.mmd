@@ -1,0 +1,14 @@
+flowchart LR
+  EV[Ereignis: Registrierung, Vormerkung,<br/>Einladung, Passwort, Störung, Ticket] --> T[Vorlage mail_tpl_* in app/mailer.php<br/>Layout mail_layout, MHAG-CI, § 80 AktG]
+  T --> Q{features.queue?}
+  Q -- ja, VPS --> J[Job mail in Redis-Warteschlange]
+  J --> WM[worker-mail: job_mail]
+  Q -- nein, Webhosting --> DIR[mail_send direkt]
+  WM --> G[api_call_gate mail,<br/>Circuit Breaker]
+  DIR --> G
+  G --> SMTP[SMTP IONOS, TLS<br/>Absender kontakt@smart-einzug.de]
+  SMTP --> R[Empfänger]
+  G -- Fehler --> MK[Marker mail_last_fail_at,<br/>Statusseite E-Mail eingeschränkt]
+  G -- Erfolg --> OK[Marker mail_last_ok_at]
+  X[mail.enabled = false oder Fehler] --> P[Wartemarke mail_pending,<br/>welcome_mail_pending]
+  P --> W2[Wartung stündlich:<br/>interest_send_pending,<br/>auth_send_pending_welcome_mails] --> J

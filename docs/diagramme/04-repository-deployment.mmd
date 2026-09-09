@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph REPO[Repository v3ni94/LexofficXSTRIPE]
+    A[php-ionos/<br/>Anwendung, bin/, sql/]
+    B[deploy/vps/<br/>Compose, Caddyfile, Skripte]
+    C[websites/*<br/>statische Seiten]
+    D[tools/<br/>Prüfwerkzeuge, build-docs.py]
+    E[docs/<br/>Quellen der Dokumentation]
+    F[.github/workflows/deploy.yml]
+  end
+  F --> T[Job test:<br/>php -l, compose-check, site-qa,<br/>build-docs.py]
+  T --> WH[Job deploy-webhosting<br/>SFTP nach IONOS]
+  T --> VPS[Job deploy-vps<br/>rsync nach /opt/smarteinzug/releases/sha]
+  C --> WH
+  A --> VPS
+  B --> VPS
+  E --> T
+  VPS --> R[deploy-runner.sh: Sperre, Status]
+  R --> S[deploy.sh: Candidate-Prüfung,<br/>Migration, Cutover, Healthcheck]
+  S --> CUR[releases/current -> Release]

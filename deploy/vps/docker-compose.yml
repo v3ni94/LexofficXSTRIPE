@@ -248,6 +248,13 @@ services:
     <<: *php-background
     command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=lexware"]
 
+  # sevdesk-Worker (Version 4.38): eigener Pool sync_run_sevdesk, damit Drosselung und Stoerungen des einen
+  # Buchhaltungssystems die Synchronisation des anderen nicht ausbremsen. Ohne freigegebene sevdesk-Firmen bleibt
+  # er untaetig (der Scheduler reiht nichts ein).
+  worker-sevdesk:
+    <<: *php-background
+    command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=sevdesk"]
+
   worker-stripe:
     <<: *php-background
     command: ["php", "-d", "memory_limit=${WORKER_MEMORY_MB:-512}M", "bin/worker.php", "--pool=stripe"]

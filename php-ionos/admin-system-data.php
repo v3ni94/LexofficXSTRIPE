@@ -11,7 +11,8 @@ require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/monitor_view.php';
 
 $ctx = current_user();
-if (!$ctx || !(int)$ctx['is_superadmin'] || !(int)$ctx['totp_enabled']) {
+require_once __DIR__ . '/app/platform.php';
+if (!$ctx || !platform_can($ctx, 'monitoring.view')) {
     http_response_code(403);
     header('Content-Type: text/plain; charset=utf-8');
     exit('Kein Zugriff.');

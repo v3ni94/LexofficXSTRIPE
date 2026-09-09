@@ -18,7 +18,7 @@ signup_attribution_capture();
 // (Masterplan, Abschnitt 5). Erst mit gesetztem Schalter sevdesk_connect läuft die normale Konto- und Firmeneinrichtung.
 if (($_SESSION['signup']['integration'] ?? '') === 'sevdesk') {
     require_once __DIR__ . '/app/integration_state.php';
-    if (!integration_switch('sevdesk', 'connect')) {
+    if (!integration_connect_allowed('sevdesk', null)) { // im Pilot: Registrierung mit sevdesk erst nach dem Freigabetermin
         unset($_SESSION['signup']['integration']);
         redirect(marketing_url('/integrationen/sevdesk/#vormerken'));
     }
@@ -60,6 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_POST['mandate_prefix'] ?? ''
             );
             if ($error === null) {
+                if (!empty($_SESSION['org_id']) && !empty($_SESSION['user_id'])) {
+                    // Nachweis der Zustimmung zu AGB und Datenschutzerklaerung (Fassung, Zeitpunkt, Weg), Migration 025
+                    require_once __DIR__ . '/app/consent.php';
+                    consent_record_registration((string)$_SESSION['user_id'], (string)$_SESSION['org_id'], $email);
+                }
                 if ($avvDoc && !empty($_SESSION['org_id'])) {
                     // Nachweis des bei der Registrierung abgeschlossenen Auftragsverarbeitungsvertrags (Fassung, Zeit, Benutzer)
                     try {

@@ -1,0 +1,16 @@
+{
+  "01-produktuebersicht": "ebf85d0e73dc27cc64c2926e8d9e28fe6a4cdc1eb26df15f67422a995c22f689",
+  "02-zwei-host-architektur": "b9a2c68063d27bc4b7d781a9be3a566194357aee375c5b7c161eb7413aa4284e",
+  "03-domains-dienste": "5c3a76418ea22fc662d9d3f15da45ca4b06f464d8ae3eb934d79f0410728dd9d",
+  "04-repository-deployment": "714ccdc04e933e46437175c0c5c207f24ad852449de9a22b13a1566f4dcc4b64",
+  "05-datenbank-uebersicht": "0fc860ceabed45d13d6e42f6d2c2dc71695cf356323cfa91d17ba3b46602812f",
+  "06-er-kern": "8a2d048a9ea99c80d237ed167f325366afd6f8f7294f657745afbbbaf935faec",
+  "07-rechnungssynchronisation": "1998683aed6c7909923ce18c99290014964761fc1065905b46cfda144fa75457",
+  "08-lastschrift-zustaende": "943498e093da6e9e8a98422c9ad5f72f6003d0d17b76e54dda73a54646e42c46",
+  "09-webhook-verarbeitung": "30e41adce14a5fb403e838610bb5be001ad467e47352179bd944586e8b932353",
+  "10-hintergrundprozesse": "5bfe1bc371949cd3a58717f75052cfb35e13a5956bc81eff1785d05b8e83e068",
+  "11-email-fluss": "4acb8f2d8caf66cfc705b5efe96cfd02f893b715fe0a3bd682992fe8c3a821f2",
+  "12-github-deployment": "2a4f21d98a74d607b1dfabbe692ab7bffef8f104b3948200b268f5c3467a810e",
+  "13-backup-wiederherstellung": "02f785445c7eb382427232e3aac2d2184655fc0b588dab698525c5ef1822e5e2",
+  "14-kundeneinrichtung": "19bf2b5bafe82a880e633eeafce1064de14bb044bdfd8f095105395f5daa1fad"
+}

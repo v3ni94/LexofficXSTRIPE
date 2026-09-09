@@ -11,6 +11,9 @@
  *   frisch          Lauf mit Fortschritt vor einer Minute -> unberuehrt, kein neuer Job.
  *   mit-job         Verwaister Lauf, aber ein Job liegt in der Warteschlange -> unberuehrt, kein zweiter Job.
  *   pausiert        sync_paused = 1 -> nichts, auch nicht schliessen.
+ *   verteilung      Vollabgleich verteilt sich ueber das Fenster (4.39), Scheduler reiht ihn nur zur Stunde der Firma ein.
+ *   fairness        queue_waiting_count zaehlt nur faellige Sync-Jobs anderer Firmen (4.39).
+ *   performance     Kennzahlen des Reiters Synchronisation & Performance (4.39).
  *   nachtfenster    Waehrend das Einreichfenster fuer Einzuege GESCHLOSSEN ist (tagsueber, Fenster 23:00
  *                   bis 06:00): Die Synchronisation wird trotzdem eingereiht. Das Fenster gilt nur fuer
  *                   das Einreichen von Lastschriften, nicht fuer Abrufe und Statusabgleiche.
@@ -149,6 +152,83 @@ switch ($fall) {
         printf("laeufe=%d\nhaengt_vorher=%s\nhaengt_nachher=%s\nfirma=%s\n", count($vor),
             !empty($vor[0]['stuck']) ? 'ja' : 'nein', !empty($nach[0]['stuck']) ? 'ja' : 'nein',
             (string)($vor[0]['org_name'] ?? '-'));
+        break;
+
+    case 'verteilung':
+        // Vollabgleich entzerren (4.39): 40 Firmen verteilen sich ueber das Fenster, jede Firma behaelt ihre Stunde.
+        $cfg = jobs_config();
+        $cfg['full_sync_hour'] = 3;
+        $cfg['full_sync_window_hours'] = 4;
+        $hours = [];
+        for ($i = 0; $i < 40; $i++) {
+            $h = scheduler_full_sync_hour('org-' . $i, $cfg);
+            $hours[$h] = ($hours[$h] ?? 0) + 1;
+        }
+        ksort($hours);
+        $stable = scheduler_full_sync_hour('org-7', $cfg) === scheduler_full_sync_hour('org-7', $cfg);
+        $cfgOne = $cfg; $cfgOne['full_sync_window_hours'] = 1;
+        $allThree = true;
+        for ($i = 0; $i < 40; $i++) { if (scheduler_full_sync_hour('org-' . $i, $cfgOne) !== 3) { $allThree = false; } }
+        $cfgWrap = $cfg; $cfgWrap['full_sync_hour'] = 22; $cfgWrap['full_sync_window_hours'] = 4;
+        $wrapOk = true;
+        for ($i = 0; $i < 40; $i++) { $h = scheduler_full_sync_hour('org-' . $i, $cfgWrap); if (!in_array($h, [22, 23, 0, 1], true)) { $wrapOk = false; } }
+        // Scheduler reiht den Vollabgleich nur zur Stunde der Firma ein
+        seed_org($pdo, $tid);
+        $pdo->prepare("INSERT INTO sync_state (tenant_id, status, started_at, finished_at, updated_at) VALUES (?, 'idle', DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_SUB(NOW(), INTERVAL 1 HOUR))")->execute([$tid]);
+        $own = scheduler_full_sync_hour($tid, $cfg);
+        $other = ($own + 1) % 24;
+        $tsOwn = (new DateTimeImmutable('today'))->setTime($own, 5)->getTimestamp();
+        $tsOther = (new DateTimeImmutable('today'))->setTime($other, 5)->getTimestamp();
+        $qOther = scheduler_auto_sync($cfg, $tsOther);
+        $fullOther = count(array_filter($qOther, static fn(string $q): bool => str_starts_with($q, 'sync_run:full')));
+        $pdo->exec('DELETE FROM jobs');
+        $qOwn = scheduler_auto_sync($cfg, $tsOwn);
+        $fullOwn = count(array_filter($qOwn, static fn(string $q): bool => str_starts_with($q, 'sync_run:full')));
+        printf("stunden=%s\nstabil=%d\nfenster1_alle_3=%d\numbruch_ok=%d\nfull_fremde_stunde=%d\nfull_eigene_stunde=%d\n",
+            implode(',', array_keys($hours)), $stable ? 1 : 0, $allThree ? 1 : 0, $wrapOk ? 1 : 0, $fullOther, $fullOwn);
+        break;
+
+    case 'fairness':
+        // queue_waiting_count zaehlt faellige Sync-Jobs anderer Firmen; eigene Firma und spaetere Faelligkeit nicht.
+        seed_org($pdo, $tid);
+        $other = 'org-' . substr(bin2hex(random_bytes(4)), 0, 8);
+        seed_org($pdo, $other);
+        printf("leer=%d\n", queue_waiting_count(QUEUE_SYNC_TYPES, $tid));
+        queue_push('sync_run', [], ['tenant_id' => $tid, 'dedupe_key' => 'sync:' . $tid]);
+        printf("nur_eigene=%d\n", queue_waiting_count(QUEUE_SYNC_TYPES, $tid));
+        queue_push('sync_run_sevdesk', [], ['tenant_id' => $other, 'dedupe_key' => 'sync:' . $other]);
+        printf("fremde=%d\n", queue_waiting_count(QUEUE_SYNC_TYPES, $tid));
+        printf("alle=%d\n", queue_waiting_count(QUEUE_SYNC_TYPES));
+        queue_push('mail', [], ['dedupe_key' => 'mail:x']);
+        printf("mail_zaehlt_nicht=%d\n", queue_waiting_count(QUEUE_SYNC_TYPES, $tid));
+        $pdo->exec('DELETE FROM jobs');
+        queue_push('sync_run', [], ['tenant_id' => $other, 'dedupe_key' => 'sync:' . $other, 'available_at' => time() + 3600]);
+        printf("spaeter_faellig=%d\n", queue_waiting_count(QUEUE_SYNC_TYPES, $tid));
+        printf("fair_seconds=%d\n", jobs_config()['sync_fair_seconds']);
+        break;
+
+    case 'performance':
+        // Reiter Synchronisation & Performance: Funktionen laufen ohne Fehler, auch ohne Daten und mit Daten.
+        require_once $root . '/php-ionos/app/sync_perf.php';
+        require_once $root . '/php-ionos/app/invoice_source_switch.php';
+        require_once $root . '/php-ionos/app/layout.php';
+        require_once $root . '/php-ionos/app/admin_period.php';
+        $per = admin_period_from_request(['zeitraum' => '7t']);
+        seed_org($pdo, $tid);
+        $o = sync_perf_overview($per['from'], $per['to']);
+        printf("leer_runs=%d\nleer_wait=%s\n", $o['runs'], $o['queue_wait_avg_ms'] === null ? 'keine' : 'zahl');
+        $pdo->prepare("INSERT INTO sync_runs (id, tenant_id, triggered_by, status, started_at, finished_at, duration_ms, steps, checked, skipped, api_calls, api_ms, throttle_ms, detail_calls, contact_calls, api_ms_max, cursor_bytes_max)
+                       VALUES (?, ?, 'auto', 'success', DATE_SUB(NOW(), INTERVAL 10 MINUTE), DATE_SUB(NOW(), INTERVAL 8 MINUTE), 120000, 4, 50, 30, 80, 40000, 12000, 20, 10, 900, 20480)")
+            ->execute([uuid4(), $tid]);
+        $pdo->prepare("INSERT INTO job_runs (id, job_type, job_key, tenant_id, source, status, started_at, heartbeat_at, finished_at, queue_wait_ms) VALUES (?, 'queue:sync_run', 'j1', ?, 'worker', 'success', UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP(), 2500)")
+            ->execute([uuid4(), $tid]);
+        $o = sync_perf_overview($per['from'], $per['to']);
+        $top = sync_perf_top_tenants($per['from'], $per['to'], 5);
+        $html = sync_perf_render($per);
+        printf("runs=%d\napi_calls=%d\nms_je_aufruf=%d\nwait_avg=%d\ndetail=%d\ncursor=%d\ntop=%d\ntop_firma=%s\nhtml_ok=%d\nplan=%d\n",
+            $o['runs'], $o['api_calls'], (int)$o['avg_ms_per_call'], (int)$o['queue_wait_avg_ms'], $o['detail_calls'], $o['cursor_bytes_max'], count($top), (string)($top[0]['org_name'] ?? ''),
+            (str_contains($html, 'Synchronisation &amp; Performance') && str_contains($html, 'Wirksame Konfiguration') && str_contains($html, 'Testfirma')) ? 1 : 0,
+            array_sum(sync_perf_full_sync_plan(jobs_config())));
         break;
 
     default:

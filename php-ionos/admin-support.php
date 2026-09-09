@@ -17,14 +17,22 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     }
 }
 
-$ctx = require_superadmin();
+$ctx = require_platform('support.view');
 $pdo = db();
 support_sessions_expire();
+$canSessions = platform_can($ctx, 'support.sessions');
+$canTickets = platform_can($ctx, 'support.tickets');
+$canUsers = platform_can($ctx, 'support.users');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
     try {
+        $need = ['support_start' => 'support.sessions', 'support_revoke' => 'support.sessions', 'ticket_reply' => 'support.tickets',
+                 'ticket_close' => 'support.tickets', 'user_reset_2fa' => 'support.users', 'user_unlock' => 'support.users'];
+        if (isset($need[$action]) && !platform_can($ctx, $need[$action])) {
+            throw new RuntimeException('Ihre Rolle hat für diese Aktion keine Berechtigung (' . $need[$action] . ').');
+        }
         if ($action === 'support_start') {
             if (!empty($ctx['support_mode'])) {
                 throw new RuntimeException('Bitte zuerst die laufende Support-Sitzung beenden.');

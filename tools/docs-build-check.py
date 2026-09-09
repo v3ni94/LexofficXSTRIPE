@@ -1,127 +1,176 @@
 #!/usr/bin/env python3
-"""Prueft die erzeugte technische Dokumentation und ihre Auslieferung im Adminbereich.
+"""Prueft das Dokumentationssystem (Quellen, Diagramme, Datenwoerterbuch, Revisionen, erzeugte Ausgaben, Auslieferung).
 
-Hintergrund: php-ionos/admin-doc.php liefert AUSSCHLIESSLICH Dateien aus, die im Manifest
-(app/docs-build/manifest.json) gelistet sind (Allowlist, nur Plattformadministratoren, jeder Abruf im
-Audit). Kommen Kapitel oder Anlagen hinzu, muessen sie im Manifest stehen, einen ausgelieferten
-Dateityp haben und im Adminbereich verlinkt sein. Geprueft wird ohne Webserver und ohne Datenbank.
+Hintergrund: php-ionos/admin-doc.php und handbuch.php liefern AUSSCHLIESSLICH Dateien aus, die im Manifest
+(app/docs-build/manifest.json, Schema 2) gelistet sind, mit Zugriffsstufe je Datei. Kommen Kapitel oder Anlagen
+hinzu, muessen sie im Manifest stehen und einen ausgelieferten Dateityp haben. Geprueft wird ohne Webserver und
+ohne Datenbank; die Erzeugung selbst laeuft vorher mit python3 tools/build-docs.py.
 
 Aufruf: python3 tools/docs-build-check.py     Exit 0 = keine Fehler
 """
 from __future__ import annotations
 
-import json
-import os
-import re
-import sys
+import json, os, re, subprocess, sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DOCS = os.path.join(ROOT, 'docs')
 BUILD = os.path.join(ROOT, 'php-ionos', 'app', 'docs-build')
 errors: list[str] = []
 notes: list[str] = []
+SECRET_PATTERNS = [r'sk_live_[A-Za-z0-9]{8,}', r'rk_live_[A-Za-z0-9]{8,}', r'whsec_[A-Za-z0-9]{12,}', r'-----BEGIN (RSA |OPENSSH )?PRIVATE KEY-----\s*\n[A-Za-z0-9+/=]{40,}',
+                   r"'pass'\s*=>\s*'(?![<H])[^']{6,}'", r'AKIA[0-9A-Z]{16}']
 
 
 def fail(msg: str) -> None:
     errors.append(msg)
 
 
+def run(cmd: list[str]) -> int:
+    return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True).returncode
+
+
 def main() -> int:
     build_py = open(os.path.join(ROOT, 'tools', 'build-docs.py'), encoding='utf-8').read()
 
-    # 1. Jede in build-docs.py gelistete Quelle existiert
-    chapters = re.findall(r"^\s*\('([^']+\.md)',\s*[^)]*\),", build_py, re.M)
+    # 1) Kapitelquellen und Ueberschriften
+    chapters = re.findall(r"'([\w/.-]+\.md)'", build_py[build_py.index('DOCUMENTS = ['):build_py.index('ATTACHMENTS = [')])
     if not chapters:
         fail('In tools/build-docs.py wurden keine Kapitelquellen gefunden.')
     for rel in chapters:
-        if not os.path.isfile(os.path.join(DOCS, rel)):
+        p = os.path.join(DOCS, rel)
+        if not os.path.isfile(p):
             fail(f'Kapitelquelle fehlt: docs/{rel}')
+            continue
+        text = open(p, encoding='utf-8').read()
+        ohne_code = re.sub(r'```.*?```', '', text, flags=re.S)
+        h1 = re.findall(r'^# .+$', ohne_code, re.M)
+        if len(h1) != 1:
+            fail(f'docs/{rel}: genau eine Ueberschrift der Ebene 1 erwartet, gefunden {len(h1)}.')
+        for m in re.finditer(r'^@@diagramm\s+([\w-]+)', text, re.M):
+            if not os.path.isfile(os.path.join(DOCS, 'diagramme', m.group(1) + '.mmd')):
+                fail(f'docs/{rel} verweist auf unbekanntes Diagramm {m.group(1)}.')
+        for m in re.finditer(r'\]\((docs/[^)#\s]+|[a-z0-9_./-]+\.md)\)', text):
+            target = m.group(1)
+            cand = os.path.join(ROOT, target) if target.startswith('docs/') else os.path.join(os.path.dirname(p), target)
+            if not os.path.exists(cand):
+                notes.append(f'docs/{rel}: Verweis auf nicht vorhandene Datei {target}')
     notes.append(f'{len(chapters)} Kapitelquellen deklariert.')
 
-    # 2. Anlagen existieren und tragen einen Titel
+    # 2) Anlagen
     attachments = re.findall(r"^\s*\('(anlagen/[^']+)',\s*\n?\s*'([^']*)'\),", build_py, re.M)
     for rel, title in attachments:
         if not os.path.isfile(os.path.join(DOCS, rel)):
             fail(f'Anlage fehlt: docs/{rel}')
-        if title.strip() == '':
-            fail(f'Anlage ohne Titel: docs/{rel} (Titel erscheint im Adminbereich)')
+        if not title.strip():
+            fail(f'Anlage ohne Titel: docs/{rel}')
     notes.append(f'{len(attachments)} Anlage(n) deklariert.')
 
-    # 3. Manifest: gebaut, vollstaendig, jede Datei vorhanden, Typ ausgeliefert
+    # 3) Diagramme und Datenwoerterbuch aktuell
+    if run([sys.executable, 'tools/render-mermaid.py', '--check']) != 0:
+        fail('Diagramme nicht aktuell gerendert (python3 tools/render-mermaid.py).')
+    if run([sys.executable, 'tools/gen-datenwoerterbuch.py', '--check']) != 0:
+        fail('Datenwoerterbuch nicht aktuell (python3 tools/gen-datenwoerterbuch.py).')
+
+    # 4) Revisionen
+    rev_path = os.path.join(DOCS, 'dokumentationsregeln', 'revisionen.json')
+    try:
+        revisions = json.load(open(rev_path, encoding='utf-8'))
+    except (OSError, ValueError):
+        revisions = {}
+        fail('docs/dokumentationsregeln/revisionen.json fehlt oder ist ungueltig.')
+    codes = re.findall(r"'code':\s*'(\w+)'", build_py)
+    for code in codes:
+        r = revisions.get(code) or {}
+        if not re.match(r'^r\d+$', str(r.get('revision', ''))) or not re.match(r'^\d{2}\.\d{2}\.\d{4}$', str(r.get('date', ''))):
+            fail(f'Revision fuer Dokument {code} fehlt oder hat falsches Format (rN, TT.MM.JJJJ).')
+
+    # 5) Manifest und Ausgaben
     manifest_path = os.path.join(BUILD, 'manifest.json')
     if not os.path.isfile(manifest_path):
         fail('app/docs-build/manifest.json fehlt (python3 tools/build-docs.py ausfuehren).')
-        return report()
+        return finish()
     manifest = json.load(open(manifest_path, encoding='utf-8'))
-    files = manifest.get('files') or []
-    if not files:
-        fail('Manifest enthaelt keine Dateien.')
-    served = {'pdf', 'html', 'svg', 'json'}  # siehe admin-doc.php, $contentTypes
-    for entry in files:
-        name = str(entry.get('name', ''))
+    if manifest.get('schema') != 2:
+        fail('Manifest hat nicht Schema 2.')
+    if manifest.get('status') != 'complete':
+        fail(f"Erzeugung unvollstaendig: {manifest.get('missing')}")
+    version_php = open(os.path.join(ROOT, 'php-ionos', 'app', 'version.php'), encoding='utf-8').read()
+    app_version = re.search(r"const APP_VERSION = '([^']+)'", version_php).group(1)
+    if manifest.get('version') != app_version:
+        fail(f"Manifest-Version {manifest.get('version')} passt nicht zu APP_VERSION {app_version} (Build wiederholen).")
+    served = {'pdf', 'html', 'svg', 'json', 'png'}
+    for entry in manifest.get('files') or []:
+        name = entry.get('name', '')
         path = os.path.join(BUILD, name)
-        if not os.path.isfile(path):
+        if not name or not os.path.isfile(path):
             fail(f'Im Manifest gelistet, aber nicht vorhanden: {name}')
             continue
-        if int(entry.get('bytes', 0)) != os.path.getsize(path):
+        if os.path.getsize(path) != entry.get('bytes'):
             fail(f'Groesse im Manifest weicht ab: {name}')
-        if str(entry.get('kind', '')) not in served:
-            fail(f'Dateityp wird von admin-doc.php nicht ausgeliefert: {name} (kind={entry.get("kind")})')
-    notes.append(f'{len(files)} Dateien im Manifest, Version {manifest.get("version")}.')
+        if entry.get('kind') not in served:
+            fail(f'Dateityp wird nicht ausgeliefert: {name} (kind={entry.get("kind")})')
+        if entry.get('access') not in ('technical', 'admin', 'customer'):
+            fail(f'Unbekannte Zugriffsstufe fuer {name}: {entry.get("access")}')
+    docs_ = manifest.get('documents') or []
+    if len(docs_) != len(codes):
+        fail(f'Manifest enthaelt {len(docs_)} Dokumente, deklariert sind {len(codes)}.')
+    for d in docs_:
+        for key in ('html', 'pdf', 'search'):
+            if not os.path.isfile(os.path.join(BUILD, d.get(key, ''))):
+                fail(f"Dokument {d.get('code')}: Datei {key} fehlt.")
+        if os.path.getsize(os.path.join(BUILD, d['pdf'])) < 50_000:
+            fail(f"Dokument {d.get('code')}: PDF unerwartet klein.")
+        if d.get('access') == 'customer':
+            # Kundenfassung darf keine internen Betriebsdaten enthalten
+            html = open(os.path.join(BUILD, d['html']), encoding='utf-8').read()
+            for word in ('/opt/smarteinzug', 'shared/config.php', 'docker compose', '72.61.80.67', 'srv1960492'):
+                if word in html:
+                    fail(f'Kundenfassung enthaelt interne Betriebsangabe: {word}')
+        for ch in d.get('chapters') or []:
+            if not os.path.isfile(os.path.join(BUILD, ch.get('pdf', ''))):
+                fail(f"Dokument {d.get('code')}: Kapitel-PDF fehlt: {ch.get('pdf')}")
+    for base, title in [(os.path.basename(rel), t) for rel, t in attachments]:
+        if not any(f.get('name') == base for f in manifest.get('files') or []):
+            fail(f'Anlage nicht im Manifest: {base}')
 
-    # 4. Jede Anlage ist im Manifest, mit Titel, und die Datei ist unveraendert
-    for rel, title in attachments:
-        base = os.path.basename(rel)
-        entry = next((f for f in files if str(f.get('name')) == base), None)
-        if entry is None:
-            fail(f'Anlage nicht im Manifest: {base} (waere im Adminbereich nicht abrufbar)')
-            continue
-        if str(entry.get('title', '')).strip() != title.strip():
-            fail(f'Titel der Anlage im Manifest weicht ab: {base}')
-        src = os.path.join(DOCS, rel)
-        if os.path.isfile(src) and open(src, 'rb').read() != open(os.path.join(BUILD, base), 'rb').read():
-            fail(f'Ausgelieferte Anlage stimmt nicht mit docs/{rel} ueberein.')
+    # 6) Geheimnisse in Quellen und Ausgaben
+    scan_files = [os.path.join(DOCS, rel) for rel in chapters] + [os.path.join(BUILD, d['html']) for d in docs_ if os.path.isfile(os.path.join(BUILD, d.get('html', '')))]
+    for p in scan_files:
+        text = open(p, encoding='utf-8', errors='ignore').read()
+        for pat in SECRET_PATTERNS:
+            if re.search(pat, text):
+                fail(f'Moegliches Geheimnis in {os.path.relpath(p, ROOT)} (Muster {pat}).')
+        if '—' in text and p.startswith(DOCS):
+            notes.append(f'Gedankenstrich in {os.path.relpath(p, ROOT)} (Stilregel).')
 
-    # 5. Inhalt: jedes Kapitel steht mit seiner Ueberschrift im HTML und im PDF
-    html = open(os.path.join(BUILD, 'index.html'), encoding='utf-8').read()
-    pdf_path = os.path.join(BUILD, 'SmartEinzug_Technische_Dokumentation.pdf')
-    pdf_size = os.path.getsize(pdf_path) if os.path.isfile(pdf_path) else 0
-    if pdf_size < 50_000:
-        fail(f'Erzeugte PDF ist unerwartet klein ({pdf_size} Byte).')
-    for rel in chapters:
-        text = open(os.path.join(DOCS, rel), encoding='utf-8').read()
-        m = re.search(r'^#\s+(.+)$', text, re.M)
-        if not m:
-            fail(f'docs/{rel} hat keine Ueberschrift der Ebene 1 (Kapiteltitel fuer HTML und PDF).')
-            continue
-        title = m.group(1).strip()
-        if title.split('(')[0].strip()[:40] not in html:
-            fail(f'Kapitel fehlt im erzeugten HTML: {title}')
-
-    # 6. Adminbereich verlinkt das Manifest und zeigt den Titel
+    # 7) Auslieferung im Adminbereich und Kundenanwendung
     admin = open(os.path.join(ROOT, 'php-ionos', 'admin-system.php'), encoding='utf-8').read()
-    if 'admin-doc.php?f=' not in admin:
-        fail('admin-system.php verlinkt keine Dokumentationsdateien (admin-doc.php?f=).')
-    if "'title'" not in admin and '"title"' not in admin:
-        fail('admin-system.php zeigt den Titel der Anlagen nicht an.')
-    doc = open(os.path.join(ROOT, 'php-ionos', 'admin-doc.php'), encoding='utf-8').read()
-    if 'require_superadmin' not in doc:
-        fail('admin-doc.php erzwingt keinen Superadmin (Auslieferung interner Unterlagen).')
-    if 'audit_log' not in doc:
-        fail('admin-doc.php protokolliert den Abruf nicht im Audit.')
-    for guard in ('manifest', 'realpath'):
-        if guard not in doc:
-            fail(f'admin-doc.php ohne erkennbare Absicherung: {guard} fehlt.')
+    for needle in ('admin-doc.php/', 'docs_can_access', 'docs_archive_list', 'revision'):
+        if needle not in admin:
+            fail(f'admin-system.php: Baustein fehlt: {needle}')
+    for f, needles in (('admin-doc.php', ('require_platform', 'docs_serve')), ('handbuch.php', ('require_login', "'customer'")),
+                       ('app/docs.php', ('technical_readers', 'realpath'))):
+        text = open(os.path.join(ROOT, 'php-ionos', f), encoding='utf-8').read()
+        for n in needles:
+            if n not in text:
+                fail(f'{f}: Baustein fehlt: {n}')
+    if run(['php', 'tools/docs-access-check.php']) != 0:
+        fail('Zugriffsregeln der Dokumentation verletzt (php tools/docs-access-check.php).')
+    deploy = open(os.path.join(ROOT, 'deploy', 'vps', 'scripts', 'deploy.sh'), encoding='utf-8').read()
+    if 'docs-archive' not in deploy:
+        fail('deploy.sh archiviert den Dokumentationsstand nicht (shared/docs-archive).')
+    claude = open(os.path.join(ROOT, 'CLAUDE.md'), encoding='utf-8').read()
+    if 'Dokumentationspflicht' not in claude:
+        fail('CLAUDE.md: Abschnitt Dokumentationspflicht fehlt.')
+    return finish()
 
-    return report()
 
-
-def report() -> int:
+def finish() -> int:
     for n in notes:
-        print(f'  {n}')
+        print('  ' + n)
     for e in errors:
-        print(f'FEHLER: {e}')
-    print(f'\n{len(errors)} Fehler')
+        print('FEHLER: ' + e)
+    print(f'{len(errors)} Fehler')
     return 1 if errors else 0
 
 

@@ -165,7 +165,7 @@ layout_header('Einladung annehmen');
                 <label for="password2">Passwort wiederholen</label>
                 <input type="password" id="password2" name="password2" required minlength="10" autocomplete="new-password">
                 <p class="hint">Im nächsten Schritt richten Sie die verpflichtende Zwei-Faktor-Authentifizierung ein.
-                    Lexware Office und Stripe müssen Sie nicht erneut verbinden.</p>
+                    Buchhaltungssystem und Stripe müssen Sie nicht erneut verbinden.</p>
             <?php endif; ?>
             <button type="submit" class="btn">Beitreten</button>
         </form>

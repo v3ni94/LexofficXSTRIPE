@@ -27,7 +27,7 @@ COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-f
 if [[ "${DEPLOY_ENV:-prod}" == "staging" ]]; then
     COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env)
 fi
-HINTERGRUND=(scheduler worker-lexware-1 worker-lexware-2 worker-stripe worker-mail worker-maintenance metrics)
+HINTERGRUND=(scheduler worker-lexware-1 worker-lexware-2 worker-sevdesk worker-stripe worker-mail worker-maintenance metrics)
 
 # Dieselbe Sperre wie deploy-runner.sh/rollback.sh: Laeuft gerade ein Deployment, wuerde dieses Skript Container
 # mit dem ALTEN Release neu erzeugen, waehrend deploy.sh den Cutover macht (Vorfall 07.09.2026, Lauf #63:

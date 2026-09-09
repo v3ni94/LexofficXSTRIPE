@@ -12,7 +12,9 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/collections.php';
 require_once __DIR__ . '/app/alerts.php';
 require_once __DIR__ . '/app/admin_charts.php';
+require_once __DIR__ . '/app/admin_period.php';
 require_once __DIR__ . '/app/interest.php';
+require_once __DIR__ . '/app/invoice_source_switch.php';
 require_once __DIR__ . '/app/mailer.php';
 require_once __DIR__ . '/app/integration_state.php';
 
@@ -26,11 +28,15 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     }
 }
 
-$ctx = require_superadmin();
+$ctx = require_platform('admin.view');
 $pdo = db();
+$can = static fn(string $p): bool => platform_can($ctx, $p);
 
-// CSV-Export der Vormerkungen (nur Superadmin, protokolliert, Zellen gegen Formelausführung geschützt).
+// CSV-Export der Vormerkungen (Berechtigung interest.view, protokolliert, Zellen gegen Formelausführung geschützt).
 if (($_GET['export'] ?? '') === 'vormerkungen') {
+    if (!$can('interest.view')) {
+        forbidden_page($ctx, 'Für den Export der Vormerkungen fehlt Ihrer Rolle die Berechtigung (interest.view).');
+    }
     $filter = ['status' => (string)($_GET['vstatus'] ?? ''), 'source' => (string)($_GET['vsource'] ?? ''), 'q' => (string)($_GET['vq'] ?? '')];
     $rows = interest_search($filter, 5000);
     audit_log(null, $ctx, 'interest_exported', 'interest_registration', null, ['rows' => count($rows), 'filter' => array_filter($filter)]);
@@ -98,16 +104,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
     try {
+        $need = ['platform_pause' => 'notstopp.platform', 'plan_update' => 'plans.manage', 'org_plan' => 'companies.plan', 'org_lock_reset' => 'companies.manage',
+                 'interest_unsubscribe' => 'interest.manage', 'interest_delete' => 'interest.manage', 'interest_block' => 'interest.manage', 'interest_invite' => 'interest.manage'];
+        if (isset($need[$action]) && !$can($need[$action])) {
+            throw new RuntimeException('Ihre Rolle hat für diese Aktion keine Berechtigung (' . $need[$action] . ').');
+        }
         if ($action === 'platform_pause') {
-            // Zweitbestätigung: aktueller 2FA-Code des Administrators
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             $pause = ($_POST['pause'] ?? '') === '1';
+            if (!$pause) {
+                // Not-Stopp AUFHEBEN gibt den Geldfluss wieder frei: Zweitbestätigung per 2FA-Code. Das Aktivieren
+                // bleibt bewusst ohne Hürde, damit im Notfall keine Sekunde verloren geht (wie notstopp.php je Firma).
+                require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            }
             platform_setting_set('collections_paused', $pause ? '1' : '0');
             audit_log(null, $ctx, $pause ? 'collections_paused' : 'collections_resumed', 'platform', 'collections_paused', ['scope' => 'platform']);
             flash_set('success', $pause ? 'Plattformweiter Not-Stopp aktiv: keine neuen Einzüge für alle Firmen.' : 'Plattformweiter Not-Stopp aufgehoben.');
         } elseif ($action === 'plan_update') {
-            // Zweitbestätigung: aktueller 2FA-Code des Administrators (Preise und Limits sind geldrelevant)
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            // Tarifpflege ohne Zweitbestätigung (Vorstand 07.09.2026: "nicht für Unwichtiges wie Tarife ändern");
+            // CSRF, Superadmin-Pflicht und Audit bleiben. Abgerechnet wird ohnehin der Stripe-Preis.
             $code = (string)($_POST['plan_code'] ?? '');
             $stmt = $pdo->prepare('SELECT * FROM plans WHERE code = ?');
             $stmt->execute([$code]);
@@ -116,6 +130,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Tarif nicht gefunden.');
             }
             $new = plan_input_from_post($_POST, $old);
+            // Geldschutz (seit 4.46): In Stripe sind Betrag und Intervall eines Preises unveraenderlich. Wird der
+            // Tarifbetrag oder die Periode geaendert, waehrend dieselbe Stripe-Preis-ID stehen bleibt, zeigt die
+            // Anwendung den neuen Betrag an, Stripe berechnet aber weiter den alten, auch bei NEUEN Bestellungen.
+            // Deshalb wird eine solche Aenderung nicht gespeichert. Zwei zulaessige Wege: Ersatzpreis anlegen
+            // (bin/billing-setup-stripe.php --tarif=CODE --preis-neu --apply) oder die Preis-ID hier leeren, dann
+            // ist der Tarif nicht mehr buchbar, bis ein passender Preis eingetragen ist.
+            $preisIdBleibt = (string)($new['stripe_price_id'] ?? '') !== ''
+                && (string)($new['stripe_price_id'] ?? '') === (string)($old['stripe_price_id'] ?? '');
+            $betragOderPeriodeNeu = (int)$new['price_cents'] !== (int)$old['price_cents']
+                || (int)$new['period_days'] !== (int)$old['period_days'];
+            if ($preisIdBleibt && $betragOderPeriodeNeu) {
+                throw new RuntimeException(
+                    'Betrag oder Periode geändert, aber die Stripe-Preis-ID bleibt gleich (' . $old['stripe_price_id'] . '). '
+                    . 'Stripe-Preise sind unveränderlich; Kunden würden weiter den alten Betrag zahlen. Entweder auf dem '
+                    . 'Server einen Ersatzpreis anlegen (bin/billing-setup-stripe.php --tarif=' . $code . ' --preis-neu --apply) '
+                    . 'und danach hier speichern, oder die Preis-ID in diesem Formular leeren (der Tarif ist dann nicht buchbar).'
+                );
+            }
             $pdo->prepare(
                 'UPDATE plans SET name = ?, price_cents = ?, period_days = ?, max_collections_per_period = ?, max_users = ?,
                         unlimited_users = ?, user_invites_enabled = ?, active = ?, public_visible = ?, sort_order = ?, stripe_price_id = ?
@@ -138,8 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 : 'Tarif ' . $code . ': keine Änderungen.');
 
         } elseif ($action === 'org_plan') {
-            // Zweitbestätigung: aktueller 2FA-Code des Administrators
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            // Tarifzuordnung einer Firma ohne Zweitbestätigung (seit 4.36); Audit bleibt.
             $orgId = $_POST['org_id'] ?? '';
             $stmt = $pdo->prepare('SELECT * FROM organizations WHERE id = ?');
             $stmt->execute([$orgId]);
@@ -163,9 +194,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'plan' => $plan['code'], 'billing_exempt' => !empty($_POST['billing_exempt']),
             ]);
             flash_set('success', 'Tarif der Firma ' . $org['name'] . ' auf ' . $plan['name'] . ' gesetzt.');
+        } elseif ($action === 'org_lock_reset') {
+            // Vier-Wochen-Sperre des Buchhaltungssystem-Wechsels aufheben (Entscheidung 07.09.2026): Pflichtgrund, Audit,
+            // kein Geldfluss und damit keine Zweitbestaetigung (Regel 4.36).
+            require_once __DIR__ . '/app/invoice_source_switch.php';
+            invoice_source_lock_reset($ctx, (string)($_POST['org_id'] ?? ''), (string)($_POST['reason'] ?? ''));
+            flash_set('success', 'Wechselsperre aufgehoben. Die Firma kann das Buchhaltungssystem sofort wechseln; danach beginnt die Vier-Wochen-Frist erneut.');
         } elseif ($action === 'interest_unsubscribe' || $action === 'interest_delete') {
-            // Widerruf oder Löschverlangen per Nachricht (Datenschutzerklärung 3a); Zweitbestätigung per 2FA-Code.
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
+            // Widerruf oder Löschverlangen per Nachricht (Datenschutzerklärung 3a); kein Geldfluss, keine Zweitbestätigung
+            // (seit 4.36), Audit bleibt. Löschen ist endgültig: Bestätigungsdialog im Formular.
             $iid = (string)($_POST['interest_id'] ?? '');
             if (!preg_match('/^[0-9a-f-]{36}$/', $iid)) {
                 throw new RuntimeException('Ungültige Kennung.');
@@ -177,7 +214,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log(null, $ctx, $action === 'interest_delete' ? 'interest_deleted' : 'interest_unsubscribed', 'interest_registration', $iid, ['reason' => 'admin']);
             flash_set('success', $action === 'interest_delete' ? 'Vormerkung gelöscht.' : 'Vormerkung abgemeldet.');
         } elseif ($action === 'interest_block' || $action === 'interest_invite') {
-            require_recent_totp($ctx, (string)($_POST['code'] ?? ''));
             $iid = (string)($_POST['interest_id'] ?? '');
             if (!preg_match('/^[0-9a-f-]{36}$/', $iid)) {
                 throw new RuntimeException('Ungültige Kennung.');
@@ -195,21 +231,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('admin.php');
 }
 
-// --- Kennzahlen je Akquisitionsquelle ---
-$byDomain = $pdo->query(
+// --- Zeitraum (4.43): Voreinstellungen oder freier Bereich, gemerkt in der Sitzung; Bestandszahlen bleiben zeitraumunabhaengig ---
+$period = admin_period_from_request($_GET, '30t');
+[$pFrom, $pTo] = admin_period_sql_bounds($period);
+[$pPrevFrom, $pPrevTo] = admin_period_sql_bounds($period, true);
+
+// --- Kennzahlen je Akquisitionsquelle (Firmen, die im Zeitraum registriert wurden; Abo-Status ist der heutige Stand) ---
+$st = $pdo->prepare(
     "SELECT COALESCE(NULLIF(signup_domain, ''), 'direkt') AS domain,
             COUNT(*) AS registrations,
             SUM(subscription_status = 'active') AS active_subs,
             SUM(subscription_status = 'canceled') AS canceled,
             SUM(subscription_status = 'exempt') AS exempt,
             SUM(onboarding_completed) AS onboarded
-     FROM organizations WHERE deleted_at IS NULL
+     FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ?
      GROUP BY COALESCE(NULLIF(signup_domain, ''), 'direkt') ORDER BY registrations DESC"
-)->fetchAll();
+);
+$st->execute([$pFrom, $pTo]);
+$byDomain = $st->fetchAll();
 
-$funnel = $pdo->query(
-    "SELECT domain, event, COUNT(*) AS cnt FROM funnel_events GROUP BY domain, event"
-)->fetchAll();
+$st = $pdo->prepare(
+    "SELECT (SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ?) AS regs,
+            (SELECT COUNT(*) FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ?) AS regs_prev,
+            (SELECT COUNT(*) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS coll,
+            (SELECT COUNT(*) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS coll_prev,
+            (SELECT COALESCE(SUM(amount_cents - COALESCE(refunded_cents, 0)),0) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS vol,
+            (SELECT COALESCE(SUM(amount_cents - COALESCE(refunded_cents, 0)),0) FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ?) AS vol_prev"
+);
+$st->execute([$pFrom, $pTo, $pPrevFrom, $pPrevTo, $pFrom, $pTo, $pPrevFrom, $pPrevTo, $pFrom, $pTo, $pPrevFrom, $pPrevTo]);
+$periodTotals = $st->fetch() ?: ['regs' => 0, 'regs_prev' => 0, 'coll' => 0, 'coll_prev' => 0, 'vol' => 0, 'vol_prev' => 0];
+
+$st = $pdo->prepare("SELECT domain, event, COUNT(*) AS cnt FROM funnel_events WHERE created_at >= ? AND created_at < ? GROUP BY domain, event");
+$st->execute([$pFrom, $pTo]);
+$funnel = $st->fetchAll();
 $funnelMap = [];
 foreach ($funnel as $f) {
     $funnelMap[$f['domain']][$f['event']] = (int)$f['cnt'];
@@ -224,18 +278,25 @@ $domains = array_unique(array_merge(array_column($byDomain, 'domain'), array_key
 
 $plans = plan_list();
 
-// --- Diagrammdaten: letzte 12 Kalenderwochen ---
-$weekSlots = chart_week_slots(12);
+// --- Diagrammdaten im gewaehlten Zeitraum, Aufloesung nach Laenge (Tag, Kalenderwoche, Monat) ---
+$weekSlots = admin_period_slots($period);
+$bucketReg = admin_period_sql_bucket('created_at', $period['resolution']);
+$bucketCol = admin_period_sql_bucket('COALESCE(completed_at, submitted_at, created_at)', $period['resolution']);
 $regByWeek = array_fill_keys(array_keys($weekSlots), 0);
-foreach ($pdo->query("SELECT YEARWEEK(created_at, 3) AS wk, COUNT(*) AS cnt FROM organizations WHERE deleted_at IS NULL AND created_at >= DATE_SUB(CURDATE(), INTERVAL 13 WEEK) GROUP BY wk")->fetchAll() as $r) {
+$st = $pdo->prepare("SELECT $bucketReg AS wk, COUNT(*) AS cnt FROM organizations WHERE deleted_at IS NULL AND created_at >= ? AND created_at < ? GROUP BY wk");
+$st->execute([$pFrom, $pTo]);
+foreach ($st->fetchAll() as $r) {
     if (isset($regByWeek[$r['wk']])) { $regByWeek[$r['wk']] = (int)$r['cnt']; }
 }
 $volByWeek = array_fill_keys(array_keys($weekSlots), 0);
 $cntByWeek = array_fill_keys(array_keys($weekSlots), 0);
-foreach ($pdo->query("SELECT YEARWEEK(COALESCE(completed_at, submitted_at, created_at), 3) AS wk, SUM(amount_cents - COALESCE(refunded_cents, 0)) AS cents, COUNT(*) AS cnt
-    FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= DATE_SUB(CURDATE(), INTERVAL 13 WEEK) GROUP BY wk")->fetchAll() as $r) {
+$st = $pdo->prepare("SELECT $bucketCol AS wk, SUM(amount_cents - COALESCE(refunded_cents, 0)) AS cents, COUNT(*) AS cnt
+    FROM payment_collections WHERE stripe_status = 'succeeded' AND COALESCE(completed_at, submitted_at, created_at) >= ? AND COALESCE(completed_at, submitted_at, created_at) < ? GROUP BY wk");
+$st->execute([$pFrom, $pTo]);
+foreach ($st->fetchAll() as $r) {
     if (isset($volByWeek[$r['wk']])) { $volByWeek[$r['wk']] = (int)$r['cents']; $cntByWeek[$r['wk']] = (int)$r['cnt']; }
 }
+$resLabel = admin_period_resolution_label($period);
 $chartRows = static fn(array $byWeek): array => array_map(static fn(string $wk, string $label): array => ['label' => $label, 'value' => $byWeek[$wk]], array_keys($weekSlots), $weekSlots);
 $funnelTotals = [];
 foreach ($funnelSteps as $ev => $label) {
@@ -254,7 +315,9 @@ $orgs = $pdo->query(
     "SELECT o.*,
             (SELECT COUNT(*) FROM organization_members m WHERE m.organization_id = o.id AND m.status = 'active') AS members,
             (SELECT COUNT(*) FROM payment_collections pc WHERE pc.tenant_id = o.id AND pc.stripe_status <> 'cancelled') AS collections,
-            (SELECT lexoffice_last_sync FROM integrations i WHERE i.tenant_id = o.id) AS last_sync,
+            (SELECT CASE WHEN i.invoice_source = 'sevdesk' THEN i.sevdesk_last_sync ELSE i.lexoffice_last_sync END FROM integrations i WHERE i.tenant_id = o.id) AS last_sync,
+            (SELECT COALESCE(i.invoice_source, 'lexware_office') FROM integrations i WHERE i.tenant_id = o.id) AS invoice_source,
+            (SELECT i.invoice_source_changed_at FROM integrations i WHERE i.tenant_id = o.id) AS invoice_source_changed_at,
             (SELECT u.email FROM organization_members m JOIN users u ON u.id = m.user_id WHERE m.organization_id = o.id AND m.role = 'owner' LIMIT 1) AS owner_email
      FROM organizations o WHERE o.deleted_at IS NULL ORDER BY o.created_at DESC LIMIT 500"
 )->fetchAll();
@@ -285,9 +348,14 @@ layout_header('Administration', $ctx);
     </div>
 <?php endif; ?>
 <p class="page-sub">Plattform <?= e(product_name()) ?> · Betreiber <?= e((string)(config('operator')['name'] ?? 'Müller Holding AG')) ?></p>
-<nav class="admin-subnav" aria-label="Adminbereiche">
-    <a href="#kennzahlen">Kennzahlen</a> · <a href="#diagramme">Diagramme</a> · <a href="#notstopp">Not-Stopp</a> · <a href="#tarife">Tarife</a> · <a href="#firmen">Firmen</a> · <a href="admin-support.php">Support</a> · <a href="admin-system.php" title="Technische Betriebsübersicht">System</a> · <a href="admin-legal.php">Rechtsdokumente</a>
-</nav>
+<?php $sub = ['uebersicht' => ['label' => 'Übersicht', 'href' => 'admin.php']];
+if ($can('companies.view')) { $sub['kennzahlen'] = ['label' => 'Kennzahlen', 'href' => '#kennzahlen']; $sub['diagramme'] = ['label' => 'Diagramme', 'href' => '#diagramme']; }
+if ($can('notstopp.platform')) { $sub['notstopp'] = ['label' => 'Not-Stopp', 'href' => '#notstopp']; }
+if ($can('plans.manage')) { $sub['tarife'] = ['label' => 'Tarife', 'href' => '#tarife']; }
+if ($can('companies.view')) { $sub['firmen'] = ['label' => 'Firmen', 'href' => '#firmen']; }
+if ($can('interest.view')) { $sub['vormerkungen'] = ['label' => 'Vormerkungen', 'href' => '#vormerkungen']; }
+foreach (admin_subnav_items($ctx) as $k => $it) { if ($k !== 'admin') { $sub[$k] = $it + ['ext' => true]; } }
+echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
 
 <?php if ($platformAlerts): ?>
 <div class="flash flash-warn">
@@ -307,8 +375,16 @@ layout_header('Administration', $ctx);
     <div class="stat-card"><div class="stat-value" style="font-size: 20px;"><?= format_eur_cents((int)$totals['succeeded_cents']) ?></div><div class="stat-label">Eingezogenes Volumen (alle Firmen)</div></div>
 </div>
 
+<?php if ($can('companies.view')): ?>
 <div class="card" id="kennzahlen">
-    <h2>Kennzahlen je Akquisitionsquelle</h2>
+    <h2>Kennzahlen im Zeitraum</h2>
+    <?= admin_period_selector('admin.php', $period) ?>
+    <div class="card-grid stat-row">
+        <div class="stat-card"><div class="stat-value"><?= (int)$periodTotals['regs'] ?></div><div class="stat-label">Registrierungen<span class="stat-compare"><?= e(admin_period_compare((float)$periodTotals['regs'], (float)$periodTotals['regs_prev'])) ?></span></div></div>
+        <div class="stat-card"><div class="stat-value"><?= (int)$periodTotals['coll'] ?></div><div class="stat-label">Erfolgreiche Einzüge<span class="stat-compare"><?= e(admin_period_compare((float)$periodTotals['coll'], (float)$periodTotals['coll_prev'])) ?></span></div></div>
+        <div class="stat-card"><div class="stat-value" style="font-size: 20px;"><?= format_eur_cents((int)$periodTotals['vol']) ?></div><div class="stat-label">Eingezogen, netto nach Erstattungen<span class="stat-compare"><?= e(admin_period_compare((float)$periodTotals['vol'], (float)$periodTotals['vol_prev'])) ?></span></div></div>
+    </div>
+    <h3 class="mon-h3">Je Akquisitionsquelle (Firmen, die im Zeitraum registriert wurden; Abo-Status heute)</h3>
     <div class="table-wrap">
         <table>
             <thead><tr><th>Domain</th><th>Registrierungen</th><th>Onboarding fertig</th><th>Zahlende Kunden</th><th>Conversion</th><th>Umsatz je 4 Wochen (Schätzung)</th><th>Gekündigt (Churn)</th><th>Befreit</th></tr></thead>
@@ -339,17 +415,17 @@ layout_header('Administration', $ctx);
 <div class="card" id="diagramme">
     <h2>Diagramme</h2>
     <div class="chart-grid">
-        <div><?= chart_bars($chartRows($regByWeek), 'Registrierungen je Kalenderwoche (12 Wochen)') ?></div>
-        <div><?= chart_bars($chartRows($volByWeek), 'Eingezogenes Volumen je Kalenderwoche in EUR, netto nach Erstattungen', $fmtEur, '#2E2D2E') ?></div>
-        <div><?= chart_bars($chartRows($cntByWeek), 'Erfolgreiche Einzüge je Kalenderwoche', null, '#9F9F9F') ?></div>
-        <div><?= chart_hbars($regByDomain, 'Registrierungen je Herkunft (gesamt)') ?></div>
-        <div class="chart-wide"><?= chart_hbars($funnelTotals, 'Funnel über alle Herkünfte (gesamt)', null, '#E3AC48') ?></div>
+        <div><?= chart_bars($chartRows($regByWeek), 'Registrierungen ' . $resLabel . ' (' . $period['label'] . ')') ?></div>
+        <div><?= chart_bars($chartRows($volByWeek), 'Eingezogenes Volumen ' . $resLabel . ' in EUR, netto nach Erstattungen', $fmtEur, '#2E2D2E') ?></div>
+        <div><?= chart_bars($chartRows($cntByWeek), 'Erfolgreiche Einzüge ' . $resLabel, null, '#9F9F9F') ?></div>
+        <div><?= chart_hbars($regByDomain, 'Registrierungen je Herkunft (' . $period['label'] . ')') ?></div>
+        <div class="chart-wide"><?= chart_hbars($funnelTotals, 'Funnel über alle Herkünfte (' . $period['label'] . ')', null, '#E3AC48') ?></div>
     </div>
-    <p class="hint">Serverseitig erzeugte Grafiken aus den Tabellen organizations, payment_collections und funnel_events, keine Datenübertragung an Dritte.</p>
+    <p class="hint">Serverseitig erzeugte Grafiken aus den Tabellen organizations, payment_collections und funnel_events für den oben gewählten Zeitraum, keine Datenübertragung an Dritte.</p>
 </div>
 
 <div class="card">
-    <h2>Funnel je Domain</h2>
+    <h2>Funnel je Domain (<?= e($period['label']) ?>)</h2>
     <div class="table-wrap">
         <table class="table-sm">
             <thead><tr><th>Schritt</th><?php foreach ($domains as $dm): ?><th><?= e($dm) ?></th><?php endforeach; ?></tr></thead>
@@ -363,7 +439,9 @@ layout_header('Administration', $ctx);
     </div>
     <p class="hint">Seitenaufrufe und CTA-Klicks kommen cookielos von den Marketingseiten (track.php), alle weiteren Schritte aus der Anwendung.</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('notstopp.platform')): ?>
 <div class="card" id="notstopp">
     <h2>Not-Stopp (Plattform)</h2>
     <?php $paused = platform_setting('collections_paused', '0') === '1'; ?>
@@ -373,21 +451,23 @@ layout_header('Administration', $ctx);
         <?= csrf_field() ?>
         <input type="hidden" name="action" value="platform_pause">
         <input type="hidden" name="pause" value="<?= $paused ? '0' : '1' ?>">
-        <input type="text" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 190px;">
+        <?php if ($paused): ?><input type="text" name="code" class="code-input" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 190px;"><?php endif; ?>
         <button type="submit" class="btn <?= $paused ? 'btn-secondary' : 'btn-danger' ?>"><?= $paused ? 'Not-Stopp aufheben' : 'Not-Stopp aktivieren' ?></button>
     </form>
-    <p class="hint">Zweitbestätigung: Aktivieren und Aufheben erfordern den aktuellen Code aus Ihrer Authenticator-App.</p>
+    <p class="hint">Aktivieren geht ohne Hürde. Das Aufheben gibt den Geldfluss wieder frei und verlangt den aktuellen Code aus Ihrer Authenticator-App.</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('plans.manage')): ?>
 <div class="card" id="tarife">
     <h2>Tarife</h2>
     <p class="hint">Name, Preis (netto je Periode), Limits und Sichtbarkeit lassen sich hier direkt ändern. Leere Limits bedeuten
         unbegrenzt. Der angezeigte Preis muss zum hinterlegten Stripe-Preis passen, abgerechnet wird der Stripe-Preis.
         Bestandskunden behalten ihren Tarifcode, geänderte Preise und Limits gelten für sie ab der nächsten Periode
-        bzw. sofort bei den Limits. Jede Änderung erfordert den aktuellen 2FA-Code und wird protokolliert.</p>
+        bzw. sofort bei den Limits. Jede Änderung wird protokolliert.</p>
     <div class="table-wrap">
         <table class="plan-table">
-            <thead><tr><th>Code</th><th>Name</th><th>Preis netto (EUR)</th><th>Periode (Tage)</th><th>Einzüge/Periode</th><th>Benutzer</th><th>Sortierung</th><th>Aktiv</th><th>Öffentlich</th><th>Stripe-Preis-ID</th><th>2FA-Code</th><th></th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Preis netto (EUR)</th><th>Periode (Tage)</th><th>Einzüge/Periode</th><th>Benutzer</th><th>Sortierung</th><th>Aktiv</th><th>Öffentlich</th><th>Stripe-Preis-ID</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($plans as $p): ?>
                 <tr>
@@ -405,7 +485,6 @@ layout_header('Administration', $ctx);
                     <td><input type="checkbox" name="active" value="1" <?= (int)$p['active'] ? 'checked' : '' ?>></td>
                     <td><input type="checkbox" name="public_visible" value="1" <?= (int)$p['public_visible'] ? 'checked' : '' ?>></td>
                     <td><input type="text" name="stripe_price_id" value="<?= e($p['stripe_price_id'] ?? '') ?>" placeholder="price_..." class="plan-input" style="max-width: 220px;"></td>
-                    <td><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" required class="plan-input" style="max-width: 130px;"></td>
                     <td><button type="submit" class="btn btn-sm btn-secondary">Speichern</button></td>
                     </form>
                 </tr>
@@ -415,12 +494,14 @@ layout_header('Administration', $ctx);
     </div>
     <style>.plan-table .plan-input { padding: 5px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }</style>
 </div>
+<?php endif; ?>
 
+<?php if ($can('companies.view')): ?>
 <div class="card" id="firmen">
     <h2>Firmenaccounts</h2>
     <div class="table-wrap">
         <table class="table-sm">
-            <thead><tr><th>Firma</th><th>Inhaber</th><th>Herkunft</th><th>Registriert</th><th>Tarif</th><th>Abo</th><th>Benutzer</th><th>Einzüge</th><th>Letzter Sync</th><th>Tarif setzen</th></tr></thead>
+            <thead><tr><th>Firma</th><th>Inhaber</th><th>Herkunft</th><th>Registriert</th><th>Tarif</th><th>Abo</th><th>Benutzer</th><th>Einzüge</th><th>Buchhaltung</th><th>Letzter Sync</th><th>Tarif setzen</th></tr></thead>
             <tbody>
             <?php foreach ($orgs as $o): ?>
                 <tr>
@@ -432,9 +513,20 @@ layout_header('Administration', $ctx);
                     <td><?= e(subscription_status_label((string)$o['subscription_status'])) ?></td>
                     <td><?= (int)$o['members'] ?></td>
                     <td><?= (int)$o['collections'] ?></td>
+                    <td><?php $lockUntil = invoice_source_lock_until($o['invoice_source_changed_at'] ?? null); $locked = $lockUntil !== null && $lockUntil > gmdate('Y-m-d H:i:s'); ?>
+                        <?= e(invoice_source_label((string)$o['invoice_source'])) ?>
+                        <?php if ($locked): ?>
+                            <span class="hint">(Wechselsperre bis <?= e(format_date($lockUntil)) ?>)</span>
+                            <?php if ($can('companies.manage')): ?>
+                            <form method="post" class="inline-form" onsubmit="return confirm('Wechselsperre für diese Firma aufheben?');"><?= csrf_field() ?><input type="hidden" name="action" value="org_lock_reset"><input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
+                                <input type="text" name="reason" placeholder="Grund (Pflicht)" required maxlength="200" style="max-width: 160px; padding: 5px 8px; font-size: 13px;">
+                                <button type="submit" class="btn btn-sm btn-secondary" title="Vier-Wochen-Sperre aufheben (protokolliert)">Sperre aufheben</button></form>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </td>
                     <td><?= format_datetime($o['last_sync']) ?></td>
                     <td>
-                        <form method="post" class="inline-form">
+                        <?php if ($can('companies.plan')): ?><form method="post" class="inline-form">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="org_plan">
                             <input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
@@ -444,9 +536,8 @@ layout_header('Administration', $ctx);
                                 <?php endforeach; ?>
                             </select>
                             <label class="inline-check"><input type="checkbox" name="billing_exempt" value="1" <?= (int)$o['billing_exempt'] ? 'checked' : '' ?>> befreit</label>
-                            <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 150px; padding: 5px 8px; font-size: 13px;">
                             <button type="submit" class="btn btn-sm btn-secondary">OK</button>
-                        </form>
+                        </form><?php else: ?><span class="hint">nur lesend</span><?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -454,12 +545,15 @@ layout_header('Administration', $ctx);
         </table>
     </div>
     <p class="hint">Grandfathering: Bestehende Firmen behalten ihren Tarif, bis er hier geändert wird. Ein Wechsel auf einen Tarif mit
-        weniger Benutzern wird abgelehnt, solange mehr Benutzer bzw. offene Einladungen vorhanden sind. Jede Tarifänderung erfordert
-        als Zweitbestätigung den aktuellen 2FA-Code.</p>
+        weniger Benutzern wird abgelehnt, solange mehr Benutzer bzw. offene Einladungen vorhanden sind. Jede Tarifänderung wird protokolliert
+        (Berechtigung companies.plan).</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('interest.view')): ?>
 <div class="card" id="vormerkungen">
     <h2>Vormerkungen für angekündigte Integrationen</h2>
+    <p class="hint">sevdesk-Verbindung: <strong><?= e($interestSwitches['connect_text'] ?? ($interestSwitches['connect'] ? 'freigegeben' : 'nicht freigegeben')) ?></strong>; Restbetrag und Einzug <?= !empty($interestSwitches['api_verified']) ? 'bestätigt (sevdesk_api_verified = 1)' : '<strong>gesperrt</strong>, bis der Abruf des offenen Restbetrags mit einem sevdesk-Konto bestätigt ist (sevdesk_api_verified)' ?>; Einzüge <?= $interestSwitches['collections'] ? 'freigegeben' : 'gesperrt (sevdesk_collections)' ?>. Schalter und Freigabetermin (sevdesk_release_at) setzt der Betreiber serverseitig in platform_settings.</p>
     <p class="hint">sevdesk: öffentlicher Status <strong><?= e($interestSwitches['public_state']) ?></strong>, Vormerkung <?= $interestSwitches['waitlist'] ? 'offen' : 'geschlossen' ?>,
         Verbindung <?= $interestSwitches['connect'] ? 'frei' : 'gesperrt' ?>, neue Einzüge <?= $interestSwitches['collections'] ? 'frei' : 'gesperrt' ?>,
         Rückschreibung <?= $interestSwitches['writeback'] ? 'frei' : 'gesperrt' ?>. Schalter nur serverseitig (platform_settings, Schlüssel sevdesk_*), siehe docs/sevdesk.md.</p>
@@ -512,10 +606,9 @@ layout_header('Administration', $ctx);
                         <td><?= format_datetime($r['confirmed_at']) ?></td>
                         <td class="hint"><?= (int)$r['beta_interest'] ? 'Interesse' : '' ?><?= $r['invited_at'] ? '<br>eingeladen ' . e(format_date($r['invited_at'])) : '' ?></td>
                         <td>
-                            <form method="post" class="inline-form">
+                            <?php if ($can('interest.manage')): ?><form method="post" class="inline-form" onsubmit="return (event.submitter && event.submitter.value === 'interest_delete') ? confirm('Vormerkung endgültig löschen? Das lässt sich nicht rückgängig machen.') : true;">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="interest_id" value="<?= e($r['id']) ?>">
-                                <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code" placeholder="2FA-Code" aria-label="Aktueller 2FA-Code" style="max-width: 100px; padding: 5px 8px; font-size: 13px;">
                                 <?php if ($r['status'] === 'confirmed' && !$blocked && !$r['invited_at']): ?>
                                 <button type="submit" name="action" value="interest_invite" class="btn btn-sm btn-secondary">Beta einladen</button>
                                 <?php endif; ?>
@@ -526,7 +619,7 @@ layout_header('Administration', $ctx);
                                 <button type="submit" name="action" value="interest_block" class="btn btn-sm btn-secondary">Sperren</button>
                                 <?php endif; ?>
                                 <button type="submit" name="action" value="interest_delete" class="btn btn-sm btn-secondary">Löschen</button>
-                            </form>
+                            </form><?php else: ?><span class="hint">nur lesend</span><?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -540,12 +633,22 @@ layout_header('Administration', $ctx);
         getrennt: „Beta einladen“ ist nur für bestätigte, nicht gesperrte Einträge möglich und macht einen abgemeldeten Eintrag nie wieder versandberechtigt.
         „Sperren“ entfernt alle Klartextangaben außer der E-Mail-Adresse und schließt weiteren Versand dauerhaft aus. Löschfristen (Wartung): unbestätigt 30 Tage
         nach Eintragung, abgemeldet 30 Tage nach Abmeldung, bestätigt 30 Tage nach der Startnachricht; gesperrte Einträge bleiben. Zeiten in Ortszeit,
-        keine IP-Adressen. Jede Aktion verlangt den aktuellen 2FA-Code und wird im Audit protokolliert, der CSV-Export ebenfalls.</p>
+        keine IP-Adressen. Jede Aktion ist durch CSRF-Schutz und die Berechtigung interest.manage gesichert und wird im Audit protokolliert, der CSV-Export ebenfalls (seit 4.36 ohne 2FA-Code).</p>
 </div>
+<?php endif; ?>
 
+<?php if ($can('support.view')): ?>
 <div class="card" id="support">
     <h2>Support</h2>
     <p>Firmenzugriff ("Auf Firma wechseln"), Konten entsperren, 2FA zurücksetzen und das Protokoll der Support-Zugriffe finden Sie im
         Bereich <a href="admin-support.php">Support</a>.</p>
 </div>
+<?php endif; ?>
+<?php if ($can('users.manage')): ?>
+<div class="card" id="benutzer">
+    <h2>Benutzer und Rechte</h2>
+    <p>Mitarbeiter und Administratoren des Betreibers einladen, Rollen vergeben und eigene Rollen mit Berechtigungen anlegen:
+        <a href="admin-users.php">Benutzer und Rechte</a>. Kundenkonten verwalten die Firmen selbst unter Team.</p>
+</div>
+<?php endif; ?>
 <?php layout_footer($ctx); ?>

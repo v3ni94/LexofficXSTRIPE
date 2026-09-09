@@ -28,13 +28,15 @@ Statuswerte: `planned` (nur Absicht), `development` (Adapter in Arbeit, nicht w�
 
 ## Fähigkeitentabelle (Anforderungen an einen Adapter)
 
-| Fähigkeit | Bedeutung | Pflicht für Freigabe |
-|---|---|---|
-| read_customers | Kontakt mit Kundennummer, Name, E-Mail | ja |
-| read_open_invoices | offene und überfällige Rechnungen mit ID, Nummer, Bruttobetrag, Fälligkeit, Positionen | ja |
-| read_open_amount | offener Restbetrag je Rechnung (Teilzahlungen) | ja, sonst kein Einzug |
-| detect_changes | Erkennen, dass eine Rechnung bezahlt oder storniert wurde | ja |
-| write_payment | Zahlung im Rechnungssystem zurückschreiben | nein (Lexware Office bietet keinen dokumentierten Endpunkt; Anleitung zur manuellen Zuordnung im Ratgeber) |
+| Fähigkeit | Bedeutung | Pflicht für Freigabe | sevdesk (Stand 4.38) |
+|---|---|---|---|
+| read_customers | Kontakt mit Kundennummer, Name, E-Mail | ja | aktiv, sobald die Verbindung freigegeben ist |
+| read_open_invoices | offene und überfällige Rechnungen mit ID, Nummer, Bruttobetrag, Fälligkeit, Positionen | ja | aktiv, sobald die Verbindung freigegeben ist |
+| read_open_amount | offener Restbetrag je Rechnung (Teilzahlungen) | ja, sonst kein Einzug | erst nach Bestätigung (`sevdesk_api_verified`); bis dahin liefert `getPayment()` `open_amount = null`, also kein Einzug |
+| detect_changes | Erkennen, dass eine Rechnung bezahlt oder storniert wurde | ja | aktiv, sobald die Verbindung freigegeben ist |
+| write_payment | Zahlung im Rechnungssystem zurückschreiben | nein (Lexware Office bietet keinen dokumentierten Endpunkt; Anleitung zur manuellen Zuordnung im Ratgeber) | nicht vorhanden, keine Zusage |
+
+`SevdeskSource::capabilities()` (`app/sevdesk.php`) meldet die drei aktiven Fähigkeiten nur, wenn `integration_switch('sevdesk', 'connect')` wahr ist (Schalter `sevdesk_connect` oder automatischer Freigabetermin `sevdesk_release_at`, siehe `docs/sevdesk.md`, Abschnitt 5c); ohne Freigabe liefert die Methode eine leere Liste.
 
 ## Eine Rechnungsquelle je Firma
 
@@ -46,7 +48,7 @@ Statuswerte: `planned` (nur Absicht), `development` (Adapter in Arbeit, nicht w�
 - Nach einem Wechsel gilt eine Sperre von vier Wochen (`INVOICE_SOURCE_LOCK_DAYS = 28`, entspricht der Abrechnungsperiode). Damit lässt sich nicht mit einem Abonnement zwischen zwei Buchhaltungen hin- und herschalten; wer zwei Buchhaltungen führt, legt einen zweiten Firmenaccount an.
 - Gesperrt ist der Wechsel außerdem, solange Einzüge vorgemerkt, terminiert oder in Verarbeitung sind (`stripe_status` scheduled, submitting, processing), eine Synchronisation läuft oder das Zielsystem nicht freigegeben ist.
 - Wirkung: Die Verbindung zum bisherigen System wird getrennt (Schlüssel gelöscht, `lexoffice_connected = 0`, damit der Scheduler keine Synchronisation mehr einreiht). Rechnungen, Kunden, Mandate und Einzüge bleiben als Historie erhalten. Audit `invoice_source_switched` mit Herkunft, Ziel, Grund.
-- Betreiber: Die Sperre lässt sich derzeit nur direkt in der Datenbank aufheben (`invoice_source_changed_at = NULL`); eine Adminaktion ist offen.
+- Betreiber (seit Version 4.38): Adminaktion „Wechselsperre aufheben" (`admin.php`, Firmenliste, Berechtigung `companies.manage`, Pflichtgrund 3 bis 200 Zeichen, kein 2FA-Code, da kein Geldfluss). Sie setzt `integrations.invoice_source_changed_at = NULL` und `invoice_source_lock_reset_at = UTC_TIMESTAMP()` (Migration 028), protokolliert im Audit als `invoice_source_lock_reset` mit Firma, Grund, bisherigem System und Sperrende. Der Wechselzähler (`invoice_source_switches`) bleibt unverändert; die nächste Vier-Wochen-Sperre beginnt erst mit dem nächsten tatsächlichen Wechsel (`app/invoice_source_switch.php`, Funktion `invoice_source_lock_reset()`).
 
 Prüfung: `bash tools/invoice-source-check.sh`.
 
@@ -62,6 +64,24 @@ Erst wenn alle Punkte erfüllt sind, wechselt der Status auf `closed_test`, dana
 6. Geschlossener Test mit mindestens einer Firma im Stripe-Testmodus über eine volle Vierwochenperiode ohne Fehleinzug.
 7. Rechtstexte (AGB, Datenschutz, Markenhinweise) um sevdesk ergänzt und geprüft.
 8. Freigabe durch die Geschäftsführung der Müller Holding AG.
+
+Stand 4.38 zu Punkt 2: Der Adapter (`SevdeskSource implements InvoiceSource`, `app/sevdesk.php`) ist gebaut, aber
+ungeprüft (kein Testkonto); `read_open_amount` ist im Code vorgesehen, aber technisch gesperrt, bis der Betreiber ihn
+freischaltet (siehe unten). Das ersetzt Punkt 2 nicht, sondern ist eine zusätzliche, rein technische Absicherung.
+
+Unabhängig von diesen produktseitigen Freigabekriterien setzt die Anwendung seit Version 4.38 rein technische Schalter,
+die verhindern, dass ein Irrtum bei einer Annahme des Adapters Geld bewegt (`platform_settings`,
+`app/integration_state.php`, ausführlich `docs/sevdesk.md`, Abschnitt 5c):
+
+- `sevdesk_connect = 'pilot'` (4.42) beschränkt Verbinden und Wechseln bis zum Freigabetermin auf Firmen mit einem
+  Administrator-Mitglied der Plattform oder aus `sevdesk_pilot_orgs` (`integration_connect_allowed()`); danach gilt es für alle.
+- `sevdesk_connect` gibt nur das Verbinden und Lesen frei (Kontakte, offene Rechnungen, Änderungserkennung). Ein
+  ausdrücklich gesetzter Wert hat Vorrang; ohne ihn greift automatisch der Freigabetermin `sevdesk_release_at`
+  (Migration 028 legt ihn mit `2026-09-30` an, Kalendertag Europe/Berlin, jederzeit per SQL änderbar). Dieser Termin ist
+  ein interner Standardwert für Pilotfirmen, keine der oben genannten Freigabekriterien und keine öffentliche Zusage.
+- `sevdesk_api_verified` schaltet ausschließlich `read_open_amount` frei, nachdem die Zahlungsfelder an einem echten
+  Konto bestätigt sind; ohne diesen Schalter liefert `getPayment()` immer `open_amount = null`.
+- `sevdesk_collections` bleibt der anbieterbezogene Not-Aus für den eigentlichen Einzug.
 
 Bis dahin erscheint sevdesk in allen Texten nur als "in Planung", ohne Preis, ohne Kaufbutton und ohne Firmenaccount. Zulässig ist seit Version 4.18 ausschließlich eine kostenlose, unverbindliche **Vormerkung** (Warteliste, Double-Opt-in), siehe unten; der Starttermin wird als "geplant zum 30.09.2026" genannt, nie als Zusage.
 
@@ -80,5 +100,5 @@ Frage des Betreibers: die beiden Produkte komplett trennen? Empfehlung: **eine P
 - Tabelle `interest_registrations` (Migration 020): eine Zeile je Anbieter und E-Mail, Status `pending`, `confirmed`, `unsubscribed` (plus Sperrvermerk `blocked_at`); getrennte Token für Bestätigung (`token_hash`, 7 Tage) und Abmeldung/Angaben (`manage_token_hash`), beide SHA-256; Fassung und Zeitpunkt der Einwilligung, Zweck `launch_info`; freiwillige Angaben nach Bestätigung; keine IP-Adressen. Details: `docs/sevdesk.md`.
 - Double-Opt-in: Link 7 Tage gültig, Bestätigung und Abmeldung erst per Button (POST), damit Linkvorschauen nichts auslösen. Löschfristen 30 Tage (unbestätigt nach Eintragung, abgemeldet nach Widerruf, bestätigt nach Startnachricht) über `interest_cleanup()` in `job_maintenance` UND `cron.php`. Ohne funktionierenden Mailversand keine Vormerkung. Einwilligungsfassungen in `docs/einwilligungen.md`.
 - Schutz ohne Personenbezug: Origin/Referer aus `signup_domains` (nur gegen Einbettung fremder Seiten), Honeypot, Wiederversand frühestens nach 10 Minuten je Adresse (auch nach Fehlversuch), höchstens 3 Mails je Adresse und 24 Stunden, höchstens 30 neue Einträge je Minute; identische Antwort für neu, unbestätigt und bereits bestätigt. Restrisiko: ein Skript ohne Header kann die globale Grenze ausschöpfen (Denial of Service der Vormerkung, kein Datenabfluss); Gegenmaßnahme bei Bedarf: Grenze je Quelle über kurzlebige Hashes im Redis.
-- Adminbereich: Karte "Vormerkungen für angekündigte Integrationen" (Zählung je Anbieter, letzte 200 Einträge, Aktionen Abmelden und Löschen mit 2FA-Code und Audit für Widerruf oder Löschverlangen per Nachricht). Zum Start dürfen nur bestätigte Adressen angeschrieben werden; ein Versandwerkzeug existiert noch nicht (muss `notified_at` setzen).
+- Adminbereich: Karte "Vormerkungen für angekündigte Integrationen" (Zählung je Anbieter, letzte 200 Einträge, Aktionen Abmelden und Löschen mit Audit für Widerruf oder Löschverlangen per Nachricht; seit 4.36 ohne 2FA-Code, Löschen mit Bestätigungsdialog). Zum Start dürfen nur bestätigte Adressen angeschrieben werden; ein Versandwerkzeug existiert noch nicht (muss `notified_at` setzen).
 - Test: `bash tools/interest-check.sh` (temporäre MariaDB, 47 Fälle).

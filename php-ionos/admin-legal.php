@@ -11,13 +11,18 @@ require_once __DIR__ . '/app/layout.php';
 require_once __DIR__ . '/app/legal.php';
 require_once __DIR__ . '/app/legal_drafts.php';
 
-$ctx = require_superadmin();
+$ctx = require_platform('legal.view');
+$canManage = platform_can($ctx, 'legal.manage');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = (string)($_POST['action'] ?? '');
     try {
-        require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
+        if (!$canManage) {
+            throw new RuntimeException('Ihre Rolle darf Rechtsdokumente nur einsehen (Berechtigung legal.manage fehlt).');
+        }
+        // Zweitbestätigung nur beim Veröffentlichen und Zurückziehen (Außenwirkung für alle Firmen); Entwürfe anlegen,
+        // Vorlagen übernehmen und unveröffentlichte Fassungen löschen bleiben ohne (Vorstand 07.09.2026), Audit unverändert.
         if ($action === 'import_draft') {
             $idx = (int)($_POST['draft'] ?? -1);
             $drafts = legal_drafts();
@@ -34,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', 'Neue Fassung angelegt (unveröffentlicht).');
             redirect('admin-legal.php?dok=' . $id);
         } elseif ($action === 'publish' || $action === 'retire') {
+            require_recent_totp($ctx, (string)($_POST['code'] ?? ''), true);
             legal_document_publish($ctx, (string)($_POST['document_id'] ?? ''), $action === 'publish');
             flash_set('success', $action === 'publish' ? 'Fassung veröffentlicht. Ältere Fassungen desselben Dokuments sind zurückgezogen; Firmen sehen die neue Fassung zur Zustimmung.' : 'Fassung zurückgezogen.');
         } elseif ($action === 'delete') {
@@ -56,10 +62,12 @@ layout_header('Rechtsdokumente', $ctx);
 ?>
 <h1>Rechtsdokumente</h1>
 <p class="page-sub">Auftragsverarbeitungsvertrag, Verschwiegenheitsvereinbarung und weitere Dokumente mit Zustimmungsnachweis je Firma. Veröffentlichte Fassungen sehen die Firmen unter Rechtliches; Pflichtdokumente werden im Dashboard angemahnt und der AVV bei der Registrierung abgeschlossen.</p>
-<nav class="admin-subnav" aria-label="Adminbereiche"><a href="admin.php">Plattform-Administration</a> · <a href="admin-system.php">System</a> · <a href="admin-legal.php">Rechtsdokumente</a></nav>
+<?= layout_subnav(admin_subnav_items($ctx), 'legal', 'Adminbereiche') ?>
+<?php if (!$canManage): ?><p class="hint">Ihre Rolle darf Rechtsdokumente einsehen, aber nicht ändern.</p><?php endif; ?>
 
 <div class="card">
     <h2>Aktuelle Fassungen</h2>
+    <div class="table-wrap">
     <table class="table">
         <thead><tr><th>Dokument</th><th>Fassung</th><th>Geltung</th><th>Veröffentlicht</th><th>Firmen ohne Zustimmung</th></tr></thead>
         <tbody>
@@ -72,6 +80,7 @@ layout_header('Rechtsdokumente', $ctx);
         <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
     <p class="hint">Ohne veröffentlichten AVV fragt die Registrierung keinen AVV ab und die Firmen sehen unter Rechtliches nur AGB und Datenschutzerklärung. Entwurfstexte sind Vorlagen für die anwaltliche Prüfung; veröffentlichen erst nach Freigabe.</p>
 </div>
 
@@ -82,7 +91,6 @@ layout_header('Rechtsdokumente', $ctx);
     <form method="post" class="form-inline" style="margin-bottom:8px">
         <?= csrf_field() ?><input type="hidden" name="action" value="import_draft"><input type="hidden" name="draft" value="<?= (int)$i ?>">
         <span><strong><?= e($d['title']) ?></strong> (<?= e($d['code']) ?>, Fassung <?= e($d['version']) ?>, <?= strpos($d['body_md'], '[Platzhalter') !== false ? 'enthält Platzhalter' : 'ohne Platzhalter' ?>)</span>
-        <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="2FA-Code" style="width:110px">
         <button type="submit" class="btn">Als Fassung übernehmen</button>
     </form>
     <?php endforeach; ?>
@@ -131,13 +139,13 @@ layout_header('Rechtsdokumente', $ctx);
         <label>Titel <input type="text" name="title" required maxlength="200" value="<?= e($editBase['title'] ?? '') ?>"></label>
         <label>Kurzbeschreibung <input type="text" name="summary" maxlength="500" value="<?= e((string)($editBase['summary'] ?? '')) ?>"></label>
         <label>Text <textarea name="body_md" rows="24" required><?= e((string)($editBase['body_md'] ?? '')) ?></textarea></label>
-        <label>2FA-Code <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" style="width:110px"></label>
         <button type="submit" class="btn btn-primary">Fassung anlegen (unveröffentlicht)</button>
     </form>
 </div>
 
 <div class="card">
     <h2>Alle Fassungen</h2>
+    <div class="table-wrap">
     <table class="table">
         <thead><tr><th>Code</th><th>Fassung</th><th>Titel</th><th>Status</th><th>Angelegt</th></tr></thead>
         <tbody>
@@ -148,5 +156,6 @@ layout_header('Rechtsdokumente', $ctx);
         <?php if (!$docs): ?><tr><td colspan="5" class="hint">Noch keine Fassungen. Oben eine Vorlage übernehmen.</td></tr><?php endif; ?>
         </tbody>
     </table>
+    </div>
 </div>
 <?php layout_footer($ctx); ?>

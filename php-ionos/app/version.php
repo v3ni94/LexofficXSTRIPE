@@ -8,13 +8,13 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.32';
+const APP_VERSION = '4.51';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
-        ['version' => '4.32', 'date' => '08.09.2026', 'title' => 'Marketingseiten: Faktenprüfung, Preisregel, Leadseiten der DETM, sevdesk-Domains, Wissensbereich',
+        ['version' => '4.51', 'date' => '09.09.2026', 'title' => 'Marketingseiten: Faktenprüfung, Preisregel, Leadseiten der DETM, sevdesk-Domains, Wissensbereich',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Alle Aussagen der Marketingseiten (smart-einzug.de, lexoffice-einzug.de, lexware-einzug.de) gegen den Programmcode geprüft und bereinigt: nur Lesezugriff auf Lexware Office, Einzüge ausschließlich nach Nutzeraktion, Sofort-Einzug mit Karenzzeit und nächtlichem Einreichfenster, Vorabankündigung als optionale Einstellung, Mandate auf Papier oder als Upload, IBAN maskiert statt „verschlüsselt“, keine Testphase, sevdesk nur als „in Vorbereitung“. Faktenregister und Aussagenprüfung liegen in docs/seo und in der Dokumentation im Adminbereich.'],
             ['type' => 'Geändert', 'text' => 'Preisbeträge des Produkts erscheinen bis zur Freigabe auf keiner Marketingseite mehr (auch nicht in Metadaten oder strukturierten Daten); die AGB verweisen auf die Bestellübersicht. Konditionen zeigt nur der Registrierungs- und Bestellprozess der Anwendung. tools/pricing-check.php Abschnitt D erzwingt das.'],
@@ -22,6 +22,108 @@ function app_changelog(): array
             ['type' => 'Neu', 'text' => 'smart-einzug.de erhält Anleitungen (Lexware Office verbinden, Stripe verbinden, erster Lastschrifteinzug), einen Wissensbereich (SEPA-Mandat, Rücklastschrift, Vorabankündigung, Fristen, Mandatsreferenz, Verbuchung, Zuordnung, Zahlungsstatus, Lastschrift oder Überweisung, Mandat einholen, Voraussetzungen) und eine Sicherheitsseite mit belegbaren Aussagen; Integrationsseiten ausgebaut.'],
             ['type' => 'Neu', 'text' => 'Zwei Leaddomains für sevdesk mit getrennten Inhalten (sevdesk-einzug.de Vormerkung, sevdesk-sepa.de SEPA-Wissen), Vormerkung über die Anwendung mit Double-Opt-in. Die Domains sind in config.example.php und im Webhosting-Upload eingetragen; die Produktionskonfiguration (signup_domains) und die Zuordnung beim Hoster sind nachzuziehen.'],
             ['type' => 'Geändert', 'text' => 'lastschrift-einfach.de ist nur noch eine 301-Weiterleitung auf smart-abrechnen.de (Ordner enthält .htaccess und 404-Seite). Neue Werkzeuge: tools/seo-inventory.py (URL-Inventar), tools/seo-map-check.py (Themen- und URL-Zuordnung docs/seo/keyword-map.json), tools/lead-assets.py (logofreie Bildassets); Sitemaps mit lastmod aus der Git-Historie.'],
+         ]],
+        ['version' => '4.50', 'date' => '09.09.2026', 'title' => 'Kundenhinweise erscheinen nicht mehr im Adminbereich',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Im Adminbereich erschien der Hinweisbalken „Ihr Firmenaccount ist noch nicht freigeschaltet“; die Schaltfläche führte auf eine Adresse des Adminhosts, die es dort nicht gibt, und endete in „Nicht gefunden“. Die kundenbezogenen Hinweisbalken zu Abonnement, Testmodus und Support erscheinen jetzt nur noch in der Kundenanwendung, und ihre Links zeigen immer auf die Kundenanwendung. Prüfung: tools/host-separation-check.php.'],
+         ]],
+        ['version' => '4.49', 'date' => '09.09.2026', 'title' => 'Prüfung erkennt eine Registrierung, die inländische Umsätze nicht abdeckt',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'bin/billing-check.php nennt jetzt auch die Art jeder Steuerregistrierung. Deckt für das Land des Hauptsitzes nur eine One-Stop-Shop-Registrierung vor (sie gilt ausschließlich für grenzüberschreitende Umsätze in andere EU-Staaten), wird das als Fehler gemeldet: Inländische Rechnungen blieben sonst unbemerkt ohne Umsatzsteuer.'],
+         ]],
+        ['version' => '4.48', 'date' => '09.09.2026', 'title' => 'Prüfung nennt den Standard-Steuercode des Stripe-Kontos',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'bin/billing-check.php weist den Standard-Steuercode aus und warnt, wenn keiner hinterlegt ist. Ohne passende Einstufung der Leistung berechnet Stripe 0,00 EUR Steuer, obwohl Registrierung und Rechnungsadresse stimmen. Der Steuercode je Produkt bleibt bewusst offen, damit keine falsche Einstufung durch das Werkzeug entsteht.'],
+         ]],
+        ['version' => '4.47', 'date' => '09.09.2026', 'title' => 'Prüfung der Abrechnung erkennt fehlende Steuerregistrierung',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Beim ersten echten Kauf wurden 25,00 EUR statt 29,75 EUR belastet: Stripe berechnet Umsatzsteuer nur für Länder mit aktiver Steuerregistrierung, unabhängig davon, dass Stripe Tax den Status „active“ meldet und die Preise als Nettopreise angelegt sind. Die Prüfung sah das bisher nicht.'],
+            ['type' => 'Neu', 'text' => 'bin/billing-check.php liest die Steuerregistrierungen mit, nennt die Länder und meldet eine fehlende Registrierung als Fehler; eine Registrierung nur im Ausland und eine fehlende Adresse des Hauptsitzes werden ebenfalls beanstandet. Prüfung: tools/billing-setup-check.php.'],
+         ]],
+        ['version' => '4.46', 'date' => '09.09.2026', 'title' => 'Preisänderung eines Tarifs erreicht Stripe nur über einen Ersatzpreis',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'In Stripe sind Betrag und Periode eines Preises unveränderlich. Die Tarifverwaltung speichert eine Änderung von Betrag oder Periode deshalb nicht mehr, solange dieselbe Stripe-Preis-ID eingetragen bleibt: Sonst zeigte die Anwendung den neuen Betrag, während Stripe auch bei neuen Bestellungen weiter den alten berechnete. Die Meldung nennt die beiden zulässigen Wege.'],
+            ['type' => 'Neu', 'text' => 'bin/billing-setup-stripe.php --tarif=CODE --preis-neu legt den Ersatzpreis auf demselben Produkt an, übernimmt den Wiedererkennungsschlüssel, trägt die neue Preis-ID ein und archiviert den alten Preis. Laufende Abonnements behalten ihren Preis; die Anpassung von Bestandsverträgen bleibt eine kaufmännische Entscheidung. Ablauf und weitere Tarife: docs/abrechnung.md.'],
+         ]],
+        ['version' => '4.45', 'date' => '09.09.2026', 'title' => 'Deployment: Schutz gegen Downgrade durch erneut gestartete alte Läufe',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Am 08.09.2026 wurden ältere, einst fehlgeschlagene GitHub-Läufe erneut gestartet; jeder Re-run deployt den Commit seines Laufs, sodass Produktion mit grünen Läufen von 4.44 auf 4.38 zurückfiel. Die Datenbank blieb unverändert. Dieses Release rollt den aktuellen Stand wieder aus.'],
+            ['type' => 'Neu', 'text' => 'deploy.sh vergleicht die Version des neuen Release mit der des aktiven und weist eine kleinere Version vor dem ersten Eingriff ab (Hinweis auf die Ursache; bewusster Rücksprung nur über rollback.sh oder mit SMARTEINZUG_ALLOW_DOWNGRADE=1). Gleiche oder höhere Version bleibt erlaubt. Prüfung: tools/release-version-check.sh.'],
+         ]],
+        ['version' => '4.44', 'date' => '08.09.2026', 'title' => 'Vorabankündigung als eigene Mailvorlage, Musterversand für Betreiber',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die Vorabankündigung der SEPA-Lastschrift ist jetzt eine eigene Vorlage in app/mailer.php (mail_tpl_prenotification) mit unverändertem Inhalt: Rechnung, Betrag, Einzugstermin, Zahlungsempfänger, Mandatsreferenz, Gläubiger-Identifikationsnummer, Hinweis auf Stripe und Kontodeckung. Der Einzugsprozess nutzt diese Vorlage; tools/mail-ci-check.php prüft sie.'],
+            ['type' => 'Neu', 'text' => 'Musterversand: Adminbereich System, Reiter Übersicht, „Muster der Vorabankündigung an mich senden“ schickt die Mail mit Musterrechnung und Mustermandat ausschließlich an die eigene Adresse des angemeldeten Administrators (Betreff mit Vorsatz MUSTER, kein Kunde, kein Einzug, Audit). Auf dem Server: bin/mail-check.php --vorabankuendigung --send=ADRESSE; --html=DATEI schreibt eine Vorschau ohne Versand.'],
+         ]],
+        ['version' => '4.43', 'date' => '08.09.2026', 'title' => 'Adminbereich: Zeitraum für Kennzahlen frei wählbar',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Einheitliche Zeitraumauswahl im Adminbereich: Heute, Gestern, 7, 30, 90 Tage, dieser und letzter Monat, Quartal, Jahr, 12 Monate oder ein freier Von-bis-Bereich (bis drei Jahre). Die Wahl wird für die Sitzung gemerkt. Kennzahlen im Zeitraum (Registrierungen, erfolgreiche Einzüge, eingezogenes Volumen) mit Vergleich zum gleich langen Vorzeitraum; Akquisitionsquellen, Funnel und Diagramme folgen dem Zeitraum, die Diagramme wählen die Auflösung (Tag, Kalenderwoche, Monat) nach seiner Länge.'],
+            ['type' => 'Geändert', 'text' => 'System, Reiter Verfügbarkeit und Synchronisation & Performance nutzen dieselbe Auswahl (Performance mit Vorzeitraum als Vergleichsspalte). Bestandszahlen (Firmen, Benutzer, Gesamtvolumen) bleiben zeitraumunabhängig; die Live-Fenster der Übersicht bleiben unverändert.'],
+         ]],
+        ['version' => '4.42', 'date' => '08.09.2026', 'title' => 'sevdesk-Pilot: Verbindung zunächst nur für Firmen des Betreibers',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Pilotphase für sevdesk (Migration 030): Verbinden und Wechseln zu sevdesk ist bis zum Freigabetermin nur Firmen möglich, in denen ein Administrator der Plattform Mitglied ist, sowie Firmen aus einer Pilotliste. Andere Firmen sehen weiterhin „in Vorbereitung“ mit Vormerkung; die Registrierung mit sevdesk führt zur Vormerkung. Am Freigabetermin endet der Pilot von selbst. Einzüge bleiben unabhängig davon gesperrt, bis die Zahlungsfelder mit einem sevdesk-Konto bestätigt sind.'],
+         ]],
+        ['version' => '4.41', 'date' => '08.09.2026', 'title' => 'Befunde der Code-Review 4.35 bis 4.40 behoben',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Rechte: Die Einladung eines bestehenden Kontos läuft über dieselben Schutzregeln wie jede Rollenänderung (keine Selbst-Eskalation, letzter Administrator geschützt, Superadmin-Kennzeichen fällt bei anderer Rolle, Sitzungen enden). Die Systemrollen Mitarbeiter und Mitarbeiter Support können keine Dokumentationsrechte und keine Benutzerverwaltung mehr erhalten; dafür sind eigene Rollen vorgesehen. Eingeladene Benutzer müssen ihre Adresse nicht ein zweites Mal bestätigen.'],
+            ['type' => 'Behoben', 'text' => 'Betrieb: Der sevdesk-Worker wird jetzt von restart-workers.sh neu erzeugt sowie von deploy.sh und rollback.sh in Stop und Release-Bindung geprüft. Die Fairness-Abgabe zählt nur wartende Jobs des eigenen Pools. Verbindungsaktionen in den Einstellungen gelten nur für das Buchhaltungssystem der Firma.'],
+            ['type' => 'Behoben', 'text' => 'Anzeigen: Letzte Synchronisation in der Firmenliste je nach Buchhaltungssystem; Verteilung des Vollabgleichs zählt wie der Scheduler nur freigegebene, verbundene Firmen; veralteter 2FA-Hinweis bei den Vormerkungen entfernt.'],
+         ]],
+        ['version' => '4.40', 'date' => '08.09.2026', 'title' => 'Migration 028 korrigiert, Freigabe fehlgeschlagener Migrationen per --retry, Migrationsprüfung gegen den Vorzustand',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Deployments 4.38 und 4.39 scheiterten in der Migrationsphase (Läufe #73, #74): Migration 028 schrieb einen zu langen Wert in die Versionsspalte der Anbieter-Registry (20 Zeichen). Der Wert ist gekürzt, die Erläuterung steht im Hinweisfeld. Die laufende Anwendung war nicht betroffen; das alte Release lief unverändert weiter.'],
+            ['type' => 'Neu', 'text' => 'bin/migrate.php --retry=NNN gibt eine fehlgeschlagene oder ungeklärte Migration ausdrücklich zur Wiederholung frei (Status pending, protokolliert) und spielt die korrigierte Datei vollständig erneut ein, auch wenn Teile bereits wirksam waren. Kein Datenbankzugang mehr nötig; weiterhin keine automatische Wiederholung.'],
+            ['type' => 'Neu', 'text' => 'tools/migrations-check.sh prüft Migrationen gegen den echten Vorzustand (schema.sql des Commits vor der ältesten neuen Migration), vergleicht die migrierte Struktur mit dem aktuellen schema.sql und prüft Idempotenz und --retry. Marker für die Migrationen 020 bis 029 ergänzt.'],
+         ]],
+        ['version' => '4.39', 'date' => '08.09.2026', 'title' => 'Performance-Überarbeitung der Synchronisation, Phase 1: Messpunkte, entzerrter Vollabgleich, Fairness, Adminreiter',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Adminbereich System, Reiter „Synchronisation & Performance“: Läufe, Dauer, API-Aufrufe, Detail- und Kontaktabrufe, übersprungene Rechnungen, Antwortzeit je Aufruf, Drosselung, Wiederholungen, Wartezeit in der Warteschlange und Cursorgröße für 24 Stunden und 7 Tage; Worker je Pool; Firmen mit dem größten Aufwand; wirksame Konfiguration mit Quelle; Verteilung des nächtlichen Vollabgleichs; Circuit Breaker. Neue Messpunkte in Migration 029.'],
+            ['type' => 'Geändert', 'text' => 'Der nächtliche Vollabgleich verteilt sich über ein Fenster (Vorgabe vier Stunden ab 3 Uhr); jede Firma behält ihre feste Stunde. Ein Synchronisationsjob gibt den Worker nach 120 Sekunden ab, sobald Jobs anderer Firmen warten (Fortsetzung ohne Fehlversuch). Seitengröße der Lexware-Belegliste konfigurierbar (Vorgabe 100, höchstens 250). Alles ohne Deployment zurücknehmbar (Konfiguration).'],
+            ['type' => 'Geändert', 'text' => 'Bewusst nicht umgesetzt, weil die Lexware-Dokumentation nicht am Primärtext geprüft werden konnte: Webhooks (Signaturverfahren unbestätigt), Sammelabrufe, größere Seiten. Die offenen Prüffragen stehen in der Entwicklerdokumentation.'],
+         ]],
+        ['version' => '4.38', 'date' => '07.09.2026', 'title' => 'sevdesk Phase 2: Adapter, Verbindung je Firma, eigener Worker, Freigabetermin, Wechselsperre aufheben',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'sevdesk-Adapter hinter der bestehenden Rechnungsquelle (nur lesend): offene und teilbezahlte Rechnungen, Positionen, Kontakte mit Kundennummer und E-Mail, Änderungserkennung. Gebaut nach Sekundärquellen ohne Testkonto: Jede Annahme ist im Endpunktregister der Dokumentation mit Prüffrage vermerkt. Der offene Restbetrag und damit jeder SEPA-Einzug für sevdesk-Rechnungen bleiben gesperrt, bis der Betreiber die Zahlungsfelder mit einem sevdesk-Konto bestätigt hat (Schalter sevdesk_api_verified) und Einzüge freigibt (sevdesk_collections).'],
+            ['type' => 'Neu', 'text' => 'Firmen mit sevdesk verbinden ihr Konto in den Einstellungen (Token verschlüsselt, Verbindungstest, Trennen, Migration 028); Onboarding, Rechnungen, Kunden, Abgleich und Synchronisationsverlauf zeigen das Buchhaltungssystem der Firma. Eigener Jobtyp und Worker-Container für sevdesk (worker-sevdesk), damit Störungen des einen Systems das andere nicht bremsen; Monitoring-Komponente sevdesk.'],
+            ['type' => 'Neu', 'text' => 'Freigabetermin: Ohne ausdrücklichen Schalter wird die sevdesk-Verbindung automatisch ab dem hinterlegten Termin (Vorgabe 30.09.2026) freigegeben; sevdesk_connect = 1 oder 0 hat immer Vorrang. Der Termin gibt nur Verbinden und Lesen frei, nie den Einzug. Anzeige im Adminbereich und in den Einstellungen.'],
+            ['type' => 'Neu', 'text' => 'Adminbereich, Firmen: Wechselsperre des Buchhaltungssystems aufheben (Pflichtgrund, Berechtigung companies.manage, protokolliert); die Firma sieht den Zeitpunkt in den Einstellungen. Der Wechsel von sevdesk weg löscht den Token wie bei Lexware Office. AVV-Entwurf Anlage 1 um den Abschnitt sevdesk erweitert (neue Fassung, anwaltliche Prüfung vor Veröffentlichung).'],
+            ['type' => 'Neu', 'text' => 'Unternehmensdokumentation: Leitfaden Scharfschaltung (Go-live) mit Stripe-Einrichtung, Reihenfolge, Prüfpunkten, Rücknahme und Freigabematrix als eigenes Kapitel (auch als Kapitel-PDF).'],
+         ]],
+        ['version' => '4.37', 'date' => '07.09.2026', 'title' => 'Plattform-Benutzer und Rechte: Mitarbeiter, Support und Administratoren mit Rollen',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Adminbereich „Benutzer und Rechte“: Mitarbeiter und Administratoren des Betreibers per E-Mail einladen (Link zum Festlegen des Passworts, danach Pflicht zur Zwei-Faktor-Authentifizierung), Rollen vergeben, Zugang entziehen, Konten deaktivieren. Systemrollen Administrator, Mitarbeiter Support und Mitarbeiter; eigene Rollen aus einem Katalog von 18 Berechtigungen (Firmen, Tarife, Not-Stopp, Vormerkungen, Support, System, Rechtsdokumente, Dokumentation, Benutzer). Migration 027.'],
+            ['type' => 'Geändert', 'text' => 'Jede Adminseite und jede Aktion prüft die Berechtigung der Rolle serverseitig (Startseite, Support, System, Rechtsdokumente, Dokumentation, Datenendpunkt); Menü und Reiterleiste zeigen nur erlaubte Bereiche. Der Support-Modus verlangt die Berechtigung „Auf Firmenaccounts wechseln“ beim Start und bei jeder Anfrage. Plattform-Benutzer brauchen keine eigene Firma mehr: Sie arbeiten in einem Plattformkontext und werden von Kundenseiten in den Adminbereich geleitet.'],
+            ['type' => 'Geändert', 'text' => 'Schutzregeln: die eigene Rolle ist nicht änderbar, der letzte Administrator kann weder herabgestuft noch entfernt noch deaktiviert werden, Rechteverlust beendet alle Sitzungen sofort, Einladungen nur bei aktivem Mailversand (nie ein Passwortlink im Adminbereich). Alle Änderungen im Protokoll. Bestehende Superadmin-Konten behalten den Vollzugriff und erhalten die Rolle Administrator.'],
+         ]],
+        ['version' => '4.36', 'date' => '07.09.2026', 'title' => 'Zweitbestätigung per 2FA-Code nur noch für Wichtiges, Rechtsdokumente mobil',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Beschluss des Vorstands vom 07.09.2026: Der aktuelle 2FA-Code wird nur noch für Anmeldung, Wechsel in Kundenaccounts, Wartung aktivieren (Firma pausieren, Meldung veröffentlichen), Not-Stopp aufheben, Geldfluss (Einreichung erzwingen, Stripe-Import, Eingriffe in geldbewegende Jobs) und Kontosicherheit (Passwort, Inhaberwechsel, Buchhaltungssystem) verlangt. Der plattformweite Not-Stopp lässt sich wie der je Firma ohne Hürde aktivieren.'],
+            ['type' => 'Geändert', 'text' => 'Ohne Codeeingabe, aber weiterhin mit CSRF-Schutz, Berechtigungsprüfung und Protokoll: Tarife bearbeiten und zuweisen, Vormerkungen abmelden, sperren, einladen und löschen (Löschen mit Bestätigungsdialog), Statusdaten übertragen, Testnachricht, Synchronisation einreihen, Warteschlangen-Flag je Firma, Synchronisation fortsetzen, Meldung zurückziehen, Entwürfe der Rechtsdokumente anlegen, übernehmen und löschen. Jobaktionen zeigen das Codefeld nur bei geldbewegenden Jobtypen. Regel in der Entwicklerdokumentation, Prüfung tools/totp-policy-check.php.'],
+            ['type' => 'Behoben', 'text' => 'Mobilprüfung (18 Seiten bei 390 px): Nur die Adminseite Rechtsdokumente ließ sich seitlich scrollen; ihre Tabellen liegen jetzt wie alle anderen in einem scrollbaren Rahmen. Die Fußzeile zeigt keine leeren Kommas mehr, wenn die Betreiberanschrift in der Konfiguration fehlt. Übrige Seiten ohne Befund.'],
+         ]],
+        ['version' => '4.35', 'date' => '07.09.2026', 'title' => 'Workflow-Datei des Deployments wieder gültig',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Der Workflow 4.34 startete gar nicht (Lauf #69, „Unrecognized named-value: runner“): Die Zustandsdatei des automatischen zweiten Anlaufs wurde in der Job-Umgebung über runner.temp benannt, ein Kontext, den GitHub dort nicht kennt. Die Datei liegt jetzt unter einem festen Pfad im Runner-Heimatverzeichnis wie die SSH-Dateien desselben Jobs. Das Deployment von 4.34 (Migrationen 025 und 026) holt dieser Lauf nach.'],
+         ]],
+        ['version' => '4.34', 'date' => '07.09.2026', 'title' => 'Zustimmungsnachweis AGB und Datenschutz, Reiterleiste, Dokumentationsrechte, Indizes, automatischer Deploy-Neustart',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Jede Registrierung speichert die Zustimmung zu AGB und Datenschutzerklärung mit Fassung, Zeitpunkt (UTC), Person und Weg (Migration 025). Firmen sehen die Nachweise unter Rechtliches, Benutzer unter Sicherheit; die Vorregistrierung zeigt Fassung und Zeitpunkt ihrer Einwilligung auf der Bestätigungsseite.'],
+            ['type' => 'Geändert', 'text' => 'Untermenüs im Adminbereich als Reiterleiste direkt unter dem Seitenkopf (System, Plattform-Administration, Rechtsdokumente), mobil scrollbar. Dokumentationskarten neu gestaltet (klare Felder, Schaltflächen ohne Überlappung, Kapitel als aufklappbare Liste).'],
+            ['type' => 'Geändert', 'text' => 'Entwickler- und Unternehmensdokumentation sind für Plattformadministratoren einsehbar; Mitarbeiter- und Supportrollen erhalten keinen Zugriff (Vorgabe des Vorstands vom 07.09.2026). docs.technical_readers ist nur noch eine optionale Zusatzliste.'],
+            ['type' => 'Geändert', 'text' => 'Datenbank: Indizes für Firma plus Status auf Einzügen und Rechnungen sowie für die Protokollbereinigung (Migration 026), Ergebnis der Prüfung gegen das MariaDB-Kompendium; weitergehende Vorschläge bewusst zurückgestellt.'],
+            ['type' => 'Geändert', 'text' => 'Deployment: Endet der VPS-Job mit reinem SSH-Verbindungsfehler, startet er den Workflow genau einmal automatisch neu (neuer Runner, andere Adresse); fachliche Fehler lösen keinen Neustart aus.'],
+         ]],
+        ['version' => '4.33', 'date' => '07.09.2026', 'title' => 'Adminseite Rechtsdokumente auf dem Adminhost erreichbar',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'admin-legal.php (Rechtsdokumente) war auf dem Adminhost nicht erreichbar (404), weil die Host-Trennung eine feste Liste erlaubter Adminseiten führte. Jetzt gilt jede Seite admin.php oder admin-*.php als Adminseite: nur auf dem Adminhost, im Wartungsmodus weiter erreichbar, auf dem App-Host 404.'],
+         ]],
+        ['version' => '4.32', 'date' => '07.09.2026', 'title' => 'Dokumentationssystem: drei Dokumentationen im Adminbereich, PDF im CI, Kundenhandbuch',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Adminbereich System, Reiter „Versionen & Dokumentation“: drei Dokumente (Unternehmens- und Verkaufsdokumentation, Entwickler- und Betriebsdokumentation, Benutzerhandbuch) mit Zielgruppe, Vertraulichkeit, Softwarestand, Dokumentrevision, Prüfdatum und Status; Lesen mit Inhaltsverzeichnis, Kapitelnavigation und Suche, Gesamt-PDF und Kapitel-PDFs; historische Fassungen aus dem Serverarchiv; Versionshistorie zeigt den zugehörigen Dokumentationsstand.'],
+            ['type' => 'Neu', 'text' => 'Zugriffsschutz je Dokument: Entwickler- und Betriebsdokumentation nur für in docs.technical_readers eingetragene Plattformadministratoren (Standard: verweigern), Unternehmensdokumentation für Plattformadministratoren, Benutzerhandbuch für angemeldete Kunden über handbuch.php (Link im Hilfe-Center). Jeder Abruf wird protokolliert; auch Suchindex, Schaubilder und Archiv unterliegen der Prüfung.'],
+            ['type' => 'Neu', 'text' => 'Inhalte aus dem geprüften Projektstand: Architektur mit Nachweisstufen, Server-Datenblätter, Repository, Datenwörterbuch aller 45 Tabellen (aus dem Schema erzeugt), Datenbankkapitel mit Prüfung gegen das MariaDB-Kompendium, Geschäftslogik bis auf Implementierungsebene, Schnittstellen und Webhooks, Jobverzeichnis, E-Mail-System, Sicherheit und Geheimnisverwaltung, Einrichtung und Wiederherstellung, Fehlerhandbuch, Tests und Nachverfolgbarkeit, Abdeckungsübersicht mit offenen Punkten; 14 Schaubilder als versionierte Mermaid-Quellen.'],
+            ['type' => 'Geändert', 'text' => 'PDF-Erzeugung im CI der Müller Holding AG: Deckblatt mit Logo, Klassifizierung, Softwarestand und Revision, klickbares Inhaltsverzeichnis, Logo auf jeder Seite, Fußband mit Pflichtangaben, Querformatseiten für breite Tabellen und Schaubilder, Abschlussblatt. Dokumentationsprüfung im GitHub-Workflow; Deployment archiviert jeden Stand unter shared/docs-archive. Dokumentationspflicht in den Projektregeln verankert.'],
          ]],
         ['version' => '4.31', 'date' => '07.09.2026', 'title' => 'Buchhaltungssystem je Firma: Anzeige, Vorauswahl und Wechsel mit Vier-Wochen-Sperre',
          'entries' => [

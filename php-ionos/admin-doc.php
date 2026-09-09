@@ -1,16 +1,19 @@
 <?php
 /**
- * Auslieferung der technischen Dokumentation (Auftrag III) an Plattformadministratoren.
+ * Auslieferung der Dokumentation an Plattformadministratoren (Adminbereich, Versionen & Dokumentation).
  *
- * Liefert ausschließlich Dateien aus app/docs-build/, die im dortigen manifest.json gelistet
- * sind (Allowlist). Der angeforderte Dateiname wird nur gegen die Einträge des Manifests
- * geprüft (exakter Abgleich, kein Aufbau eines Pfades aus Nutzereingaben); zusätzlich wird der
- * aufgelöste Pfad per realpath() auf das docs-build-Verzeichnis geprüft (kein Directory Traversal).
- * Der Ordner app/docs-build ist per .gitignore ausgeschlossen und liegt unterhalb von app/, also
- * ohnehin nicht über die .htaccess-Regeln erreichbar; dieses Skript ist der einzige vorgesehene Weg.
+ * Liefert ausschliesslich Dateien aus app/docs-build/manifest.json (Allowlist) beziehungsweise aus einem
+ * archivierten Stand unter shared/docs-archive/<id>/ (?archiv=<id>, eigenes Manifest). Zugriff je Datei nach
+ * Klassifizierung (app/docs.php: technical nur fuer docs.technical_readers, admin fuer alle Plattformadministratoren).
+ * Der Dateiname wird nur gegen das Manifest geprueft (exakter Abgleich), der aufgeloeste Pfad per realpath()
+ * gegen das Verzeichnis (kein Directory Traversal). Jeder Abruf wird im Audit protokolliert.
+ *
+ * Relative Verweise innerhalb der HTML-Ansicht (suche.json, Kapitel-PDFs, Gesamt-PDF) laufen ueber den
+ * Pfadparameter: admin-doc.php/<code>/index.html laedt "suche.json" als admin-doc.php/<code>/suche.json.
  */
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
+require_once __DIR__ . '/app/docs.php';
 
 if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     $adminHost = base_url_host(admin_base_url());
@@ -19,86 +22,36 @@ if (PHP_SAPI !== 'cli' && admin_base_url() !== '') {
     }
 }
 
-require_superadmin();
+$ctx = require_platform('admin.view'); // Zugriffsstufe je Datei entscheidet docs_can_access() (app/docs.php)
 
-function admin_doc_fail(int $code, string $message): never
-{
-    http_response_code($code);
-    header('Content-Type: text/plain; charset=utf-8');
-    header('Cache-Control: no-store');
-    echo $message;
-    exit;
-}
-
-$docsDir = realpath(__DIR__ . '/app/docs-build');
-if ($docsDir === false) {
-    admin_doc_fail(404, 'Noch nicht erzeugt (tools/build-docs.py, wird beim Deployment ausgeführt).');
-}
-
-$manifestPath = $docsDir . '/manifest.json';
-if (!is_file($manifestPath)) {
-    admin_doc_fail(404, 'Manifest der Dokumentation nicht gefunden.');
-}
-$manifest = json_decode((string)@file_get_contents($manifestPath), true);
-if (!is_array($manifest)) {
-    admin_doc_fail(500, 'Manifest der Dokumentation ist nicht lesbar.');
-}
-
+// Dateiname aus ?f= oder aus PATH_INFO (fuer relative Verweise der HTML-Ansicht)
 $requested = (string)($_GET['f'] ?? '');
-if ($requested === '' || str_contains($requested, "\0")) {
-    admin_doc_fail(400, 'Kein Dateiname angegeben.');
+if ($requested === '' && !empty($_SERVER['PATH_INFO'])) {
+    $requested = ltrim((string)$_SERVER['PATH_INFO'], '/');
+}
+if ($requested === '' || str_contains($requested, "\0") || str_contains($requested, '..')) {
+    docs_fail(400, 'Kein gueltiger Dateiname angegeben.');
 }
 
-// Das Manifest selbst darf zusätzlich zu den gelisteten Dateien abgerufen werden (kind "json").
-if ($requested === 'manifest.json') {
-    $entry = ['name' => 'manifest.json', 'kind' => 'json'];
-} else {
-    $entry = null;
-    foreach ((array)($manifest['files'] ?? []) as $f) {
-        if (($f['name'] ?? '') === $requested) {
-            $entry = $f;
-            break;
-        }
+$archivId = (string)($_GET['archiv'] ?? '');
+if ($archivId !== '') {
+    $baseDir = docs_archive_path($archivId);
+    if ($baseDir === null) {
+        docs_fail(404, 'Archivstand nicht gefunden.');
     }
-}
-if ($entry === null) {
-    admin_doc_fail(404, 'Diese Datei ist nicht im Manifest der Dokumentation gelistet.');
-}
-
-$name = (string)$entry['name'];
-$path = realpath($docsDir . '/' . $name);
-if ($path === false || !str_starts_with($path, $docsDir . DIRECTORY_SEPARATOR) || basename($path) !== basename($name)) {
-    admin_doc_fail(404, 'Datei nicht gefunden.');
-}
-if (!is_file($path)) {
-    admin_doc_fail(404, 'Datei nicht gefunden.');
+    $manifest = docs_manifest($baseDir);
+    if ($manifest === null) {
+        docs_fail(404, 'Archivstand ohne Manifest.');
+    }
+    docs_serve($baseDir, $manifest, $requested, $ctx, 'admin_doc_archive_download');
 }
 
-$kind = (string)($entry['kind'] ?? '');
-if ($kind === '') {
-    $ext = strtolower((string)pathinfo($name, PATHINFO_EXTENSION));
-    $kind = ['pdf' => 'pdf', 'html' => 'html', 'svg' => 'svg', 'json' => 'json'][$ext] ?? '';
+$baseDir = docs_build_dir();
+if ($baseDir === null) {
+    docs_fail(404, 'Noch nicht erzeugt (tools/build-docs.py, wird beim Deployment ausgefuehrt).');
 }
-$contentTypes = [
-    'pdf'  => 'application/pdf',
-    'html' => 'text/html; charset=utf-8',
-    'svg'  => 'image/svg+xml',
-    'json' => 'application/json; charset=utf-8',
-];
-if (!isset($contentTypes[$kind])) {
-    admin_doc_fail(415, 'Dieser Dateityp wird nicht ausgeliefert.');
+$manifest = docs_manifest($baseDir);
+if ($manifest === null) {
+    docs_fail(404, 'Manifest der Dokumentation nicht gefunden.');
 }
-
-audit_log(null, current_user(), 'admin_doc_download', 'doc', $name, []);
-
-header('Content-Type: ' . $contentTypes[$kind]);
-header('Cache-Control: no-store');
-header('X-Content-Type-Options: nosniff');
-if ($kind === 'html' || $kind === 'svg') {
-    header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; font-src data:");
-}
-if ($kind === 'html' || $kind === 'pdf') {
-    header('Content-Disposition: inline; filename="' . str_replace(['"', '/', '\\'], '', basename($name)) . '"');
-}
-header('Content-Length: ' . (string)filesize($path));
-readfile($path);
+docs_serve($baseDir, $manifest, $requested, $ctx, 'admin_doc_download');

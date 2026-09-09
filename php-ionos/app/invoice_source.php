@@ -140,6 +140,20 @@ function invoice_source_for_tenant(string $tenantId): InvoiceSource
     $integration = $stmt->fetch();
     $code = (string)($integration['invoice_source'] ?? LexwareOfficeSource::CODE);
 
+    if ($code === 'sevdesk') {
+        require_once __DIR__ . '/sevdesk.php';
+        if (!integration_connect_allowed('sevdesk', $tenantId)) {
+            throw new RuntimeException('Die sevdesk-Anbindung ist für diese Firma noch nicht freigegeben (' . integration_connect_state_text('sevdesk') . ').');
+        }
+        if (!$integration || !(int)($integration['sevdesk_connected'] ?? 0)) {
+            throw new RuntimeException('sevdesk ist nicht verbunden.');
+        }
+        $apiKey = !empty($integration['sevdesk_api_key_encrypted']) ? decrypt_value($integration['sevdesk_api_key_encrypted']) : null;
+        if (!$apiKey) {
+            throw new RuntimeException('sevdesk API-Token fehlt.');
+        }
+        return new SevdeskSource(new SevdeskClient($apiKey));
+    }
     if ($code !== LexwareOfficeSource::CODE) {
         $provider = integration_provider($code);
         $name = $provider['name'] ?? $code;
@@ -161,10 +175,39 @@ function invoice_source_for_tenant(string $tenantId): InvoiceSource
 /** Rechnungsquelle aus einem noch nicht gespeicherten Schlüssel (Verbindungstest beim Einrichten). */
 function invoice_source_from_key(string $code, string $apiKey): InvoiceSource
 {
+    if ($code === 'sevdesk') {
+        require_once __DIR__ . '/sevdesk.php';
+        if (!integration_switch('sevdesk', 'connect')) {
+            throw new RuntimeException('Die sevdesk-Anbindung ist noch nicht freigegeben (' . integration_connect_state_text('sevdesk') . ').');
+        }
+        return new SevdeskSource(new SevdeskClient($apiKey));
+    }
     if ($code !== LexwareOfficeSource::CODE) {
         throw new RuntimeException('Rechnungssystem nicht freigegeben: ' . $code);
     }
     return new LexwareOfficeSource(new LexofficeClient($apiKey));
+}
+
+/** Jobtypen der Rechnungssynchronisation je Buchhaltungssystem (eigener Worker-Pool je System). */
+const INVOICE_SOURCE_SYNC_JOB_TYPES = ['lexware_office' => 'sync_run', 'sevdesk' => 'sync_run_sevdesk'];
+
+/** Jobtyp der Synchronisation fuer eine Firma (nach integrations.invoice_source). */
+function invoice_source_sync_job_type(string $tenantId): string
+{
+    try {
+        $st = db()->prepare('SELECT invoice_source FROM integrations WHERE tenant_id = ?');
+        $st->execute([$tenantId]);
+        $code = (string)($st->fetchColumn() ?: 'lexware_office');
+    } catch (Throwable $e) {
+        $code = 'lexware_office';
+    }
+    return INVOICE_SOURCE_SYNC_JOB_TYPES[$code] ?? 'sync_run';
+}
+
+/** Ist $type ein Synchronisationsjob (gleich welches Buchhaltungssystem)? */
+function invoice_source_is_sync_job(string $type): bool
+{
+    return in_array($type, INVOICE_SOURCE_SYNC_JOB_TYPES, true);
 }
 
 /** Eintrag der Anbieter-Registry (integration_providers) oder null. */

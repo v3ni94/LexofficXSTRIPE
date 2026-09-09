@@ -178,7 +178,8 @@ function profile_avatar_path_for(array $viewerCtx, string $userId): ?string
              WHERE a.user_id = ? AND b.user_id = ? LIMIT 1'
         );
         $stmt->execute([$viewerCtx['user_id'], $userId]);
-        if (!$stmt->fetchColumn() && empty($viewerCtx['is_superadmin'])) {
+        require_once __DIR__ . '/platform.php';
+        if (!$stmt->fetchColumn() && !platform_can($viewerCtx, 'support.view')) {
             return null;
         }
     }

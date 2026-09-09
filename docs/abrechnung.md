@@ -46,8 +46,23 @@ meldet, wie viele Firmen beim Scharfschalten gesperrt würden. Schlüssel ersche
 - Stripe Tax aktivieren und die eigene Steuerregistrierung (Deutschland) eintragen. Die Tarifpreise sind
   Nettopreise; Stripe rechnet die Umsatzsteuer anhand der Rechnungsadresse zusätzlich auf
   (`tax_behavior = exclusive`, `automatic_tax` in der Konfiguration).
+- **Art der Registrierung beachten.** Für Umsätze im eigenen Land ist eine Standardregistrierung nötig. Eine
+  One-Stop-Shop-Registrierung (OSS) gilt ausschließlich für grenzüberschreitende Umsätze in andere EU-Staaten;
+  liegt nur sie vor, weist Stripe auf dem Beleg „Steuerpflicht: nicht registriert“ und 0,00 EUR aus.
+  `bin/billing-check.php` nennt seit 4.49 die Art je Registrierung und meldet diesen Fall als Fehler.
+- **Steuerregistrierung eintragen (entscheidend).** Stripe berechnet Umsatzsteuer nur für Länder, in denen
+  eine aktive Registrierung hinterlegt ist. Fehlt sie, bleibt der Checkout beim Nettobetrag, obwohl Stripe Tax
+  den Status „active“ meldet und `automatic_tax` eingeschaltet ist (Vorfall 09.09.2026: erster echter Kauf
+  über 25,00 EUR statt 29,75 EUR). Im Dashboard unter Steuern, Registrierungen die deutsche Registrierung
+  anlegen. `bin/billing-check.php` liest seit 4.47 `/tax/registrations` mit und meldet eine fehlende
+  Registrierung als Fehler.
 - Produktsteuercode im Dashboard prüfen (Software als Dienstleistung). Der Code wird bewusst nicht vom
-  Werkzeug gesetzt, damit keine falsche Einstufung entsteht.
+  Werkzeug gesetzt, damit keine falsche Einstufung entsteht; es gilt dann der Standard-Steuercode aus den
+  Stripe-Tax-Einstellungen. Ist dort ein nicht steuerbarer Code hinterlegt, weist der Checkout 0,00 EUR
+  Steuer aus, obwohl Registrierung und Rechnungsadresse stimmen. `bin/billing-check.php` nennt den Code seit
+  4.48 und warnt, wenn keiner gesetzt ist.
+- Die Steuer erscheint im Checkout erst, wenn der Kunde seine Rechnungsadresse eingegeben hat. Vor diesem
+  Schritt zeigt Stripe die Zeile „Steuer 0,00 EUR“; das ist kein Fehler.
 - Kundenportal konfigurieren und speichern; die Anwendung verlinkt es für Rechnungen, Zahlungsmethode
   und Kündigung. Ohne gespeicherte Konfiguration scheitert der Aufruf des Portals.
 
@@ -118,6 +133,58 @@ anlegen (`--apply --live-bestaetigt`, die zweite Bestätigung ist bei Live-Schl�
 Live-Konto einrichten, `bin/billing-check.php` ohne Fehler, dann `billing.enabled = true` setzen. Danach
 sofort erneut prüfen und den Hinweisbalken sowie eine Bestellung mit einem eigenen Account kontrollieren.
 
+## Weitere Tarife anlegen
+
+Tarife entstehen ausschließlich in der Tabelle `plans` (Adminbereich, Tarife). Ausgeliefert werden neben
+UNLIMITED START vier inaktive Entwürfe (BASIC, PLUS, PRO, UNLIMITED) mit Platzhalterbeträgen aus der
+Erstinstallation. Reihenfolge für einen weiteren Tarif:
+
+1. Betrag, Periode, Grenzen und Bezeichnung im Adminbereich festlegen. Erst danach in Stripe anlegen: Betrag
+   und Intervall eines Stripe-Preises sind unveränderlich, ein zu früh angelegter Preis muss später ersetzt
+   werden.
+2. Produkt und Preis anlegen. Ohne `--tarif` erfasst das Werkzeug nur buchbare Tarife (`active = 1` und
+   `public_visible = 1`); ein noch nicht öffentlicher Tarif wird gezielt benannt:
+
+```bash
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=plus
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=plus --apply --live-bestaetigt
+```
+
+3. Tarif im Adminbereich auf aktiv und öffentlich setzen. Ab zwei aktiven, öffentlichen Tarifen zeigt die
+   Anwendung Upsell und Tarifwechsel (`billing_change_plan`, `plan_upgrade_candidate`).
+4. `bin/billing-check.php` ohne Fehler.
+
+## Preis eines Tarifs ändern
+
+**Eine Preisänderung wird nicht automatisch an Stripe weitergegeben.** In Stripe sind Betrag und Intervall
+eines Preises unveränderlich. Bliebe dieselbe Preis-ID stehen, zeigte die Anwendung den neuen Betrag, Stripe
+berechnete aber weiter den alten, auch bei NEUEN Bestellungen. Deshalb gilt seit 4.46:
+
+- Der Adminbereich **speichert** eine Änderung von Betrag oder Periode **nicht**, solange dieselbe
+  Stripe-Preis-ID eingetragen bleibt, und nennt die beiden zulässigen Wege.
+- Der Ersatzpreis entsteht mit `--preis-neu`: neuer Preis auf demselben Produkt mit dem Betrag aus `plans`,
+  Übernahme des `lookup_key` (`transfer_lookup_key`), Eintrag der neuen Preis-ID, danach Archivierung des
+  alten Preises. Schlägt ein Schritt fehl, bleibt der alte, funktionierende Preis eingetragen.
+
+```bash
+# 1. Neuen Betrag im Adminbereich eintragen scheitert noch (gewollt). Zuerst den Ersatzpreis anlegen:
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=unlimited_start --preis-neu
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=unlimited_start --preis-neu --apply --live-bestaetigt
+docker compose ... exec -T php php bin/billing-check.php
+```
+
+Reihenfolge in der Praxis: Betrag zuerst in `plans` ändern ist nicht möglich, solange die Preis-ID steht.
+Entweder die Preis-ID im Formular leeren (Tarif ist dann bis zur Neuanlage nicht buchbar) und anschließend
+`bin/billing-setup-stripe.php --tarif=CODE --apply` aufrufen, oder den Betrag über die Datenbank
+setzen und sofort `--preis-neu` ausführen. Der zweite Weg lässt keinen Zeitraum entstehen, in dem der Tarif
+nicht buchbar ist.
+
+**Laufende Abonnements behalten den alten Preis.** Stripe rechnet bestehende Abonnements über den Preis ab,
+mit dem sie angelegt wurden, auch wenn dieser archiviert ist. Eine Preisanpassung gegenüber Bestandskunden
+ist eine kaufmännische und vertragliche Entscheidung (Ankündigungsfrist, Zustimmung, AGB) und geschieht
+bewusst nicht automatisch; sie wird in Stripe je Abonnement oder über einen Tarifwechsel in der Anwendung
+vollzogen.
+
 ## Rücknahme
 
 `billing.enabled = false` schaltet die Abrechnung sofort wieder aus: Keine Sperre, kein Hinweisbalken,
@@ -126,7 +193,8 @@ Stripe-Dashboard gekündigt werden. Die Preis-IDs in `plans` bleiben erhalten.
 
 ## Laufender Betrieb
 
-- `bin/billing-check.php` nach jeder Änderung an Tarifen, Schlüsseln oder Webhooks ausführen.
+- `bin/billing-check.php` nach jeder Änderung an Tarifen, Schlüsseln oder Webhooks ausführen. Es meldet einen
+  abweichenden Betrag als Fehler (`Stripe berechnet X, der Tarif nennt Y`).
 - Das Feld `environment` in `shared/config.php` sollte auf `'prod'` stehen. In Produktion ist es aus
   Rückwärtskompatibilität nicht zwingend (`bin/healthcheck.php --expect-env=prod` beanstandet sein Fehlen
   nicht), für Staging dagegen Pflicht. Gesetzt ist es eindeutiger und die Prüfberichte nennen die Umgebung.

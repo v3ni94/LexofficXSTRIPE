@@ -66,13 +66,17 @@ function _sync_parse_datetime($value): ?string
 function _sync_empty_metrics(): array
 {
     return ['steps' => 0, 'api_calls' => 0, 'api_ms' => 0, 'throttle_ms' => 0, 'retries' => 0,
-        'detail_calls' => 0, 'contact_calls' => 0, 'skipped_unchanged' => 0, 'contacts_reused' => 0, 'started_at' => time()];
+        'detail_calls' => 0, 'contact_calls' => 0, 'skipped_unchanged' => 0, 'contacts_reused' => 0, 'started_at' => time(),
+        'api_ms_max' => 0, 'cursor_bytes_max' => 0];
 }
 
 /** Messwerte des Clients (nur beim echten Lexware-Client verfügbar) in die Laufmetrik übernehmen. */
 function _sync_collect_client_metrics(InvoiceSource $lex, array &$metrics, int $calls0, float $ms0, float $thr0, int $ret0): void
 {
     $client = $lex instanceof LexwareOfficeSource ? $lex->client() : ($lex instanceof LexofficeClient ? $lex : null);
+    if ($client === null && class_exists('SevdeskSource') && $lex instanceof SevdeskSource) {
+        $client = $lex->client(); // gleiche Zaehler (requestCount, requestMs, throttleMs, retryCount)
+    }
     if ($client === null) {
         return;
     }
@@ -80,6 +84,7 @@ function _sync_collect_client_metrics(InvoiceSource $lex, array &$metrics, int $
     $metrics['api_ms'] += (int)round($client->requestMs - $ms0);
     $metrics['throttle_ms'] += (int)round($client->throttleMs - $thr0);
     $metrics['retries'] += $client->retryCount - $ret0;
+    $metrics['api_ms_max'] = max((int)($metrics['api_ms_max'] ?? 0), (int)round((float)($client->requestMsMax ?? 0)));
 }
 
 /**
@@ -314,7 +319,8 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
     }
 
     if (!$cursor['recheck_ids']) {
-        $pdo->prepare('UPDATE integrations SET lexoffice_last_sync = NOW() WHERE tenant_id = ?')
+        // Zeitpunkt der letzten Synchronisation in der Spalte des Buchhaltungssystems der Firma (4.38)
+        $pdo->prepare('UPDATE integrations SET ' . ($lex->code() === 'sevdesk' ? 'sevdesk_last_sync' : 'lexoffice_last_sync') . ' = NOW() WHERE tenant_id = ?')
             ->execute([$tenantId]);
         $cursor['metrics']['duration_s'] = max(0, time() - (int)($cursor['metrics']['started_at'] ?? time()));
         return $finish($cursor, true);

@@ -1178,7 +1178,7 @@ function _execute_stripe_collection(
 /**
  * Vorabankündigung (Pre-Notification) per E-Mail an den Kunden senden, sofern
  * die Firma das aktiviert hat und eine E-Mail-Adresse vorliegt.
- * Inhalt: Betrag, Fälligkeit, Mandatsreferenz, Gläubiger-ID, Zahlungsempfänger.
+ * Vorlage: mail_tpl_prenotification() in app/mailer.php (einzige Quelle, auch für den Musterversand).
  */
 function _send_prenotification(array $org, array $customer, array $invoice, array $mandate, int $amountCents, string $dueDate): bool
 {
@@ -1186,15 +1186,8 @@ function _send_prenotification(array $org, array $customer, array $invoice, arra
     if (!(int)($org['send_pre_notification'] ?? 0) || !mail_enabled() || empty($customer['email'])) {
         return false;
     }
-    $lines = [
-        sprintf('Sehr geehrte Damen und Herren, wir kündigen hiermit den Einzug folgender Lastschrift an:'),
-        sprintf('Rechnung %s über %s, Fälligkeit/Einzug am %s.', $invoice['voucher_number'], format_eur_cents($amountCents), format_date($dueDate)),
-        sprintf('Zahlungsempfänger: %s. Mandatsreferenz: %s.%s', $org['name'], $mandate['mandate_reference'],
-            !empty($org['creditor_identifier']) ? ' Gläubiger-Identifikationsnummer: ' . $org['creditor_identifier'] . '.' : ''),
-        'Der Einzug erfolgt über den Zahlungsdienstleister Stripe. Bitte sorgen Sie für ausreichende Kontodeckung.',
-    ];
-    $tpl = mail_layout('Vorabankündigung SEPA-Lastschrift', $lines, null, $org['name']);
-    return mail_send($customer['email'], 'Vorabankündigung SEPA-Lastschrift ' . $invoice['voucher_number'], $tpl['text'], $tpl['html']);
+    $tpl = mail_tpl_prenotification($org, $invoice, $mandate, $amountCents, $dueDate);
+    return mail_send($customer['email'], $tpl['subject'], $tpl['text'], $tpl['html']);
 }
 
 /**

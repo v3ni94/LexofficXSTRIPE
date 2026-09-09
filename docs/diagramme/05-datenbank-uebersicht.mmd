@@ -1,0 +1,20 @@
+flowchart TB
+  subgraph KONTEN[Konten und Firmen]
+    users; organizations; organization_members; invitations; trusted_devices; user_recovery_codes; login_attempts; registration_requests
+  end
+  subgraph FACH[Fachdaten je Firma]
+    integrations; customers; customer_ibans; sepa_mandates; mandate_requests; mandate_files; invoices; payment_collections; collection_rules; stripe_imports; stripe_import_items
+  end
+  subgraph PLATTFORM[Plattform]
+    plans; platform_settings; integration_providers; interest_registrations; legal_documents; legal_acceptances; audit_log; support_tickets; support_ticket_messages; funnel_events
+  end
+  subgraph BETRIEB[Betrieb]
+    jobs; job_runs; sync_state; sync_runs; webhook_events; monitor_checks; monitor_requests; monitor_daily; monitor_incidents; monitor_incident_updates; schema_migrations
+  end
+  organizations --> organization_members --> users
+  organizations --> integrations
+  organizations --> customers --> invoices --> payment_collections
+  customers --> sepa_mandates --> payment_collections
+  customers --> customer_ibans
+  organizations --> legal_acceptances --> legal_documents
+  organizations --> plans

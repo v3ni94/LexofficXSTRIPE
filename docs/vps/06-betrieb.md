@@ -65,10 +65,12 @@ Checks. `tools/compose-check.py` prüft das ohne laufenden Docker-Daemon (siehe 
 |---|---|---|---|
 | `php` | php-fpm (Web) | `bin/healthcheck.php --db` | Datenbank über `SELECT 1` erreichbar |
 | `scheduler` | `bin/scheduler.php` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des Containers jünger als 90 Sekunden |
-| `worker-lexware-1`, `worker-lexware-2`, `worker-stripe`, `worker-mail`, `worker-maintenance` | `bin/worker.php --pool=...` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des jeweiligen Worker-Containers jünger als 90 Sekunden |
+| `worker-lexware-1`, `worker-lexware-2`, `worker-sevdesk`, `worker-stripe`, `worker-mail`, `worker-maintenance` | `bin/worker.php --pool=...` | `bin/healthcheck.php --heartbeat` | Heartbeat-Datei des jeweiligen Worker-Containers jünger als 90 Sekunden |
 | `metrics` | `bin/host-metrics.php` | `bin/healthcheck.php --metrics` | `bin/host-metrics.php` läuft als PID 1 UND die Sammelschleife hat zuletzt innerhalb von `METRICS_MAX_AGE_SECONDS` (Standard 300 Sekunden) einen Durchlauf beendet |
 | `redis` | `redis-server` | `redis-cli ping` | Redis antwortet |
 | `caddy` | `caddy` | keiner | Das Basisimage `caddy:2-alpine` bringt keinen eigenen Healthcheck mit; kein Mangel, siehe unten |
+
+`worker-sevdesk` (Version 4.38) bedient den eigenen Pool `sevdesk` und bleibt untätig, solange keine sevdesk-Firma verbunden und freigegeben ist, weil der Scheduler dann nichts einreiht.
 
 Zu `caddy`: `deploy/vps/scripts/deploy.sh` wartet beim Deployment nur auf Container, die einen
 Healthcheck besitzen, und prüft die Kette Coolify-Proxy, Caddy, php-fpm anschließend funktional über
@@ -637,6 +639,15 @@ bricht es ab (Exit 2); läuft es selbst, wird ein gleichzeitig ausgelöstes Depl
 laufenden Deployments von Hand Container neu erzeugen (Lauf #63 vom 07.09.2026).
 Von Hand: `stat -c %i /opt/smarteinzug/shared/config.php` gegen `docker compose exec -T php stat -c %i /opt/smarteinzug/shared/config.php`.
 
+**Während eines laufenden Deployments `shared/config.php` nicht bearbeiten (Vorfall 08.09.2026, Lauf #82):** Die
+Candidate-Prüfung startet einen eigenen Container mit dem neuen Code gegen genau diese Datei. Ein halb gespeicherter
+Stand lässt sie scheitern, und das Deployment bricht ab. Das ist die gewollte Wirkung, die laufende Anwendung bleibt
+unverändert und es ist kein Rollback nötig; die Meldung lautet dann `Phase=candidate-pruefung` mit der PHP-Zeile
+`Parse error ... in /opt/smarteinzug/shared/config.php`. Abhilfe: Datei korrigieren, Syntax prüfen mit
+`docker compose ... run --rm --no-deps -T php php -l /opt/smarteinzug/shared/config.php`, danach das Deployment über
+„Run workflow“ auf dem Branch erneut auslösen (nie über „Re-run“ eines alten Laufs, siehe Abschnitt „Kein Downgrade
+durch erneut gestartete alte Läufe“).
+
 
 Das Skript startet Scheduler, alle Worker und den Metrik-Sammler neu, ohne Release- oder Datenbankwechsel. Laufende
 Jobs werden über das Signalmodell kooperativ beendet und fortgesetzt.
@@ -708,6 +719,18 @@ Für manuelle `docker compose`-Aufrufe (etwa `exec -T php php bin/mail-check.php
 Passt der Hostkey nicht mehr zum Secret `VPS_SSH_KNOWN_HOSTS`, ist das kein Netzfehler: `StrictHostKeyChecking`
 bleibt bewusst aktiv, das Secret muss nach einer Neuinstallation des Servers erneuert werden.
 
+**Seit 4.34 automatisch:** Endet der Job `deploy-vps` mit einem reinen Verbindungsfehler (kein SSH-Versuch erreichte den
+Server, `connect_failed=true` in der Zustandsdatei von `vps-ssh-retry.sh`), startet der letzte Schritt den Workflow genau
+einmal neu (`gh workflow run deploy.yml -f auto_retry=1`, Berechtigung `actions: write` nur in diesem Job). Ein neuer Runner
+erhält eine andere Adresse; das deckt gesperrte Runner-Adressen und kurze Netzstörungen ab. Aus einem automatisch gestarteten
+Lauf heraus gibt es keinen weiteren Anlauf, und fachliche Fehler lösen nie einen Neustart aus. Bleibt auch der zweite Lauf ohne
+Verbindung, gelten die Prüfschritte oben. Die Zustandsdatei liegt unter dem festen Pfad `/home/runner/vps-retry-state`
+(Umgebungsvariable `VPS_RETRY_STATE_FILE` des Jobs). Der Kontext `runner` (etwa `runner.temp`) ist in der Umgebung auf
+Job-Ebene nicht verfügbar; die Fassung 4.34 verwendete ihn dort, und GitHub lehnte die gesamte Workflow-Datei ab (Lauf #69,
+„Invalid workflow file: Unrecognized named-value: 'runner'“), sodass weder Test- noch Deploy-Job liefen. Behoben in 4.35.
+Regel: Ausdrücke in `env:` auf Job-Ebene nur mit `github`, `needs`, `vars`, `secrets`, `inputs`; alles, was den Runner
+betrifft (`runner.*`, `steps.*`), gehört in die Umgebung eines Schritts oder wird im Schritt über `$RUNNER_TEMP` gelesen.
+
 **Was ausdrücklich nicht die Lösung ist:** Die Wartefrist des Pollings zu erhöhen. Sie betrifft die Dauer
 des Deployments, nicht die Erreichbarkeit; ein unerreichbarer Server wird durch längeres Warten nicht
 erreichbar, der Lauf bliebe nur länger rot.
@@ -738,6 +761,28 @@ Erfolg, obwohl nichts ausgeliefert wurde. Seit Version 4.17 gilt:
 - Fehlgeschlagene Statusabfragen werden gemeldet (erste und jede sechste) statt verschwiegen, damit eine
   Zugangsstörung nicht wie ein hängendes Deployment aussieht.
 
+## Kein Downgrade durch erneut gestartete alte Läufe
+
+**Vorfall (08.09.2026, 21:05 bis 21:37 UTC):** Nach dem grünen Deployment von 4.44 wurden in GitHub die früher
+fehlgeschlagenen Läufe #73 bis #79 über „Re-run“ erneut gestartet. Ein Re-run deployt immer den Commit SEINES
+Laufs, nicht den aktuellen Stand des Branches. Die Läufe waren fachlich korrekt und grün, setzten Produktion
+aber Schritt für Schritt auf 4.43, 4.39 und zuletzt 4.38 zurück (`.release_history`), und die Bereinigung
+„behalte die letzten 5“ löschte das Release 4.44 vom Server. Aufgefallen ist es erst, weil
+`restart-workers.sh` den seit 4.41 vorhandenen sevdesk-Worker nicht kannte und die Release-Kennung von 4.38
+nannte. Die Datenbank war nicht betroffen (Migrationen 028 bis 030 blieben eingespielt, sie sind additiv).
+
+**Regel:** Alte Läufe nie erneut starten. Zum Ausrollen des aktuellen Standes immer „Run workflow“ auf dem
+Branch oder ein neuer Push. Ein bewusster Rücksprung läuft über `rollback.sh`.
+
+**Schutz seit 4.45:** `deploy.sh` vergleicht vor jedem Schritt die `APP_VERSION` des neuen Release
+(`app/version.php`) mit der des aktiven Release (Ziel von `releases/current`) über
+`scripts/lib/release-version.sh`. Kleinere Version: Abbruch mit Exit 1 vor der Übernahme des Deploy-Ordners
+und vor dem ersten Compose-Aufruf, mit Hinweis auf Re-run als Ursache. Gleiche oder größere Version: erlaubt
+(erneutes Ausrollen desselben Standes bleibt möglich). Ist eine der beiden Versionen nicht lesbar
+(Erstinstallation, Altrelease), wird das gemeldet und nicht blockiert. Handbetrieb mit bewusstem Downgrade:
+`SMARTEINZUG_ALLOW_DOWNGRADE=1`. Test: `bash tools/release-version-check.sh`; `tools/deploy-runner-check.sh`
+läuft mit der Bibliothek im Sandbox-Release.
+
 ## Kennzahlen im Adminbereich und ihre Aufschlüsselung
 
 Die fünf Kennzahlen der Übersicht (System, Übersicht) sind verlinkt und führen jeweils auf die Liste, aus
@@ -752,7 +797,8 @@ der sie stammt:
 | Offene Störungen/Wartungen | Störungen und Wartungen | Meldungen samt Verlauf und Veröffentlichung |
 
 Der Abschnitt „Wartende Aufgaben“ nennt je Job die einreichende Person (fehlt sie, war es der Scheduler),
-den Zeitpunkt, den nächsten Versuch und die Versuchszahl. Aktionen (je mit 2FA-Code):
+den Zeitpunkt, den nächsten Versuch und die Versuchszahl. Aktionen (2FA-Code seit 4.36 nur bei geldbewegenden
+Jobtypen `collections_due` und `unclear_attempts`, `queue_type_is_money()`; bei allen anderen Typen ohne Code, immer mit Audit):
 
 - **Jetzt ausführen** setzt einen wartenden oder auf Wiederholung stehenden Job auf sofort fällig.
 - **Abbrechen** beendet einen wartenden Job.
@@ -841,7 +887,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --scale wo
 
 `worker-lexware-1`/`worker-lexware-2` sind feste, einzelne Dienste (zwei Container in
 `docker-compose.prod.yml`, siehe `deploy/vps/README.md`); `--scale` eignet sich für die übrigen,
-namentlich einzelnen Pools (`worker-mail`, `worker-stripe`, `worker-maintenance`).
+namentlich einzelnen Pools (`worker-mail`, `worker-stripe`, `worker-maintenance`, `worker-sevdesk`).
+
+**Bemessung (seit 4.39):** Ob ein Pool zu klein ist, zeigt der Adminbereich System, Reiter „Synchronisation &
+Performance“: steigt die Wartezeit in der Warteschlange (Fälligkeit bis Reservierung) und sind alle Worker des Pools
+dauerhaft beschäftigt, fehlt Kapazität. Vor einer Erhöhung der Lexware-Worker die globale Drosselung
+(`queue.lexoffice_global_per_second`) prüfen, sonst warten mehr Worker auf dieselbe Obergrenze. Der nächtliche
+Vollabgleich verteilt sich über `queue.full_sync_window_hours` Stunden; die Verteilung je Stunde steht im selben Reiter.
 
 ## Dead Letter behandeln
 
@@ -871,7 +923,7 @@ nicht nur die eigene Konfiguration.
 
 ## Wartungsmodus je Firma
 
-Adminbereich System (Superadmin) oder direkt in der Firmenverwaltung:
+Adminbereich System (Plattformrolle mit `monitoring.edit`) oder direkt in der Firmenverwaltung:
 `organizations.sync_paused` pausiert ausschließlich die Synchronisation einer einzelnen Firma
 (`sync_paused_reason` als Freitext für den Grund); die Anwendung selbst bleibt für diese Firma
 uneingeschränkt nutzbar, nur der Scheduler reiht keine neuen Synchronisationsjobs für sie ein.

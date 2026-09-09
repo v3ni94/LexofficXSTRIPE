@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException($result['error']);
             }
             switch_company($ctx['user_id'], $result['org_id']);
-            flash_set('success', 'Die neue Firma wurde Ihrem Benutzerkonto hinzugefügt und aktiviert. Bitte jetzt Lexware Office und Stripe verbinden. Über die Firmenübersicht wechseln Sie zwischen Ihren Firmen.');
+            flash_set('success', 'Die neue Firma wurde Ihrem Benutzerkonto hinzugefügt und aktiviert. Bitte jetzt Buchhaltungssystem (Lexware Office oder sevdesk) und Stripe verbinden. Über die Firmenübersicht wechseln Sie zwischen Ihren Firmen.');
             redirect('onboarding.php');
 
         } elseif ($action === 'switch') {
@@ -49,7 +49,7 @@ layout_header('Firmenübersicht', $ctx);
 ?>
 <h1>Firmenübersicht</h1>
 <p class="page-sub">Mehrere Firmen mit jeweils vollständig getrennten Kunden, Rechnungen, Einzügen,
-    eigener Lexware Office-/Stripe-Anbindung und eigenem Abonnement verwalten. Multiaccount verbindet nur
+    eigener Buchhaltungssystem- und Stripe-Anbindung und eigenem Abonnement verwalten. Multiaccount verbindet nur
     Anmeldung und Navigation, nicht die Datenbestände.</p>
 <?php if (!$ma['active']): ?>
 <div class="flash flash-info">Multiaccount ist in Ihrem Profil derzeit deaktiviert, daher erscheint die Firmenübersicht nicht im Profilmenü.
@@ -106,7 +106,7 @@ layout_header('Firmenübersicht', $ctx);
             <button type="submit" class="btn">Firma anlegen</button>
         </div>
         <p class="hint">Sie werden automatisch Inhaber der neuen Firma und richten anschließend
-            eigene Lexware Office- und Stripe-Zugänge unter "Einstellungen" ein.</p>
+            eigene Buchhaltungssystem- und Stripe-Zugänge unter "Einstellungen" ein.</p>
     </form>
 </div>
 <?php layout_footer($ctx); ?>

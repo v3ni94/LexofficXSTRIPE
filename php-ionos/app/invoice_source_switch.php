@@ -30,26 +30,38 @@ function invoice_source_label(string $code): string
 /** Aktuelles System der Firma mit Metadaten. */
 function invoice_source_current(string $tenantId): array
 {
-    $st = db()->prepare('SELECT invoice_source, invoice_source_changed_at, invoice_source_switches FROM integrations WHERE tenant_id = ?');
-    $st->execute([$tenantId]);
-    $row = $st->fetch() ?: [];
+    try {
+        $st = db()->prepare('SELECT invoice_source, invoice_source_changed_at, invoice_source_switches, invoice_source_lock_reset_at FROM integrations WHERE tenant_id = ?');
+        $st->execute([$tenantId]);
+        $row = $st->fetch() ?: [];
+    } catch (Throwable $e) {
+        // Spalte invoice_source_lock_reset_at erst ab Migration 028
+        $st = db()->prepare('SELECT invoice_source, invoice_source_changed_at, invoice_source_switches FROM integrations WHERE tenant_id = ?');
+        $st->execute([$tenantId]);
+        $row = $st->fetch() ?: [];
+    }
     $code = (string)($row['invoice_source'] ?? 'lexware_office');
     return [
         'code' => $code,
         'label' => invoice_source_label($code),
         'changed_at' => $row['invoice_source_changed_at'] ?? null,
         'switches' => (int)($row['invoice_source_switches'] ?? 0),
+        'lock_reset_at' => $row['invoice_source_lock_reset_at'] ?? null,
     ];
 }
 
-/** Ist das Zielsystem fuer Firmen freigegeben? Lexware Office immer; sevdesk nur mit Schalter sevdesk_connect. */
-function invoice_source_available(string $code): bool
+/**
+ * Ist das Zielsystem fuer (diese) Firma freigegeben? Lexware Office immer; sevdesk nach Schalter sevdesk_connect,
+ * im Pilot nur fuer Pilotfirmen (integration_connect_allowed). Ohne Firmenkennung (Registrierung) zaehlt nur die
+ * allgemeine Freigabe.
+ */
+function invoice_source_available(string $code, ?string $tenantId = null): bool
 {
     if ($code === 'lexware_office') {
         return true;
     }
     if ($code === 'sevdesk') {
-        return integration_switch('sevdesk', 'connect');
+        return integration_connect_allowed('sevdesk', $tenantId);
     }
     return false;
 }
@@ -93,8 +105,8 @@ function invoice_source_switch_blocker(string $tenantId, string $target): ?strin
     if ($cur['code'] === $target) {
         return 'Dieses Buchhaltungssystem ist bereits eingestellt.';
     }
-    if (!invoice_source_available($target)) {
-        return invoice_source_label($target) . ' ist noch nicht für Firmen freigegeben. Sie können sich unverbindlich vormerken lassen.';
+    if (!invoice_source_available($target, $tenantId)) {
+        return invoice_source_label($target) . ' ist noch nicht für Firmen freigegeben' . ($target === 'sevdesk' && integration_pilot_mode('sevdesk') ? ' (Pilotphase, zunächst nur Firmen des Betreibers)' : '') . '. Sie können sich unverbindlich vormerken lassen.';
     }
     $lock = invoice_source_lock($tenantId);
     if ($lock['locked']) {
@@ -139,6 +151,10 @@ function invoice_source_switch(array $ctx, string $target, string $reason = ''):
             // Verbindung zum bisherigen System trennen: kein weiterer Abruf, Schluessel geloescht (Datenminimierung).
             $pdo->prepare('UPDATE integrations SET lexoffice_api_key_encrypted = NULL, lexoffice_connected = 0, lexoffice_disconnected_at = NOW() WHERE tenant_id = ?')
                 ->execute([$tenantId]);
+        } elseif ($cur['code'] === 'sevdesk') {
+            // spiegelbildlich: sevdesk-Token loeschen, Verbindung trennen
+            $pdo->prepare('UPDATE integrations SET sevdesk_api_key_encrypted = NULL, sevdesk_connected = 0, sevdesk_disconnected_at = NOW() WHERE tenant_id = ?')
+                ->execute([$tenantId]);
         }
         $pdo->commit();
     } catch (Throwable $e) {
@@ -148,6 +164,48 @@ function invoice_source_switch(array $ctx, string $target, string $reason = ''):
     audit_log($tenantId, $ctx, 'invoice_source_switched', 'integration', $tenantId, [
         'from' => $cur['code'], 'to' => $target, 'reason' => mb_substr(trim($reason), 0, 200), 'lock_days' => INVOICE_SOURCE_LOCK_DAYS,
     ]);
+}
+
+/**
+ * Betreiber hebt die Vier-Wochen-Sperre einer Firma auf (Entscheidung vom 07.09.2026, Adminbereich, Firmen):
+ * invoice_source_changed_at wird geloescht, der Zaehler bleibt, der Zeitpunkt wird fuer die Anzeige in den
+ * Einstellungen gespeichert. Mit dem naechsten Wechsel beginnt die Sperre erneut. Pflichtgrund, Audit
+ * invoice_source_lock_reset. Berechtigung prueft die Seite (companies.manage); keine Zweitbestaetigung noetig (kein Geldfluss).
+ */
+function invoice_source_lock_reset(array $ctx, string $tenantId, string $reason): void
+{
+    $reason = trim(preg_replace('/\s+/', ' ', $reason));
+    if (mb_strlen($reason) < 3 || mb_strlen($reason) > 200) {
+        throw new RuntimeException('Bitte einen Grund angeben (3 bis 200 Zeichen).');
+    }
+    $cur = invoice_source_current($tenantId);
+    if (empty($cur['changed_at'])) {
+        throw new RuntimeException('Für diese Firma ist keine Wechselsperre aktiv.');
+    }
+    $st = db()->prepare('SELECT name FROM organizations WHERE id = ? AND deleted_at IS NULL');
+    $st->execute([$tenantId]);
+    $name = $st->fetchColumn();
+    if ($name === false) {
+        throw new RuntimeException('Firma nicht gefunden.');
+    }
+    db()->prepare('UPDATE integrations SET invoice_source_changed_at = NULL, invoice_source_lock_reset_at = UTC_TIMESTAMP() WHERE tenant_id = ?')
+        ->execute([$tenantId]);
+    audit_log($tenantId, $ctx, 'invoice_source_lock_reset', 'integration', $tenantId, [
+        'firma' => (string)$name, 'reason' => $reason, 'system' => $cur['code'], 'switches' => $cur['switches'], 'locked_until_before' => invoice_source_lock_until($cur['changed_at']),
+    ]);
+}
+
+/** Ende der Sperre (UTC) fuer einen Wechselzeitpunkt oder null. */
+function invoice_source_lock_until(?string $changedAt): ?string
+{
+    if (empty($changedAt)) {
+        return null;
+    }
+    try {
+        return (new DateTimeImmutable((string)$changedAt, new DateTimeZone('UTC')))->modify('+' . INVOICE_SOURCE_LOCK_DAYS . ' days')->format('Y-m-d H:i:s');
+    } catch (Throwable $e) {
+        return null;
+    }
 }
 
 /** Bei der Registrierung gewaehltes System setzen (nur feste Liste, sevdesk nur bei Freigabe). */

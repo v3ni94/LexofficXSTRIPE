@@ -120,6 +120,20 @@ layout_header('Sicherheit', $ctx);
     </div>
 </div>
 
+<?php require_once __DIR__ . '/app/consent.php'; $myConsents = consent_list_for_user((string)$user['id']); ?>
+<div class="card" id="zustimmungen">
+    <h2>Meine Zustimmungen</h2>
+    <?php if (!$myConsents): ?>
+        <p class="hint">Kein gespeicherter Zustimmungsnachweis (Konto vor Version 4.34 angelegt: AGB und Datenschutzerklärung wurden im Registrierungsformular bestätigt).</p>
+    <?php else: ?>
+        <ul>
+        <?php foreach ($myConsents as $c): ?>
+            <li><?= e(consent_subject_label((string)$c['subject'])) ?>, Fassung <?= e((string)$c['version']) ?>, akzeptiert am <?= e(format_datetime($c['accepted_at'])) ?> UTC (<?= e(consent_method_label((string)$c['method'])) ?>)</li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>
+
 <div class="card">
     <h2>Passwort ändern</h2>
     <form method="post">

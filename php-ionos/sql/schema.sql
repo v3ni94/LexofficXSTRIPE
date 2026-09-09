@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_reset_token_hash  CHAR(64)     NULL,
     password_reset_expires_at  DATETIME     NULL,
     is_superadmin              TINYINT(1)   NOT NULL DEFAULT 0,
+    platform_role              VARCHAR(32)  NULL,   -- Plattformrolle (platform_roles.code), NULL = kein Adminzugang (Migration 027)
     multiaccount_enabled       TINYINT(1)   NOT NULL DEFAULT 0,  -- manuell aktiviert (Migration 015); automatisch wirksam bei mehreren Firmen
     last_login_at              DATETIME     NULL,
     failed_login_count         INT          NOT NULL DEFAULT 0,
@@ -107,7 +108,8 @@ CREATE TABLE IF NOT EXISTS users (
     session_epoch              INT          NOT NULL DEFAULT 0,
     created_at                 DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                 DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_users_email (email)
+    UNIQUE KEY uq_users_email (email),
+    KEY ix_users_platform_role (platform_role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS user_recovery_codes (
@@ -145,7 +147,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     KEY ix_audit_tenant_time (tenant_id, created_at),
     KEY ix_audit_user_time (user_id, created_at),
-    KEY ix_audit_action (action)
+    KEY ix_audit_action (action),
+    KEY ix_audit_created (created_at)                                 -- Migration 026 (audit_cleanup)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS organization_members (
@@ -238,6 +241,7 @@ CREATE TABLE IF NOT EXISTS job_runs (
     throttle_ms       INT          NOT NULL DEFAULT 0,
     retries           INT          NOT NULL DEFAULT 0,
     skipped_starts    INT          NOT NULL DEFAULT 0,
+    queue_wait_ms     INT          NULL,                 -- Wartezeit in der Warteschlange bis zur Reservierung (Migration 029)
     peak_memory_bytes INT UNSIGNED NULL,
     error_category    VARCHAR(60)  NULL,
     KEY ix_jobruns_type_started (job_type, started_at),
@@ -380,8 +384,12 @@ CREATE TABLE IF NOT EXISTS sync_runs (
     errors         INT          NOT NULL DEFAULT 0,
     retries        INT          NOT NULL DEFAULT 0,
     api_calls      INT          NOT NULL DEFAULT 0,
+    detail_calls   INT          NOT NULL DEFAULT 0,           -- Einzelabrufe Rechnungsdetail (Migration 029)
+    contact_calls  INT          NOT NULL DEFAULT 0,           -- Einzelabrufe Kontakt (Migration 029)
     api_ms         INT          NOT NULL DEFAULT 0,
     throttle_ms    INT          NOT NULL DEFAULT 0,
+    api_ms_max     INT          NOT NULL DEFAULT 0,           -- laengster Einzelaufruf (Migration 029)
+    cursor_bytes_max INT        NOT NULL DEFAULT 0,           -- groesster Cursor des Laufs (Migration 029)
     error_category VARCHAR(60)  NULL,
     error_text     VARCHAR(500) NULL,                         -- bereinigt
     KEY ix_syncruns_tenant (tenant_id, started_at),
@@ -418,6 +426,12 @@ CREATE TABLE IF NOT EXISTS integrations (
     stripe_last_verified_at         DATETIME   NULL,
     stripe_disconnected_at          DATETIME   NULL,
     lexoffice_last_sync             DATETIME   NULL,
+    sevdesk_api_key_encrypted       TEXT       NULL,               -- sevdesk-Anbindung (Migration 028)
+    sevdesk_connected               TINYINT(1) NOT NULL DEFAULT 0,
+    sevdesk_company_name            VARCHAR(255) NULL,
+    sevdesk_last_verified_at        DATETIME   NULL,
+    sevdesk_disconnected_at         DATETIME   NULL,
+    sevdesk_last_sync               DATETIME   NULL,
     created_at                      DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                      DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_integration_tenant (tenant_id),
@@ -568,6 +582,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     updated_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_invoice_tenant_lexoffice (tenant_id, lexoffice_invoice_id),
     KEY ix_invoice_customer (customer_id),
+    KEY ix_invoice_tenant_status (tenant_id, lexoffice_status),       -- Migration 026
     CONSTRAINT fk_invoice_org      FOREIGN KEY (tenant_id)   REFERENCES organizations (id) ON DELETE CASCADE,
     CONSTRAINT fk_invoice_customer FOREIGN KEY (customer_id) REFERENCES customers (id)     ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -598,6 +613,7 @@ CREATE TABLE IF NOT EXISTS payment_collections (
     KEY ix_collection_tenant (tenant_id),
     KEY ix_collection_pi (stripe_payment_intent_id),
     KEY ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date),
+    KEY ix_collection_tenant_status (tenant_id, stripe_status),      -- Migration 026
     CONSTRAINT fk_collection_org     FOREIGN KEY (tenant_id)        REFERENCES organizations (id)  ON DELETE CASCADE,
     CONSTRAINT fk_collection_invoice FOREIGN KEY (invoice_id)       REFERENCES invoices (id)       ON DELETE CASCADE,
     CONSTRAINT fk_collection_mandate FOREIGN KEY (mandate_id)       REFERENCES sepa_mandates (id),
@@ -711,6 +727,10 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('collections_paused', '0');
+-- sevdesk (Migrationen 028 und 030): Freigabetermin der Verbindung; 'pilot' = bis dahin nur Firmen von Administratoren, 1 = alle, 0 = gesperrt.
+INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('sevdesk_release_at', '2026-09-30');
+INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('sevdesk_connect', 'pilot');
+INSERT IGNORE INTO platform_settings (`key`, `value`) VALUES ('sevdesk_pilot_orgs', '');
 
 -- ---------------------------------------------------------------------------
 -- Stripe-Mandatsdaten am SEPA-Mandat (aus Charge bzw. SetupIntent)
@@ -792,9 +812,9 @@ INSERT IGNORE INTO integration_providers (code, name, kind, status, capabilities
     ('lexware_office', 'Lexware Office', 'invoice_system', 'released',
      '["read_customers","read_open_invoices","read_open_amount","detect_changes"]', 'v1',
      'Public API (nach Angaben von Lexware Tarif XL erforderlich, im eigenen Konto prüfen). Kein Schreibzugriff auf Zahlungen.'),
-    ('sevdesk', 'sevdesk', 'invoice_system', 'planned',
-     '[]', 'v2',
-     'In Planung. Voraussetzung laut Anbieter voraussichtlich Tarif Buchhaltung Pro, API v2. Ungeprüft, keine Freigabe, kein Angebot.'),
+    ('sevdesk', 'sevdesk', 'invoice_system', 'development',
+     '["read_customers","read_open_invoices","detect_changes"]', 'v1',
+     'sevdesk-API v1, Systemversion 2.0 (Annahme). Adapter nach Sekundaerquellen gebaut (07.09.2026), nicht mit Testkonto verifiziert. Lesen ab Freigabe (sevdesk_connect oder sevdesk_release_at); offener Restbetrag und Einzug erst nach Bestaetigung (sevdesk_api_verified, sevdesk_collections). Kein Schreibzugriff.'),
     ('stripe', 'Stripe', 'payment_provider', 'released',
      '["sepa_debit","payment_intents","setup_checkout","mandates","webhooks"]', '2024-06-20',
      'Eigenes Stripe-Konto des Kunden, SEPA-Lastschrift muss dort freigeschaltet sein.');
@@ -804,7 +824,8 @@ ALTER TABLE integrations
     ADD COLUMN IF NOT EXISTS invoice_source VARCHAR(32) NOT NULL DEFAULT 'lexware_office' AFTER tenant_id;
 ALTER TABLE integrations
     ADD COLUMN IF NOT EXISTS invoice_source_changed_at DATETIME NULL AFTER invoice_source,           -- letzter Wechsel (Migration 024)
-    ADD COLUMN IF NOT EXISTS invoice_source_switches   INT      NOT NULL DEFAULT 0 AFTER invoice_source_changed_at;
+    ADD COLUMN IF NOT EXISTS invoice_source_switches   INT      NOT NULL DEFAULT 0 AFTER invoice_source_changed_at,
+    ADD COLUMN IF NOT EXISTS invoice_source_lock_reset_at DATETIME NULL AFTER invoice_source_switches;    -- Sperre vom Betreiber aufgehoben (Migration 028)
 
 -- ===========================================================================
 -- Ergänzungen aus Migration 007 (Erstattungen, Klärungsbedarf, Alarmierung).
@@ -1006,3 +1027,39 @@ CREATE TABLE IF NOT EXISTS legal_acceptances (
     KEY ix_legal_acc_doc (document_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------------
+-- Zustimmungsnachweis AGB/Datenschutz (Migration 025)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS consent_records (
+    id              CHAR(36)     NOT NULL PRIMARY KEY,
+    user_id         CHAR(36)     NULL,
+    organization_id CHAR(36)     NULL,
+    user_email      VARCHAR(255) NOT NULL,
+    subject         VARCHAR(40)  NOT NULL,               -- agb | datenschutz | ...
+    version         VARCHAR(60)  NOT NULL,               -- Fassung, archiviert in docs/einwilligungen.md
+    method          VARCHAR(20)  NOT NULL DEFAULT 'registration', -- registration | backend | import
+    source_url      VARCHAR(255) NULL,                   -- Seite, deren Text akzeptiert wurde
+    accepted_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY ix_consent_user (user_id, accepted_at),
+    KEY ix_consent_org (organization_id, accepted_at),
+    KEY ix_consent_subject (subject, version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+-- Plattform-Benutzer und Rechte (Migration 027): Rollen des Adminbereichs mit Berechtigungsliste.
+CREATE TABLE IF NOT EXISTS platform_roles (
+    code         VARCHAR(32)  NOT NULL PRIMARY KEY,   -- z. B. admin, support, staff, eigene Rollen
+    name         VARCHAR(100) NOT NULL,
+    description  VARCHAR(255) NULL,
+    permissions  TEXT         NOT NULL,               -- JSON-Array von Berechtigungscodes oder ["*"]
+    is_system    TINYINT(1)   NOT NULL DEFAULT 0,     -- Systemrolle: nicht loeschbar, admin nicht editierbar
+    created_at   DATETIME     NOT NULL DEFAULT UTC_TIMESTAMP(),
+    updated_at   DATETIME     NOT NULL DEFAULT UTC_TIMESTAMP()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO platform_roles (code, name, description, permissions, is_system) VALUES
+    ('admin',   'Administrator',        'Vollzugriff auf alle Bereiche, entspricht dem bisherigen Superadmin.', '["*"]', 1),
+    ('support', 'Mitarbeiter Support',  'Support-Anfragen, Firmenzugriff, Konten entsperren; Systemübersicht nur lesend.',
+        '["admin.view","companies.view","support.view","support.tickets","support.sessions","support.users","monitoring.view","interest.view"]', 1),
+    ('staff',   'Mitarbeiter',          'Lesender Zugriff auf Firmen, Vormerkungen und Systemübersicht.',
+        '["admin.view","companies.view","monitoring.view","interest.view"]', 1);

@@ -103,7 +103,7 @@ function billing_setup_product_params(array $plan): array
  *    wäre also niedriger als der Tarifpreis.
  *  - lookup_key macht die Anlage wiederholbar (siehe billing_plan_lookup_key)
  */
-function billing_setup_price_params(array $plan, string $productId): array
+function billing_setup_price_params(array $plan, string $productId, bool $transferLookupKey = false): array
 {
     $days = (int)($plan['period_days'] ?? 0);
     if ($days < 1) {
@@ -112,7 +112,7 @@ function billing_setup_price_params(array $plan, string $productId): array
     if ((int)($plan['price_cents'] ?? 0) < 1) {
         throw new InvalidArgumentException('Tarif ' . (string)($plan['code'] ?? '?') . ': price_cents fehlt oder ist ungültig.');
     }
-    return [
+    $params = [
         'product'      => $productId,
         'currency'     => 'eur',
         'unit_amount'  => (int)$plan['price_cents'],
@@ -122,6 +122,107 @@ function billing_setup_price_params(array $plan, string $productId): array
         'recurring'    => ['interval' => 'day', 'interval_count' => $days, 'usage_type' => 'licensed'],
         'metadata'     => ['lexsepa_plan' => (string)$plan['code']],
     ];
+    if ($transferLookupKey) {
+        // Ersatzpreis nach einer Preisaenderung: Der lookup_key ist je Konto eindeutig und muss vom alten
+        // Preis uebernommen werden, sonst lehnt Stripe die Anlage ab. Der alte Preis behaelt seinen Betrag
+        // (in Stripe unveraenderlich) und rechnet laufende Abonnements weiter ab, bis diese umgestellt sind.
+        $params['transfer_lookup_key'] = 'true';
+    }
+    return $params;
+}
+
+/**
+ * Weicht ein in Stripe vorhandener Preis so vom Tarif ab, dass er durch einen NEUEN Preis ersetzt werden
+ * muss? Das ist genau bei Betrag, Periode und Waehrung der Fall (in Stripe unveraenderliche Felder);
+ * ein archivierter oder falsch besteuerter Preis ist ein anderer Fall und wird nicht hier entschieden.
+ */
+function billing_setup_price_needs_replacement(array $price, array $plan): bool
+{
+    $amount = array_key_exists('unit_amount', $price) && $price['unit_amount'] !== null ? (int)$price['unit_amount'] : null;
+    if ($amount === null || $amount !== (int)($plan['price_cents'] ?? 0)) {
+        return true;
+    }
+    if (strtolower((string)($price['currency'] ?? '')) !== 'eur') {
+        return true;
+    }
+    $days = is_array($price['recurring'] ?? null) ? billing_recurring_days((array)$price['recurring']) : null;
+    return $days === null || $days !== (int)($plan['period_days'] ?? 0);
+}
+
+/**
+ * Stripe Tax pruefen: Ohne aktive Steuerregistrierung berechnet Stripe KEINE Umsatzsteuer, auch wenn
+ * automatic_tax eingeschaltet und der Status "active" ist. Der Kunde zahlt dann den Nettobetrag, die
+ * Steuer fehlt (Vorfall 09.09.2026: 25,00 EUR statt 29,75 EUR beim ersten echten Kauf).
+ *
+ * @param array $settings Antwort von GET /tax/settings
+ * @param array $registrations Antwort von GET /tax/registrations (Feld data)
+ * @return array{errors:string[],warnings:string[],info:string[],laender:string[]}
+ */
+function billing_check_tax(array $settings, array $registrations): array
+{
+    $r = ['errors' => [], 'warnings' => [], 'info' => [], 'laender' => [], 'typen' => []];
+    $status = (string)($settings['status'] ?? '?');
+    if ($status !== 'active') {
+        $r['errors'][] = sprintf('Stripe Tax ist nicht aktiv (Status %s), automatic_tax ist aber eingeschaltet. Checkout mit automatischer Steuer schlägt dann fehl.', $status);
+    }
+    // Standard-Steuercode des Kontos: Unser Werkzeug setzt bewusst keinen Steuercode je Produkt, damit keine
+    // falsche Einstufung entsteht; dann gilt der Standard aus den Stripe-Tax-Einstellungen. Ist dort ein nicht
+    // steuerbarer Code hinterlegt, berechnet Stripe 0,00 EUR, obwohl Registrierung und Adresse stimmen.
+    $code = (string)($settings['defaults']['tax_code'] ?? '');
+    if ($code === '') {
+        $r['warnings'][] = 'Stripe Tax: kein Standard-Steuercode hinterlegt. Ohne ihn kann Stripe die Leistung nicht '
+            . 'einstufen und berechnet unter Umständen keine Steuer. Im Dashboard unter Steuern, Einstellungen einen '
+            . 'Code für elektronisch erbrachte Dienstleistungen (Software als Dienstleistung) wählen.';
+    } else {
+        $r['info'][] = 'Stripe Tax: Standard-Steuercode ' . $code . '.';
+    }
+
+    $head = (array)($settings['head_office']['address'] ?? []);
+    $land = strtoupper((string)($head['country'] ?? ''));
+    if ($land === '') {
+        $r['errors'][] = 'Stripe Tax: keine Adresse des Hauptsitzes hinterlegt. Ohne sie kann Stripe die Steuer nicht bestimmen.';
+    } else {
+        $r['info'][] = 'Stripe Tax: Hauptsitz ' . $land . '.';
+    }
+
+    // Art der Registrierung mitlesen: Eine One-Stop-Shop-Registrierung (oss_union/oss_non_union) deckt nur
+    // grenzueberschreitende Umsaetze in andere EU-Staaten ab, NICHT die Umsaetze im eigenen Land. Steht fuer
+    // das Land des Hauptsitzes nur eine OSS-Registrierung, weist Stripe bei inlaendischen Verkaeufen
+    // "Steuerpflicht: nicht registriert" und 0,00 EUR aus (Vorfall 09.09.2026).
+    $inlandTyp = '';
+    foreach ((array)($registrations['data'] ?? []) as $reg) {
+        $reg = (array)$reg;
+        if ((string)($reg['status'] ?? '') !== 'active') {
+            continue;
+        }
+        $c = strtoupper((string)($reg['country'] ?? ''));
+        if ($c === '') {
+            continue;
+        }
+        $typ = (string)(((array)($reg['country_options'] ?? []))[strtolower($c)]['type'] ?? '');
+        if (!in_array($c, $r['laender'], true)) {
+            $r['laender'][] = $c;
+            $r['typen'][] = $c . ($typ !== '' ? ' (' . $typ . ')' : '');
+        }
+        if ($c === $land && $typ !== '') {
+            $inlandTyp = $typ;
+        }
+    }
+    if ($inlandTyp !== '' && str_starts_with($inlandTyp, 'oss')) {
+        $r['errors'][] = sprintf('Stripe Tax: Für %s besteht nur eine One-Stop-Shop-Registrierung (%s). Sie gilt für '
+            . 'grenzüberschreitende Umsätze in andere EU-Staaten, nicht für Umsätze im eigenen Land; inländische '
+            . 'Rechnungen bleiben ohne Umsatzsteuer. Zusätzlich eine Standardregistrierung für %s anlegen.',
+            $land, $inlandTyp, $land);
+    }
+    if ($r['laender'] === []) {
+        $r['errors'][] = 'Stripe Tax: keine aktive Steuerregistrierung. Stripe berechnet dann KEINE Umsatzsteuer, '
+            . 'der Kunde zahlt nur den Nettobetrag. Im Dashboard unter Steuern, Registrierungen die deutsche '
+            . 'Registrierung eintragen (Stripe-Hilfe: Tax, Registrierungen).';
+    } elseif ($land !== '' && !in_array($land, $r['laender'], true)) {
+        $r['warnings'][] = sprintf('Stripe Tax: für das Land des Hauptsitzes (%s) besteht keine aktive Registrierung (vorhanden: %s). '
+            . 'Inländische Umsätze werden dann ohne Umsatzsteuer berechnet.', $land, implode(', ', $r['laender']));
+    }
+    return $r;
 }
 
 /**
