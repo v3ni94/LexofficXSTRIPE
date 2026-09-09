@@ -138,7 +138,7 @@ Laut Bestandsmatrix ist Consent Mode auf den bestehenden Marketingseiten vorhand
 ## 6. Offene Punkte
 
 - Der Auftragstext zu „Abschnitt 25" (verbindliche Keyword-Liste) lag mir nicht vor. Die oben aufgeführten Keywords sind ein fachlich plausibler Entwurf und vor Schaltung gegenzuprüfen.
-- Die Google-Ads-Kennung AW-18431688840 ist für lexware-einzug.de hinterlegt (`assets/js/site.js`, Zuordnung je Hostname, Laden erst nach Einwilligung, seit 05.09.2026; Stand 09.09.2026 vom Betreiber bestätigt, keine andere Domain). Ein Conversion-Label (`send_to`) für die Registrierung fehlt noch und ist vor Kampagnenstart bei Google Ads anzulegen und in `site.js` einzutragen.
+- Die Google-Ads-Kennung AW-18431688840 ist für lexware-einzug.de (seit 05.09.2026) und smart-einzug.de (seit 10.09.2026, Vorgabe Betreiber) hinterlegt (`assets/js/site.js`, Zuordnung je Hostname, Laden erst nach Einwilligung). Googles automatische Tag-Prüfung findet das Tag deshalb nicht; der Nachweis läuft über echte Treffer nach Einwilligung (Entscheidung 10.09.2026: kein erweiterter Consent Mode ohne rechtliche Prüfung). Ein Conversion-Label (`send_to`) für die Registrierung fehlt noch und ist vor Kampagnenstart bei Google Ads anzulegen und in `site.js` einzutragen.
 - Der Wechsel der App-Domain (`app.smart-einzug.de`, siehe `docs/smarteinzug-rollout.md`) wirkt sich auf die Landingpage-zu-App-Weiterleitung und damit auf die Deduplizierung der Conversion-Ereignisse aus und ist vor Kampagnenstart abzustimmen.
 - Suchvolumina und tatsächliche Wettbewerberpreise sind laut Bestandsmatrix nicht aus dem Repository prüfbar.
 - Freigabe der Wettbewerber-Anzeigengruppen (SEPAHeld, GoCardless) durch die Geschäftsführung steht aus, diese bleiben bis dahin pausiert.

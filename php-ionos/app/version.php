@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.53';
+const APP_VERSION = '4.54';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.54', 'date' => '10.09.2026', 'title' => 'Google-Ads-Tag auch auf smart-einzug.de',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die Google-Ads-Kennung AW-18431688840 gilt auf Vorgabe des Betreibers jetzt für lexware-einzug.de und smart-einzug.de (assets/js/site.js, Zuordnung je Hostname). Wie bisher lädt gtag.js erst nach Einwilligung im Cookie-Banner, nie direkt im HTML; der Bannertext nennt Google Ads automatisch, Content-Security-Policy und Datenschutzerklärung der Hauptdomain enthielten die nötigen Angaben bereits.'],
+         ]],
         ['version' => '4.53', 'date' => '09.09.2026', 'title' => 'Alias-Domains sepa-einzug.de und sepaeinzug.de',
          'entries' => [
             ['type' => 'Neu', 'text' => 'sepa-einzug.de und sepaeinzug.de leiten wie smarteinzug.de per 301 auf smart-einzug.de weiter (bekannte Pfade auf die passende Seite, utm-Parameter werden durchgereicht, alles andere 404). Entscheidung des Betreibers vom 09.09.2026: Markenschutz und sprechbare Adresse statt weiterer Inhaltsdomain, keine zusätzlichen Inhalte für dieselbe Suchabsicht. Ordner websites/aliases/, Upload über den Job deploy-webhosting als alias-sepa-einzug und alias-sepaeinzug; die Domains sind bei IONOS mit und ohne www auf diese Ordner zu legen.'],
