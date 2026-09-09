@@ -8,12 +8,21 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.53';
+const APP_VERSION = '4.54';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.54', 'date' => '09.09.2026', 'title' => 'Empfehlungen der Gesamtprüfung umgesetzt: Webhooks, Support-Modus, Sicherheit, Nachweise, Alarmierung',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Webhooks: Scheitert die Verarbeitung einer Meldung von Stripe, wird sie jetzt wiederholt statt still verworfen. Bisher wurde jeder Fehler mit „in Ordnung“ quittiert; eine Kündigung oder eine bezahlte Bestellung konnte dadurch dauerhaft unbemerkt bleiben. Doppelte Zustellungen und vertauschte Reihenfolgen erkennt die Anwendung jetzt auch bei den Einzügen.'],
+            ['type' => 'Behoben', 'text' => 'Support-Modus: Im Namen einer Firma lassen sich keine Bankverbindungen mehr ändern, keine Mandate erzeugen oder widerrufen, kein Not-Stopp aufheben, keine Firmendaten mit Geldbezug ändern, das Buchhaltungssystem nicht wechseln und keine Verträge akzeptieren. Die Sperren liegen jetzt in den Funktionen selbst.'],
+            ['type' => 'Behoben', 'text' => 'Sicherheit: Das Sitzungscookie trägt hinter dem Proxy zuverlässig die Kennzeichnung „nur über https“. Die Einrichtungsprüfung findet die Konfiguration des Servers und bleibt ohne Token verschlossen; zusätzlich sperrt der Webserver sie. Vergessene Platzhalter aus der Beispielkonfiguration werden überall abgewiesen.'],
+            ['type' => 'Neu', 'text' => 'Nachweis der zahlungspflichtigen Bestellung: Tarif, Nettopreis, Periode und die Fassung der AGB werden dauerhaft festgehalten (Migration 031). Bisher stand die Zustimmung nur im Protokoll, das nach 90 Tagen gelöscht wird, und die Fassung wurde aus dem Tagesdatum gebildet.'],
+            ['type' => 'Neu', 'text' => 'Alarmierung: Eine Störungsmeldung gilt erst als erledigt, wenn sie wirklich versendet wurde. Zusätzlich kann ein unabhängiger Alarmkanal eingerichtet werden (monitoring.heartbeat_url): Bleibt das regelmäßige Signal aus, weil der Server oder die Hintergrundverarbeitung steht, schlägt ein externer Dienst Alarm.'],
+            ['type' => 'Neu', 'text' => 'Prüfung tools/payment-safety-check.php auf 69 Fälle erweitert; Anleitung zur Zustellbarkeit von E-Mails (SPF, DKIM, DMARC) in der Entwicklerdokumentation.'],
+         ]],
         ['version' => '4.53', 'date' => '09.09.2026', 'title' => 'Alias-Domains sepa-einzug.de und sepaeinzug.de',
          'entries' => [
             ['type' => 'Neu', 'text' => 'sepa-einzug.de und sepaeinzug.de leiten wie smarteinzug.de per 301 auf smart-einzug.de weiter (bekannte Pfade auf die passende Seite, utm-Parameter werden durchgereicht, alles andere 404). Entscheidung des Betreibers vom 09.09.2026: Markenschutz und sprechbare Adresse statt weiterer Inhaltsdomain, keine zusätzlichen Inhalte für dieselbe Suchabsicht. Ordner websites/aliases/, Upload über den Job deploy-webhosting als alias-sepa-einzug und alias-sepaeinzug; die Domains sind bei IONOS mit und ohne www auf diese Ordner zu legen.'],

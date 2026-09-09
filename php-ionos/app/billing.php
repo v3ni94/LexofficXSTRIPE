@@ -253,22 +253,34 @@ function billing_apply_subscription(string $tenantId, array $sub): void
  */
 function billing_event_claim(string $eventId, string $type): bool
 {
-    if ($eventId === '') {
-        return true;
-    }
-    $stmt = db()->prepare('INSERT IGNORE INTO webhook_events (id, source, event_type) VALUES (?, ?, ?)');
-    $stmt->execute([mb_substr($eventId, 0, 255), 'billing', mb_substr($type, 0, 60)]);
-    return $stmt->rowCount() === 1;
+    require_once __DIR__ . '/webhook_events.php';
+    return webhook_event_claim('billing', $eventId, $type);
 }
 
 /** Webhook-Ereignis des Plattform-Kontos verarbeiten. */
 function billing_handle_event(array $event): string
 {
+    require_once __DIR__ . '/webhook_events.php';
     $type = (string)($event['type'] ?? '');
-    $obj = $event['data']['object'] ?? [];
-    if (!billing_event_claim((string)($event['id'] ?? ''), $type)) {
+    $eventId = (string)($event['id'] ?? '');
+    if (!billing_event_claim($eventId, $type)) {
         return 'bereits verarbeitet';
     }
+    // Scheitert die Verarbeitung, wird die Beanspruchung zurueckgenommen und der Fehler weitergereicht:
+    // billing-webhook.php antwortet dann mit HTTP 500, Stripe wiederholt, und die Wiederholung findet das
+    // Ereignis nicht mehr als "bereits verarbeitet" vor (Befund 09.09.2026).
+    try {
+        return _billing_handle_event_inner($type, $event);
+    } catch (Throwable $e) {
+        webhook_event_release('billing', $eventId);
+        throw $e;
+    }
+}
+
+/** Eigentliche Verarbeitung; Beanspruchung und Freigabe liegen in billing_handle_event(). */
+function _billing_handle_event_inner(string $type, array $event): string
+{
+    $obj = $event['data']['object'] ?? [];
 
     switch ($type) {
         case 'checkout.session.completed':
@@ -382,9 +394,32 @@ function billing_record_consent(array $org, array $plan, array $actor, array $po
     if (($post['unternehmer'] ?? '') !== '1') {
         throw new RuntimeException('Bitte bestätigen Sie, dass Sie das Abonnement als Unternehmen abschließen.');
     }
+    require_once __DIR__ . '/consent.php';
+    // Fassung der AGB aus der Konstante, nicht aus dem Tagesdatum: Ein Datum benennt keine Fassung und waere
+    // als Nachweis wertlos (Befund der Gesamtpruefung 09.09.2026).
+    $agbVersion = (string)config('agb_version', AGB_VERSION);
+    $agbUrl = public_base_url() . '/agb';
+    // Dauerhafter Nachweis in consent_records. Das Protokoll (audit_log) wird nach 90 Tagen geloescht und
+    // taugt nicht als Beleg fuer eine Zahlungsvereinbarung.
+    consent_record(
+        (string)($actor['user_id'] ?? '') !== '' ? (string)$actor['user_id'] : null,
+        (string)$org['id'],
+        (string)($actor['email'] ?? ''),
+        'bestellung',
+        $agbVersion,
+        'backend',
+        $agbUrl,
+        sprintf(
+            'Tarif %s (%s), %s netto je %d Tage, Schaltfläche "%s"',
+            (string)$plan['code'],
+            (string)$plan['name'],
+            format_eur_cents((int)$plan['price_cents']),
+            (int)$plan['period_days'],
+            $button
+        )
+    );
     audit_log($org['id'], $actor, 'subscription_consent', 'organization', $org['id'], [
         'plan' => $plan['code'], 'price_cents_net' => (int)$plan['price_cents'], 'period_days' => (int)$plan['period_days'],
-        'agb_version' => (string)config('agb_version', 'AGB smart-einzug.de, Stand ' . date('d.m.Y')),
-        'agb_url' => public_base_url() . '/agb', 'button' => $button,
+        'agb_version' => $agbVersion, 'agb_url' => $agbUrl, 'button' => $button,
     ]);
 }

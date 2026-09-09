@@ -17,6 +17,10 @@ function crypto_key(): string
     if (strlen($secret) < 32) {
         throw new RuntimeException('app_secret ist zu kurz (mindestens 32 Zeichen).');
     }
+    if (config_is_placeholder($secret)) {
+        // Der Platzhalter aus config.example.php ist genau 32 Zeichen lang und kaeme sonst durch.
+        throw new RuntimeException('app_secret ist noch der Platzhalter aus app/config.example.php. Bitte 64 Zufallszeichen eintragen; ohne echten Wert waeren alle verschluesselten Zugangsdaten wertlos.');
+    }
     return hash('sha256', $secret, true);
 }
 

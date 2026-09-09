@@ -225,6 +225,11 @@ return [
         'tls_hosts' => [],                    // leer = Hosts aus app_base_url, admin_base_url, public_base_url
         'alert_emails' => [],                 // Plattformadministratoren für Störungs- und Entwarnungsmails; leer = nicht eingerichtet
         'editors' => [],                      // E-Mail-Adressen der Superadmins mit Bearbeitungsrecht (Meldungen, Testversand); leer = alle Superadmins
+        // Unabhaengiger Alarmkanal (Totmannschalter): https-Adresse eines externen Dienstes, der Alarm
+        // schlaegt, wenn dieses Signal ausbleibt. Der Sammler ruft sie nach jedem stoerungsfreien Lauf auf;
+        // bei einer gestoerten Komponente, stehendem Scheduler oder ausgefallenem Server bleibt sie aus.
+        // Ohne Eintrag laeuft die Alarmierung ausschliesslich ueber E-Mail im ueberwachten System selbst.
+        'heartbeat_url' => '',
         'test_mail_to' => '',                 // feste eigene Testadresse für den manuellen Testversand; niemals Kundenadressen
         'public_min_coverage_pct' => 99,      // Mindest-Messabdeckung für öffentliche Prozentwerte (Produkteinstellung)
         'tariff_limits' => [],                // manuell hinterlegte Tariflimits mit Quelle und Datum, z.B. ['php_memory_mb' => ['value' => 512, 'source' => 'IONOS Tarifübersicht', 'date' => '06.09.2026']]

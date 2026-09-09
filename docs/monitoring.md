@@ -107,3 +107,27 @@ scratchpad/test_monitor.php (Testdatenbank und lokaler Testserver): Zeitgewichtu
 scratchpad/e2e_saas.php, Abschnitt 28: Zugriffsschutz für Seite und Datenendpunkt, health.php ohne Sitzung und Versionen, Eintrag System in der Adminnavigation, Jetzt prüfen ohne Nebenwirkungen, Dienste-Anzeige, Störung mit Skriptbereinigung, Veröffentlichung nur mit gültigem 2FA-Code.
 
 Nicht geprüft (keine Testumgebung): TLS-Prüfung gegen echte Hosts, SMTP-Fehler, Stripe- und Lexware-Störungen mit echten Diensten, Alarmmails mit echtem Versand, Eigenlast auf dem IONOS-Server.
+
+## Unabhängiger Alarmkanal (Totmannschalter, seit 4.54)
+
+**Befund der Gesamtprüfung vom 09.09.2026:** Die Alarmierung lief ausschließlich im überwachten System. Stand
+der Scheduler, fiel die Datenbank aus oder war der Server nicht erreichbar, unterblieb jede Meldung. Zusätzlich
+wurde die Alarmmarke gesetzt, BEVOR die Mail versendet war; scheiterte der Versand, galt der Alarm als erledigt
+und wurde nie wiederholt. Genau bei einer Störung des Mailwegs blieb die Meldung damit aus.
+
+**Zwei Änderungen:**
+
+1. Die Marke `alert_open_<komponente>` wird erst gesetzt, wenn mindestens ein Empfänger die Nachricht angenommen
+   hat (`monitor_alert_send()` liefert das jetzt zurück). Schlägt der Versand fehl, bleibt die Störung offen und
+   der nächste Lauf versucht es erneut. Die Entwarnung löscht die Marke in jedem Fall, sonst bliebe eine
+   Komponente dauerhaft als gestört vermerkt.
+2. Neuer Konfigurationsschlüssel `monitoring.heartbeat_url`: Nach jedem Lauf ohne gestörte Komponente ruft der
+   Sammler diese https-Adresse auf (`monitor_heartbeat_ping()`). Bleibt das Signal aus, weil eine Komponente
+   gestört ist, der Scheduler steht oder der Server nicht läuft, schlägt der externe Dienst Alarm. Der Aufruf
+   trägt keine Daten und keine Geheimnisse, hat ein kurzes Zeitlimit und kann den Sammler nie beeinflussen.
+
+**Einrichtung durch den Betreiber:** Bei einem Überwachungsdienst einen Prüfpunkt mit Erwartungsintervall
+anlegen (Vorschlag: Alarm nach 20 Minuten ohne Signal, der Sammler läuft alle zehn Minuten), dessen Adresse als
+`monitoring.heartbeat_url` eintragen und `restart-workers.sh` ausführen. Der Adminbereich unter System zeigt
+danach Zeitpunkt und Ergebnis des letzten Signals. Der Alarmweg dieses Dienstes muss von SmartEinzug unabhängig
+sein, also nicht über dasselbe Postfach laufen.

@@ -114,6 +114,10 @@ function legal_pending_for_org(string $orgId): array
  */
 function legal_accept(array $ctx, string $documentId, string $method = 'backend'): void
 {
+    // Im Support-Modus keine rechtsverbindliche Erklaerung im Namen der Firma (Befund 09.09.2026).
+    if (!empty($ctx['support_mode']) || (function_exists('support_mode') && support_mode())) {
+        throw new RuntimeException('Im Support-Modus koennen keine Vertragsdokumente im Namen der Firma akzeptiert werden. Diese Erklaerung muss die Firma selbst abgeben.');
+    }
     $doc = legal_document_load($documentId);
     if (!$doc || $doc['published_at'] === null || $doc['retired_at'] !== null) {
         throw new RuntimeException('Dieses Dokument ist nicht in einer gueltigen Fassung veroeffentlicht.');
@@ -137,6 +141,9 @@ function legal_accept(array $ctx, string $documentId, string $method = 'backend'
 /** Verschwiegenheitspflicht der Firma setzen (Inhaber/Admin). */
 function legal_set_secrecy(array $ctx, bool $flag, ?string $kind): void
 {
+    if (!empty($ctx['support_mode']) || (function_exists('support_mode') && support_mode())) {
+        throw new RuntimeException('Im Support-Modus kann die Angabe zur Verschwiegenheitspflicht nicht geaendert werden.');
+    }
     if (!in_array((string)($ctx['role'] ?? ''), ['owner', 'admin'], true)) {
         throw new RuntimeException('Nur Inhaber und Administratoren koennen diese Angabe aendern.');
     }

@@ -83,6 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!can_manage_settings($ctx)) {
                 throw new RuntimeException('Nur Inhaber und Administratoren können Firmendaten ändern.');
             }
+            // Support-Modus: Die Firmendaten enthalten geldrelevante Regeln (Gläubiger-Identifikationsnummer,
+            // Pflicht zum unterschriebenen Mandat, Vorabankündigung und deren Frist). Sie zu ändern verschiebt
+            // die Bedingungen echter Lastschriften und bleibt der Firma vorbehalten (Befund 09.09.2026).
+            support_guard();
             $name = trim($_POST['org_name'] ?? '');
             if ($name === '') {
                 throw new RuntimeException('Der Firmenname darf nicht leer sein.');

@@ -30,7 +30,7 @@ $token = PHP_SAPI === 'cli'
     : ($_GET['token'] ?? '');
 
 $expected = (string)config('cron_token');
-if (strlen($expected) < 16 || !hash_equals($expected, (string)$token)) {
+if (strlen($expected) < 16 || config_is_placeholder($expected) || !hash_equals($expected, (string)$token)) {
     http_response_code(403);
     die('Zugriff verweigert.');
 }

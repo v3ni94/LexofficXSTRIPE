@@ -101,6 +101,27 @@ Adminbereich sagten zu, dass Einzüge ohne `sevdesk_collections` gesperrt sind. 
 nirgends abgefragt; allein `sevdesk_api_verified` entschied. `collections_source_blocked()` prüft ihn jetzt vor dem
 sofortigen und vor dem terminierten Einzug.
 
+## 5f. Webhooks: Wiederholung statt stillem Verlust (Version 4.54)
+
+Beide Webhook-Endpunkte quittierten bis 4.53 jeden Verarbeitungsfehler mit HTTP 200 und hatten das Ereignis zu
+diesem Zeitpunkt bereits als verarbeitet vermerkt. Stripe wiederholt nach einer 200 nie, und ein Nachsenden aus
+dem Dashboard lief in „bereits verarbeitet“. Ein Statuswechsel konnte damit dauerhaft verloren gehen: eine
+gekündigte Firma blieb aktiv, eine zahlende Firma gesperrt, eine Rücklastschrift unvermerkt.
+
+Seit 4.54 gilt für `stripe-webhook.php` und `billing-webhook.php` dasselbe Muster, umgesetzt im gemeinsamen
+Modul `app/webhook_events.php`:
+
+| Schritt | Verhalten |
+|---|---|
+| Beanspruchen | `webhook_event_claim()` legt das Ereignis an; eine zweite Zustellung erkennt das und tut nichts |
+| Reihenfolge | `webhook_event_is_stale()` verwirft ein Ereignis, zu dessen Objekt bereits ein neueres verarbeitet wurde |
+| Fehler | `webhook_event_release()` nimmt die Beanspruchung zurück, die Antwort ist HTTP 500, Stripe wiederholt |
+| Vorläufig | Fälle wie „Einzug noch nicht festgeschrieben“ antworten mit 200, geben die Beanspruchung aber frei |
+
+Der Mandanten-Webhook hatte bis dahin überhaupt keine Erkennung doppelter Zustellungen und keinen
+Reihenfolgeschutz; ein verspätetes `payment_intent.processing` konnte einen bereits vermerkten Erfolg oder eine
+Rücklastschrift überschreiben.
+
 ## 5b. Alarmierung
 
 `app/alerts.php`, reine Leseprüfungen, keine Geheimnisse in der Ausgabe.

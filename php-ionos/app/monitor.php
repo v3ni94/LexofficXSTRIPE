@@ -52,6 +52,10 @@ function monitor_config(): array
         'min_sample'              => max(1, (int)($c['min_sample'] ?? 20)),
         'freshness'               => array_merge(['php_app' => 900, 'db' => 900, 'web_ui' => 900, 'admin_ui' => 900, 'cron' => 900, 'mail' => 3600, 'lexoffice' => 7200, 'sevdesk' => 7200, 'stripe' => 7200, 'deploy' => 7200, 'sftp' => 86400, 'db_size' => 86400, 'storage' => 86400], (array)($c['freshness'] ?? [])),
         'test_mail_to'            => trim((string)($c['test_mail_to'] ?? '')),
+        // Unabhaengiger Alarmkanal (Totmannschalter): Adresse eines externen Dienstes, der Alarm schlaegt,
+        // wenn dieses Signal ausbleibt. Siehe monitor_heartbeat_ping().
+        'heartbeat_url'           => trim((string)($c['heartbeat_url'] ?? '')),
+        'heartbeat_timeout'       => max(2, min(15, (int)($c['heartbeat_timeout'] ?? 5))),
         'app_url_override'        => isset($c['app_url_override']) ? rtrim((string)$c['app_url_override'], '/') : null,
         'editors'                 => array_map('mb_strtolower', array_values(array_filter((array)($c['editors'] ?? [])))),
         'tariff_limits'           => (array)($c['tariff_limits'] ?? []), // manuell hinterlegt: ['php_memory_mb' => ['value' => 512, 'source' => '...', 'date' => 'TT.MM.JJJJ']]
@@ -656,6 +660,13 @@ function monitor_collect(array $opts = []): array
         }
         monitor_mark('collect_last_at', mon_utc(monitor_now()));
         monitor_mark('collect_last_duration_ms', (string)(int)round((microtime(true) - $start) * 1000));
+        // Unabhaengiger Alarmkanal: Signal nur, wenn dieser Lauf keine gestoerte Komponente gefunden hat.
+        try {
+            $gestoert = (bool)array_filter($summary['checks'] ?? [], static fn($c): bool => ($c['status'] ?? '') === 'fail');
+            $summary['heartbeat'] = monitor_heartbeat_ping(!$gestoert);
+        } catch (Throwable $e) {
+            $summary['heartbeat'] = false; // darf den Sammler nie beeinflussen
+        }
         job_run_finish($runId, 'success', ['items' => count($summary['checks'])]);
     } catch (Throwable $e) {
         job_run_finish($runId, 'failed', [], monitor_category($e));
@@ -1467,30 +1478,88 @@ function monitor_alerts_evaluate(): array
         $failStreak = count($last) >= (int)$cfg['alert_fail_streak'] && count(array_filter(array_slice($last, 0, (int)$cfg['alert_fail_streak']), fn($s) => $s === 'fail')) === (int)$cfg['alert_fail_streak'];
         $okStreak = count($last) >= (int)$cfg['alert_ok_streak'] && count(array_filter(array_slice($last, 0, (int)$cfg['alert_ok_streak']), fn($s) => $s === 'ok')) === (int)$cfg['alert_ok_streak'];
         if (!$open && $failStreak) {
-            monitor_mark('alert_open_' . $c, mon_utc(monitor_now()));
-            monitor_alert_send($c, true);
-            monitor_event('alert', 'fail', null, $c, 'internal', 60);
-            $out[] = ['component' => $c, 'action' => 'opened'];
+            // Marke erst NACH erfolgreichem Versand setzen: Bis 4.53 wurde sie vorher gesetzt; scheiterte der
+            // Versand (Postfach voll, SMTP gestoert, Mailversand ausgeschaltet), galt der Alarm als erledigt und
+            // wurde nie wiederholt. Genau bei einer Stoerung des Mailwegs blieb die Meldung damit aus
+            // (Befund der Gesamtpruefung 09.09.2026).
+            $gesendet = monitor_alert_send($c, true);
+            monitor_event('alert', $gesendet ? 'fail' : 'ok', null, $gesendet ? $c : $c . '_unzustellbar', 'internal', 60);
+            if ($gesendet) {
+                monitor_mark('alert_open_' . $c, mon_utc(monitor_now()));
+                $out[] = ['component' => $c, 'action' => 'opened'];
+            } else {
+                $out[] = ['component' => $c, 'action' => 'open_pending'];
+            }
         } elseif ($open && $okStreak) {
+            // Entwarnung: Die Marke wird auch dann geloescht, wenn der Versand scheitert. Sonst bliebe die
+            // Stoerung dauerhaft offen und ein spaeterer echter Alarm derselben Komponente unterbliebe.
+            $gesendet = monitor_alert_send($c, false);
             monitor_mark('alert_open_' . $c, null);
-            monitor_alert_send($c, false);
-            monitor_event('alert', 'ok', null, $c, 'internal', 60);
-            $out[] = ['component' => $c, 'action' => 'closed'];
+            monitor_event('alert', 'ok', null, $gesendet ? $c : $c . '_unzustellbar', 'internal', 60);
+            $out[] = ['component' => $c, 'action' => $gesendet ? 'closed' : 'closed_unsent'];
         }
     }
     return $out;
 }
 
-/** Alarm oder Entwarnung an die konfigurierten Plattformadministratoren (nur bei aktivem Mailversand). */
-function monitor_alert_send(string $component, bool $opened): void
+/**
+ * Unabhaengiger Alarmkanal als Totmannschalter (monitoring.heartbeat_url).
+ *
+ * Die bisherige Alarmierung laeuft ausschliesslich IM ueberwachten System: Steht der Scheduler, faellt die
+ * Datenbank aus oder ist der Server nicht erreichbar, unterbleibt jede Meldung, und niemand erfaehrt davon
+ * (Befund der Gesamtpruefung 09.09.2026). Deshalb ruft der Sammler nach jedem Lauf, in dem KEINE Komponente
+ * gestoert ist, eine externe Adresse auf. Bleibt dieses Signal aus, schlaegt der externe Dienst Alarm.
+ *
+ * Bewusst einfach gehalten: kurzer GET ohne Inhalt, keine Geheimnisse im Aufruf, kein Abbruch bei Fehlern,
+ * kein Circuit Breaker (der Aufruf darf den Sammler nie beeinflussen). Ohne konfigurierte Adresse passiert
+ * nichts; der Adminbereich zeigt den Kanal dann als nicht aktiv.
+ *
+ * @return bool|null true = Signal abgesetzt, false = Versuch fehlgeschlagen, null = nicht eingerichtet
+ *                   oder unterdrueckt, weil eine Komponente gestoert ist.
+ */
+function monitor_heartbeat_ping(bool $allesOk): ?bool
+{
+    $url = (string)(monitor_config()['heartbeat_url'] ?? '');
+    if ($url === '' || !preg_match('~^https://~i', $url)) {
+        return null; // nicht eingerichtet (nur https, damit das Signal nicht im Klartext manipulierbar ist)
+    }
+    if (!$allesOk) {
+        return null; // Signal bewusst aussetzen: der externe Dienst alarmiert dann von selbst
+    }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => (int)monitor_config()['heartbeat_timeout'],
+        CURLOPT_CONNECTTIMEOUT => (int)monitor_config()['heartbeat_timeout'],
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_USERAGENT      => 'SmartEinzug-Monitor',
+    ]);
+    $body = curl_exec($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    $ok = $body !== false && $status >= 200 && $status < 400;
+    monitor_mark('heartbeat_last_at', mon_utc(monitor_now()));
+    monitor_mark('heartbeat_last_ok', $ok ? '1' : '0');
+    if (!$ok) {
+        error_log('Monitoring: unabhaengiger Alarmkanal nicht erreichbar (HTTP ' . $status . ')');
+    }
+    return $ok;
+}
+
+/**
+ * Alarm oder Entwarnung an die konfigurierten Plattformadministratoren (nur bei aktivem Mailversand).
+ * @return bool true, wenn mindestens ein Empfaenger den Versandweg angenommen hat. Der Rueckgabewert
+ *              entscheidet, ob die Alarmmarke gesetzt wird (siehe monitor_alerts_run).
+ */
+function monitor_alert_send(string $component, bool $opened): bool
 {
     $cfg = monitor_config();
     if (!$cfg['alert_emails']) {
-        return; // Nicht eingerichtet; wird im Adminbereich so angezeigt
+        return false; // Nicht eingerichtet; wird im Adminbereich so angezeigt
     }
     require_once __DIR__ . '/mailer.php';
     if (!mail_enabled()) {
-        return; // Ein ausgefallener Mailversand kann nicht über sich selbst alarmieren (unabhängiger Kanal nicht aktiv)
+        return false; // Ein ausgefallener Mailversand kann nicht über sich selbst alarmieren (unabhängiger Kanal)
     }
     $defs = monitor_component_defs();
     $name = $defs[$component]['name'] ?? $component;
@@ -1500,9 +1569,17 @@ function monitor_alert_send(string $component, bool $opened): void
             : sprintf('Die Komponente "%s" hat wieder %d aufeinanderfolgende Prüfungen bestanden (Stand %s).', $name, (int)$cfg['alert_ok_streak'], date('d.m.Y H:i:s T')),
         'Details im Adminbereich unter System. Diese Meldung wird je Komponente nur einmal je Störung versendet.',
     ], admin_base_url() !== '' ? admin_base_url() . '/admin-system.php' : app_base_url() . '/admin-system.php', 'System öffnen');
+    $zugestellt = false;
     foreach ($cfg['alert_emails'] as $to) {
-        mail_send((string)$to, $tpl['subject'], $tpl['text'], $tpl['html']);
+        try {
+            if (mail_send((string)$to, $tpl['subject'], $tpl['text'], $tpl['html'])) {
+                $zugestellt = true;
+            }
+        } catch (Throwable $e) {
+            error_log('monitor_alert_send: ' . $e->getMessage());
+        }
     }
+    return $zugestellt;
 }
 
 // ---------------------------------------------------------------------------

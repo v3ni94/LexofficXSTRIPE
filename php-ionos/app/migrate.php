@@ -60,6 +60,7 @@ function migrations_markers(): array
         '027' => ['platform_roles', null],
         '028' => ['integrations', 'sevdesk_connected'],
         '029' => ['sync_runs', 'cursor_bytes_max'],
+        '031' => ['consent_records', 'details'],
     ];
 }
 

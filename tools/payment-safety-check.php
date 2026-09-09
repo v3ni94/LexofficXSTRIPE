@@ -113,5 +113,86 @@ str_contains($cut, 'run_rollback') ? $ok('Rollback bei fehlgeschlagenem Cutover'
 str_contains($cut, 'deploy_fail_report "cutover"') ? $ok('Fehlerbericht in der Statusdatei') : $bad('kein Fehlerbericht');
 (str_contains($cut, 'set +e') && str_contains($cut, 'set -e')) ? $ok('Abschnitt ist gegen set -e gekapselt') : $bad('Abschnitt nicht gekapselt');
 
+echo "\nG) Webhooks: Wiederholung statt stiller Verlust\n";
+$bh = $lies('php-ionos/billing-webhook.php');
+(str_contains($bh, 'http_response_code(500)') && str_contains($bh, "echo 'retry'"))
+    ? $ok('Abrechnungs-Webhook antwortet bei Verarbeitungsfehlern mit 500') : $bad('Abrechnungs-Webhook quittiert Fehler weiter mit 200');
+$bill = $lies('php-ionos/app/billing.php');
+(str_contains($bill, "webhook_event_release('billing', \$eventId)") && str_contains($bill, '_billing_handle_event_inner'))
+    ? $ok('Beanspruchung wird bei Fehler zurueckgenommen') : $bad('Beanspruchung bleibt bei Fehler bestehen: Wiederholung liefe ins Leere');
+$hook = $lies('php-ionos/stripe-webhook.php');
+(str_contains($hook, "webhook_event_claim('tenant'") && str_contains($hook, "webhook_event_is_stale('tenant'"))
+    ? $ok('Mandanten-Webhook: Doppelzustellung und Reihenfolge geprueft') : $bad('Mandanten-Webhook ohne Idempotenz- oder Reihenfolgeschutz');
+(str_contains($hook, 'http_response_code(500)') && str_contains($hook, "webhook_event_release('tenant'"))
+    ? $ok('Mandanten-Webhook: Fehler fuehrt zu Wiederholung mit Freigabe') : $bad('Mandanten-Webhook verschluckt Fehler weiterhin');
+(substr_count($hook, 'webhook_exit(') > 5 && str_contains($hook, 'bool $freigeben = false'))
+    ? $ok('vorlaeufige Faelle koennen die Beanspruchung freigeben') : $bad('kein Freigabeweg fuer vorlaeufige Faelle');
+$we = $lies('php-ionos/app/webhook_events.php');
+foreach (['webhook_event_claim', 'webhook_event_release', 'webhook_event_is_stale', 'webhook_event_mark_object'] as $fn) {
+    str_contains($we, 'function ' . $fn) ? $ok("gemeinsames Modul: $fn") : $bad("Modul ohne $fn");
+}
+
+echo "\nH) Support-Modus: gesperrt, was der Firma vorbehalten ist\n";
+$cs = $lies('php-ionos/app/customer_settings.php');
+(substr_count($cs, 'support_guard();') >= 3)
+    ? $ok('IBAN setzen, IBAN deaktivieren und SEPA-Freigabe zentral gesperrt') : $bad('Sperre fehlt in app/customer_settings.php');
+$cp = $lies('php-ionos/customer.php');
+str_contains($cp, "support_guard();") ? $ok('Kundendetailseite sperrt die betroffenen Aktionen') : $bad('Kundendetailseite ohne Sperre');
+str_contains($coll, "if (!\$paused && function_exists('support_mode') && support_mode())")
+    ? $ok('Not-Stopp: Aufheben gesperrt, Aktivieren bleibt moeglich') : $bad('Not-Stopp im Support-Modus nicht geregelt');
+$leg = $lies('php-ionos/app/legal.php');
+(substr_count($leg, 'support_mode()') >= 2)
+    ? $ok('keine rechtsverbindliche Zustimmung im Namen der Firma') : $bad('legal.php ohne Support-Sperre');
+str_contains($lies('php-ionos/team.php'), 'support_guard();') ? $ok('Firmendaten mit Geldbezug gesperrt') : $bad('team.php ohne Sperre');
+str_contains($lies('php-ionos/settings.php'), "support_guard(); // trennt die Verbindung")
+    ? $ok('Wechsel des Buchhaltungssystems gesperrt') : $bad('Wechsel des Buchhaltungssystems ohne Sperre');
+
+echo "\nI) Sicherheit: Cookie, Einrichtungspruefung, Platzhalter\n";
+$boot = $lies('php-ionos/app/bootstrap.php');
+(str_contains($boot, '$secureCookie') && str_contains($boot, "str_starts_with(strtolower(app_base_url()), 'https://')"))
+    ? $ok('Sitzungscookie mit Secure auch hinter einem Proxy') : $bad('Secure-Flag haengt weiter allein an $_SERVER[HTTPS]');
+str_contains($boot, 'function config_is_placeholder')
+    ? $ok('zentrale Erkennung von Platzhaltern') : $bad('config_is_placeholder() fehlt');
+str_contains($lies('php-ionos/app/crypto.php'), 'config_is_placeholder($secret)')
+    ? $ok('kein Schluessel aus dem Platzhalter') : $bad('crypto.php akzeptiert den Platzhalter (genau 32 Zeichen)');
+str_contains($lies('php-ionos/cron.php'), 'config_is_placeholder($expected)')
+    ? $ok('Cron-Endpunkt weist den Platzhalter ab') : $bad('cron.php akzeptiert den Platzhalter');
+str_contains($lies('php-ionos/migrate.php'), 'config_is_placeholder($expected)')
+    ? $ok('Migrationsendpunkt weist den Platzhalter ab') : $bad('migrate.php akzeptiert den Platzhalter');
+$sc = $lies('php-ionos/setup-check.php');
+(str_contains($sc, "getenv('SMARTEINZUG_CONFIG')") && str_contains($sc, 'elseif (is_array($preConfig))'))
+    ? $ok('Einrichtungspruefung findet die Konfiguration des VPS und bleibt sonst verschlossen') : $bad('setup-check.php weiter oeffentlich erreichbar');
+str_contains($lies('deploy/vps/Caddyfile'), '@setup_check path /setup-check.php')
+    ? $ok('Caddy sperrt die Einrichtungspruefung zusaetzlich') : $bad('Caddy liefert setup-check.php aus');
+
+echo "\nJ) Nachweis der zahlungspflichtigen Bestellung\n";
+$con = $lies('php-ionos/app/consent.php');
+str_contains($con, "'bestellung' =>") ? $ok('eigener Gegenstand fuer die Bestellung') : $bad('kein Gegenstand bestellung');
+str_contains($con, "\$subject !== 'bestellung'") ? $ok('jede Bestellung wird einzeln festgehalten') : $bad('Bestellungen wuerden zusammengefasst');
+str_contains($con, '$details') ? $ok('Erlaeuterungsfeld vorhanden') : $bad('kein Erlaeuterungsfeld');
+(str_contains($bill, "consent_record(") && str_contains($bill, "'bestellung',"))
+    ? $ok('Bestellung wird dauerhaft gespeichert, nicht nur im Protokoll') : $bad('Bestellung nur im Protokoll (nach 90 Tagen geloescht)');
+!str_contains($bill, "'AGB smart-einzug.de, Stand ' . date('d.m.Y')")
+    ? $ok('Fassung kommt nicht mehr aus dem Tagesdatum') : $bad('Fassung wird aus dem Tagesdatum gebildet');
+str_contains($lies('php-ionos/sql/schema.sql'), 'details         VARCHAR(255) NULL')
+    ? $ok('Spalte details im Schema') : $bad('Spalte details fehlt im Schema');
+str_contains($lies('php-ionos/app/migrate.php'), "'031' => ['consent_records', 'details']")
+    ? $ok('Migration 031 mit Marker') : $bad('Marker fuer Migration 031 fehlt');
+
+echo "\nK) Alarmierung: Marke erst nach Versand, unabhaengiger Kanal\n";
+$mon = $lies('php-ionos/app/monitor.php');
+str_contains($mon, '$gesendet = monitor_alert_send($c, true);')
+    ? $ok('Alarmmarke erst nach erfolgreichem Versand') : $bad('Marke wird weiter vor dem Versand gesetzt');
+str_contains($mon, 'function monitor_alert_send(string $component, bool $opened): bool')
+    ? $ok('Versandergebnis wird zurueckgegeben') : $bad('monitor_alert_send meldet den Erfolg nicht');
+str_contains($mon, 'function monitor_heartbeat_ping')
+    ? $ok('unabhaengiger Alarmkanal vorhanden') : $bad('kein unabhaengiger Alarmkanal');
+str_contains($mon, "preg_match('~^https://~i', \$url)")
+    ? $ok('Kanal nur ueber https') : $bad('Kanal ohne https-Pflicht');
+str_contains($mon, 'if (!$allesOk)')
+    ? $ok('Signal bleibt bei Stoerung bewusst aus (Totmannschalter)') : $bad('Signal auch bei Stoerung');
+str_contains($lies('php-ionos/app/config.example.php'), "'heartbeat_url' => ''")
+    ? $ok('Konfigurationsschluessel dokumentiert') : $bad('heartbeat_url fehlt in der Vorlage');
+
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail > 0 ? 1 : 0);

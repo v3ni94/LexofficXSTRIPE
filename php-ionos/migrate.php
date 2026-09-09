@@ -55,7 +55,7 @@ if ($method !== 'POST') {
 }
 
 $expected = config('migration_token', null);
-if (!is_string($expected) || trim($expected) === '') {
+if (!is_string($expected) || config_is_placeholder($expected)) {
     error_log('migrate.php: migration_token ist nicht konfiguriert.');
     migrate_respond(500, ['success' => false, 'error' => 'server_configuration_error']);
 }

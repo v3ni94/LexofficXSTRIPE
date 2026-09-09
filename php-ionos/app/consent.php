@@ -11,25 +11,38 @@ declare(strict_types=1);
 
 const AGB_VERSION = 'agb-2026-09';
 const DATENSCHUTZ_VERSION = 'datenschutz-2026-09';
-const CONSENT_SUBJECTS = ['agb' => 'Allgemeine Geschäftsbedingungen', 'datenschutz' => 'Datenschutzerklärung'];
+const CONSENT_SUBJECTS = [
+    'agb' => 'Allgemeine Geschäftsbedingungen',
+    'datenschutz' => 'Datenschutzerklärung',
+    // Zustimmung zur zahlungspflichtigen Bestellung (Abonnement). Bis 4.53 stand sie nur im Protokoll
+    // (audit_log), das nach 90 Tagen geloescht wird; als Nachweis gegenueber dem Kunden war das zu wenig
+    // (Befund der Gesamtpruefung 09.09.2026).
+    'bestellung' => 'Zahlungspflichtige Bestellung (Abonnement)',
+];
 
 /** Zustimmung speichern (idempotent je Benutzer, Gegenstand und Fassung). */
-function consent_record(?string $userId, ?string $orgId, string $email, string $subject, string $version, string $method = 'registration', ?string $sourceUrl = null): void
+function consent_record(?string $userId, ?string $orgId, string $email, string $subject, string $version, string $method = 'registration', ?string $sourceUrl = null, ?string $details = null): void
 {
     if (!isset(CONSENT_SUBJECTS[$subject])) {
         throw new InvalidArgumentException('Unbekannter Zustimmungsgegenstand.');
     }
     try {
         $pdo = db();
-        if ($userId !== null) {
+        // Eine zahlungspflichtige Bestellung ist jedes Mal ein eigener Vorgang (Neubestellung nach Kuendigung,
+        // Tarifwechsel) und wird deshalb nie zusammengefasst; AGB und Datenschutz bleiben je Fassung einmalig.
+        if ($userId !== null && $subject !== 'bestellung') {
             $st = $pdo->prepare('SELECT id FROM consent_records WHERE user_id = ? AND subject = ? AND version = ? LIMIT 1');
             $st->execute([$userId, $subject, $version]);
             if ($st->fetch()) {
                 return;
             }
         }
-        $pdo->prepare('INSERT INTO consent_records (id, user_id, organization_id, user_email, subject, version, method, source_url, accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())')
-            ->execute([uuid4(), $userId, $orgId, mb_strtolower(trim($email)), $subject, $version, $method, $sourceUrl !== null ? mb_substr($sourceUrl, 0, 255) : null]);
+        $pdo->prepare('INSERT INTO consent_records (id, user_id, organization_id, user_email, subject, version, details, method, source_url, accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())')
+            ->execute([
+                uuid4(), $userId, $orgId, mb_strtolower(trim($email)), $subject, mb_substr($version, 0, 60),
+                $details !== null ? mb_substr($details, 0, 255) : null,
+                $method, $sourceUrl !== null ? mb_substr($sourceUrl, 0, 255) : null,
+            ]);
     } catch (Throwable $e) {
         error_log('consent_record fehlgeschlagen: ' . $e->getMessage()); // Tabelle fehlt bis Migration 025; Registrierung nicht blockieren
     }
