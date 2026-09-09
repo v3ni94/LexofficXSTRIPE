@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sicherheit bei SmartEinzug: Zugang, Schlüssel, Einzüge</title>
+<meta name="description" content="Sicherheit bei SmartEinzug: Pflicht-2FA, verschlüsselte Schlüssel, Rollen, Protokoll, befristeter Support-Zugriff, Schutz vor Doppelbelastung und offene Grenzen.">
+<link rel="canonical" href="https://smart-einzug.de/sicherheit/">
+<meta property="og:title" content="Sicherheit bei SmartEinzug: Zugang, Schlüssel, Einzüge">
+<meta property="og:description" content="Sicherheit bei SmartEinzug: Pflicht-2FA, verschlüsselte Schlüssel, Rollen, Protokoll, befristeter Support-Zugriff, Schutz vor Doppelbelastung und offene Grenzen.">
+<meta property="og:url" content="https://smart-einzug.de/sicherheit/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905f" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905f">
+<link rel="stylesheet" href="/assets/css/site.css?v=3a9921073a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Startseite", "item": "https://smart-einzug.de/"},
+    {"@type": "ListItem", "position": 2, "name": "Sicherheit", "item": "https://smart-einzug.de/sicherheit/"}
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><img class="logo" src="/assets/img/logo-horizontal.png?v=20260905f" srcset="/assets/img/logo-horizontal.png?v=20260905f 1x, /assets/img/logo-horizontal@2x.png?v=20260905f 2x" alt="SmartEinzug" width="246" height="56"></a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li aria-current="page">Sicherheit</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Sicherheit</p>
+      <h1>So schützt SmartEinzug Zugänge, Schlüssel und Einzüge</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">SmartEinzug verarbeitet Rechnungsdaten, Bankverbindungen Ihrer Kunden und die Zugangsdaten zu Lexware Office und Stripe. Diese Seite beschreibt, wie die Anwendung Zugänge, Geheimnisse und Zahlungsvorgänge schützt, und benennt offen, wo die Grenzen dieser Maßnahmen liegen.</p>
+      <p class="hero-note">Stand 08.09.2026. Beschrieben sind die im Programmcode umgesetzten Maßnahmen. Fristen und Zeitfenster sind Standardwerte der Plattform und können vom Betreiber angepasst werden.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Zugang</p>
+        <h2>Anmeldung nur mit zweitem Faktor</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Jeder Benutzerzugang, auch der Zugang des Betreibers in den Adminbereich, verlangt neben dem Passwort einen zeitbasierten Einmalcode aus einer Authenticator-App (TOTP). Ohne eingerichtete Zwei-Faktor-Authentifizierung lässt sich die Anwendung nicht nutzen. Codes per SMS oder E-Mail bietet SmartEinzug nicht an.</p>
+      </div>
+      <div class="tiles">
+        <div class="tile">
+          <h3>Recovery-Codes</h3>
+          <p>Für den Fall eines Geräteverlusts erhalten Sie bei der Einrichtung Recovery-Codes. Sie werden nur einmal angezeigt, ausschließlich als Hash gespeichert und sind jeweils genau einmal verwendbar. Ein Recovery-Code meldet Sie an, ersetzt aber nicht die Zweitbestätigung bei kritischen Aktionen.</p>
+        </div>
+        <div class="tile">
+          <h3>Passwörter und Fehlversuche</h3>
+          <p>Passwörter speichert SmartEinzug ausschließlich als Hash. Nach mehreren Fehlversuchen wird die Anmeldung gedrosselt und der Zugang vorübergehend gesperrt. Fehlversuche werden protokolliert; die letzten Anmeldeversuche Ihres Zugangs sehen Sie unter Sicherheit.</p>
+        </div>
+        <div class="tile">
+          <h3>Gerätefreigabe für 90 Tage</h3>
+          <p>Optional merken Sie ein Gerät nach erfolgreicher Codeeingabe für 90 Tage. Die Freigabe ersetzt nur die Codeabfrage bei der Anmeldung, das Passwort bleibt immer erforderlich. Die Laufzeit verlängert sich nicht durch Nutzung; gemerkte Geräte sind einsehbar und einzeln oder gesamt widerrufbar.</p>
+        </div>
+        <div class="tile">
+          <h3>Zweitbestätigung kritischer Aktionen</h3>
+          <p>Inhaberwechsel, Wechsel des Buchhaltungssystems, Aufheben des Not-Stopps und Tarifwechsel verlangen eine erneute Bestätigung mit dem aktuellen Authenticator-Code. Recovery-Codes und Gerätefreigaben reichen dafür nicht aus.</p>
+        </div>
+        <div class="tile">
+          <h3>Sitzungen zentral beenden</h3>
+          <p>Mit „Überall abmelden“ beenden Sie alle Sitzungen Ihres Zugangs auf einmal. Eine Passwortänderung, ein Zurücksetzen des Passworts oder der Zwei-Faktor-Authentifizierung beendet ebenfalls alle Sitzungen und widerruft alle Gerätefreigaben.</p>
+        </div>
+        <div class="tile">
+          <h3>Benachrichtigung bei Änderungen</h3>
+          <p>Über sicherheitsrelevante Änderungen an Ihrem Zugang, etwa eine Passwortänderung, eine neue Gerätefreigabe oder die Nutzung eines Recovery-Codes, informiert SmartEinzug per E-Mail.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Zugangsdaten und Geheimnisse</p>
+          <h2>Wie Schlüssel gespeichert und verwendet werden</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Den API-Schlüssel für Lexware Office, den Secret Key und das Webhook-Secret Ihres Stripe-Kontos sowie das 2FA-Geheimnis jedes Benutzers speichert SmartEinzug serverseitig mit AES-256-GCM verschlüsselt. Nach der Eingabe zeigen die Einstellungen nur noch an, dass ein Schlüssel hinterlegt ist. Der Klartext erscheint weder in der Oberfläche noch im Protokoll noch in technischen Laufprotokollen.</p>
+          <p>Die Anwendung entschlüsselt die Schlüssel ausschließlich zur Laufzeit, wenn sie Lexware Office oder Stripe aufruft. Das ist keine Ende-zu-Ende-Verschlüsselung: Der Server hält den dafür notwendigen Schlüssel. Statusmeldungen von Stripe nimmt SmartEinzug nur signaturgeprüft entgegen und verarbeitet jedes Ereignis genau einmal.</p>
+          <p>Im Portal erfasste Bankverbindungen Ihrer Kunden werden mandantengetrennt und außerhalb des Webzugriffs in der Datenbank abgelegt und in der Anwendung maskiert angezeigt, sichtbar sind nur die ersten und die letzten vier Stellen. Bei digital über Stripe erteilten Mandaten kennt SmartEinzug ohnehin nur eine maskierte IBAN. Eine Verschlüsselung der IBAN in der Datenbank erfolgt derzeit nicht, siehe Abschnitt Grenzen.</p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card">
+            <ul class="timeline">
+              <li class="done"><strong>API-Schlüssel Lexware Office</strong>Beim Speichern geprüft, verschlüsselt abgelegt, danach nur noch als „hinterlegt“ sichtbar</li>
+              <li class="done"><strong>Stripe Secret Key und Webhook-Secret</strong>Verschlüsselt je Firma, Änderungen werden protokolliert und dem Inhaber gemeldet</li>
+              <li class="done"><strong>2FA-Geheimnis</strong>Verschlüsselt gespeichert, nur zur Codeprüfung entschlüsselt</li>
+              <li><strong>Supportanfragen mit Zugangsdaten</strong>Anfragen, die Schlüssel oder eine IBAN enthalten, weist das Hilfe-Center ab</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Rollen und Mehrfirmen</p>
+        <h2>Rollen, Einladungen und mehrere Firmen</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Je Firmenaccount gibt es drei Rollen mit abgestuften Rechten. Die Prüfung erfolgt serverseitig bei jeder Anfrage, nicht nur in der Oberfläche.</p>
+      </div>
+      <div class="tiles">
+        <div class="tile">
+          <h3>Inhaber</h3>
+          <p>Die registrierende Person. Allein zuständig für Mitarbeiter, Einladungen, Rollen, die Übertragung der Inhaberschaft, das Abonnement und die Protokollansicht.</p>
+        </div>
+        <div class="tile">
+          <h3>Administrator</h3>
+          <p>Wie Mitarbeiter, zusätzlich API-Verbindungen zu Lexware Office und Stripe, Firmendaten, SEPA-Einstellungen und der Wechsel des Buchhaltungssystems.</p>
+        </div>
+        <div class="tile">
+          <h3>Mitarbeiter</h3>
+          <p>Voller operativer Zugriff auf Synchronisation, Rechnungen, Kunden, SEPA-Pflege und Einzüge. Eine reine Leserolle gibt es nicht: Mitarbeiter dürfen Einzüge auslösen.</p>
+        </div>
+      </div>
+      <ul class="checklist" style="margin-top:28px">
+        <li><strong>Einladungen statt geteilter Zugänge.</strong> Mitarbeiter treten nur über eine Einladung des Inhabers bei. Der Einladungslink ist zeitlich begrenzt gültig, fest an Firma, E-Mail-Adresse und Rolle gebunden, nur als Hash gespeichert und widerrufbar. Jede Person richtet ihre eigene Zwei-Faktor-Authentifizierung ein.</li>
+        <li><strong>Sofortiger Entzug.</strong> Sperrt oder entfernt der Inhaber einen Mitarbeiter, enden dessen Sitzungen sofort. Die Protokolleinträge der Person bleiben erhalten.</li>
+        <li><strong>Inhaberschaft übertragbar.</strong> Nur der Inhaber kann die Inhaberschaft übertragen, mit Passwort und aktuellem Authenticator-Code; beide Beteiligten werden per E-Mail informiert.</li>
+        <li><strong>Mehrere Firmen, ein Benutzerkonto.</strong> Ein Benutzerkonto kann mehreren Firmen angehören. Jede Firma hat eigene Kunden, Rechnungen, Mandate, Einzüge, eine eigene Anbindung an Lexware Office und Stripe und ein eigenes Abonnement. Der Mehrfirmenzugang verbindet nur Anmeldung und Navigation; jeder Firmenwechsel prüft die Mitgliedschaft serverseitig.</li>
+        <li><strong>Logische Mandantentrennung.</strong> Alle Firmen liegen in einer gemeinsamen Datenbank; die Trennung erfolgt über die Firmenkennung in jeder Abfrage. Eine eigene Datenbank je Kunde gibt es nicht.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="split">
+        <div>
+          <p class="eyebrow">Protokoll</p>
+          <h2>Was protokolliert wird und wie lange</h2>
+          <span class="bar" aria-hidden="true"></span>
+          <p>Sicherheits- und geldrelevante Aktionen werden mit Firma, Benutzer, Aktion, Zielobjekt, IP-Adresse und Zeitpunkt protokolliert: Anmeldungen, Zwei-Faktor-Vorgänge, Einladungen und Rollen, API-Verbindungen, IBAN-Änderungen, Mandate, Einzüge, Abonnement und Support-Zugriffe. Erfasst werden definierte Aktionstypen, keine lückenlose Aufzeichnung jeder Ansicht. Ein Fehler beim Protokollieren bricht die eigentliche Aktion nicht ab.</p>
+          <p>Der Inhaber sieht das Protokoll unter Firmendaten und exportiert es als CSV; der Export wird selbst protokolliert. Das Einzugsjournal mit Beträgen, Status, Stripe-Kennungen und Fehlergründen exportieren alle Rollen der Firma als CSV.</p>
+          <p>Protokolleinträge werden 90 Tage aufbewahrt und danach durch die Wartung gelöscht. Das Protokoll ist eine Datenbanktabelle und kein revisionssicheres Archiv. Die fachlichen Nachweise bleiben davon unberührt dauerhaft erhalten: jeder Einzug mit Versuchsjournal und Stripe-Kennungen, jedes Mandat mit Referenz, Unterschriftsdatum und Ort.</p>
+        </div>
+        <div class="split-visual">
+          <div class="visual-card">
+            <ul class="timeline">
+              <li class="done"><strong>Protokoll</strong>90 Tage einsehbar und als CSV exportierbar (Inhaber)</li>
+              <li class="done"><strong>Anmeldeversuche</strong>Jeder Benutzer sieht seine letzten Versuche mit Ergebnis und IP-Adresse</li>
+              <li class="done"><strong>Einzüge und Mandate</strong>Dauerhaft nachweisbar, unabhängig von der Protokollfrist</li>
+              <li><strong>Support-Zugriffe</strong>Im Protokoll Ihrer Firma mit Support-Vermerk gekennzeichnet</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Support-Zugriff</p>
+        <h2>Wenn der Support auf Ihren Firmenaccount zugreift</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Für die Fehlersuche kann ein Plattformadministrator des Betreibers einen Support-Zugriff auf Ihren Firmenaccount starten. Dafür muss er einen Grund angeben, zum Beispiel eine Ticketnummer, und den Zugriff mit seinem eigenen Authenticator-Code bestätigen. Die Sitzung läuft höchstens 60 Minuten mit den Rechten eines Administrators und kann jederzeit vorher beendet werden.</p>
+      </div>
+      <div class="tiles">
+        <div class="tile">
+          <h3>Sie werden informiert</h3>
+          <p>Der Inhaber erhält bei jedem Support-Zugriff eine E-Mail. Jede Aktion im Support-Modus trägt im Protokoll Ihrer Firma einen Support-Vermerk und ist damit für Sie nachvollziehbar.</p>
+        </div>
+        <div class="tile">
+          <h3>Was der Support nicht kann</h3>
+          <p>Im Support-Modus sind gesperrt: das Einreichen von Einzügen, einzeln, gesammelt oder außerhalb des Einreichfensters, Änderungen an Bankverbindungen Ihrer Kunden, Änderungen an den Zugangsdaten zu Lexware Office und Stripe einschließlich Trennen sowie der Import aus Stripe.</p>
+        </div>
+        <div class="tile">
+          <h3>Was der Support sieht</h3>
+          <p>Rechnungen, Kunden, Mandate und Einzüge Ihrer Firma sind im Support-Modus sichtbar. Eine vorherige Freigabe durch Sie ist technisch nicht vorgesehen; Sie erhalten Benachrichtigung und Protokoll.</p>
+        </div>
+        <div class="tile">
+          <h3>Zurücksetzen der 2FA</h3>
+          <p>Setzt der Support die Zwei-Faktor-Authentifizierung eines Benutzers zurück, bestätigt er das mit eigenem Passwort und Code. Der Reset beendet alle Sitzungen und Gerätefreigaben der Person, wird protokolliert und ihr per E-Mail gemeldet.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Zahlungsschutz</p>
+        <h2>Schutz vor Fehleinzügen und Doppelbelastung</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Ein Einzug entsteht nur durch eine Aktion eines Benutzers Ihrer Firma, je Rechnung oder als Sammel-Einzug. Die Synchronisation löst niemals einen Einzug aus. Vor jeder Lastschrift läuft eine mehrstufige Prüfung, deren wichtigste Stufen hier beschrieben sind.</p>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Restbetrag live bei Lexware Office</h3><p>Unmittelbar vor jeder Lastschrift fragt SmartEinzug den offenen Restbetrag der Rechnung live bei Lexware Office ab. Bezahlte Rechnungen werden nicht eingezogen, Teilzahlungen werden erkannt, und ist der Restbetrag nicht ermittelbar, wird nicht eingereicht. Terminierte Einzüge werden am Fälligkeitstag erneut geprüft.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Idempotenzschlüssel und Versuchsjournal</h3><p>Vor jedem Aufruf an Stripe wird ein Versuch im Journal gespeichert; der zugehörige Schlüssel geht als Idempotenzschlüssel an Stripe. Solange zu einer Rechnung ein Versuch offen oder unklar ist, wird kein weiterer angelegt. Antwortet Stripe nicht, wird nicht wiederholt, sondern der Fall über die Stripe-Suche geklärt.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Not-Stopp je Firma</h3><p>Inhaber und Administratoren halten mit dem Not-Stopp alle Einreichungen der Firma sofort an; vorgemerkte und terminierte Einzüge lassen sich dabei gesammelt stornieren. Das Aufheben verlangt den aktuellen Authenticator-Code. Bereits bei Stripe eingereichte Lastschriften lassen sich damit nicht zurückholen.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Karenzzeit und Einreichfenster</h3><p>Sofort-Einzüge werden vorgemerkt und nach einer Karenzzeit gebündelt im nächtlichen Einreichfenster eingereicht, standardmäßig nach vier Stunden zwischen 23:00 und 06:00 Uhr. Bis zur Einreichung können Sie jeden Einzug stornieren. Eine Einreichung außerhalb des Fensters ist nur Inhabern und Administratoren mit Authenticator-Code möglich.</p></div></li>
+        <li class="step"><span class="step-number">5</span><div><h3>Weitere Prüfungen vor dem Einreichen</h3><p>Zusätzlich prüft die Anwendung unter anderem die Vorabankündigungsregel, ob der Kunde für den SEPA-Einzug aktiviert ist, ob eine aktive IBAN und ein verwendbares Mandat vorliegen und ob die Stripe-Verbindung besteht. Die Lastschrift führt Stripe über Ihr eigenes Stripe-Konto aus; SmartEinzug hat kein Sammelkonto und keinen Zugriff auf eingezogene Beträge.</p></div></li>
+      </ol>
+      <p style="margin-top:24px">Wie ein Einzug von der Freigabe bis zur Rückmeldung abläuft, zeigt die Anleitung <a href="/anleitungen/erster-lastschrifteinzug/">Erster Lastschrifteinzug</a>. Was bei einer Rückgabe der Bank geschieht, erklärt der Beitrag <a href="/wissen/ruecklastschrift/">Rücklastschrift</a>.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Hosting</p>
+        <h2>Betrieb, Datenbank und Sicherungen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ul class="checklist two-col">
+        <li><strong>Diese Webseite:</strong> smart-einzug.de wird bei der IONOS SE, Deutschland, gehostet.</li>
+        <li><strong>Die Anwendung:</strong> app.smart-einzug.de läuft davon getrennt auf einem eigenen virtuellen Server des Betreibers in Containern.</li>
+        <li><strong>Datenbank:</strong> ohne öffentlichen Port, nur innerhalb des internen Netzes des Servers erreichbar.</li>
+        <li><strong>Dateien:</strong> Hochgeladene Mandatsdokumente liegen außerhalb des Webzugriffs und werden nur an Mitglieder der jeweiligen Firma ausgeliefert.</li>
+        <li><strong>Sicherungen:</strong> tägliche Sicherung der Datenbank mit einem externen Sicherungsziel außerhalb des Servers (Angabe des Betreibers).</li>
+        <li><strong>Transport:</strong> Die Kommunikation mit allen Hosts läuft verschlüsselt über HTTPS.</li>
+        <li><strong>Aktualisierungen:</strong> Neue Versionen werden kontrolliert ausgerollt, mit Prüfung des neuen Stands vor der Umschaltung und Rückfallmöglichkeit auf die vorherige Version.</li>
+        <li><strong>Betreiberzugang:</strong> Auch der Adminbereich des Betreibers ist nur mit Zwei-Faktor-Authentifizierung erreichbar.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Grenzen</p>
+        <h2>Was wir nicht zusagen</h2>
+        <span class="bar" aria-hidden="true"></span>
+        <p>Sicherheit lässt sich nur ehrlich beschreiben, wenn auch die Grenzen genannt werden. Diese Punkte sollten Sie kennen, bevor Sie SmartEinzug einsetzen.</p>
+      </div>
+      <ul class="checklist">
+        <li><strong>Keine Verfügbarkeitszusage.</strong> Die Anwendung läuft auf einem einzelnen Server ohne Ausfallsicherung. Wir bemühen uns um eine möglichst unterbrechungsfreie Verfügbarkeit, nennen aber keine Prozentwerte und kein Service-Level. Bei einem Ausfall wird aus der Sicherung wiederhergestellt.</li>
+        <li><strong>Protokoll 90 Tage.</strong> Protokolleinträge werden nach 90 Tagen gelöscht. Wer längere Nachweise benötigt, exportiert das Protokoll regelmäßig als CSV. Einzüge und Mandate bleiben unabhängig davon nachweisbar.</li>
+        <li><strong>IBAN nicht verschlüsselt gespeichert.</strong> Im Portal erfasste IBANs liegen mandantengetrennt und außerhalb des Webzugriffs in der Datenbank und werden in der Anwendung maskiert angezeigt, sind dort aber nicht verschlüsselt abgelegt.</li>
+        <li><strong>Gerätefreigabe ist browserbezogen.</strong> Sie bindet keine Hardware. Ein entwendetes Cookie ließe sich zusammen mit dem Passwort bis zum Widerruf oder Ablauf verwenden; widerrufen Sie Freigaben deshalb bei Verdacht sofort.</li>
+        <li><strong>Support ohne vorherige Freigabe.</strong> Ein Support-Zugriff wird begründet, befristet, gemeldet und protokolliert, aber nicht vorab von Ihnen freigegeben.</li>
+        <li><strong>Keine Leserolle.</strong> Alle drei Rollen dürfen Einzüge auslösen. Wer einer Person Einsicht gibt, gibt ihr damit auch das Recht, Einzüge freizugeben.</li>
+        <li><strong>Standort der Anwendung.</strong> Zum Rechenzentrumsstandort der Anwendung machen wir an dieser Stelle keine Angabe.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Häufige Fragen</p>
+        <h2>Fragen zur Sicherheit von SmartEinzug</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="faq-list faq-grid">
+        <details><summary>Ist die Zwei-Faktor-Authentifizierung wirklich Pflicht?</summary><p class="faq-answer">Ja, für jeden Benutzer, unabhängig von der Rolle. Der zweite Faktor ist ein zeitbasierter Einmalcode aus einer Authenticator-App. SMS-Codes, E-Mail-Codes oder Hardware-Token werden nicht angeboten. Für den Geräteverlust dienen die Recovery-Codes aus der Einrichtung.</p></details>
+        <details><summary>Kann der Betreiber meine API-Schlüssel oder Stripe-Schlüssel einsehen?</summary><p class="faq-answer">Die Schlüssel werden verschlüsselt gespeichert und in der Oberfläche, im Protokoll und im Support-Modus nicht angezeigt. Die Anwendung entschlüsselt sie serverseitig, wenn sie Lexware Office oder Stripe aufruft; der Server hält dafür den nötigen Schlüssel. Ändern oder trennen kann der Support Ihre Zugangsdaten nicht.</p></details>
+        <details><summary>Wie verhindert SmartEinzug, dass eine Rechnung zweimal eingezogen wird?</summary><p class="faq-answer">Vor jedem Stripe-Aufruf wird ein Versuch mit Idempotenzschlüssel im Journal gespeichert. Solange ein Versuch zu einer Rechnung offen oder unklar ist, wird kein weiterer angelegt; bei fehlender Antwort von Stripe wird der Fall geklärt statt wiederholt. Zusätzlich wird der Restbetrag unmittelbar vor der Lastschrift live bei Lexware Office abgefragt.</p></details>
+        <details><summary>Was passiert, wenn ich einen Einzug irrtümlich freigegeben habe?</summary><p class="faq-answer">Bis zur Einreichung im nächtlichen Einreichfenster können Sie jeden Einzug stornieren; mit dem Not-Stopp halten Inhaber und Administratoren alle Einreichungen der Firma an. Bereits bei Stripe eingereichte Lastschriften lassen sich nicht mehr zurückholen. Eine Erstattung veranlassen Sie in diesem Fall in Ihrem Stripe-Konto; SmartEinzug übernimmt sie von dort und markiert die Rechnung zur Klärung.</p></details>
+        <details><summary>Wie lange kann ich nachvollziehen, wer was getan hat?</summary><p class="faq-answer">Das Protokoll ist 90 Tage einsehbar und für den Inhaber als CSV exportierbar. Einzüge mit Versuchsjournal und Stripe-Kennungen sowie Mandate mit Referenz und Unterschriftsdaten bleiben dauerhaft in der Anwendung nachweisbar.</p></details>
+        <details><summary>Ist SmartEinzug hochverfügbar?</summary><p class="faq-answer">Nein. Die Anwendung läuft auf einem einzelnen Server ohne Ausfallsicherung, mit täglicher Sicherung der Datenbank auf ein externes Sicherungsziel. Eine Verfügbarkeit in Prozent oder ein Service-Level sagen wir nicht zu. Terminierte Einzüge, deren Termin länger zurückliegt, werden nicht still nachgeholt, sondern als überfällig angezeigt und müssen neu terminiert oder storniert werden.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Account anlegen und zweiten Faktor einrichten</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="sicherheit-final">Jetzt registrieren</a>
+        <a href="/so-funktionierts/" class="btn btn-outline">So funktioniert's</a>
+      </div>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=a48427be21" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

@@ -103,7 +103,7 @@ Seit 4.43 zeigt der Reiter den gewählten Zeitraum und den gleich langen Vorzeit
 Block `sync`: `page_size` (1 bis 250, Vorgabe 100). Änderungen ohne Deployment erreichen Scheduler und Worker erst nach
 `deploy/vps/scripts/restart-workers.sh`. Rückrollen ohne Codeänderung: `full_sync_window_hours = 1`, `sync_fair_seconds = 0`.
 
-## Nachtrag 09.09.2026 (Version 4.51): Der nächtliche Vollabgleich lief ins Leere
+## Nachtrag 09.09.2026 (Version 4.52): Der nächtliche Vollabgleich lief ins Leere
 
 **Befund der Gesamtprüfung.** `sync_state_start()` setzt `cursor_json = NULL`. Unmittelbar danach markiert
 `job_sync_run()` einen Vollabgleich mit `JSON_SET(COALESCE(cursor_json, '{}'), '$.force_full', true)`. Der Cursor ist

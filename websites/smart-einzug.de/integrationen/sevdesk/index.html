@@ -89,7 +89,7 @@
       "name": "Kann ich mehrere Firmen mit unterschiedlichen Buchhaltungssystemen führen?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Ja. Ein Benutzer kann mehreren Firmen angehören; jede Firma wählt ihr Buchhaltungssystem und verbindet ihr eigenes Stripe-Konto."
+        "text": "Ja, ein Benutzer kann mehreren Firmen angehören. Jede Firma verbindet ihr eigenes Stripe-Konto; die Wahl zwischen Lexware Office und sevdesk soll mit dem Start der sevdesk-Anbindung möglich werden."
       }
     },
     {
@@ -228,11 +228,11 @@
         <p class="eyebrow">Nutzen</p>
         <h2>Bestehende sevdesk-Rechnungen einziehen, nicht Umsätze importieren</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Das Leistungsversprechen ist der Einzug bestehender sevdesk-Rechnungen über Stripe. Es geht nicht um den Import bereits erfolgter Stripe-Umsätze in die Buchhaltung.</p>
+        <p>Ziel der geplanten Anbindung ist der Einzug bestehender sevdesk-Rechnungen über Stripe. Es geht nicht um den Import bereits erfolgter Stripe-Umsätze in die Buchhaltung.</p>
       </div>
       <div class="tiles">
         <div class="tile"><h3>Weniger Handarbeit</h3><p>Beträge, Fälligkeiten und Kundenbezug kommen aus der Rechnung. Nichts wird von Hand in ein zweites Werkzeug übertragen, keine Exportdatei, kein Banking-Upload.</p></div>
-        <div class="tile"><h3>SEPA-Mandate digital</h3><p>Kunden erteilen ihr Lastschriftmandat online. Vorabankündigung, Mandatsreferenz und Nachweise verwaltet SmartEinzug, wie heute für Lexware Office.</p></div>
+        <div class="tile"><h3>SEPA-Mandate</h3><p>Mandatsdokument, Mandatsreferenz und Unterschriftsnachweis verwaltet SmartEinzug je Kunde, wie heute für Lexware Office. Eine digitale Mandatserteilung ist in Vorbereitung.</p></div>
         <div class="tile"><h3>Ein Zahlungsstatus</h3><p>Ob eingereicht, eingezogen oder zurückgegeben: Der Stand jeder Lastschrift ist an einer Stelle sichtbar. „An Stripe übergeben“ ist dabei nicht „eingezogen“.</p></div>
         <div class="tile"><h3>Nachvollziehbar</h3><p>Jeder Einzug bleibt mit Rechnung, Mandat und Ergebnis dokumentiert. Eine automatische Zahlungsbuchung zurück nach sevdesk ist erst nach eigener Prüfung und Abnahme vorgesehen und wird bis dahin nicht zugesagt.</p></div>
       </div>
@@ -266,11 +266,11 @@
       </div>
       <ul class="checklist">
         <li><strong>SEPA-Basislastschrift (Core).</strong> Das Verfahren für Zahler, die Verbraucher oder Unternehmen sein können. Der Zahler kann eine autorisierte Lastschrift in der Regel innerhalb von acht Wochen nach Belastung zurückgeben. Stripe unterstützt dieses Verfahren; das gesonderte Firmenlastschriftverfahren (B2B) nicht.</li>
-        <li><strong>Lastschriftmandat.</strong> Die Erlaubnis des Kunden, Beträge von seinem Konto einzuziehen. Es enthält Gläubiger-Identifikationsnummer, Mandatsreferenz und Kontodaten des Zahlers. SmartEinzug holt Mandate digital ein und archiviert den Nachweis; ein bloß eingetragenes IBAN-Feld ist kein Mandat.</li>
-        <li><strong>Vorabankündigung (Pre-Notification).</strong> Der Kunde muss vor der Belastung über Betrag und Fälligkeit informiert werden, üblicherweise mindestens 14 Kalendertage vorher, sofern keine kürzere Frist vereinbart ist. SmartEinzug versendet die Ankündigung automatisch und hält die Frist ein.</li>
+        <li><strong>Lastschriftmandat.</strong> Die Erlaubnis des Kunden, Beträge von seinem Konto einzuziehen. Es enthält Gläubiger-Identifikationsnummer, Mandatsreferenz und Kontodaten des Zahlers. Das Mandat holen Sie bei Ihrem Kunden ein; SmartEinzug erzeugt das Mandatsdokument, vergibt die Mandatsreferenz und hält den Nachweis der Unterschrift fest. Ein bloß eingetragenes IBAN-Feld ist kein Mandat.</li>
+        <li><strong>Vorabankündigung (Pre-Notification).</strong> Der Kunde muss vor der Belastung über Betrag und Fälligkeit informiert werden, üblicherweise mindestens 14 Kalendertage vorher, sofern keine kürzere Frist vereinbart ist. Auf Wunsch versendet SmartEinzug die Ankündigung beim Terminieren per E-Mail und lässt nur Termine zu, die die eingestellte Frist einhalten. Ohne diese Einstellung informieren Sie Ihre Kunden selbst, etwa über die Rechnung.</li>
         <li><strong>Einreichung und Fälligkeit.</strong> Die Lastschrift wird mit dem Fälligkeitsdatum eingereicht. Zwischen Einreichung und tatsächlicher Gutschrift liegen Bankarbeitstage; der Status „eingereicht“ ist deshalb noch kein Zahlungseingang.</li>
         <li><strong>Rücklastschrift.</strong> Wird eine Lastschrift zurückgegeben (Widerspruch, Kontodeckung, Kontoauflösung), bleibt die Rechnung offen. SmartEinzug dokumentiert den Rücklauf am Einzug, damit Sie gezielt nachfassen können, statt ihn im Kontoauszug zu suchen.</li>
-        <li><strong>Gläubiger-Identifikationsnummer.</strong> Sie wird bei der Deutschen Bundesbank beantragt und kennzeichnet Sie als Zahlungsempfänger in jedem Mandat. Bei Einzug über Stripe kann je nach Konfiguration auch die Gläubiger-ID des Zahlungsdienstleisters erscheinen; Details erklären wir in der <a href="/hilfe/">Hilfe</a>.</li>
+        <li><strong>Gläubiger-Identifikationsnummer.</strong> Sie wird bei der Deutschen Bundesbank beantragt und kennzeichnet Sie als Zahlungsempfänger in jedem Mandat. Bei Einzug über Stripe können auf dem Kontoauszug Ihres Kunden Gläubiger-ID und Mandatsreferenz von Stripe erscheinen.</li>
       </ul>
     </div>
   </section>
@@ -363,7 +363,7 @@
         <p class="eyebrow">Eine Plattform, zwei Rechnungssysteme</p>
         <h2>Abgrenzung zur Lexware-Office-Integration</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>SmartEinzug ist eine Plattform für den SEPA-Einzug offener Rechnungen. Das Buchhaltungssystem gehört zur Firma: Ein Benutzer kann eine Firma mit Lexware Office und eine zweite mit sevdesk führen. Lexware Office ist heute verfügbar, sevdesk folgt als eigene Anbindung mit eigenem Einrichtungsweg. Mandate, Einzüge, Vorabankündigungen, Zahlungsstatus und Dokumentation funktionieren für beide gleich. Wer sevdesk nutzt, muss seine Buchhaltung nicht wechseln.</p>
+        <p>SmartEinzug ist eine Plattform für den SEPA-Einzug offener Rechnungen. Das Buchhaltungssystem gehört zur Firma: Ein Benutzer kann eine Firma mit Lexware Office und eine zweite mit sevdesk führen. Lexware Office ist heute verfügbar, sevdesk folgt als eigene Anbindung mit eigenem Einrichtungsweg. Mandate, Einzüge, Vorabankündigungen, Zahlungsstatus und Dokumentation sollen für beide gleich funktionieren. Wer sevdesk nutzt, muss seine Buchhaltung nicht wechseln.</p>
       </div>
       <div class="tiles">
         <div class="tile"><h3>Lexware Office</h3><p>Verfügbar. Anbindung über die Public API, Voraussetzungen und Einrichtung unter <a href="/integrationen/lexware-office/">Lexware-Office-Integration</a>.</p></div>
@@ -387,7 +387,7 @@
         <li><strong>Zieht SmartEinzug das Geld auf ein eigenes Konto ein?</strong> Nein. Der Einzug läuft über Ihr eigenes Stripe-Konto, die Auszahlung erfolgt von Stripe an Ihr Geschäftskonto. SmartEinzug hält keine Kundengelder.</li>
         <li><strong>Wird die Zahlung automatisch in sevdesk als bezahlt gebucht?</strong> Das ist eine getrennte Funktion mit eigener Prüfung und Abnahme. Bis dahin sehen Sie den Zahlungsstatus in SmartEinzug und übernehmen die Buchung in sevdesk selbst; wir bewerben keine vollautomatische Buchung, bevor sie geprüft ist.</li>
         <li><strong>Wie sicher ist mein sevdesk-API-Schlüssel?</strong> Schlüssel werden verschlüsselt gespeichert, in der Oberfläche maskiert und nie protokolliert. Der Zugriff ist auf berechtigte Rollen beschränkt, die Anmeldung erfordert Zwei-Faktor-Authentifizierung.</li>
-        <li><strong>Kann ich mehrere Firmen mit unterschiedlichen Buchhaltungssystemen führen?</strong> Ja. Ein Benutzer kann mehreren Firmen angehören; jede Firma wählt ihr Buchhaltungssystem und verbindet ihr eigenes Stripe-Konto.</li>
+        <li><strong>Kann ich mehrere Firmen mit unterschiedlichen Buchhaltungssystemen führen?</strong> Ja, ein Benutzer kann mehreren Firmen angehören. Jede Firma verbindet ihr eigenes Stripe-Konto; die Wahl zwischen Lexware Office und sevdesk soll mit dem Start der sevdesk-Anbindung möglich werden.</li>
         <li><strong>Was passiert bei einer Rücklastschrift?</strong> Die Rechnung bleibt offen, der Rücklauf wird am Einzug dokumentiert. Es wird kein zweiter Einzug ohne Ihre Freigabe ausgelöst.</li>
         <li><strong>Kann ich heute schon SEPA-Lastschriften einziehen?</strong> Ja, mit Rechnungen aus <a href="/integrationen/lexware-office/">Lexware Office</a>. Details unter <a href="/so-funktionierts/">So funktioniert's</a>, Konditionen unter <a href="/preise/">Preise</a>.</li>
         <li><strong>Was passiert mit meinen Daten?</strong> Gespeichert werden E-Mail-Adresse, die optionalen Angaben Name und Firma, die Herkunftsseite, die Fassung des Einwilligungstextes und die Zeitpunkte. Keine IP-Adresse, keine Weitergabe an Dritte außer an unsere Dienstleister für Hosting und E-Mail-Versand. Abmeldung jederzeit über den Link in jeder E-Mail, Details in der <a href="/datenschutz/#vormerkung">Datenschutzerklärung</a>.</li>
@@ -462,6 +462,9 @@
           <li><a href="/impressum/">Impressum</a></li>
           <li><a href="/datenschutz/">Datenschutz</a></li>
           <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
           <li><a href="/hilfe/">Hilfe</a></li>
           <li><a href="/kontakt/">Kontakt</a></li>
           <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>

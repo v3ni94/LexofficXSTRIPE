@@ -78,7 +78,7 @@ Ereignisse `charge.refunded` (Objekt Charge, Feld `amount_refunded` = Gesamtstan
 * Anzeige: Einzugsübersicht (Spalte Betrag "Erstattet: ... am ...", Filter `refunded`, Vermerk), CSV-Export mit Spalten "Erstattet EUR" und "Erstattet am". Audit `collection_refunded` mit Einzugsbetrag, Erstattungsbetrag, Charge und PaymentIntent.
 * Voraussetzung: Der Webhook-Endpunkt der Firma bei Stripe muss die Ereignisse `charge.refunded` und `charge.refund.updated` liefern (Einstellungen prüfen). Ohne Webhook-Secret werden Erstattungen nicht erkannt; die Alarmierung weist darauf hin.
 
-## 5e. Befunde der Gesamtprüfung vom 09.09.2026 (Version 4.51)
+## 5e. Befunde der Gesamtprüfung vom 09.09.2026 (Version 4.52)
 
 Eine Prüfung über sechzehn Fachrichtungen fand drei Fehler im Geldfluss, die vor dem ersten Kunden behoben wurden.
 Alle drei sind durch `php tools/payment-safety-check.php` und `bash tools/sevdesk-check.sh` gegen einen Rückfall gesichert.

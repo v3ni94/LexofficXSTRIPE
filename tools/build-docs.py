@@ -65,6 +65,15 @@ DOCUMENTS = [
         'classification': 'kundenbezogen', 'access': 'customer',
         'chapters': ['kunden/handbuch.md'],
     },
+    {
+        'code': 'marketing', 'title': 'SEO- und Marketingdokumentation',
+        'audience': 'Geschäftsführung, Marketing und Redaktion der Marketingseiten',
+        'classification': 'intern', 'access': 'admin',
+        'chapters': [
+            'seo/README.md', 'seo/01-bestandsaufnahme.md', 'seo/02-faktenregister.md', 'seo/03-aussagenpruefung.md',
+            'seo/04-keyword-map.md', 'seo/05-massnahmenplan.md', 'seo/06-mess-und-pflegekonzept.md', 'seo/07-abschlussbericht.md',
+        ],
+    },
 ]
 
 # Unveraenderte Originalunterlagen (nur Adminbereich, access admin)

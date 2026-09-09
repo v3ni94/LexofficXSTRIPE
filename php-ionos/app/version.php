@@ -8,13 +8,13 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.51';
+const APP_VERSION = '4.52';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
-        ['version' => '4.51', 'date' => '09.09.2026', 'title' => 'Gesamtprüfung: sechs Fehler im Geldfluss und im Betrieb behoben',
+        ['version' => '4.52', 'date' => '09.09.2026', 'title' => 'Gesamtprüfung: sechs Fehler im Geldfluss und im Betrieb behoben',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Rücklastschrift: Ein vom Kunden widerrufener Einzug setzt die Rechnung jetzt auf Klärungsbedarf. Bisher blieb sie sofort wieder Kandidat für den automatischen Einzug und wäre erneut eingezogen worden.'],
             ['type' => 'Behoben', 'text' => 'Stripe-Störung: Antwortet Stripe mit einem Serverfehler (5xx) oder meldet einen noch laufenden gleichen Vorgang (409), gilt das Ergebnis als unbekannt und wird zur Klärung vorgelegt. Bisher galt es als endgültiger Fehlschlag; ein weiterer Versuch hätte eine zweite Lastschrift erzeugen können.'],
@@ -23,6 +23,15 @@ function app_changelog(): array
             ['type' => 'Behoben', 'text' => 'Nächtlicher Vollabgleich: Der Lauf startet wieder mit vollständigem Zwischenstand. Bisher brach er sofort ab und die Synchronisation der betroffenen Firma blieb stehen.'],
             ['type' => 'Behoben', 'text' => 'Deployment: Scheitert die Aktivierung eines Releases, wird der Fehler berichtet und automatisch auf das vorherige Release zurückgerollt. Bisher brach der Vorgang ohne Rollback ab.'],
             ['type' => 'Neu', 'text' => 'Prüfung tools/payment-safety-check.php sichert alle sechs Punkte gegen einen Rückfall; der Not-Aus wird zusätzlich gegen eine echte Datenbank geprüft. Der GitHub-Workflow führt die schnellen Prüfungen jetzt bei jedem Push selbst aus.'],
+         ]],
+        ['version' => '4.51', 'date' => '09.09.2026', 'title' => 'Marketingseiten: Faktenprüfung, Preisregel, Leadseiten der DETM, sevdesk-Domains, Wissensbereich',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Alle Aussagen der Marketingseiten (smart-einzug.de, lexoffice-einzug.de, lexware-einzug.de) gegen den Programmcode geprüft und bereinigt: nur Lesezugriff auf Lexware Office, Einzüge ausschließlich nach Nutzeraktion, Sofort-Einzug mit Karenzzeit und nächtlichem Einreichfenster, Vorabankündigung als optionale Einstellung, Mandate auf Papier oder als Upload, IBAN maskiert statt „verschlüsselt“, keine Testphase, sevdesk nur als „in Vorbereitung“. Faktenregister und Aussagenprüfung liegen in docs/seo und in der Dokumentation im Adminbereich.'],
+            ['type' => 'Geändert', 'text' => 'Preisbeträge des Produkts erscheinen bis zur Freigabe auf keiner Marketingseite mehr (auch nicht in Metadaten oder strukturierten Daten); die AGB verweisen auf die Bestellübersicht. Konditionen zeigt nur der Registrierungs- und Bestellprozess der Anwendung. tools/pricing-check.php Abschnitt D erzwingt das.'],
+            ['type' => 'Geändert', 'text' => 'lexoffice-einzug.de und lexware-einzug.de sind Leadseiten der DETM Management Consulting FZCO: Textwortmarke statt SmartEinzug-Logo, Impressum und Datenschutz nennen DETM (offene Angaben als [wird ergänzt] markiert), Anbieter der Software bleibt die Müller Holding AG. Spiegelseiten der Leaddomains leiten per 301 auf die Hauptdomain oder ihre Startseite; acht Ratgeberartikel wurden nach smart-einzug.de/wissen/ verlagert.'],
+            ['type' => 'Neu', 'text' => 'smart-einzug.de erhält Anleitungen (Lexware Office verbinden, Stripe verbinden, erster Lastschrifteinzug), einen Wissensbereich (SEPA-Mandat, Rücklastschrift, Vorabankündigung, Fristen, Mandatsreferenz, Verbuchung, Zuordnung, Zahlungsstatus, Lastschrift oder Überweisung, Mandat einholen, Voraussetzungen) und eine Sicherheitsseite mit belegbaren Aussagen; Integrationsseiten ausgebaut.'],
+            ['type' => 'Neu', 'text' => 'Zwei Leaddomains für sevdesk mit getrennten Inhalten (sevdesk-einzug.de Vormerkung, sevdesk-sepa.de SEPA-Wissen), Vormerkung über die Anwendung mit Double-Opt-in. Die Domains sind in config.example.php und im Webhosting-Upload eingetragen; die Produktionskonfiguration (signup_domains) und die Zuordnung beim Hoster sind nachzuziehen.'],
+            ['type' => 'Geändert', 'text' => 'lastschrift-einfach.de ist nur noch eine 301-Weiterleitung auf smart-abrechnen.de (Ordner enthält .htaccess und 404-Seite). Neue Werkzeuge: tools/seo-inventory.py (URL-Inventar), tools/seo-map-check.py (Themen- und URL-Zuordnung docs/seo/keyword-map.json), tools/lead-assets.py (logofreie Bildassets); Sitemaps mit lastmod aus der Git-Historie.'],
          ]],
         ['version' => '4.50', 'date' => '09.09.2026', 'title' => 'Kundenhinweise erscheinen nicht mehr im Adminbereich',
          'entries' => [

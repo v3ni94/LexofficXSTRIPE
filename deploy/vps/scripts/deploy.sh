@@ -622,7 +622,7 @@ if (( ${#LEGACY_STOP_IDS[@]} > 0 )); then
     fi
 fi
 echo "Migrationen abgeschlossen. Aktiviere Release $SHA (Cutover: Container werden neu erzeugt) ..."
-# Der Cutover ist der einzige Schritt, der den laufenden Betrieb tatsaechlich veraendert. Er lief bis 4.51
+# Der Cutover ist der einzige Schritt, der den laufenden Betrieb tatsaechlich veraendert. Er lief bis 4.52
 # ungeschuetzt unter "set -e": Scheiterte "up -d" (Beispiel: ein Dienst wird wegen depends_on nicht gesund,
 # ein Restcontainer belegt einen Namen, das Image fehlt), brach das Skript sofort ab. Zurueck blieb ein halb
 # erneuerter Stack, ohne Rollback und ohne die Fehlermeldung in der Statusdatei. Deshalb wie jeder andere

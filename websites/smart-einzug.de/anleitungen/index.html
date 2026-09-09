@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anleitungen: Einrichtung und erster Einzug</title>
+<meta name="description" content="Drei Anleitungen für SmartEinzug: Lexware Office verbinden, Stripe-Konto mit Webhook einrichten und den ersten SEPA-Einzug bis zur Statuskontrolle durchführen.">
+<link rel="canonical" href="https://smart-einzug.de/anleitungen/">
+<meta property="og:title" content="Anleitungen: Einrichtung und erster Einzug">
+<meta property="og:description" content="Drei Anleitungen für SmartEinzug: Lexware Office verbinden, Stripe-Konto mit Webhook einrichten und den ersten SEPA-Einzug bis zur Statuskontrolle durchführen.">
+<meta property="og:url" content="https://smart-einzug.de/anleitungen/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905f" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905f">
+<link rel="stylesheet" href="/assets/css/site.css?v=3a9921073a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://smart-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Anleitungen",
+      "item": "https://smart-einzug.de/anleitungen/"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><img class="logo" src="/assets/img/logo-horizontal.png?v=20260905f" srcset="/assets/img/logo-horizontal.png?v=20260905f 1x, /assets/img/logo-horizontal@2x.png?v=20260905f 2x" alt="SmartEinzug" width="246" height="56"></a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li aria-current="page">Anleitungen</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Anleitungen</p>
+      <h1>Anleitungen für die Einrichtung von SmartEinzug</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Drei Anleitungen in der Reihenfolge der Einrichtung: Lexware Office anbinden, das eigene Stripe-Konto verbinden und den ersten Lastschrifteinzug bis zur Statuskontrolle begleiten.</p>
+      <p class="hero-note">Jede Anleitung verwendet die Bezeichnungen, die Sie in der Anwendung vorfinden, von Einstellungen und Firmendaten über Kundendetails und SEPA Pflegen bis zu Rechnungen und Einzügen.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Drei Anleitungen</p>
+        <h2>Der Weg vom leeren Firmenaccount zur ersten Lastschrift</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><h3>1. Lexware Office verbinden</h3><p>API-Schlüssel der Public API in Lexware Office erzeugen, in den Einstellungen von SmartEinzug hinterlegen, Verbindung prüfen und die erste Synchronisation starten. Dazu eine Übersicht, welche Rechnungs- und Kundendaten übernommen werden.</p><p><a href="/anleitungen/lexware-office-verbinden/">Anleitung öffnen</a></p></div>
+        <div class="tile"><h3>2. Eigenes Stripe-Konto verbinden</h3><p>Secret Key oder eingeschränkten Schlüssel hinterlegen, Test- und Livemodus auseinanderhalten, den Webhook mit den sieben benötigten Ereignissen einrichten und das Webhook-Secret speichern.</p><p><a href="/anleitungen/stripe-verbinden/">Anleitung öffnen</a></p></div>
+        <div class="tile"><h3>3. Erster Lastschrifteinzug</h3><p>IBAN und Mandat beim Kunden erfassen, Mandatsdokument drucken und Unterschrift festhalten, Rechnung vormerken oder terminieren, Einreichfenster verstehen, Status prüfen, Rücklastschriften klären und das Einzugsjournal exportieren.</p><p><a href="/anleitungen/erster-lastschrifteinzug/">Anleitung öffnen</a></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Bevor Sie beginnen</p>
+        <h2>Voraussetzungen für alle drei Anleitungen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ul class="checklist">
+        <li><strong>Firmenaccount mit Zwei-Faktor-Authentifizierung.</strong> Nach der Registrierung folgen die Bestätigung der E-Mail-Adresse per Link und die Einrichtung der Zwei-Faktor-Authentifizierung mit einer Authenticator-App. Sie ist für jeden Zugang verpflichtend.</li>
+        <li><strong>Rolle Inhaber oder Administrator.</strong> Verbindungen zu Lexware Office und Stripe sowie die Firmendaten ändern nur Inhaber und Administratoren. Mitarbeiter arbeiten mit Kunden, Rechnungen, Mandaten und Einzügen.</li>
+        <li><strong>Lexware Office mit Zugang zur Public API.</strong> Nach Angaben von Lexware ist dafür der Tarif Lexware Office XL erforderlich, bitte im eigenen Konto prüfen. SmartEinzug prüft keinen Tarif, sondern nur, ob der Schlüssel funktioniert.</li>
+        <li><strong>Eigenes Stripe-Konto mit freigeschalteter SEPA-Lastschrift.</strong> Alle Lastschriften laufen über dieses Konto, SmartEinzug hält kein Geld. Zum Ausprobieren eignet sich der Testmodus von Stripe.</li>
+        <li><strong>Für den ersten Einzug:</strong> mindestens eine offene Rechnung aus Lexware Office und ein Kunde, für den IBAN und ein Mandat mit erfasster Unterschrift vorliegen.</li>
+      </ul>
+      <div class="info-box">
+        <p><strong>Reihenfolge.</strong> Nach der Anmeldung führt SmartEinzug durch eine geführte Einrichtung, in der beide Verbindungen hinterlegt werden können. Die Anleitungen helfen auch dann, wenn Sie einen Schritt überspringen und später in den Einstellungen nachholen. Lexware Office lässt sich ohne Stripe verbinden und umgekehrt; Einzüge sind erst mit beiden Verbindungen möglich.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Ergänzend</p>
+        <h2>Weiterführende Seiten</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><h3>So funktioniert's</h3><p>Der Ablauf in drei Schritten im Überblick, von der Registrierung bis zur Freigabe der ersten Rechnung.</p><p><a href="/so-funktionierts/">Ablauf ansehen</a></p></div>
+        <div class="tile"><h3>Hilfe</h3><p>Einstiegspunkt für Fragen zu Einrichtung, Integrationen, Preisen und Kontakt.</p><p><a href="/hilfe/">Hilfe öffnen</a></p></div>
+        <div class="tile"><h3>Integration Lexware Office</h3><p>Was die Anbindung leistet und welche Daten über die Public API gelesen werden.</p><p><a href="/integrationen/lexware-office/">Integration ansehen</a></p></div>
+        <div class="tile"><h3>Wissen: SEPA-Mandat</h3><p>Hintergrund zum SEPA-Lastschriftmandat, unabhängig von der Bedienung der Anwendung.</p><p><a href="/wissen/sepa-mandat/">Beitrag lesen</a></p></div>
+        <div class="tile"><h3>Wissen: Rücklastschrift</h3><p>Hintergrund zu Rückgaben und Widersprüchen bei SEPA-Lastschriften.</p><p><a href="/wissen/ruecklastschrift/">Beitrag lesen</a></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Firmenaccount anlegen und mit der ersten Anleitung beginnen</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="anleitungen-final">Jetzt registrieren</a>
+        <a href="/anleitungen/lexware-office-verbinden/" class="btn btn-outline">Anleitung 1 öffnen</a>
+      </div>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=a48427be21" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

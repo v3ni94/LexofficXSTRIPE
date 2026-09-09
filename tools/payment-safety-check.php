@@ -1,6 +1,6 @@
 <?php
 /**
- * Sicherungen des Geldflusses, die aus der Gesamtpruefung vom 09.09.2026 stammen (Version 4.51).
+ * Sicherungen des Geldflusses, die aus der Gesamtpruefung vom 09.09.2026 stammen (Version 4.52).
  * Prueft ohne Datenbank, ohne Netz und ohne Stripe-Konto, dass die damals behobenen Fehler nicht zurueckfallen.
  *
  * Jeder Fall nennt den urspruenglichen Fehler, damit spaetere Aenderungen die Absicht erkennen:

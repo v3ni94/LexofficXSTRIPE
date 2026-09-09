@@ -101,7 +101,7 @@ echo "\nD) Keine Preisbeträge des Produkts auf den Marketingseiten (Vorgabe des
 // und die anwaltliche Prüfung über die Fassung entschieden haben (siehe docs/seo/04-massnahmenplan.md).
 $produktPreisMuster = [
     '/Einführungspreis/u',
-    '/\b(25|50|49)(,00)?\s?(EUR|Euro|€)/u',
+    '/(?<![\d.,])(25|50|49)(,00)?\s?(EUR|Euro|€)/u',   // eigenstaendige Betraege, nicht Teil von 312,50 EUR
     '/"price"\s*:/u',
     '/je\s+4\s+Wochen/u',
     '/zzgl\.\s*(gesetzl\.\s*)?(USt|MwSt|Umsatzsteuer)/u',

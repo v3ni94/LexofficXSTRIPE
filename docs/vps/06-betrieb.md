@@ -761,12 +761,12 @@ Erfolg, obwohl nichts ausgeliefert wurde. Seit Version 4.17 gilt:
 - Fehlgeschlagene Statusabfragen werden gemeldet (erste und jede sechste) statt verschwiegen, damit eine
   Zugangsstörung nicht wie ein hängendes Deployment aussieht.
 
-### Cutover mit Fehlerbehandlung (seit 4.51)
+### Cutover mit Fehlerbehandlung (seit 4.52)
 
 Der Cutover (`docker compose up -d --remove-orphans`) ist der einzige Schritt, der den laufenden Betrieb verändert.
 Bis 4.50 lief er als einziger riskanter Schritt ungeschützt unter `set -euo pipefail`: Scheiterte er, brach das
 Skript sofort ab. Zurück blieb ein halb erneuerter Stack, ohne Rollback und ohne Eintrag in der Statusdatei; die
-Meldung im GitHub-Workflow lautete nur „Deployment fehlgeschlagen“. Seit 4.51 ist der Schritt wie jeder andere
+Meldung im GitHub-Workflow lautete nur „Deployment fehlgeschlagen“. Seit 4.52 ist der Schritt wie jeder andere
 gekapselt: `set +e`, Auswertung des Exitcodes, `deploy_fail_report "cutover"`, die letzten 100 Protokollzeilen und
 `run_rollback`. Geprüft von `php tools/payment-safety-check.php`, Abschnitt F.
 

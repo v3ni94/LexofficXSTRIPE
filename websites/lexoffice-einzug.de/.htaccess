@@ -10,8 +10,25 @@ RewriteCond %{HTTP_HOST} !^lexoffice-einzug\.de$ [NC]
 RewriteRule ^(.*)$ https://lexoffice-einzug.de/$1 [R=301,L]
 
 # Alte Adressen dauerhaft weiterleiten
-RewriteRule ^lexoffice-sepa(\.html)?$ /lexoffice-sepa-lastschrift [R=301,L]
-RewriteRule ^lexoffice-stripe(\.html)?$ /lexoffice-stripe-lastschrift [R=301,L]
+RewriteRule ^lexoffice-sepa(\.html)?$ / [R=301,L]
+RewriteRule ^lexoffice-stripe(\.html)?$ / [R=301,L]
+
+# Verlagerung dauerhafter Inhalte auf die Hauptdomain und Zusammenfuehrung gleichartiger Seiten (08.09.2026)
+RewriteRule ^ratgeber/sepa\-mandat\-einholen\-bestandskunden(\.html)?/?$ https://smart-einzug.de/wissen/sepa-mandat-einholen/ [R=301,L]
+RewriteRule ^ratgeber/lexoffice\-lastschrift\-oder\-ueberweisung(\.html)?/?$ https://smart-einzug.de/wissen/lastschrift-oder-ueberweisung/ [R=301,L]
+RewriteRule ^ratgeber/kunden\-und\-rechnungen\-richtig\-zuordnen(\.html)?/?$ https://smart-einzug.de/wissen/kunden-und-rechnungen-zuordnen/ [R=301,L]
+RewriteRule ^ratgeber/was\-brauche\-ich\-fuer\-eine\-sepa\-lastschrift(\.html)?/?$ https://smart-einzug.de/wissen/voraussetzungen-sepa-lastschrift/ [R=301,L]
+RewriteRule ^ratgeber/warum\-ist\-eine\-lastschrift\-nicht\-sofort\-bezahlt(\.html)?/?$ https://smart-einzug.de/wissen/zahlungsstatus-einer-lastschrift/ [R=301,L]
+RewriteRule ^ratgeber/wie\-funktioniert\-ein\-sepa\-mandat(\.html)?/?$ https://smart-einzug.de/wissen/sepa-mandat/ [R=301,L]
+RewriteRule ^ratgeber/was\-passiert\-bei\-einer\-ruecklastschrift(\.html)?/?$ https://smart-einzug.de/wissen/ruecklastschrift/ [R=301,L]
+RewriteRule ^ratgeber/?$ https://smart-einzug.de/wissen/ [R=301,L]
+RewriteRule ^lexoffice\-public\-api\-xl(\.html)?/?$ https://smart-einzug.de/anleitungen/lexware-office-verbinden/ [R=301,L]
+RewriteRule ^lexoffice\-lastschrift\-einrichten(\.html)?/?$ https://smart-einzug.de/anleitungen/ [R=301,L]
+RewriteRule ^lexoffice\-lastschrift(\.html)?/?$ / [R=301,L]
+RewriteRule ^lexoffice\-sepa\-lastschrift(\.html)?/?$ / [R=301,L]
+RewriteRule ^lexoffice\-lastschrifteinzug(\.html)?/?$ / [R=301,L]
+RewriteRule ^lexoffice\-stripe\-lastschrift(\.html)?/?$ / [R=301,L]
+RewriteRule ^lexoffice\-sepa\-mandat(\.html)?/?$ / [R=301,L]
 
 # .html-Endung entfernen (externe Anfragen), 404 und Rechtstexte ausgenommen
 RewriteCond %{THE_REQUEST} \s/([^\s?]+?)(?:/index)?\.html[\s?] [NC]

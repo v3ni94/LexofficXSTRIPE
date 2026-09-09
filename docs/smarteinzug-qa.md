@@ -42,7 +42,7 @@ Statuswerte: **offen**, **implementiert**, **lokal getestet**, **extern getestet
 | Domains/SEO | Alle neun Hosts bei IONOS angelegt, Ordner zugeordnet, SSL aktiv | offen | | Siehe `docs/smarteinzug-rollout.md`, außerhalb des Repositorys zu prüfen |
 | Domains/SEO | Aktivierungsreihenfolge eingehalten (Website, App-Hosts, `base_url`-Wechsel, Admin-Host) | offen | | Siehe `docs/smarteinzug-rollout.md` |
 | Domains/SEO | Redirect-Matrix der Aliase per curl geprüft | offen | | Testfall laut Bestandsmatrix „curl-Matrix nach DNS" |
-| Domains/SEO | `seo-url-map.csv` mit Indexierungsstatus je Host/Pfad gepflegt | implementiert | 05.09.2026 | Diese Abnahmevorlage selbst, siehe `docs/seo-url-map.csv` |
+| Domains/SEO | `seo-url-map.csv` mit Indexierungsstatus je Host/Pfad gepflegt | implementiert | 05.09.2026 | Diese Abnahmevorlage selbst, siehe `docs/seo-url-map.csv (wird aus docs/seo/keyword-map.json exportiert)` |
 | Marketing/Ads | Anzeigengruppen, Keywords, Negativkeywords, Anzeigentexte gemäß Zeichenlängen geprüft | implementiert | 05.09.2026 | Siehe `docs/ads-conversions.md`, Entwurf, gegen tatsächlichen Auftragstext zu prüfen |
 | Marketing/Ads | Wettbewerber-Anzeigengruppen erst nach Freigabe aktiv geschaltet | offen | | Freigabe durch Geschäftsführung steht laut `docs/ads-conversions.md` aus |
 
