@@ -10,11 +10,11 @@ Erzeugt von `tools/seo-inventory.py` aus dem Repository. Indexierung bei Google 
 |---|---|---|---|---|---|---|---|---|---|
 | 404.html | fehlerseite | Diese Seite gibt es nicht | noindex | nein | 0 | 64 |  |  |  |
 | agb/index.html | rechtliches_kontakt | Allgemeine Geschäftsbedingungen | ja | ja | 31 | 593 |  |  | BreadcrumbList, ListItem |
-| anleitungen/erster-lastschrifteinzug/index.html | keyword_landingpage | Vom Firmenaccount zum ersten Lastschrifteinzug | ja | ja | 6 | 1937 |  |  | BreadcrumbList, ListItem |
+| anleitungen/erster-lastschrifteinzug/index.html | keyword_landingpage | Vom Firmenaccount zum ersten Lastschrifteinzug | ja | ja | 6 | 1979 |  |  | BreadcrumbList, ListItem |
 | anleitungen/index.html | keyword_landingpage | Anleitungen für die Einrichtung von SmartEinzug | ja | ja | 31 | 441 |  |  | BreadcrumbList, ListItem |
-| anleitungen/lexware-office-verbinden/index.html | keyword_landingpage | Lexware Office mit SmartEinzug verbinden | ja | ja | 4 | 958 |  |  | BreadcrumbList, ListItem |
+| anleitungen/lexware-office-verbinden/index.html | keyword_landingpage | Lexware Office mit SmartEinzug verbinden | ja | ja | 4 | 985 |  |  | BreadcrumbList, ListItem |
 | anleitungen/stripe-verbinden/index.html | keyword_landingpage | Eigenes Stripe-Konto mit SmartEinzug verbinden | ja | ja | 5 | 1120 |  |  | BreadcrumbList, ListItem |
-| datenschutz/index.html | rechtliches_kontakt | Datenschutzerklärung | ja | ja | 33 | 1180 |  |  | BreadcrumbList, ListItem |
+| datenschutz/index.html | rechtliches_kontakt | Datenschutzerklärung | ja | ja | 33 | 1267 |  |  | BreadcrumbList, ListItem |
 | funktionen/index.html | produktseite | SmartEinzug im Überblick: alle Funktionen | ja | ja | 31 | 327 | 1.475,20 € |  | BreadcrumbList, ListItem |
 | hilfe/index.html | produktseite | Hilfe und Anleitungen zu SmartEinzug | ja | ja | 31 | 468 |  |  | BreadcrumbList, ListItem |
 | impressum/index.html | rechtliches_kontakt | Impressum | ja | ja | 33 | 183 |  |  | BreadcrumbList, ListItem |
@@ -31,16 +31,16 @@ Erzeugt von `tools/seo-inventory.py` aus dem Repository. Indexierung bei Google 
 | vergleich/sepaheld-gocardless/index.html | vergleich | SmartEinzug im Vergleich zu SEPA-Held und GoCardless | noindex | nein | 0 | 144 |  |  |  |
 | wissen/fristen-und-vorlaufzeiten/index.html | keyword_landingpage | Fristen und Vorlaufzeiten bei der SEPA-Basislastschrift | ja | ja | 2 | 755 |  |  | Article, BreadcrumbList, ListItem, Organization |
 | wissen/index.html | keyword_landingpage | Wissen rund um den SEPA-Einzug mit SmartEinzug | ja | ja | 31 | 627 |  | 08.09.2026 | BreadcrumbList, ListItem |
-| wissen/kunden-und-rechnungen-zuordnen/index.html | keyword_landingpage | Kunden und Rechnungen richtig zuordnen | ja | ja | 1 | 395 |  |  | Article, BreadcrumbList, ListItem, Organization |
+| wissen/kunden-und-rechnungen-zuordnen/index.html | keyword_landingpage | Kunden und Rechnungen richtig zuordnen | ja | ja | 2 | 395 |  |  | Article, BreadcrumbList, ListItem, Organization |
 | wissen/lastschrift-in-lexware-office-verbuchen/index.html | keyword_landingpage | Eingezogene Lastschriften in Lexware Office verbuchen | ja | ja | 3 | 764 |  |  | Article, BreadcrumbList, ListItem, Organization |
 | wissen/lastschrift-oder-ueberweisung/index.html | keyword_landingpage | Lastschrift oder Überweisung: Was für lexoffice-Rechnungen sinnvoll is | ja | ja | 2 | 792 | 18.000,00 EUR, 89,00 EUR |  | Article, BreadcrumbList, ListItem, Organization |
 | wissen/mandatsreferenz-und-glaeubiger-id/index.html | keyword_landingpage | Mandatsreferenz und Gläubiger-Identifikationsnummer | ja | ja | 1 | 274 |  |  | Article, BreadcrumbList, ListItem, Organization |
-| wissen/ruecklastschrift/index.html | keyword_landingpage | Rücklastschrift und Erstattung beim Einzug über Stripe | ja | ja | 8 | 1313 |  | 08.09.2026 | Article, BreadcrumbList, ListItem, Organization |
+| wissen/ruecklastschrift/index.html | keyword_landingpage | Rücklastschrift und Erstattung beim Einzug über Stripe | ja | ja | 8 | 1332 |  | 08.09.2026 | Article, BreadcrumbList, ListItem, Organization |
 | wissen/sepa-mandat-einholen/index.html | keyword_landingpage | SEPA-Mandat bei Bestandskunden einholen | ja | ja | 3 | 828 |  | 01.12.2026, 15.11.2026 | Article, BreadcrumbList, ListItem, Organization |
 | wissen/sepa-mandat/index.html | keyword_landingpage | Das SEPA-Lastschriftmandat in SmartEinzug | ja | ja | 7 | 1704 |  | 08.09.2026 | Article, BreadcrumbList, ListItem, Organization |
 | wissen/vorabankuendigung/index.html | keyword_landingpage | Vorabankündigung vor dem Lastschrifteinzug | ja | ja | 4 | 1062 |  | 08.09.2026 | Article, BreadcrumbList, ListItem, Organization |
-| wissen/voraussetzungen-sepa-lastschrift/index.html | keyword_landingpage | Was brauche ich für eine SEPA-Lastschrift zu einer lexoffice-Rechnung? | ja | ja | 1 | 315 |  |  | Article, BreadcrumbList, ListItem, Organization |
-| wissen/zahlungsstatus-einer-lastschrift/index.html | keyword_landingpage | Warum ist eine Lastschrift nicht sofort bezahlt? | ja | ja | 1 | 324 |  |  | Article, BreadcrumbList, ListItem, Organization |
+| wissen/voraussetzungen-sepa-lastschrift/index.html | keyword_landingpage | Was brauche ich für eine SEPA-Lastschrift zu einer lexoffice-Rechnung? | ja | ja | 2 | 315 |  |  | Article, BreadcrumbList, ListItem, Organization |
+| wissen/zahlungsstatus-einer-lastschrift/index.html | keyword_landingpage | Warum ist eine Lastschrift nicht sofort bezahlt? | ja | ja | 3 | 324 |  |  | Article, BreadcrumbList, ListItem, Organization |
 
 ## lexoffice-einzug.de
 
@@ -66,13 +66,13 @@ Erzeugt von `tools/seo-inventory.py` aus dem Repository. Indexierung bei Google 
 | agb.html | rechtliches_kontakt | Allgemeine Geschäftsbedingungen | ja | ja | 13 | 589 |  |  | BreadcrumbList, ListItem |
 | datenschutz.html | rechtliches_kontakt | Datenschutzerklärung | ja | ja | 14 | 1062 |  |  | BreadcrumbList, ListItem |
 | faq.html | produktseite | Häufige Fragen zu SmartEinzug | ja | ja | 13 | 374 |  |  | BreadcrumbList, ListItem |
-| funktionen.html | produktseite | Funktionen von SmartEinzug | ja | ja | 13 | 257 |  |  | BreadcrumbList, ListItem |
+| funktionen.html | produktseite | SmartEinzug: Funktionen für Lexware Office | ja | ja | 13 | 284 |  |  | BreadcrumbList, ListItem |
 | impressum.html | rechtliches_kontakt | Impressum | ja | ja | 14 | 195 |  |  | BreadcrumbList, ListItem |
-| index.html | startseite | SEPA-Lastschriften mit Lexware Office: verbinden, auswählen, einziehen | ja | ja | 14 | 1489 | 1.250,00 €, 2.140,00 €, 480,50 €, 96,00 € |  | Organization, SoftwareApplication, WebSite |
-| lexware-office-lastschrifteinzug.html | keyword_landingpage | Lastschrifteinzug für Lexware-Office-Rechnungen organisieren | ja | ja | 0 | 336 |  |  | BreadcrumbList, ListItem |
+| index.html | startseite | SEPA-Lastschriften mit Lexware Office: verbinden, auswählen, einziehen | ja | ja | 14 | 1511 | 1.250,00 €, 2.140,00 €, 480,50 €, 96,00 € |  | Organization, SoftwareApplication, WebSite |
+| lexware-office-lastschrifteinzug.html | keyword_landingpage | Lastschrifteinzug für Lexware-Office-Rechnungen organisieren | ja | ja | 2 | 336 |  |  | BreadcrumbList, ListItem |
 | lexware-office-sepa-mandat.html | keyword_landingpage | SEPA-Mandate für Ihre Lexware-Office-Kunden verwalten | ja | ja | 3 | 299 |  |  | BreadcrumbList, ListItem |
 | lexware-office-stripe.html | keyword_landingpage | Lexware Office und Stripe miteinander verbinden | ja | ja | 3 | 291 |  |  | BreadcrumbList, ListItem |
-| lexware-sepa-einzug.html | keyword_landingpage | Lexware SEPA Einzug: Rechnungen aus Lexware Office per Lastschrift ein | ja | ja | 1 | 557 |  |  | BreadcrumbList, ListItem |
+| lexware-sepa-einzug.html | keyword_landingpage | Lexware SEPA Einzug: Rechnungen aus Lexware Office per Lastschrift ein | ja | ja | 2 | 570 |  |  | BreadcrumbList, ListItem |
 | lp/sepa-lastschrift/index.html | kampagnenseite | Lexware-Office-Rechnungen per SEPA-Lastschrift einziehen. | noindex | nein | 0 | 598 | 128,00 €, 410,50 €, 980,00 € |  | Organization, SoftwareApplication |
 | offene-rechnungen-per-lastschrift-einziehen.html | keyword_landingpage | Offene Rechnungen aus Lexware Office für den SEPA-Einzug nutzen | ja | ja | 3 | 298 |  |  | BreadcrumbList, ListItem |
 | preise.html | produktseite | Preise für SmartEinzug | ja | ja | 13 | 387 |  |  | BreadcrumbList, ListItem |

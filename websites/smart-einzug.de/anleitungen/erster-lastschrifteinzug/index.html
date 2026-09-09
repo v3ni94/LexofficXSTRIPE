@@ -111,7 +111,8 @@
         <span class="bar" aria-hidden="true"></span>
       </div>
       <ol class="steps">
-        <li class="step"><span class="step-number">1</span><div><h3>Kundendetails öffnen</h3><p>Kunden entstehen aus den synchronisierten Rechnungen. Öffnen Sie unter Kunden den gewünschten Kunden oder klicken Sie in der Rechnungsliste auf den Kundennamen. Die Kundendetails gliedern sich in SEPA-Einzug, SEPA-Mandate, Unterschriebenes Mandat hochladen, Bankverbindung, Rechnungen und Einzüge.</p></div></li>
+        <li class="step"><span class="step-number">1</span><div><h3>Kundendetails öffnen</h3><p>Kunden entstehen aus den synchronisierten Rechnungen. Öffnen Sie unter Kunden den gewünschten Kunden oder klicken Sie in der Rechnungsliste auf den Kundennamen. Die Kundendetails gliedern sich in SEPA-Einzug, SEPA-Mandate, Unterschriebenes Mandat hochladen, Bankverbindung, Rechnungen und Einzüge.</p>
+      <p>Welche Angaben, Vereinbarungen und Konten vorliegen müssen, bevor der erste Einzug möglich ist, fasst <a href="/wissen/voraussetzungen-sepa-lastschrift/">Was Sie für eine SEPA-Lastschrift brauchen</a> zusammen.</p></div></li>
         <li class="step"><span class="step-number">2</span><div><h3>IBAN erfassen</h3><p>Im Bereich Bankverbindung tragen Sie Neue IBAN, Kontoinhaber und optional die BIC ein und wählen IBAN speichern. SmartEinzug prüft die IBAN rechnerisch (Prüfsumme und Länge, Deutschland und acht weitere Länder), setzt SEPA-Einzug auf Ja, registriert die Zahlungsmethode ohne Zahlung bei Stripe und bindet ein vorhandenes Mandat an diese IBAN oder legt ein Mandat an. Ein Abgleich mit Bankdaten oder eine Prüfung des Kontoinhabers findet nicht statt. Alternativ nutzen Sie die Arbeitsseite SEPA Pflegen, die alle Kunden ohne IBAN nacheinander vorlegt: IBAN speichern (SEPA: Ja) oder Kein SEPA.</p></div></li>
         <li class="step"><span class="step-number">3</span><div><h3>Mandatsdokument erzeugen und drucken</h3><p>Im Bereich SEPA-Mandate wählen Sie SEPA-Mandat erzeugen (Dokument). Die Mandatsreferenz vergibt SmartEinzug aus Präfix und Kundennummer. Über Mandatsdokument anzeigen / drucken öffnet sich die Druckansicht im Format A4 mit der Schaltfläche Drucken / Als PDF speichern. Das Dokument trägt den Mandatstext für die SEPA-Basislastschrift, den Hinweis auf das Erstattungsrecht von acht Wochen, den Hinweis auf Stripe als Zahlungsdienstleister, die Vorabankündigungsfrist und den Verfall nach 36 Monaten ohne Einzug. Fehlende Firmendaten erscheinen als Platzhalter.</p></div></li>
         <li class="step"><span class="step-number">4</span><div><h3>Unterschrift erfassen</h3><p>Der Kunde unterschreibt das Dokument auf Papier. Anschließend tragen Sie in der Mandatszeile Datum und Ort ein und wählen Unterschrift erfassen. Das Datum darf nicht in der Zukunft liegen. SmartEinzug prüft die Unterschrift nicht, sondern hält den Vermerk fest; bis dahin zeigt die Spalte Unterschrift den Hinweis Nachweis nicht erfasst. Das unterschriebene Original bewahren Sie auf.</p></div></li>
@@ -164,6 +165,7 @@
         <span class="bar" aria-hidden="true"></span>
       </div>
       <p>Nach der Einreichung steht der Einzug auf In Bearbeitung und die Rechnung auf Im Einzug. Die Rückmeldung von Stripe kommt über den Webhook aus Anleitung 2 oder über Status mit Stripe abgleichen auf der Seite Einzüge; dieser Abgleich liest nur, es bewegt sich kein Geld. Zwischen Einreichung und Gutschrift liegen Bankarbeitstage; die Auszahlung erfolgt von Stripe an Ihr Geschäftskonto. Den Zahlungseingang buchen Sie wie bisher in Lexware Office, SmartEinzug schreibt nichts zurück.</p>
+      <p>Warum eine eingereichte Lastschrift mehrere Bankarbeitstage lang nicht als bezahlt gilt, erklärt <a href="/wissen/zahlungsstatus-einer-lastschrift/">Warum eine Lastschrift nicht sofort als bezahlt gilt</a>.</p>
       <div class="tiles">
         <div class="tile"><h3>Vorgemerkt, Terminiert</h3><p>Freigegeben, aber noch nicht bei Stripe eingereicht. Stornieren und Umterminieren sind möglich.</p></div>
         <div class="tile"><h3>Wird eingereicht, In Bearbeitung</h3><p>An Stripe übergeben, Ergebnis steht aus. Die Rechnung zeigt Im Einzug.</p></div>
@@ -248,7 +250,7 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
-      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48" loading="lazy" decoding="async"></span>
       <nav class="footer-nav" aria-label="Rechtliches">
         <ul>
           <li><a href="/impressum/">Impressum</a></li>

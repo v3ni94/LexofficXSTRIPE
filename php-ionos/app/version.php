@@ -8,12 +8,20 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.55';
+const APP_VERSION = '4.56';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.56', 'date' => '10.09.2026', 'title' => 'Technisches SEO-Audit der Marketingseiten, Prüfer für die interne Verlinkung',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'tools/seo-linkcheck.py prüft die interne Verlinkung aller fünf Inhaltsdomains gegen den Dateibestand: defekte interne Links und indexierbare Seiten ohne eingehenden Link sind Fehler, weniger als zwei eingehende Links eine Warnung. Der GitHub-Workflow führt den Prüfer zusammen mit seo-map-check aus, sobald websites/ geändert wurde. Anlass: Die Zusammenführung vom 08.09.2026 hatte eine Seite ohne eingehenden Link zurückgelassen.'],
+            ['type' => 'Behoben', 'text' => 'Die verwaiste Seite lexware-office-lastschrifteinzug ist wieder aus der Startseite und aus lexware-sepa-einzug verlinkt. Vier weitere Seiten mit nur einem eingehenden Link haben zusätzliche Verweise aus thematisch passenden Anleitungen und Beiträgen erhalten; jede indexierbare Seite hat jetzt mindestens zwei.'],
+            ['type' => 'Behoben', 'text' => 'AGB- und Funktionsseite von lexware-einzug.de trugen denselben Titel und dieselbe Beschreibung wie die Seiten der Hauptdomain. Beide sind jetzt eindeutig; über alle fünf Domains gibt es keine doppelten Titel oder Beschreibungen mehr.'],
+            ['type' => 'Geändert', 'text' => 'Das Fußzeilenlogo lädt auf 33 Seiten verzögert (loading lazy, decoding async); das Kopfzeilenlogo bleibt unverändert, weil es im sichtbaren Bereich liegt. Acht ungenutzte SmartEinzug-Logodateien wurden von lexware-einzug.de und lexoffice-einzug.de entfernt, was zugleich die Leadseiten-Entscheidung umsetzt, dort kein SmartEinzug-Logo vorzuhalten.'],
+            ['type' => 'Neu', 'text' => 'Vollständiges technisches Audit in docs/seo: Projektkontext, Audit, Seitenmatrix und Weiterleitungsverzeichnis als CSV, Bericht zu strukturierten Daten, inhaltliche Lücken, Prüfliste und Prüfbefehle. Die Kapitel sind in der SEO- und Marketingdokumentation im Adminbereich enthalten.'],
+         ]],
         ['version' => '4.55', 'date' => '09.09.2026', 'title' => 'Empfehlungen der Gesamtprüfung umgesetzt: Webhooks, Support-Modus, Sicherheit, Nachweise, Alarmierung',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Webhooks: Scheitert die Verarbeitung einer Meldung von Stripe, wird sie jetzt wiederholt statt still verworfen. Bisher wurde jeder Fehler mit „in Ordnung“ quittiert; eine Kündigung oder eine bezahlte Bestellung konnte dadurch dauerhaft unbemerkt bleiben. Doppelte Zustellungen und vertauschte Reihenfolgen erkennt die Anwendung jetzt auch bei den Einzügen.'],
