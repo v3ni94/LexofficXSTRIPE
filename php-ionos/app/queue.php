@@ -281,8 +281,29 @@ function queue_complete(array $job, string $status = 'completed', array $result 
 /** Job ohne Fehlversuch sofort wieder einreihen (Fortsetzung nach Zeitbudget je Versuch). */
 function queue_requeue(array $job, int $delaySeconds = 0, ?string $text = null): void
 {
-    // Fortsetzungen zählen nicht als Fehlversuche, sind aber begrenzt (Schutz vor Endlosschleifen)
-    $payload = is_array($job['payload_data'] ?? null) ? $job['payload_data'] : (json_decode((string)($job['payload'] ?? ''), true) ?: []);
+    // Fortsetzungen zählen nicht als Fehlversuche, sind aber begrenzt (Schutz vor Endlosschleifen).
+    //
+    // Der Zwischenstand wird IMMER aus der Datenbank gelesen, nie aus dem übergebenen $job (Befund 09.09.2026):
+    // Ein Jobrumpf kann während seiner Laufzeit über queue_update_payload() einen Fortschritt speichern
+    // (job_collections_due merkt sich in _seen die bereits behandelten Einzüge). PHP übergibt Arrays als Kopie,
+    // deshalb kennt das $job in job_execute() diesen Stand nicht; ein Schreiben aus dieser Kopie hätte den
+    // Fortschritt gelöscht und die Fortsetzung immer wieder von vorn beginnen lassen, bis die Obergrenze der
+    // Fortsetzungen erreicht ist und fällige Einzüge liegen bleiben.
+    $payload = null;
+    try {
+        $st0 = db()->prepare('SELECT payload FROM jobs WHERE id = ?');
+        $st0->execute([$job['id']]);
+        $raw = $st0->fetchColumn();
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            $payload = is_array($decoded) ? $decoded : null;
+        }
+    } catch (Throwable $e) {
+        $payload = null; // Notfall: unten auf den übergebenen Stand zurückfallen
+    }
+    if ($payload === null) {
+        $payload = is_array($job['payload_data'] ?? null) ? $job['payload_data'] : (json_decode((string)($job['payload'] ?? ''), true) ?: []);
+    }
     $payload['_continuations'] = (int)($payload['_continuations'] ?? 0) + 1;
     $max = max(10, (int)(config('queue', [])['max_continuations'] ?? 500));
     if ($payload['_continuations'] > $max) {

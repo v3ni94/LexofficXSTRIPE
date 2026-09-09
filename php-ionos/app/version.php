@@ -8,12 +8,22 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.50';
+const APP_VERSION = '4.51';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.51', 'date' => '09.09.2026', 'title' => 'Gesamtprüfung: sechs Fehler im Geldfluss und im Betrieb behoben',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Rücklastschrift: Ein vom Kunden widerrufener Einzug setzt die Rechnung jetzt auf Klärungsbedarf. Bisher blieb sie sofort wieder Kandidat für den automatischen Einzug und wäre erneut eingezogen worden.'],
+            ['type' => 'Behoben', 'text' => 'Stripe-Störung: Antwortet Stripe mit einem Serverfehler (5xx) oder meldet einen noch laufenden gleichen Vorgang (409), gilt das Ergebnis als unbekannt und wird zur Klärung vorgelegt. Bisher galt es als endgültiger Fehlschlag; ein weiterer Versuch hätte eine zweite Lastschrift erzeugen können.'],
+            ['type' => 'Behoben', 'text' => 'sevdesk: Der Not-Aus für Einzüge (sevdesk_collections) wird jetzt vor jedem Einzug wirklich geprüft. Bisher war er nur ein Wert ohne Wirkung; die Bestätigung der Zahlungsfelder allein hätte Einzüge freigegeben.'],
+            ['type' => 'Behoben', 'text' => 'Fällige Einzüge: Wird ein Einzugslauf unterbrochen und fortgesetzt, bleibt der Zwischenstand erhalten. Bisher begann die Fortsetzung von vorn, sodass ein einzelner zurückgestellter Einzug alle weiteren blockieren konnte.'],
+            ['type' => 'Behoben', 'text' => 'Nächtlicher Vollabgleich: Der Lauf startet wieder mit vollständigem Zwischenstand. Bisher brach er sofort ab und die Synchronisation der betroffenen Firma blieb stehen.'],
+            ['type' => 'Behoben', 'text' => 'Deployment: Scheitert die Aktivierung eines Releases, wird der Fehler berichtet und automatisch auf das vorherige Release zurückgerollt. Bisher brach der Vorgang ohne Rollback ab.'],
+            ['type' => 'Neu', 'text' => 'Prüfung tools/payment-safety-check.php sichert alle sechs Punkte gegen einen Rückfall; der Not-Aus wird zusätzlich gegen eine echte Datenbank geprüft. Der GitHub-Workflow führt die schnellen Prüfungen jetzt bei jedem Push selbst aus.'],
+         ]],
         ['version' => '4.50', 'date' => '09.09.2026', 'title' => 'Kundenhinweise erscheinen nicht mehr im Adminbereich',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Im Adminbereich erschien der Hinweisbalken „Ihr Firmenaccount ist noch nicht freigeschaltet“; die Schaltfläche führte auf eine Adresse des Adminhosts, die es dort nicht gibt, und endete in „Nicht gefunden“. Die kundenbezogenen Hinweisbalken zu Abonnement, Testmodus und Support erscheinen jetzt nur noch in der Kundenanwendung, und ihre Links zeigen immer auf die Kundenanwendung. Prüfung: tools/host-separation-check.php.'],

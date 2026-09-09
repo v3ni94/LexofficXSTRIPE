@@ -64,3 +64,16 @@ config.php: 'queue' (Zeitbudgets, Auto-Sync, Vollabgleich, Aufbewahrung, Raten, 
 scratchpad/test_queue.php (67 Prüfungen, Testdatenbank und lokaler Redis): Dedupe, Prioritäten, Reservierung, Heartbeat-Sperre, Backoff je Versuch, Dead Letter mit Admin-Aktionen, Wiederaufnahme nur ohne aktiven Auftrag, Fortsetzung ohne Fehlversuch, hängende Jobs, Statistik, Worker-Heartbeats, Circuit Breaker (Schwelle, offen, Testaufruf, erneut offen, geschlossen), Redis-Sperren und Ratenbegrenzung, Scheduler-Tick ohne Doppelungen, automatischer Sync je Firma, Synchronisation als Job mit Fortschritt, Historie und Wiederholung ohne Dubletten, technischer Fehler mit Wartetext, Mail über die Queue mit Inhaltsentfernung, Worker-CLI, Scheduler-CLI, Healthcheck-CLI, Migrate-CLI (wiederholbar), Inline-Betrieb, Bereinigung.
 
 Nicht geprüft (keine Testumgebung): Verhalten mehrerer Worker-Container auf einem echten VPS unter Last, echte Lexware- und Stripe-Störungen, Redis-Ausfall im Betrieb (Fallback ist implementiert, aber nur ohne Redis getestet).
+
+## Nachtrag 09.09.2026 (Version 4.51): Fortsetzung verlor den Zwischenstand
+
+**Befund der Gesamtprüfung.** `job_collections_due()` merkt sich in `_seen`, welche fälligen Einzüge bereits behandelt
+wurden, und speichert das mit `queue_update_payload()`. PHP übergibt Arrays als Kopie, deshalb kannte das `$job` in
+`job_execute()` diesen Stand nicht. `queue_requeue()` schrieb anschließend genau diese veraltete Kopie zurück und
+löschte damit `_seen`. Folge: Ein zurückgestellter Einzug (Beispiel: Lexware Office kurz nicht erreichbar) blockierte
+in jeder Fortsetzung erneut die gleiche Position, der Zähler `_continuations` lief bis zur Obergrenze, und die
+restlichen fälligen Einzüge blieben liegen, ohne dass ein Fehler sichtbar wurde.
+
+**Behebung.** `queue_requeue()` liest den Zwischenstand jetzt immer frisch aus der Spalte `jobs.payload` und fällt nur
+dann auf die übergebene Kopie zurück, wenn die Datenbank nicht lesbar ist. Geprüft von
+`php tools/payment-safety-check.php`, Abschnitt C.

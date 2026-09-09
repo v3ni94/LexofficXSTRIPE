@@ -50,6 +50,20 @@ $setting('sevdesk_connect', '1');
 $GLOBALS['integration_now'] = (new DateTimeImmutable('2026-09-01', new DateTimeZone('Europe/Berlin')))->getTimestamp();
 $out('connect_explizit_1_vor_termin', integration_switch('sevdesk', 'connect'));
 $out('collections_bleibt_zu', !integration_switch('sevdesk', 'collections'));
+// Not-Aus je Buchhaltungssystem im EINZUGSPFAD (Befund 09.09.2026): Bis 4.50 war der Schalter nur ein Wert in
+// platform_settings, den kein Einzug abfragte. Jetzt entscheidet collections_source_blocked() je Firma.
+$setting('sevdesk_collections', null);
+$setting('sevdesk_api_verified', null);
+$out('gate_lexfirma_frei', collections_source_blocked($lex) === null);
+$out('gate_sevfirma_gesperrt', collections_source_blocked($sev) !== null);
+$setting('sevdesk_api_verified', '1');
+$out('gate_sevfirma_trotz_api_verified_gesperrt', collections_source_blocked($sev) !== null);
+$setting('sevdesk_collections', '1');
+$out('gate_sevfirma_nach_freigabe_frei', collections_source_blocked($sev) === null);
+$setting('sevdesk_collections', '0');
+$out('gate_sevfirma_wieder_gesperrt', collections_source_blocked($sev) !== null);
+$setting('sevdesk_collections', null);
+$setting('sevdesk_api_verified', null);
 $out('sevdesk_verfuegbar_fuer_wechsel', invoice_source_available('sevdesk'));
 // Pilotphase (4.42): nur Firmen mit Administrator-Mitglied oder aus der Pilotliste, bis zum Freigabetermin
 $setting('sevdesk_connect', 'pilot');

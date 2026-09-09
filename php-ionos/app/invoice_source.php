@@ -191,17 +191,26 @@ function invoice_source_from_key(string $code, string $apiKey): InvoiceSource
 /** Jobtypen der Rechnungssynchronisation je Buchhaltungssystem (eigener Worker-Pool je System). */
 const INVOICE_SOURCE_SYNC_JOB_TYPES = ['lexware_office' => 'sync_run', 'sevdesk' => 'sync_run_sevdesk'];
 
-/** Jobtyp der Synchronisation fuer eine Firma (nach integrations.invoice_source). */
-function invoice_source_sync_job_type(string $tenantId): string
+/**
+ * Buchhaltungssystem einer Firma als Code (integrations.invoice_source), Vorgabe Lexware Office.
+ * Bewusst ohne Client-Aufbau und ohne Entschluesselung: nur die Zuordnung, fuer Schalter und Jobtypen.
+ */
+function invoice_source_code_for_tenant(string $tenantId): string
 {
     try {
         $st = db()->prepare('SELECT invoice_source FROM integrations WHERE tenant_id = ?');
         $st->execute([$tenantId]);
-        $code = (string)($st->fetchColumn() ?: 'lexware_office');
+        $code = (string)($st->fetchColumn() ?: '');
     } catch (Throwable $e) {
-        $code = 'lexware_office';
+        $code = '';
     }
-    return INVOICE_SOURCE_SYNC_JOB_TYPES[$code] ?? 'sync_run';
+    return $code !== '' ? $code : LexwareOfficeSource::CODE;
+}
+
+/** Jobtyp der Synchronisation fuer eine Firma (nach integrations.invoice_source). */
+function invoice_source_sync_job_type(string $tenantId): string
+{
+    return INVOICE_SOURCE_SYNC_JOB_TYPES[invoice_source_code_for_tenant($tenantId)] ?? 'sync_run';
 }
 
 /** Ist $type ein Synchronisationsjob (gleich welches Buchhaltungssystem)? */

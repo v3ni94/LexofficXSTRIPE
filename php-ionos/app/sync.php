@@ -98,22 +98,28 @@ function _sync_collect_client_metrics(InvoiceSource $lex, array &$metrics, int $
  */
 function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor, int $batchSize = 0): array
 {
-    if ($cursor === null) {
-        $cursor = [
-            'phase'            => 'listing',
-            'listing_status'   => 'open',
-            'lex_page'         => 0,
-            'lex_page_content' => null, // gecachter Inhalt der aktuellen Lexware-Office-Seite
-            'lex_total_pages'  => 1,
-            'collected'        => [], // gesammelte {id, voucherNumber, voucherStatus, updatedDate} aus 'listing'
-            'proc_index'       => 0,
-            'contact_cache'    => [], // contactId => extrahierte Kontaktfelder, vermeidet Mehrfachabrufe im selben Lauf
-            'result'           => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
-            'recheck_ids'      => null,
-            'metrics'          => _sync_empty_metrics(),
-        ];
-    }
-    if (!isset($cursor['metrics'])) {
+    // Vorgabewerte IMMER erganzen, nicht nur bei $cursor === null (Befund 09.09.2026): Der naechtliche
+    // Vollabgleich setzt vor dem ersten Schritt cursor_json = {"force_full": true} (app/jobs.php,
+    // JSON_SET auf den von sync_state_start geleerten Cursor). Der Cursor ist damit nicht mehr null, aber leer;
+    // ohne diese Ergaenzung liefe der Schritt ohne phase, listing_status, collected, proc_index und result und
+    // brach mit einem Typfehler ab, sodass die Synchronisation der Firma dauerhaft stehen blieb.
+    $vorgabe = [
+        'phase'            => 'listing',
+        'listing_status'   => 'open',
+        'lex_page'         => 0,
+        'lex_page_content' => null, // gecachter Inhalt der aktuellen Lexware-Office-Seite
+        'lex_total_pages'  => 1,
+        'collected'        => [], // gesammelte {id, voucherNumber, voucherStatus, updatedDate} aus 'listing'
+        'proc_index'       => 0,
+        'contact_cache'    => [], // contactId => extrahierte Kontaktfelder, vermeidet Mehrfachabrufe im selben Lauf
+        'result'           => ['synced' => 0, 'new' => 0, 'updated' => 0, 'removed' => 0],
+        'recheck_ids'      => null,
+        'metrics'          => _sync_empty_metrics(),
+    ];
+    // "+" behaelt vorhandene Schluessel des Cursors und ergaenzt nur fehlende (kein array_merge: das wuerde
+    // numerische Schluessel neu vergeben und den Fortschritt verfaelschen).
+    $cursor = is_array($cursor) ? $cursor + $vorgabe : $vorgabe;
+    if (!isset($cursor['metrics']) || !is_array($cursor['metrics'])) {
         $cursor['metrics'] = _sync_empty_metrics();
     }
     $rules = sync_rules_config();

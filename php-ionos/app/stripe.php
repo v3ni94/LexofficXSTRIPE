@@ -111,6 +111,13 @@ class StripeClient
             $message = $data['error']['message'] ?? "Stripe-Fehler (HTTP $status)";
             $ex = new StripeException($message);
             $ex->stripeCode = $data['error']['code'] ?? null;
+            // Ergebnis unbekannt, obwohl eine lesbare Fehlerantwort vorliegt (Befund 09.09.2026):
+            //  - 5xx: Stripe kann den Vorgang bereits angelegt haben, bevor die Antwort scheiterte. Ein zweiter
+            //    Versuch bekaeme einen NEUEN Idempotenz-Schluessel (collection_attempts) und wuerde eine zweite
+            //    Lastschrift erzeugen. Deshalb Klaerung statt Wiederholung.
+            //  - 409: derselbe Idempotenz-Schluessel ist noch in Bearbeitung; der Ausgang jener Anfrage ist offen.
+            // Fachliche Ablehnungen (uebrige 4xx: Mandat, Karte, Parameter) bleiben ein endgueltiger Fehlschlag.
+            $ex->outcomeUnknown = $status >= 500 || $status === 409;
             throw $ex;
         }
 

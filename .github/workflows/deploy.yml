@@ -190,6 +190,39 @@ jobs:
           python3 -m pip install --quiet --disable-pip-version-check pyyaml
           python3 tools/compose-check.py
 
+      # Regressionspruefungen ohne Datenbank, Redis, Docker und Netz. Bis 4.50 liefen im Workflow nur
+      # compose-check, site-qa und der Dokumentationsbau; die Pruefungen zu Geldfluss, Zweitbestaetigung,
+      # Abrechnung, Hosttrennung und Downgrade-Schutz liefen ausschliesslich von Hand. Ein Rueckfall waere
+      # damit unbemerkt ausgeliefert worden. Laufzeit aller Faelle zusammen unter zehn Sekunden.
+      - name: Regressionspruefungen (Geldfluss, Rechte, Abrechnung, Betrieb)
+        shell: bash
+        run: |
+          set -uo pipefail
+          status=0
+          lauf() {
+            echo "::group::$*"
+            if "$@"; then echo "::endgroup::"; else echo "::endgroup::"; echo "::error::Pruefung fehlgeschlagen: $*"; status=1; fi
+          }
+          lauf php tools/payment-safety-check.php
+          lauf php tools/totp-policy-check.php
+          lauf php tools/billing-setup-check.php
+          lauf php tools/host-separation-check.php
+          lauf php tools/admin-period-check.php
+          lauf php tools/docs-access-check.php
+          lauf php tools/mail-ci-check.php
+          lauf python3 tools/staging-isolation-check.py
+          lauf bash tools/release-version-check.sh
+          lauf bash tools/github-poll-check.sh
+          lauf bash tools/github-ssh-retry-check.sh
+          exit "$status"
+
+      # Nur als Hinweis, nicht blockierend: Abschnitt D beanstandet feste Preisangaben auf den Marketingseiten
+      # (eigener Arbeitsbereich). Ein roter Abschnitt darf das Deployment des Backends nicht anhalten.
+      - name: Preisangaben pruefen (Hinweis)
+        continue-on-error: true
+        shell: bash
+        run: php tools/pricing-check.php
+
       - name: Marketingseiten pruefen (site-qa)
         if: needs.changes.outputs.websites == 'true'
         shell: bash

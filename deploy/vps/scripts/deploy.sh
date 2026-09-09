@@ -622,7 +622,22 @@ if (( ${#LEGACY_STOP_IDS[@]} > 0 )); then
     fi
 fi
 echo "Migrationen abgeschlossen. Aktiviere Release $SHA (Cutover: Container werden neu erzeugt) ..."
+# Der Cutover ist der einzige Schritt, der den laufenden Betrieb tatsaechlich veraendert. Er lief bis 4.51
+# ungeschuetzt unter "set -e": Scheiterte "up -d" (Beispiel: ein Dienst wird wegen depends_on nicht gesund,
+# ein Restcontainer belegt einen Namen, das Image fehlt), brach das Skript sofort ab. Zurueck blieb ein halb
+# erneuerter Stack, ohne Rollback und ohne die Fehlermeldung in der Statusdatei. Deshalb wie jeder andere
+# riskante Schritt: set +e, Exitcode auswerten, Bericht schreiben, Rollback ausloesen.
+set +e
 "${COMPOSE[@]}" up -d --remove-orphans
+CUTOVER_RC=$?
+set -e
+if [[ "$CUTOVER_RC" -ne 0 ]]; then
+    deploy_fail_report "cutover" "docker compose up -d --remove-orphans" "$CUTOVER_RC"
+    echo "::error:: Cutover fehlgeschlagen (Exitcode $CUTOVER_RC). Automatisches Rollback auf das vorherige Release."
+    "${COMPOSE[@]}" logs --tail=100 || true
+    run_rollback || true
+    exit 1
+fi
 
 echo "Zustand nach dem Start:"
 "${COMPOSE[@]}" ps -a --format '{{.Name}}\t{{.State}}\t{{.Health}}' 2>/dev/null || true

@@ -62,6 +62,11 @@ if mariadb_sandbox_available; then
     erw "ausdrueckliches connect=0 hat Vorrang vor dem Termin" connect_explizit_0_trotz_termin 0
     erw "ausdrueckliches connect=1 gilt vor dem Termin" connect_explizit_1_vor_termin 1
     erw "Einzuege bleiben gesperrt (sevdesk_collections)" collections_bleibt_zu 1
+    erw "Not-Aus: Lexware-Firma darf einziehen" gate_lexfirma_frei 1
+    erw "Not-Aus: sevdesk-Firma ohne Freigabe gesperrt" gate_sevfirma_gesperrt 1
+    erw "Not-Aus: api_verified allein gibt den Einzug NICHT frei" gate_sevfirma_trotz_api_verified_gesperrt 1
+    erw "Not-Aus: mit sevdesk_collections=1 frei" gate_sevfirma_nach_freigabe_frei 1
+    erw "Not-Aus: Ruecknahme auf 0 sperrt wieder" gate_sevfirma_wieder_gesperrt 1
     erw "sevdesk als Wechselziel verfuegbar bei Freigabe" sevdesk_verfuegbar_fuer_wechsel 1
     erw "Pilot: Modus aktiv vor dem Termin" pilot_modus 1
     erw "Pilot: Schalter technisch offen" pilot_schalter_offen 1

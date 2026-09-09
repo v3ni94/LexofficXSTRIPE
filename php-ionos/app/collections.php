@@ -32,6 +32,7 @@ require_once __DIR__ . '/mandates.php';
 require_once __DIR__ . '/plans.php';
 require_once __DIR__ . '/audit.php';
 require_once __DIR__ . '/invoice_source.php';
+require_once __DIR__ . '/integration_state.php';
 
 class CollectionException extends RuntimeException {}
 
@@ -175,6 +176,36 @@ function _collections_minutes(string $hhmm): int
 }
 
 /** True, wenn der Zeitpunkt im Einreichfenster liegt (Fenster darf über Mitternacht gehen). Ohne Fenster immer true. */
+/**
+ * Not-Aus je Buchhaltungssystem: Fuer jedes System AUSSER Lexware Office wird eine Lastschrift erst
+ * eingereicht, wenn der anbieterbezogene Schalter <code>_collections in platform_settings ausdruecklich
+ * gesetzt ist (Vorgabe 0, INTEGRATION_SWITCHES). Der Schalter <code>_api_verified gibt nur den Abruf des
+ * offenen Restbetrags frei; er ersetzt diese Freigabe nicht.
+ *
+ * Befund 09.09.2026: Dateikopf von app/sevdesk.php und die Anzeige im Adminbereich sagten diesen Not-Aus zu,
+ * im Einzugspfad wurde er jedoch nirgends abgefragt. Ein Betreiber, der nach dem Verbindungstest
+ * sevdesk_api_verified setzt, aber sevdesk_collections bewusst auf 0 laesst, haette trotzdem echte
+ * Lastschriften ausgeloest.
+ *
+ * @return string|null Grund der Sperre, oder null wenn Einzuege fuer das System der Firma freigegeben sind.
+ */
+function collections_source_blocked(string $tenantId): ?string
+{
+    $code = invoice_source_code_for_tenant($tenantId);
+    if ($code === LexwareOfficeSource::CODE) {
+        return null; // Lexware Office ist das Ausgangssystem und braucht keinen eigenen Freigabeschalter
+    }
+    if (integration_switch($code, 'collections')) {
+        return null;
+    }
+    return sprintf(
+        'Für das Buchhaltungssystem %s sind Lastschriften noch nicht freigegeben (Schalter %s_collections). '
+        . 'Es wird keine Lastschrift eingereicht.',
+        $code,
+        $code
+    );
+}
+
 function collections_window_open(?DateTimeImmutable $at = null): bool
 {
     $r = collections_rules_config();
@@ -1251,6 +1282,11 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
         throw new CollectionException($pause);
     }
 
+    // 1b. Not-Aus des Buchhaltungssystems (z. B. sevdesk_collections), siehe collections_source_blocked()
+    if ($blocked = collections_source_blocked($tenantId)) {
+        throw new CollectionException($blocked);
+    }
+
     $org = _collection_org($tenantId);
     $preDays = max(0, (int)($org['pre_notification_days'] ?? 14));
     $preNotify = (int)($org['send_pre_notification'] ?? 0) === 1;
@@ -1823,6 +1859,11 @@ function _submit_single_scheduled(array $collection): void
 
     if ($pause = collections_pause_reason($tenantId)) {
         throw new CollectionDeferredException($pause);
+    }
+    // Not-Aus des Buchhaltungssystems auch beim Einreichen bereits terminierter Einzuege pruefen: Der Schalter
+    // kann nach der Terminierung zurueckgenommen worden sein (Zurueckstellung, kein Fehlversuch).
+    if ($blocked = collections_source_blocked($tenantId)) {
+        throw new CollectionDeferredException($blocked);
     }
 
     // Einzug atomar beanspruchen: parallele Läufe (Cron und Button) dürfen

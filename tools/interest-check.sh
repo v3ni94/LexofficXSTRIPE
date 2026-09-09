@@ -83,6 +83,8 @@ grep -q "'aktion' => 'bestaetigen'" "$ROOT/php-ionos/vormerken.php" && ok "Besta
 grep -q "vormerkung-v3" "$ROOT/docs/einwilligungen.md" && grep -q "INTEREST_CONSENT_VERSION = 'vormerkung-v3'" "$ROOT/php-ionos/app/interest.php" && ok "Einwilligungsfassung v3 archiviert" || bad "Einwilligungsfassung"
 grep -q "interest_block_id\|interest_invite_id" "$ROOT/php-ionos/admin.php" && grep -q "export=vormerkungen" "$ROOT/php-ionos/admin.php" && ok "Adminaktionen und CSV-Export" || bad "Adminaktionen"
 grep -q "manage_token_hash" "$ROOT/php-ionos/sql/migrations/020_interest_registrations.sql" && grep -q "manage_token_hash" "$ROOT/php-ionos/sql/schema.sql" && ok "Migration 020 und schema.sql mit Token B" || bad "Migration"
-grep -q "integration_switch('sevdesk', 'connect')" "$ROOT/php-ionos/register.php" && ok "register.php: sevdesk vor Freigabe zur Vorregistrierung" || bad "register.php"
+# Seit 4.42 entscheidet die Pilotpruefung JE FIRMA (integration_connect_allowed), nicht mehr der blosse Schalter;
+# bei der Registrierung gibt es noch keine Firma, deshalb der Aufruf mit null.
+grep -q "integration_connect_allowed('sevdesk', null)" "$ROOT/php-ionos/register.php" && ok "register.php: sevdesk vor Freigabe zur Vorregistrierung (Pilotpruefung je Firma)" || bad "register.php"
 ! grep -q "token=" "$ROOT/php-ionos/app/sevdesk.php" | grep -v Authorization && grep -q "Authorization: " "$ROOT/php-ionos/app/sevdesk.php" && ok "sevdesk-Client: Authorization-Header, kein URL-Token" || bad "sevdesk-Client"
 echo; echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"; [[ $FAIL -eq 0 ]]

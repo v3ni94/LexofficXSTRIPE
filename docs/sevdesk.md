@@ -135,7 +135,12 @@ Jede Zeile gilt als Annahme mit Prüffrage, bis ein Testkonto sie bestätigt (Ab
   ausschließlich vom Betreiber gesetzt, nachdem die Felder `sumGross`/`paidAmount` an einem echten Konto bestätigt sind.
 - **`sevdesk_collections`**: Standard 0 (`INTEGRATION_SWITCHES`, `app/integration_state.php`), unabhängig von den beiden
   vorgenannten Schaltern; wirkt als eigener anbieterbezogener Not-Aus für neue Einzüge über sevdesk, ohne Lexware oder
-  laufende Vorgänge zu berühren.
+  laufende Vorgänge zu berühren. Durchgesetzt wird er seit 4.51 von `collections_source_blocked()`
+  (`app/collections.php`) vor dem sofortigen und vor dem terminierten Einzug; ein terminierter Einzug wird dabei
+  zurückgestellt und zählt nicht als Fehlversuch. **Befund der Gesamtprüfung vom 09.09.2026:** Bis 4.50 fragte ihn
+  kein Einzugsweg ab, allein `sevdesk_api_verified` entschied; der Adminbereich zeigte trotzdem „Einzüge gesperrt“.
+  Verhalten geprüft von `bash tools/sevdesk-check.sh` gegen eine temporäre MariaDB (fünf Fälle, unter anderem
+  „api_verified allein gibt den Einzug nicht frei“).
 
 **Reihenfolge für den Betreiber:**
 

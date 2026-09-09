@@ -102,3 +102,17 @@ Seit 4.43 zeigt der Reiter den gewählten Zeitraum und den gleich langen Vorzeit
 `shared/config.php`, Block `queue`: `full_sync_window_hours` (1 bis 12, Vorgabe 4), `sync_fair_seconds` (0 = aus, Vorgabe 120);
 Block `sync`: `page_size` (1 bis 250, Vorgabe 100). Änderungen ohne Deployment erreichen Scheduler und Worker erst nach
 `deploy/vps/scripts/restart-workers.sh`. Rückrollen ohne Codeänderung: `full_sync_window_hours = 1`, `sync_fair_seconds = 0`.
+
+## Nachtrag 09.09.2026 (Version 4.51): Der nächtliche Vollabgleich lief ins Leere
+
+**Befund der Gesamtprüfung.** `sync_state_start()` setzt `cursor_json = NULL`. Unmittelbar danach markiert
+`job_sync_run()` einen Vollabgleich mit `JSON_SET(COALESCE(cursor_json, '{}'), '$.force_full', true)`. Der Cursor ist
+damit nicht mehr leer, sondern enthält genau einen Schlüssel. `sync_invoices_step()` legte seine Grundstruktur aber
+nur im Zweig `if ($cursor === null)` an. Beim Vollabgleich lief der Schritt deshalb ohne `phase`, `listing_status`,
+`lex_page`, `collected`, `proc_index`, `result` und `recheck_ids` und endete in einem Typfehler. Betroffen war jede
+Firma zu ihrer individuellen Vollabgleichsstunde; die Synchronisation blieb danach stehen.
+
+**Behebung.** Die Vorgabewerte werden jetzt immer ergänzt: `$cursor = is_array($cursor) ? $cursor + $vorgabe :
+$vorgabe;`. Der Additionsoperator behält vorhandene Schlüssel (also `force_full` und jeden Fortschritt einer
+Fortsetzung) und füllt nur fehlende auf; `array_merge` wäre falsch, weil es numerische Schlüssel neu vergibt.
+Geprüft von `php tools/payment-safety-check.php`, Abschnitt D.

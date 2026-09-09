@@ -55,6 +55,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 | 4.48 | `billing_check_tax()` prüft zusätzlich den Standard-Steuercode (`defaults.tax_code`); `docs/abrechnung.md` um Steuercode und Anzeigeverhalten des Checkouts ergänzt | siehe git log | billing-setup-check 80/0 |
 | 4.49 | `billing_check_tax()` liest die Art jeder Registrierung (`country_options`), meldet eine reine OSS-Registrierung im Land des Hauptsitzes als Fehler; Ausgabe nennt Land und Art | siehe git log | billing-setup-check 83/0 |
 | 4.50 | `admin_host_separated()` in `app/bootstrap.php`; `app/layout.php` zeigt die Balken Abonnement, Testmodus und Support nur in der Kundenanwendung und verlinkt absolut über `app_base_url()`; `tools/host-separation-check.php` (25/0) | siehe git log | host-separation-check 25/0 |
+| 4.51 | Gesamtprüfung (16 Fachrichtungen, 72 Rohbefunde): sechs kritische Befunde behoben. `stripe-webhook.php` Rücklastschrift setzt `requires_review`; `app/stripe.php` 5xx/409 als unbekanntes Ergebnis; `app/collections.php` `collections_source_blocked()` vor beiden Einzugswegen (+ `invoice_source_code_for_tenant()`); `app/queue.php` `queue_requeue()` liest den Zwischenstand aus der Datenbank; `app/sync.php` Cursor-Vorgaben immer ergänzt; `deploy/vps/scripts/deploy.sh` Cutover mit Auswertung, Bericht und Rollback. Neu `tools/payment-safety-check.php` (34/0), `tools/sevdesk-check.sh` +5 Fälle (129/0), veralteter Fall in `tools/interest-check.sh` korrigiert (133/0), schnelle Prüfungen im GitHub-Workflow | siehe git log | Gesamtlauf aller Suiten grün, siehe Abschnitt 4 |
 | 4.42 | sevdesk-Pilot (Entscheidung 08.09.2026): `sevdesk_connect = 'pilot'` (Migration 030, Vorgabe), `integration_pilot_mode/_pilot_tenant/_connect_allowed` in `app/integration_state.php`, tenant-bewusst in Factory, Einstellungen, Wechsel, Scheduler, Registrierung, Performance-Reiter; Texte; Tests (sevdesk-check 124/0) | siehe git log | sevdesk-check 124/0, migrations-check 12/0, scheduler-sync-check 59/0 |
 | 4.41 | Review-Befunde 4.35 bis 4.40: Einladung bestehender Konten über `platform_user_set_role`, Systemrollen support/staff ohne docs.*/users.manage, `worker-sevdesk` in restart-workers/deploy/rollback, Fairness nur eigener Jobtyp, Systemprüfung der Verbindungsaktionen in settings.php, letzte Synchronisation je System, Vollabgleichsplan wie Scheduler, eingeladene Benutzer mit bestätigter Adresse, Hinweistext Vormerkungen | siehe git log | platform-roles-check 88/0, scheduler-sync-check 59/0, sevdesk-check 110/0, docs-build-check |
 | 4.40 | Migration 028 korrigiert (`api_version` = 'v1'), `migrations_release()` + `bin/migrate.php --retry=NNN` (Status pending statt DELETE, Audit), Marker 020 bis 029, `tools/migrations-check.sh` (Vorzustand aus Git, Strukturvergleich, Idempotenz, --retry), docs/migrations.md (Vorfall, Freigabeweg), CLAUDE.md | siehe git log | migrations-check 12/0, sevdesk-check, docs-build-check |
@@ -88,7 +89,23 @@ Betroffene Dateien 4.18: `php-ionos/vormerken.php`, `php-ionos/app/interest.php`
 `.../datenschutz/index.html`, `.../assets/css/site.css` (Asset-Hashes aller Seiten der Domain neu), `.../sitemap.xml`,
 `tools/interest-check.sh`, `tools/lib/interest-sim.php`, `tools/build-docs.py`, `docs/integrations.md`, `docs/einwilligungen.md`, `php-ionos/cron.php`, `CLAUDE.md`, `php-ionos/app/version.php`.
 
-## 4. Getestet (lokal, Gesamtlauf 08.09.2026 nach 4.39: alle Suiten grün)
+## 4. Getestet (lokal, Gesamtlauf 09.09.2026 nach 4.51)
+
+Alle Suiten grün: payment-safety 34/0, totp-policy 76/0, billing-setup 83/0, admin-period 44/0, docs-access 23/0,
+mail-ci 46/0, host-separation 25/0, healthcheck-redis 0 Fehler, compose-check 0, staging-isolation 0,
+docs-build-check 0, legal 66/0, interest 133/0, invoice-source 42/0, platform-roles 88/0, sevdesk 129/0,
+scheduler-sync 59/0, release-version 23/0, github-poll 25/0, github-ssh-retry 43/0, migrations 12/0,
+worker-signal 17/0, deploy-runner 35/0, redis-deploy 111/0. `php -l` über alle 31.833 Zeilen PHP ohne Befund.
+Offen: `pricing-check` Abschnitt D (feste Preisangaben auf den Marketingseiten, eigener Arbeitsbereich),
+`seo-map-check` (Datei `docs/seo/keyword-map.json` fehlt).
+
+**Nicht im Repository:** Die in diesem Dokument und in CLAUDE.md genannte E2E-Suite `scratchpad/e2e_saas.php` samt
+`test_monitor.php`, `test_queue.php`, `test_payment_safety.php`, `test_rules_sync.php`, `test_sync_perf.php`,
+`test_sync_lock.php`, `test_migrate_endpoint.php` und `test_healthcheck.php` liegt nicht unter Versionsverwaltung
+(`scratchpad/` existiert im Klon nicht). Aus einem frischen Klon lässt sich die wichtigste Testsuite damit nicht
+ausführen; ein Nachbau oder eine Aufnahme ins Repository steht aus.
+
+## 4a. Frühere Gesamtläufe (08.09.2026 nach 4.39: alle Suiten grün)
 
 | Suite | Ergebnis |
 |---|---|
@@ -197,6 +214,14 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
 - **Performance, Phase 2 (nach einer Woche Messwerten):** Bemessung der Lexware-Worker, Lexware-Webhooks und Seitengröße erst nach
   Prüfung der Dokumentation am Primärtext (`docs/sync-performance.md`, Nachtrag 4.39).
 
+0. **Gesamtprüfung 09.09.2026 (Version 4.51).** Sechzehn Fachrichtungen (Einzüge, Stripe je Firma, Abrechnung, Mandate,
+   Anmeldung, Mandantentrennung, Plattformrechte, Websicherheit, Geheimnisse, Warteschlange, Synchronisation, sevdesk,
+   Datenschutz, Datenbank, Betrieb, Monitoring) lieferten 72 Rohbefunde. Die sechs als kritisch eingestuften wurden
+   einzeln am Code verifiziert, behoben und mit Tests gesichert (siehe Zeile 4.51). Die übrigen 66 Befunde
+   (26 hoch, 33 mittel, 7 niedrig) liegen unbearbeitet vor und sind der nächste Arbeitsvorrat; Schwerpunkte:
+   Idempotenz und Reihenfolge der Webhooks, Support-Modus mit zu weiten Rechten, Sitzungscookie ohne Secure-Flag
+   hinter dem Proxy, setup-check.php ohne Token erreichbar, Migrationen 003 und 022 nicht wiederholbar,
+   Alarmierung im überwachten System, Zustimmung zur zahlungspflichtigen Bestellung nur im Frontend.
 0. **Lauf #82 (4.45) fehlgeschlagen, 08.09.2026 23:55 UTC:** Die Candidate-Prüfung brach mit
    `Parse error ... config.php on line 19` ab, weil `shared/config.php` in genau diesem Moment von Hand bearbeitet wurde
    (`'environment' => 'prod'` ohne abschließendes Komma). Gewollte Wirkung: laufende Container unverändert, kein Rollback.

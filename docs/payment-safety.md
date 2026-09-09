@@ -11,6 +11,7 @@ Grundsatz: Jede Prüfung ist standardmäßig sicher. Im Zweifel wird nicht einge
 | Nr. | Prüfung | Ergebnis bei Verstoß |
 |---|---|---|
 | 1 | Not-Stopp plattformweit (`platform_settings.collections_paused`) und je Firma (`organizations.collections_paused`) | `CollectionException`, bei terminierten Einzügen Überspringen mit Protokoll |
+| 1b | Not-Aus des Buchhaltungssystems: für jedes System außer Lexware Office muss `<code>_collections` in `platform_settings` gesetzt sein (`collections_source_blocked()`, Vorgabe gesperrt) | `CollectionException`, bei terminierten Einzügen Zurückstellung ohne Fehlversuch |
 | 2 | Vorabankündigungsregel, Kontingent des Tarifs | `CollectionException` |
 | 3 | Rechnung offen oder überfällig, nicht im Einzug, kein Klärungsbedarf (`invoices.requires_review = 0`, siehe Abschnitt 5a), Kunde mit SEPA-Einzug, aktive IBAN | `CollectionException` |
 | 4 | Mandat aktiv, nicht verfallen (36 Monate), Nachweis erfasst, wenn "Handschriftlicher Nachweis erforderlich" aktiv ist | `MandateUnusableException` |
@@ -76,6 +77,29 @@ Ereignisse `charge.refunded` (Objekt Charge, Feld `amount_refunded` = Gesamtstan
 * Ein vollständig erstatteter Einzug (`refunded`) zählt nicht mehr als eigener Einzug in `invoice_own_collections_cents()`; ein teilweise erstatteter Einzug zählt weiterhin mit dem vollen Betrag (konservativ, führt eher zu einer Blockade als zu einem Doppeleinzug).
 * Anzeige: Einzugsübersicht (Spalte Betrag "Erstattet: ... am ...", Filter `refunded`, Vermerk), CSV-Export mit Spalten "Erstattet EUR" und "Erstattet am". Audit `collection_refunded` mit Einzugsbetrag, Erstattungsbetrag, Charge und PaymentIntent.
 * Voraussetzung: Der Webhook-Endpunkt der Firma bei Stripe muss die Ereignisse `charge.refunded` und `charge.refund.updated` liefern (Einstellungen prüfen). Ohne Webhook-Secret werden Erstattungen nicht erkannt; die Alarmierung weist darauf hin.
+
+## 5e. Befunde der Gesamtprüfung vom 09.09.2026 (Version 4.51)
+
+Eine Prüfung über sechzehn Fachrichtungen fand drei Fehler im Geldfluss, die vor dem ersten Kunden behoben wurden.
+Alle drei sind durch `php tools/payment-safety-check.php` und `bash tools/sevdesk-check.sh` gegen einen Rückfall gesichert.
+
+**Rücklastschrift führte zu einem erneuten Einzug.** Der Zweig `charge.dispute.created` in `stripe-webhook.php`
+setzte die Rechnung auf `collection_status = 'failed'`, ließ `requires_review` aber auf 0. Die Auswahl der
+automatischen Einzüge schließt nur `in_collection`, `scheduled` und `collected` aus; eine widerrufene Rechnung war
+damit sofort wieder Kandidat und wäre beim nächsten Lauf erneut eingezogen worden. Der Zweig setzt jetzt wie die
+Erstattung `requires_review = 1` mit Grund und ist auf die Firma begrenzt.
+
+**Ein Stripe-Fehler 5xx galt als endgültige Ablehnung.** `app/stripe.php` kennzeichnete nur einen Verbindungsabbruch
+und eine unlesbare Antwort als unbekanntes Ergebnis. Ein HTTP 503 oder 500 mit lesbarer Fehlerantwort wurde als
+`failed` journalisiert, und der nächste Versuch erhielt einen NEUEN Idempotenz-Schlüssel (`collection_attempts`
+zählt die Versuche). Hatte Stripe die Lastschrift vor dem Fehler bereits angelegt, wäre eine zweite Lastschrift
+entstanden. Jetzt gelten 5xx und 409 (derselbe Schlüssel noch in Bearbeitung) als unbekannt und führen in die
+Klärung; die übrigen 4xx bleiben ein fachlicher Fehlschlag.
+
+**Der Not-Aus je Buchhaltungssystem war wirkungslos.** Der Dateikopf von `app/sevdesk.php` und die Anzeige im
+Adminbereich sagten zu, dass Einzüge ohne `sevdesk_collections` gesperrt sind. Im Einzugspfad wurde der Schalter
+nirgends abgefragt; allein `sevdesk_api_verified` entschied. `collections_source_blocked()` prüft ihn jetzt vor dem
+sofortigen und vor dem terminierten Einzug.
 
 ## 5b. Alarmierung
 

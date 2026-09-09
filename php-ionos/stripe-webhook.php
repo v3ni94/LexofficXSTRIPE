@@ -279,8 +279,23 @@ try {
                 "UPDATE payment_collections
                  SET stripe_status = 'disputed', failure_reason = ?, completed_at = NOW() WHERE id = ?"
             )->execute([$reason, $collection['id']]);
-            $pdo->prepare("UPDATE invoices SET collection_status = 'failed' WHERE id = ?")
-                ->execute([$collection['invoice_id']]);
+            // Klärungsbedarf setzen wie bei einer Erstattung (collection_apply_refund): Ohne requires_review = 1
+            // wäre die Rechnung sofort wieder Kandidat für den automatischen Einzug (die Auswahl schließt nur
+            // 'in_collection', 'scheduled' und 'collected' aus, nicht 'failed'), und eine widerrufene Lastschrift
+            // würde erneut eingereicht (Befund 09.09.2026).
+            $pdo->prepare(
+                "UPDATE invoices
+                 SET collection_status = 'failed', requires_review = 1, review_reason = ?
+                 WHERE id = ? AND tenant_id = ?"
+            )->execute([
+                mb_substr(sprintf(
+                    'Lastschrift über %s wurde vom Kunden widerrufen (Rücklastschrift am %s). Kein automatischer Neu-Einzug, bitte Sachverhalt prüfen.',
+                    format_eur_cents((int)$collection['amount_cents']),
+                    date('d.m.Y')
+                ), 0, 255),
+                $collection['invoice_id'],
+                $tenantId,
+            ]);
             require_once __DIR__ . '/app/audit.php';
             audit_log($tenantId, null, 'collection_disputed', 'collection', $collection['id'], [
                 'amount_cents' => (int)$collection['amount_cents'], 'payment_intent' => $paymentIntentId,
