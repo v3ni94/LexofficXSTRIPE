@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.52';
+const APP_VERSION = '4.53';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.53', 'date' => '09.09.2026', 'title' => 'Alias-Domains sepa-einzug.de und sepaeinzug.de',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'sepa-einzug.de und sepaeinzug.de leiten wie smarteinzug.de per 301 auf smart-einzug.de weiter (bekannte Pfade auf die passende Seite, utm-Parameter werden durchgereicht, alles andere 404). Entscheidung des Betreibers vom 09.09.2026: Markenschutz und sprechbare Adresse statt weiterer Inhaltsdomain, keine zusätzlichen Inhalte für dieselbe Suchabsicht. Ordner websites/aliases/, Upload über den Job deploy-webhosting als alias-sepa-einzug und alias-sepaeinzug; die Domains sind bei IONOS mit und ohne www auf diese Ordner zu legen.'],
+         ]],
         ['version' => '4.52', 'date' => '09.09.2026', 'title' => 'Gesamtprüfung: sechs Fehler im Geldfluss und im Betrieb behoben',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Rücklastschrift: Ein vom Kunden widerrufener Einzug setzt die Rechnung jetzt auf Klärungsbedarf. Bisher blieb sie sofort wieder Kandidat für den automatischen Einzug und wäre erneut eingezogen worden.'],

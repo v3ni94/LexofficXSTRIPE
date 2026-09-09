@@ -417,6 +417,8 @@ jobs:
             "websites/aliases/smarteinzug.de|alias-smarteinzug"
             "websites/aliases/smart-lastschrift.de|alias-smart-lastschrift"
             "websites/aliases/einzug-direkt.de|alias-einzug-direkt"
+            "websites/aliases/sepa-einzug.de|alias-sepa-einzug"
+            "websites/aliases/sepaeinzug.de|alias-sepaeinzug"
             "websites/status.smart-einzug.de|status.smart-einzug.de"
           )
           if [[ "$APP_DEPLOY" == "true" ]]; then
