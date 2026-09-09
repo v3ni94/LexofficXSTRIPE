@@ -20,7 +20,7 @@ import re
 import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'websites')
-DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'lastschrift-einfach.de']
+DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de', 'sevdesk-einzug.de', 'sevdesk-sepa.de']
 HASH_LEN = 10
 
 # Pfad je Asset relativ zum Domain-Ordner, sowie das Muster, das die

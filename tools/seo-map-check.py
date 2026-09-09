@@ -7,6 +7,7 @@ Regeln:
   1. Jede technisch indexierbare HTML-Seite aller Domains steht genau einmal in der Map.
   2. Jede in der Map genannte URL existiert als Datei.
   3. Jedes Cluster hat genau eine bevorzugte organische Zielseite (primaer_url), und diese ist
+     (Ausnahme: Cluster mit ohne_primaer = true, etwa Rechtsseiten oder reine Kampagnenseiten)
      indexierbar, self-canonical und in der Sitemap ihrer Domain.
   4. Die Indexierungsentscheidung je Seite ("index" oder "noindex") stimmt mit dem robots-Meta
      der Datei überein; noindex-Seiten stehen nicht in der Sitemap.
@@ -16,7 +17,8 @@ Regeln:
   8. Konfliktcluster ("konflikt" nicht "keine") tragen eine Empfehlung und, falls die Empfehlung
      eine Verlagerung, Weiterleitung oder Indexierungsänderung ist, freigabe_noetig = true.
 
-Aufruf:  python3 tools/seo-map-check.py           Exit 1 bei Fehlern
+Aufruf:  python3 tools/seo-map-check.py               Exit 1 bei Fehlern
+         python3 tools/seo-map-check.py --export-csv  schreibt zusätzlich docs/seo-url-map.csv aus der Map
 """
 import importlib
 import json
@@ -52,7 +54,10 @@ def main():
     for c in cluster:
         cid = c.get('cluster_id', '?')
         prim = [s for s in c.get('seiten', []) if s.get('rolle') == 'primaer']
-        if len(prim) != 1:
+        if c.get('ohne_primaer'):
+            if prim:
+                err(f'{cid}: als Cluster ohne organisches Ziel markiert, enthält aber eine Primärseite')
+        elif len(prim) != 1:
             err(f'{cid}: {len(prim)} Seiten mit Rolle primaer, erwartet genau eine')
         if c.get('primaer_url') and prim and prim[0].get('url') != c['primaer_url']:
             err(f'{cid}: primaer_url {c["primaer_url"]} passt nicht zur Seite mit Rolle primaer {prim[0].get("url")}')
@@ -101,6 +106,19 @@ def main():
             err(f'{p["url"]}: indexierbare Seite fehlt in der Keyword-Map')
         if not p['indexierbar_technisch'] and p['url'] not in seen and p['datei'] != '404.html':
             warn(f'{p["url"]}: noindex-Seite nicht in der Map (zulässig, aber Kampagnen sollten geführt werden)')
+    if '--export-csv' in sys.argv:
+        csv_path = os.path.normpath(os.path.join(HERE, '..', 'docs', 'seo-url-map.csv'))
+        rows = ['host;pfad;suchabsicht;cluster;rolle;indexierung;canonical;sitemap']
+        for c in cluster:
+            for s in c.get('seiten', []):
+                p = by_url.get(s.get('url'))
+                if not p:
+                    continue
+                host = p['domain']
+                pfad = '/' + p['url'].split('/', 3)[3] if p['url'].count('/') >= 3 else '/'
+                rows.append(';'.join([host, pfad, str(c.get('suchintention', '')).replace(';', ','), c.get('cluster_id', ''), s.get('rolle', ''), s.get('indexierung', ''), 'self', 'ja' if p['in_sitemap'] else 'nein']))
+        open(csv_path, 'w', encoding='utf-8').write('\n'.join(rows) + '\n')
+        print('CSV geschrieben:', csv_path, len(rows) - 1, 'Zeilen')
     for w in warnings:
         print('WARNUNG:', w)
     for e in errors:

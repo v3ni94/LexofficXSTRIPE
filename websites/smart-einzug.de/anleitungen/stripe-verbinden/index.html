@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stripe-Konto und Webhook in SmartEinzug einrichten</title>
+<meta name="description" content="Anleitung: Stripe-Konto per Secret Key oder eingeschränktem Schlüssel verbinden, Test- und Livemodus unterscheiden, Webhook mit sieben Ereignissen einrichten.">
+<link rel="canonical" href="https://smart-einzug.de/anleitungen/stripe-verbinden/">
+<meta property="og:title" content="Stripe-Konto und Webhook in SmartEinzug einrichten">
+<meta property="og:description" content="Anleitung: Stripe-Konto per Secret Key oder eingeschränktem Schlüssel verbinden, Test- und Livemodus unterscheiden, Webhook mit sieben Ereignissen einrichten.">
+<meta property="og:url" content="https://smart-einzug.de/anleitungen/stripe-verbinden/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905f" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905f">
+<link rel="stylesheet" href="/assets/css/site.css?v=3a9921073a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://smart-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Anleitungen",
+      "item": "https://smart-einzug.de/anleitungen/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Stripe verbinden",
+      "item": "https://smart-einzug.de/anleitungen/stripe-verbinden/"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><img class="logo" src="/assets/img/logo-horizontal.png?v=20260905f" srcset="/assets/img/logo-horizontal.png?v=20260905f 1x, /assets/img/logo-horizontal@2x.png?v=20260905f 2x" alt="SmartEinzug" width="246" height="56"></a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li><a href="/anleitungen/">Anleitungen</a></li>
+    <li aria-current="page">Stripe verbinden</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Anleitung 2 von 3</p>
+      <h1>Eigenes Stripe-Konto mit SmartEinzug verbinden</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">SmartEinzug führt keine Zahlungen selbst aus. Die Lastschriften laufen über Ihr eigenes Stripe-Konto, das Sie mit einem Schlüssel verbinden. Ein Webhook meldet den Status jeder Lastschrift zurück. Diese Anleitung beschreibt beide Teile.</p>
+      <p class="hero-note">Voraussetzung ist ein eigenes Stripe-Konto, in dem SEPA-Lastschrift als Zahlungsmethode freigeschaltet ist. Hinterlegen dürfen Inhaber und Administratoren. Bezeichnungen im Stripe-Dashboard können sich ändern.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Teil 1</p>
+        <h2>Schlüssel erzeugen und in SmartEinzug hinterlegen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>Test- oder Livemodus festlegen</h3><p>Stripe unterscheidet Test- und Livemodus mit jeweils eigenen Schlüsseln. Zum Ausprobieren eignet sich ein Testschlüssel (beginnt mit sk_test_), echte Lastschriften bei Ihren Kunden erfordern einen Liveschlüssel (sk_live_). SmartEinzug erkennt den Modus am Schlüssel und zeigt ihn in den Einstellungen an.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Schlüssel im Stripe-Dashboard anlegen</h3><p>Öffnen Sie im Stripe-Dashboard den Bereich Entwickler und dort API-Schlüssel. Sie können den Secret Key verwenden oder unter den eingeschränkten Schlüsseln einen Schlüssel (beginnt mit rk_) anlegen, der nur die benötigten Rechte trägt; welche das sind, nennt die Einrichtungshilfe im Bereich Stripe der Einstellungen. Veröffentlichbare Schlüssel (pk_) akzeptiert SmartEinzug nicht.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Schlüssel kopieren</h3><p>Stripe zeigt Secret Keys nur einmal vollständig an. Kopieren Sie den Schlüssel unmittelbar nach dem Erstellen. Geben Sie ihn nicht weiter und versenden Sie ihn nicht per E-Mail.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>In SmartEinzug eintragen</h3><p>Öffnen Sie in SmartEinzug über das Profilmenü die Einstellungen, Bereich Stripe. Fügen Sie den Schlüssel in das Feld Stripe Secret Key oder Restricted Key ein und wählen Sie Verbindung herstellen. Das Feld Stripe Webhook-Secret dürfen Sie zunächst leer lassen; es wird im zweiten Teil nachgetragen.</p></div></li>
+        <li class="step"><span class="step-number">5</span><div><h3>Ergebnis prüfen</h3><p>SmartEinzug ruft mit dem Schlüssel die Kontodaten bei Stripe ab, bevor es ihn speichert. Danach zeigt der Bereich Verbunden mit Business Name, Konto-ID, Modus und Zeitpunkt der letzten Prüfung. Im Testmodus erscheint der Hinweis, dass keine echten Lastschriften ausgeführt werden. Der Schlüssel wird verschlüsselt gespeichert und nicht mehr angezeigt; mit Verbindung prüfen wiederholen Sie den Test.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Teil 2</p>
+        <h2>Webhook einrichten, damit Stripe den Status zurückmeldet</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">6</span><div><h3>Endpunkt in Stripe anlegen</h3><p>Wählen Sie im Stripe-Dashboard unter Entwickler, Webhooks den Punkt Endpunkt hinzufügen. Der Modus des Dashboards (Test oder Live) muss zu dem Schlüssel passen, den Sie in SmartEinzug hinterlegt haben. Test- und Livemodus brauchen jeweils einen eigenen Endpunkt mit eigenem Secret.</p></div></li>
+        <li class="step"><span class="step-number">7</span><div><h3>Endpunkt-URL eintragen</h3><p>Tragen Sie als Endpunkt-URL genau die Adresse ein, die SmartEinzug im Bereich Stripe der Einstellungen anzeigt: https://app.smart-einzug.de/stripe-webhook.php. Der Endpunkt gilt für alle Firmenaccounts; SmartEinzug ordnet jede Meldung anhand ihrer Kennungen dem richtigen Firmenaccount zu und prüft sie mit dessen Secret.</p></div></li>
+        <li class="step"><span class="step-number">8</span><div><h3>Genau sieben Ereignisse auswählen</h3><p>Wählen Sie unter den Ereignissen ausschließlich die sieben im nächsten Abschnitt aufgeführten Typen. Wählen Sie nicht alle Ereignisse: SmartEinzug verwirft jeden anderen Typ, Stripe würde ihn dennoch bei jeder Kontobewegung senden.</p></div></li>
+        <li class="step"><span class="step-number">9</span><div><h3>Signing Secret kopieren</h3><p>Nach dem Anlegen zeigt Stripe auf der Detailseite des Endpunkts das Signing Secret an; es beginnt mit whsec_. Lassen Sie es anzeigen und kopieren Sie es.</p></div></li>
+        <li class="step"><span class="step-number">10</span><div><h3>Secret in SmartEinzug speichern</h3><p>Tragen Sie das Secret im Bereich Stripe der Einstellungen in das Feld für das Webhook-Secret ein und wählen Sie Webhook-Secret speichern. Es wird verschlüsselt abgelegt und dient ausschließlich der Prüfung, dass eine Meldung tatsächlich von Stripe stammt. Der Vermerk wechselt auf hinterlegt.</p></div></li>
+        <li class="step"><span class="step-number">11</span><div><h3>Zustellung testen</h3><p>Wählen Sie in Stripe auf der Seite des Endpunkts Testereignis senden. Der Endpunkt antwortet mit Status 200. Meldungen ohne gültige Signatur verwirft SmartEinzug; ein Testereignis ohne Bezug zu einem Einzug ändert deshalb keine Daten.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Ereignisse</p>
+        <h2>Die sieben Ereignisse und ihre Wirkung in SmartEinzug</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><h3>payment_intent.processing</h3><p>Die Lastschrift ist bei Stripe eingereicht. Der Einzug steht auf In Bearbeitung, die Rechnung auf Im Einzug.</p></div>
+        <div class="tile"><h3>payment_intent.succeeded</h3><p>Die Lastschrift war erfolgreich. Der Einzug wird Erfolgreich, die Rechnung Eingezogen; die von Stripe vergebene Mandatsreferenz wird gespeichert.</p></div>
+        <div class="tile"><h3>payment_intent.payment_failed</h3><p>Die Lastschrift ist gescheitert. Der Einzug wird Fehlgeschlagen und der von Stripe übermittelte Grund am Einzug vermerkt. Ein erneuter Einzug erfolgt nur manuell.</p></div>
+        <div class="tile"><h3>charge.dispute.created</h3><p>Rücklastschrift oder Widerspruch des Zahlers. Der Einzug wird als Rücklastschrift markiert, die Rechnung als Fehlgeschlagen; der Vorgang wird protokolliert.</p></div>
+        <div class="tile"><h3>charge.refunded</h3><p>Eine in Stripe ausgeführte Erstattung. Der erstattete Betrag wird am Einzug vermerkt, die Rechnung erhält Klärungsbedarf und wird nicht automatisch erneut eingezogen.</p></div>
+        <div class="tile"><h3>charge.refund.updated</h3><p>Ein geänderter Erstattungsstand, etwa eine Teilerstattung oder deren Rücknahme. SmartEinzug führt den Stand am Einzug nach.</p></div>
+        <div class="tile"><h3>checkout.session.completed</h3><p>Rückmeldung zu Stripe-Checkout-Vorgängen. SmartEinzug nimmt das Ereignis entgegen, damit der Endpunkt vollständig eingerichtet ist; andere Vorgänge bleiben unberührt.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Ohne Webhook</p>
+        <h2>Was ohne eingerichteten Webhook nicht erkannt wird</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ul class="checklist">
+        <li><strong>Erfolg und Fehlschlag</strong> einer Lastschrift erfährt SmartEinzug ohne Webhook nur über Status mit Stripe abgleichen auf der Seite Einzüge oder über den serverseitigen Abgleich. Die Rückmeldung kommt dann später.</li>
+        <li><strong>Rücklastschriften und Erstattungen</strong> werden ohne Webhook nicht erkannt. Eine zurückgegebene Lastschrift bliebe in SmartEinzug als erfolgreich stehen, die Rechnung als eingezogen.</li>
+        <li><strong>Hinweise:</strong> Fehlt das Webhook-Secret, zeigt das Dashboard einen Hinweis und der Bereich Stripe in den Einstellungen den Vermerk fehlt.</li>
+        <li><strong>Signaturprüfung:</strong> Ohne hinterlegtes Secret verwirft SmartEinzug jede Meldung, auch echte. Ein falsches Secret wirkt genauso.</li>
+      </ul>
+      <div class="info-box">
+        <p><strong>Wechsel des Schlüssels oder des Kontos.</strong> Wenn Sie vom Test- in den Livemodus wechseln oder ein anderes Stripe-Konto verbinden, legen Sie den Webhook im neuen Modus beziehungsweise Konto erneut an und tragen das neue Secret in SmartEinzug ein. Über Webhook-Secret ändern ersetzen Sie ein hinterlegtes Secret, ohne die Verbindung zu trennen.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Fragen</p>
+        <h2>Häufige Fragen zur Stripe-Verbindung</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="faq-list faq-grid">
+        <details><summary>Wie komme ich vom Testmodus in den Livemodus?</summary><p class="faq-answer">Trennen Sie die Verbindung im Bereich Stripe der Einstellungen und hinterlegen Sie den Liveschlüssel. Das Trennen löscht Schlüssel und Webhook-Secret in SmartEinzug; vorhandene Einzüge und Mandate bleiben erhalten. Legen Sie anschließend den Webhook im Livemodus an und speichern Sie das neue Secret.</p></details>
+        <details><summary>Hält SmartEinzug Geld oder rechnet es Zahlungen ab?</summary><p class="faq-answer">Nein. Es gibt kein Zwischenkonto und keine Plattform-Verrechnung. Stripe zieht über Ihr Konto ein und zahlt an Ihr Geschäftskonto aus; die Gebühren Ihres Stripe-Kontos rechnet Stripe direkt mit Ihnen ab.</p></details>
+        <details><summary>Was passiert beim Trennen der Verbindung?</summary><p class="faq-answer">Schlüssel und Webhook-Secret werden in SmartEinzug gelöscht. Einzüge und Mandate bleiben erhalten, neue Einzüge sind bis zur erneuten Verbindung nicht möglich. Bereits eingereichte Lastschriften laufen bei Stripe weiter.</p></details>
+        <details><summary>Kann ich Lastschriften übernehmen, die schon über Stripe liefen?</summary><p class="faq-answer">Ja, einmalig über Bestehende Einzüge aus Stripe übernehmen im Bereich Stripe der Einstellungen. Der Import liest nur, ordnet über Rechnungsnummer und Betrag zu und übernimmt eindeutige Treffer als Einzüge. Mandate und IBANs werden dabei nicht übernommen. Erlaubt für Inhaber und Administratoren mit Zweitbestätigung per Authenticator-Code.</p></details>
+        <details><summary>Gilt die Stripe-Verbindung für alle meine Firmenaccounts?</summary><p class="faq-answer">Nein. Jeder Firmenaccount verbindet sein eigenes Stripe-Konto und richtet den Webhook mit eigenem Secret ein. Die Endpunkt-URL ist dieselbe, die Zuordnung erfolgt je Meldung.</p></details>
+        <details><summary>Wer darf die Stripe-Verbindung ändern?</summary><p class="faq-answer">Inhaber und Administratoren. Jedes Hinterlegen, Prüfen, Ändern des Secrets und Trennen wird mit Person und Zeitpunkt protokolliert. Im Support-Modus des Betreibers sind diese Aktionen gesperrt.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Weiter mit Anleitung 3: der erste Lastschrifteinzug</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="anleitung-stripe-final">Jetzt registrieren</a>
+        <a href="/anleitungen/erster-lastschrifteinzug/" class="btn btn-outline">Anleitung 3 öffnen</a>
+      </div>
+      <p><a href="/anleitungen/lexware-office-verbinden/">Zurück zu Anleitung 1</a>, <a href="/anleitungen/">zur Übersicht der Anleitungen</a> oder <a href="/hilfe/">zur Hilfe</a>.</p>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=a48427be21" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

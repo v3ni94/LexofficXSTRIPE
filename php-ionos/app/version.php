@@ -8,12 +8,21 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.50';
+const APP_VERSION = '4.51';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.51', 'date' => '09.09.2026', 'title' => 'Marketingseiten: Faktenprüfung, Preisregel, Leadseiten der DETM, sevdesk-Domains, Wissensbereich',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Alle Aussagen der Marketingseiten (smart-einzug.de, lexoffice-einzug.de, lexware-einzug.de) gegen den Programmcode geprüft und bereinigt: nur Lesezugriff auf Lexware Office, Einzüge ausschließlich nach Nutzeraktion, Sofort-Einzug mit Karenzzeit und nächtlichem Einreichfenster, Vorabankündigung als optionale Einstellung, Mandate auf Papier oder als Upload, IBAN maskiert statt „verschlüsselt“, keine Testphase, sevdesk nur als „in Vorbereitung“. Faktenregister und Aussagenprüfung liegen in docs/seo und in der Dokumentation im Adminbereich.'],
+            ['type' => 'Geändert', 'text' => 'Preisbeträge des Produkts erscheinen bis zur Freigabe auf keiner Marketingseite mehr (auch nicht in Metadaten oder strukturierten Daten); die AGB verweisen auf die Bestellübersicht. Konditionen zeigt nur der Registrierungs- und Bestellprozess der Anwendung. tools/pricing-check.php Abschnitt D erzwingt das.'],
+            ['type' => 'Geändert', 'text' => 'lexoffice-einzug.de und lexware-einzug.de sind Leadseiten der DETM Management Consulting FZCO: Textwortmarke statt SmartEinzug-Logo, Impressum und Datenschutz nennen DETM (offene Angaben als [wird ergänzt] markiert), Anbieter der Software bleibt die Müller Holding AG. Spiegelseiten der Leaddomains leiten per 301 auf die Hauptdomain oder ihre Startseite; acht Ratgeberartikel wurden nach smart-einzug.de/wissen/ verlagert.'],
+            ['type' => 'Neu', 'text' => 'smart-einzug.de erhält Anleitungen (Lexware Office verbinden, Stripe verbinden, erster Lastschrifteinzug), einen Wissensbereich (SEPA-Mandat, Rücklastschrift, Vorabankündigung, Fristen, Mandatsreferenz, Verbuchung, Zuordnung, Zahlungsstatus, Lastschrift oder Überweisung, Mandat einholen, Voraussetzungen) und eine Sicherheitsseite mit belegbaren Aussagen; Integrationsseiten ausgebaut.'],
+            ['type' => 'Neu', 'text' => 'Zwei Leaddomains für sevdesk mit getrennten Inhalten (sevdesk-einzug.de Vormerkung, sevdesk-sepa.de SEPA-Wissen), Vormerkung über die Anwendung mit Double-Opt-in. Die Domains sind in config.example.php und im Webhosting-Upload eingetragen; die Produktionskonfiguration (signup_domains) und die Zuordnung beim Hoster sind nachzuziehen.'],
+            ['type' => 'Geändert', 'text' => 'lastschrift-einfach.de ist nur noch eine 301-Weiterleitung auf smart-abrechnen.de (Ordner enthält .htaccess und 404-Seite). Neue Werkzeuge: tools/seo-inventory.py (URL-Inventar), tools/seo-map-check.py (Themen- und URL-Zuordnung docs/seo/keyword-map.json), tools/lead-assets.py (logofreie Bildassets); Sitemaps mit lastmod aus der Git-Historie.'],
+         ]],
         ['version' => '4.50', 'date' => '09.09.2026', 'title' => 'Kundenhinweise erscheinen nicht mehr im Adminbereich',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Im Adminbereich erschien der Hinweisbalken „Ihr Firmenaccount ist noch nicht freigeschaltet“; die Schaltfläche führte auf eine Adresse des Adminhosts, die es dort nicht gibt, und endete in „Nicht gefunden“. Die kundenbezogenen Hinweisbalken zu Abonnement, Testmodus und Support erscheinen jetzt nur noch in der Kundenanwendung, und ihre Links zeigen immer auf die Kundenanwendung. Prüfung: tools/host-separation-check.php.'],

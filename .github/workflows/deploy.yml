@@ -370,16 +370,22 @@ jobs:
           fi
           echo "IONOS-Webhosting-Hostschluessel erfolgreich verifiziert."
 
-          # Keine --delete-Option: entfernte Dateien werden NICHT geloescht.
-          # Gleichnamige, nicht ausgeschlossene Dateien werden ersetzt.
-          # config.php, storage, Logs, .env und Datenbankdateien bleiben ausgenommen.
-          # Migrationsdateien werden danach gesondert hochgeladen.
+          # Website-Ordner (statisch, vollstaendig im Repository) werden mit --delete gespiegelt:
+          # Dateien, die im Repository entfernt wurden, verschwinden auch auf dem Hoster (Entscheidung
+          # Betreiber 08.09.2026, damit weitergeleitete Altseiten nicht liegen bleiben). Nur fuer den
+          # Hoster gepflegte Dateien bleiben durch Ausschluss erhalten: Verifizierungsdateien von
+          # Google und Bing sowie .well-known (ausgeschlossene Dateien werden weder uebertragen noch geloescht).
+          # Der Ordner app wird OHNE --delete gespiegelt: config.php, storage, Logs, .env und
+          # Datenbankdateien bleiben ausgenommen und unangetastet. Gleichnamige, nicht ausgeschlossene
+          # Dateien werden ersetzt. Migrationsdateien werden danach gesondert hochgeladen.
           root="${SFTP_PATH%/}"
 
           mapping=(
             "websites/smart-einzug.de|smart-einzug.de"
             "websites/lexware-einzug.de|lexware-einzug.de"
             "websites/lexoffice-einzug.de|lexoffice-einzug.de"
+            "websites/sevdesk-einzug.de|sevdesk-einzug.de"
+            "websites/sevdesk-sepa.de|sevdesk-sepa.de"
             "websites/lastschrift-einfach.de|lastschrift-einfach.de"
             "websites/aliases/smarteinzug.de|alias-smarteinzug"
             "websites/aliases/smart-lastschrift.de|alias-smart-lastschrift"
@@ -405,11 +411,16 @@ jobs:
                 echo "::warning::Ordner $src fehlt im Repository, wird uebersprungen." >&2
                 continue
               fi
+              delete_opt=""
+              if [[ "$dst" != "app" ]]; then
+                delete_opt=" --delete"
+              fi
               echo "mkdir -pf \"$root/$dst\""
-              echo "mirror --reverse --no-perms --parallel=2 \\"
+              echo "mirror --reverse --no-perms --parallel=2$delete_opt \\"
               echo "  --exclude '(^|/)(\.git[^/]*|node_modules|storage|logs|cache|backups)(/|\$)' \\"
               echo "  --exclude '(^|/)(config\.php|mail\.log|\.env[^/]*)\$' \\"
               echo "  --exclude '(\.sql(\.gz)?|\.sqlite3?|\.db|\.log|\.pem|\.key|\.bak)\$' \\"
+              echo "  --exclude '(^|/)(google[0-9a-f]+\.html|BingSiteAuth\.xml)\$' --exclude '(^|/)\.well-known(/|\$)' \\"
               echo "  \"$src/\" \"$root/$dst\""
             done
 
@@ -425,7 +436,7 @@ jobs:
           } > "$script"
 
           echo "Upload-Plan:"
-          grep -E '^(mkdir|put|  \")' "$script" | sed 's/^/  /'
+          grep -E '^(mkdir|put|mirror|  \")' "$script" | sed 's/^/  /'
           lftp -f "$script"
           echo "Upload abgeschlossen."
 

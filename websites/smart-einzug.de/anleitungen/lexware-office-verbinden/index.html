@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexware Office mit SmartEinzug verbinden: Anleitung</title>
+<meta name="description" content="Schritt für Schritt: API-Schlüssel der Lexware Office Public API erzeugen, in SmartEinzug hinterlegen, Verbindung prüfen und die erste Synchronisation starten.">
+<link rel="canonical" href="https://smart-einzug.de/anleitungen/lexware-office-verbinden/">
+<meta property="og:title" content="Lexware Office mit SmartEinzug verbinden: Anleitung">
+<meta property="og:description" content="Schritt für Schritt: API-Schlüssel der Lexware Office Public API erzeugen, in SmartEinzug hinterlegen, Verbindung prüfen und die erste Synchronisation starten.">
+<meta property="og:url" content="https://smart-einzug.de/anleitungen/lexware-office-verbinden/">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://smart-einzug.de/assets/img/og-image.png?v=20260905f">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2E2D2E">
+<link rel="icon" href="/assets/img/favicon-32.png?v=20260905f" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png?v=20260905f">
+<link rel="stylesheet" href="/assets/css/site.css?v=3a9921073a">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Startseite",
+      "item": "https://smart-einzug.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Anleitungen",
+      "item": "https://smart-einzug.de/anleitungen/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Lexware Office verbinden",
+      "item": "https://smart-einzug.de/anleitungen/lexware-office-verbinden/"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="kopfnaht"></div>
+  <div class="header-inner">
+    <a href="/" class="wordmark"><img class="logo" src="/assets/img/logo-horizontal.png?v=20260905f" srcset="/assets/img/logo-horizontal.png?v=20260905f 1x, /assets/img/logo-horizontal@2x.png?v=20260905f 2x" alt="SmartEinzug" width="246" height="56"></a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" aria-label="Menü öffnen oder schließen">
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen"><span></span></label>
+    <nav class="main-nav" aria-label="Hauptnavigation">
+      <ul>
+        <li><a href="/funktionen/">Funktionen</a></li>
+        <li><a href="/preise/">Preise</a></li>
+        <li><a href="/so-funktionierts/">So funktioniert's</a></li>
+        <li><a href="/integrationen/">Integrationen</a></li>
+        <li><a href="/hilfe/">Hilfe</a></li>
+        <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de" class="nav-login">Login</a></li>
+        <li><a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary nav-cta" data-cta="header">Jetzt registrieren</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Startseite</a></li>
+    <li><a href="/anleitungen/">Anleitungen</a></li>
+    <li aria-current="page">Lexware Office verbinden</li>
+  </ol>
+</nav>
+
+<main>
+<article>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Anleitung 1 von 3</p>
+      <h1>Lexware Office mit SmartEinzug verbinden</h1>
+      <span class="bar" aria-hidden="true"></span>
+      <p class="lead">Sie erzeugen in Lexware Office einen Schlüssel für die Public API, hinterlegen ihn in den Einstellungen von SmartEinzug und prüfen, ob der Zugriff funktioniert. Anschließend starten Sie die erste Synchronisation und erfahren, welche Daten dabei übernommen werden.</p>
+      <p class="hero-note">Voraussetzung ist ein Lexware-Office-Konto mit Zugang zur Public API. Nach Angaben von Lexware ist dafür der Tarif Lexware Office XL erforderlich, bitte im eigenen Konto prüfen. Menüpfade in Lexware Office können sich ändern.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Teil 1</p>
+        <h2>API-Schlüssel in Lexware Office erzeugen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">1</span><div><h3>In Lexware Office anmelden</h3><p>Melden Sie sich mit dem Lexware-Office-Konto an, dessen Rechnungen SmartEinzug einziehen soll. Je Firmenaccount in SmartEinzug wird genau ein Lexware-Office-Konto verbunden.</p></div></li>
+        <li class="step"><span class="step-number">2</span><div><h3>Bereich Public API öffnen</h3><p>Wechseln Sie in die Einstellungen, dort zu Erweiterungen und weiter zu Weitere Apps beziehungsweise Public API. Bei Public API wählen Sie Verwalten. Fehlt dieser Menüpunkt in Ihrem Konto, prüfen Sie zunächst den gebuchten Tarif.</p></div></li>
+        <li class="step"><span class="step-number">3</span><div><h3>Schlüssel erstellen und benennen</h3><p>Wählen Sie Schlüssel erstellen und vergeben Sie eine Bezeichnung, an der Sie den Zweck später wiedererkennen, zum Beispiel SmartEinzug. Die Bezeichnung dient nur Ihrer Übersicht in Lexware Office.</p></div></li>
+        <li class="step"><span class="step-number">4</span><div><h3>Schlüssel sofort kopieren</h3><p>Lexware Office zeigt den Schlüssel nur ein einziges Mal an. Kopieren Sie ihn direkt in die Zwischenablage und fügen Sie ihn im nächsten Teil in SmartEinzug ein. Geht er verloren, erzeugen Sie in Lexware Office einen neuen Schlüssel. Versenden Sie den Schlüssel nicht per E-Mail und geben Sie ihn nicht an Dritte weiter.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Teil 2</p>
+        <h2>Schlüssel in SmartEinzug hinterlegen und prüfen</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ol class="steps">
+        <li class="step"><span class="step-number">5</span><div><h3>Einstellungen öffnen</h3><p>Melden Sie sich in SmartEinzug an und öffnen Sie über das Profilmenü den Punkt Einstellungen. Der Bereich Lexware Office trägt den Vermerk Nicht verbunden und blendet eine kurze Hilfe zum Erzeugen des Schlüssels ein. Verbindungen hinterlegen Inhaber und Administratoren.</p></div></li>
+        <li class="step"><span class="step-number">6</span><div><h3>Schlüssel eintragen</h3><p>Fügen Sie den kopierten Schlüssel in das Feld Lexware Office API-Schlüssel ein und wählen Sie Verbindung herstellen. SmartEinzug ruft mit dem Schlüssel das Profil Ihres Lexware-Office-Kontos ab, bevor es ihn speichert. Schlägt dieser Abruf fehl, wird nichts gespeichert und Sie erhalten eine Fehlermeldung.</p></div></li>
+        <li class="step"><span class="step-number">7</span><div><h3>Ergebnis prüfen</h3><p>Nach erfolgreichem Test steht der Bereich auf Verbunden und zeigt den Firmennamen des Lexware-Office-Kontos, den Zeitpunkt der letzten Prüfung und die letzte Synchronisation. Der Schlüssel wird verschlüsselt abgelegt und danach nicht mehr angezeigt. Über Verbindung prüfen wiederholen Sie den Test jederzeit.</p></div></li>
+        <li class="step"><span class="step-number">8</span><div><h3>Erste Synchronisation starten</h3><p>Wechseln Sie zu Rechnungen und wählen Sie Mit Lexware Office synchronisieren. Der Lauf zeigt Fortschritt und Phase an und wird serverseitig fortgesetzt, auch wenn Sie den Browser schließen. Unter Synchronisationen finden Sie später jeden Lauf mit Dauer, Auslöser, verarbeiteten Rechnungen und Ergebnis.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Datenumfang</p>
+        <h2>Was die Synchronisation aus Lexware Office übernimmt</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="tiles">
+        <div class="tile"><h3>Rechnungen</h3><p>Alle Rechnungen, die in Lexware Office als offen oder überfällig geführt werden, auch ältere Rechnungen aus der Zeit vor der Registrierung. Entwürfe, bezahlte und stornierte Rechnungen werden nicht übernommen.</p></div>
+        <div class="tile"><h3>Rechnungsdaten</h3><p>Rechnungsnummer, Bruttobetrag, Währung, Fälligkeitsdatum, Status, Kundenbezug und die Positionen, aus denen SmartEinzug ein Stichwort für den Verwendungszweck bildet. Rechnungsdokumente als PDF werden nicht geladen.</p></div>
+        <div class="tile"><h3>Kundendaten</h3><p>Kundenname, Kundennummer und eine E-Mail-Adresse des Kontakts. Anschriften, Telefonnummern und Bankverbindungen liest SmartEinzug nicht aus; die IBAN erfassen Sie in den Kundendetails.</p></div>
+        <div class="tile"><h3>Zahlungsstand</h3><p>Der offene Restbetrag einer Rechnung wird nicht während der Synchronisation, sondern unmittelbar vor jedem Einzug live bei Lexware Office abgefragt. Eine bezahlte Rechnung wird nicht eingezogen, eine Teilzahlung führt zum Einzug des Restbetrags.</p></div>
+      </div>
+      <div class="info-box">
+        <p><strong>Nur Lesezugriff.</strong> SmartEinzug schreibt nichts nach Lexware Office zurück, weder Zahlungen noch Notizen noch Statusänderungen. Zahlungseingänge buchen Sie wie bisher in Lexware Office. Wird eine Rechnung dort bezahlt oder storniert, erkennt SmartEinzug das beim nächsten Abgleich und zieht sie nicht mehr ein.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Im Betrieb</p>
+        <h2>Nach der Verbindung</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <ul class="checklist">
+        <li><strong>Änderungen an Rechnungen</strong> in Lexware Office, etwa an Betrag, Fälligkeit oder Kunde, werden beim nächsten Abgleich übernommen. Einzüge, die bereits laufen oder terminiert sind, bleiben davon unberührt.</li>
+        <li><strong>Ausbleibender Abgleich:</strong> Liegt die letzte Synchronisation länger als 48 Stunden zurück, zeigt das Dashboard einen Hinweis.</li>
+        <li><strong>Abgleichsansicht:</strong> Die Seite Mit Lexware Office abgleichen vergleicht Rechnungsnummern und Status zwischen Lexware Office und SmartEinzug und listet Abweichungen in beide Richtungen. Beträge prüft sie nicht.</li>
+        <li><strong>Verbindung trennen</strong> entfernt den Schlüssel aus SmartEinzug. Bereits synchronisierte Rechnungen und Kunden bleiben erhalten; neue Abgleiche sind erst nach erneuter Verbindung möglich.</li>
+        <li><strong>Protokoll:</strong> Hinterlegen, Prüfen und Trennen der Verbindung werden mit Person und Zeitpunkt protokolliert.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Fragen</p>
+        <h2>Häufige Fragen zur Verbindung mit Lexware Office</h2>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+      <div class="faq-list faq-grid">
+        <details><summary>Der Menüpunkt Public API fehlt in meinem Lexware-Office-Konto.</summary><p class="faq-answer">Prüfen Sie den gebuchten Tarif. Nach Angaben von Lexware ist die Public API an den Tarif Lexware Office XL gebunden; verbindlich ist die Auskunft in Ihrem Lexware-Office-Konto. SmartEinzug prüft keinen Tarif, sondern nur, ob der Schlüssel funktioniert.</p></details>
+        <details><summary>Verbindung herstellen meldet einen Fehler.</summary><p class="faq-answer">Mögliche Ursachen sind ein unvollständig kopierter Schlüssel, ein in Lexware Office bereits gelöschter Schlüssel oder ein Konto ohne Zugang zur Public API. Erzeugen Sie in Lexware Office einen neuen Schlüssel und wiederholen Sie den Vorgang. Gespeichert wird erst, wenn der Abruf des Profils gelingt.</p></details>
+        <details><summary>Kann ich mehrere Lexware-Office-Konten verbinden?</summary><p class="faq-answer">Je Firmenaccount genau eines. Für ein zweites Konto legen Sie über die Firmenübersicht einen weiteren Firmenaccount an. Die Anmeldung bleibt dieselbe, Kunden, Rechnungen, Mandate und Einzüge sind vollständig getrennt.</p></details>
+        <details><summary>Wer darf die Verbindung ändern?</summary><p class="faq-answer">Inhaber und Administratoren hinterlegen, prüfen und trennen Verbindungen. Mitarbeiter sehen den Verbindungsstatus und arbeiten mit den synchronisierten Rechnungen, können aber keinen Schlüssel eintragen.</p></details>
+        <details><summary>Muss der Browser während der Synchronisation offen bleiben?</summary><p class="faq-answer">Nein. Die Synchronisation läuft in Schritten auf dem Server weiter. Beim nächsten Öffnen sehen Sie den aktuellen Stand auf dem Dashboard, in der Rechnungsliste und unter Synchronisationen.</p></details>
+        <details><summary>Übernimmt SmartEinzug Zahlungen nach Lexware Office?</summary><p class="faq-answer">Nein. Die Schnittstelle liest ausschließlich. Den Zahlungseingang einer per Lastschrift eingezogenen Rechnung buchen Sie wie bisher in Lexware Office. Das Einzugsjournal als CSV unterstützt Sie dabei, siehe Anleitung 3.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container">
+      <p class="eyebrow">Nächster Schritt</p>
+      <h2>Weiter mit Anleitung 2: das eigene Stripe-Konto verbinden</h2>
+      <span class="bar" aria-hidden="true"></span>
+      <div class="cta-row">
+        <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary" data-cta="anleitung-lexware-final">Jetzt registrieren</a>
+        <a href="/anleitungen/stripe-verbinden/" class="btn btn-outline">Anleitung 2 öffnen</a>
+      </div>
+      <p><a href="/anleitungen/">Zurück zur Übersicht der Anleitungen</a> oder <a href="/integrationen/lexware-office/">zur Integrationsseite Lexware Office</a>.</p>
+    </div>
+  </section>
+</article>
+</main>
+
+<div class="sticky-cta">
+  <a href="https://app.smart-einzug.de/register.php?src=smart-einzug.de" class="btn btn-primary btn-block" data-cta="sticky-mobile">Jetzt registrieren</a>
+</div>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <span class="footer-wordmark"><img class="logo" src="/assets/img/logo-horizontal-weiss.png?v=20260905f" srcset="/assets/img/logo-horizontal-weiss.png?v=20260905f 1x, /assets/img/logo-horizontal-weiss@2x.png?v=20260905f 2x" alt="SmartEinzug" width="219" height="48"></span>
+      <nav class="footer-nav" aria-label="Rechtliches">
+        <ul>
+          <li><a href="/impressum/">Impressum</a></li>
+          <li><a href="/datenschutz/">Datenschutz</a></li>
+          <li><a href="/agb/">AGB</a></li><li><a href="/datenschutz/#cookies" data-consent-open>Cookie-Einstellungen</a></li>
+          <li><a href="/anleitungen/">Anleitungen</a></li>
+          <li><a href="/wissen/">Wissen</a></li>
+          <li><a href="/sicherheit/">Sicherheit</a></li>
+          <li><a href="/hilfe/">Hilfe</a></li>
+          <li><a href="/kontakt/">Kontakt</a></li>
+          <li><a href="https://app.smart-einzug.de/login.php?src=smart-einzug.de">Login</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</p>
+      <p>SmartEinzug ist ein Angebot der Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/site.js?v=a48427be21" defer></script>
+<!--
+  Timo Müller · Müller Holding AG
+  In Liebe zu Charlotte und Christina.
+-->
+</body>
+</html>

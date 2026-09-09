@@ -1,0 +1,49 @@
+# Abschlussbericht SEO-, Content- und Landingpage-Ausbau
+
+Stand: 08.09.2026, Branch `claude/frontend-smart-einzug-egsouk`. Dieser Bericht fasst die Ergebnisse des Masterprompts vom 07.09.2026 zusammen und unterscheidet je Punkt zwischen **empfohlen** (Vorschlag, Entscheidung offen), **umgesetzt** (im Branch vorhanden), **getestet** (mit den Prüfwerkzeugen des Repositorys geprüft) und **produktiv veröffentlicht** (auf den Live-Domains sichtbar). Kein Punkt dieses Berichts ist produktiv veröffentlicht: Der Frontend-Branch löst kein Deployment aus; live geht der Stand erst nach Merge in den Backend-Branch und dem dadurch ausgelösten Webhosting-Upload. Indexierung und Rankingwirkung sind nicht nachgewiesen und werden nicht behauptet.
+
+## 1. Bestands- und Maßnahmenübersicht
+
+| Gegenstand | Was bleibt | Was wurde verbessert | Was wurde neu erstellt | Was wurde nicht umgesetzt | Status |
+|---|---|---|---|---|---|
+| smart-einzug.de (Hauptdomain) | Seitenstruktur, URLs, Design, Kampagnenseiten (noindex), Vergleichsseite (noindex, Entwurf) | 12 Seiten bereinigt (Preise entfernt, 33 Befunde, Leserbefunde), Integrationsseiten ausgebaut, Fußzeile mit Anleitungen, Wissen, Sicherheit, AGB Abschnitt 7 ohne Beträge | Anleitungen (4 Seiten), Wissen (4 neue und 8 verlagerte Seiten), Sicherheit (1 Seite) | Screenshots der echten Anwendung (Medienbriefing offen) | umgesetzt, getestet |
+| lexoffice-einzug.de (Leadseite) | Startseite, Umbenennungsseite, Kampagnenseite, Rechtsseiten, Design | 13 Seiten bereinigt (Preise, 31 Befunde, 6 übersehene Punkte, Ablauf gegliedert), DETM als Anbieter, Textwortmarke, AGB ohne Beträge; 14 Seiten per 301 weitergeleitet oder auf die Hauptdomain verlagert (M4) | logofreie Bildassets | Impressumsangaben DETM | umgesetzt, getestet |
+| lexware-einzug.de (Leadseite) | Startseite, Produktseiten, Funktionen, Tarif, FAQ, Kampagnenseite, Rechtsseiten, Design | 14 Seiten bereinigt (Preise, 35 Befunde, Einzugsautomatik-Abschnitt auf echte Einstellungen umgeschrieben, H1 ohne Zeitversprechen), DETM als Anbieter, verwaiste Seite verlinkt, AGB ohne Beträge; 12 Seiten per 301 weitergeleitet oder auf die Hauptdomain verlagert (M4) | logofreie Bildassets | Impressumsangaben DETM | umgesetzt, getestet |
+| sevdesk-einzug.de, sevdesk-sepa.de | | | zwei Leaddomains mit getrennten Inhalten (Vormerkung, SEPA-Wissen), Impressum, Datenschutz, 404, Assets | Domainregistrierung, IONOS-Zuordnung, `signup_domains` in Produktion (Backend) | umgesetzt, getestet |
+| lastschrift-einfach.de | Upload in `deploy.yml` | Ordner auf `.htaccess` (301 auf smart-abrechnen.de) und 404-Seite reduziert, aus allen Website-Werkzeugen entfernt; Altdateien entfernt der Upload mit `--delete` beim nächsten Lauf | | | umgesetzt, getestet |
+| Werkzeuge | | `pricing-check.php` Abschnitt D (keine Produktpreise), `build-sitemaps.py` (lastmod aus Git), `sync-chrome.py` Domainliste, `deploy.yml` Job `deploy-webhosting` spiegelt Website-Ordner mit `--delete` (Ausnahmen: Verifizierungsdateien von Google und Bing, `.well-known`; Ordner `app` weiterhin ohne Löschung) | `seo-inventory.py`, `seo-map-check.py` (mit CSV-Export), `lead-assets.py` | | umgesetzt, getestet |
+| Anwendung | | `APP_VERSION` 4.51 mit Changelog-Eintrag für die Website-Änderungen (`php-ionos/app/version.php`); der Backend-Branch (Stand 4.50) wurde am 09.09.2026 in den Frontend-Branch gemergt, Konflikte in `version.php`, `CLAUDE.md` und `tools/build-docs.py` aufgelöst | | | umgesetzt, getestet (`php -l`) |
+| Dokumentation | | `CLAUDE.md` (Preisregel, Leadseiten, Keyword-Map), `ARBEITSSTAND.md` Abschnitt 7, Admin-Dokumentation um das vierte Dokument „SEO- und Marketingdokumentation“ (Code `marketing`, intern, Revision r1) erweitert | `docs/seo/` (README, 01 bis 07, Inventar, Keyword-Map) | | umgesetzt, getestet |
+
+## 2. Gemeinsame Themen- und URL-Zuordnung
+
+Umgesetzt in `keyword-map.json` und `04-keyword-map.md`: 28 Suchintentionen, 62 Seiten auf fünf Domains (nach der Zusammenführung M4; vorher 81) mit Zielgruppe, Hauptbegriff, Varianten, bevorzugter Zielseite, Rolle jeder Seite, Indexierungsentscheidung, Konfliktart, Empfehlung, Freigabevorbehalt, Faktenquellen und Prüftermin. `python3 tools/seo-map-check.py` prüft, dass jede indexierbare Seite genau einmal zugeordnet ist, jedes Cluster genau eine Primärseite hat, Indexierung und Sitemap zum Dateibestand passen und Kampagnenseiten noindex sind. Status: umgesetzt, getestet (0 Fehler).
+
+## 3. Umgesetzte Seiten und Änderungen
+
+- Neue Seiten der Hauptdomain (08.09.2026, aus dem Faktenregister geschrieben, Ähnlichkeit zu den Leaddomains unter 10 Prozent): `/anleitungen/` mit Lexware Office verbinden, Stripe verbinden, erster Lastschrifteinzug; `/wissen/` mit SEPA-Mandat, Rücklastschrift, Vorabankündigung; `/sicherheit/`. Sie sind in der Keyword-Map als bevorzugte Zielseiten der Cluster C04, C06, C07, C11, C16, C18, C20 und C24 eingetragen; die gleichartigen Seiten der Leaddomains leiten seit dem 08.09.2026 per 301 auf sie weiter (M4 Gruppe B). Umgesetzt, getestet.
+- Zusammenführung und Verlagerung (M4, 08.09.2026, Entscheidung des Betreibers ohne Rankingdaten): acht Ratgeberartikel der Leaddomains nach `smart-einzug.de/wissen/` verlagert, 19 weitere Seiten der Leaddomains per 301 auf die Hauptdomain oder die Startseite ihrer Leaddomain geleitet, Navigation und interne Links umgeschrieben; Details in `05-massnahmenplan.md`, M4. Umgesetzt, getestet (site-qa, seo-map-check, Sitemaps).
+- Ausgebaut: `/integrationen/` (rund 130 auf 527 Wörter) und `/integrationen/lexware-office/` (rund 150 auf 662 Wörter); Fußzeile aller Seiten der Hauptdomain verlinkt Anleitungen, Wissen und Sicherheit; Hilfe und So funktioniert's verweisen auf die Anleitungen; die verwaiste Seite `lexware-einzug.de/lexware-office-lastschrifteinzug` hat zwei eingehende Links; Mockups der drei Startseiten sind sichtbar als Beispielansicht mit Beispieldaten gekennzeichnet. Umgesetzt, getestet.
+- Faktenregister: 191 belegte Einträge aus dem Code (`02-faktenregister.md`), davon 166 bestätigt, 9 geplant, 7 nicht vorhanden, 9 ungeklärt. Umgesetzt.
+- Aussagenprüfung: 241 Befunde, 58 durch adversariale Gegenprüfung verworfen, 121 bestätigt und umgesetzt, 62 ohne Gegenprüfung (Preise über die Preisregel erledigt, ungeklärte Aussagen unverändert). Umgesetzt, getestet.
+- Preisdarstellung: alle Produktpreise von den Marketingseiten entfernt, JSON-LD ohne `Offer`; AGB-Entwürfe der drei Domains in Abschnitt 7 ohne Beträge (Verweis auf die Bestellübersicht vor Vertragsschluss), weiterhin mit Platzhalter und Prüfvorbehalt. Umgesetzt, getestet (`pricing-check.php` 14 von 14, keine AGB-Hinweise mehr).
+- Noch offene Fakten (nicht behauptet, siehe `02-faktenregister.md`, Abschnitt Offene Fragen): Lexware-Tarifvoraussetzung, Produktionswerte von `features.queue`, `plans`, `mail.enabled`, Standort von Anwendung und Sicherungen, AVV-Veröffentlichung, Stripe-Gläubiger-ID auf dem Kontoauszug.
+
+## 4. Prüf- und Messkonzept
+
+- Technische Tests je Commit: `site-qa.py` (0 Fehler, 2 bekannte Warnungen zu gleichlautenden Überschriften der Startseiten), `pricing-check.php`, `seo-map-check.py`, `asset-version.py`, `build-sitemaps.py`, `seo-inventory.py`, `docs-build-check.py`. Umgesetzt, getestet.
+- Conversion-Ereignisse: vorhandene Trichter-Ereignisse der Anwendung je Herkunftsdomain (page_view, cta_click, registration_started, registration_completed, 2fa_enabled, lexware_connected, stripe_connected, first_sync, first_collection, subscription_active). Dokumentiert in `06-mess-und-pflegekonzept.md`. Empfohlen: Ausgangsseite als Parameter mitführen, Entscheidung zur domainübergreifenden GA4-Messung (Backend).
+- Datenlücken: keine Search-Console-, Analytics- oder Ads-Daten im Repository; Live-Abruf der Domains aus der Arbeitsumgebung nicht möglich. Alle Indexierungsaussagen sind „technisch indexierbar“, nicht „indexiert“.
+
+## 5. Pflege- und Redaktionsplan
+
+`06-mess-und-pflegekonzept.md`, Abschnitte 4 und 5: Zustände je Seite, Prüfanlässe (Versionswechsel, Tarifänderung, sevdesk-Freigabe, Lexware- oder Stripe-Änderungen, Rechtsdokumente), Verantwortlichkeiten, Prüftermin 08.12.2026 in der Keyword-Map. Social Media: nur aus veröffentlichten, faktengeprüften Seiten, keine Preise bis zur Freigabe. Umgesetzt als Plan; Kanäle und verantwortliche Person offen.
+
+## 6. Entscheidungen der Geschäftsführung, die vor dem Merge nötig sind
+
+1. DETM Management Consulting FZCO: Anschrift, Registerangaben, vertretungsberechtigte Person, E-Mail, Telefon für Impressum und Datenschutz der vier Leaddomains. Ohne diese Angaben darf der Stand nicht live gehen.
+2. AGB-Entwürfe (Abschnitt 7 ohne Beträge, Platzhalter USt-Ausweis) anwaltlich prüfen lassen, bevor sie veröffentlicht werden; Zulässigkeit eines Streichpreises prüfen, falls Preise wieder veröffentlicht werden.
+3. Freigabe der künftigen Preisdarstellung (Betrag, Aktionslogik) und danach Anpassung von `pricing-check.php` Abschnitt D.
+4. M4 ist umgesetzt (Entscheidung vom 08.09.2026). Nach Inbetriebnahme: Search Console je Domain einrichten, Weiterleitungen und Indexierung prüfen. Die Altdateien der weitergeleiteten Seiten und von lastschrift-einfach.de entfernt der Upload mit `--delete` beim ersten Lauf; vorher prüfen, ob in den Website-Ordnern des Hosters Dateien liegen, die nicht im Repository sind und nicht unter die Ausnahmen fallen.
+5. Backend: sevdesk-Domains in `signup_domains` der Produktionskonfiguration ergänzen. Der Backend-Branch ist in den Frontend-Branch gemergt (09.09.2026, Changelog 4.51 über 4.50); der Frontend-Branch lässt sich per Pull Request konfliktfrei in den Backend-Branch übernehmen, was das Deployment auslöst.
+6. Medien: Screenshots der echten Anwendung mit gekennzeichneten Demodaten für Anleitungen und Startseiten (Medienbriefing in `05-massnahmenplan.md` vorzusehen); bis dahin bleiben die HTML-Mockups mit sichtbarer Kennzeichnung „Beispielansicht mit Beispieldaten“.
