@@ -5,9 +5,9 @@
     "summary": "Kennzahlen mit frei wählbarem Zeitraum (4.43)."
   },
   "entwickler": {
-    "revision": "r18",
+    "revision": "r19",
     "date": "09.09.2026",
-    "summary": "Abrechnung: Art der Steuerregistrierung (Standard statt One-Stop-Shop) in der Prüfung (4.49)."
+    "summary": "Hosttrennung: Kundenbalken nur in der Kundenanwendung, Links absolut (4.50)."
   },
   "kunden": {
     "revision": "r4",

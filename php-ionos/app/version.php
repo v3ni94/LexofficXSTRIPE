@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.49';
+const APP_VERSION = '4.50';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.50', 'date' => '09.09.2026', 'title' => 'Kundenhinweise erscheinen nicht mehr im Adminbereich',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Im Adminbereich erschien der Hinweisbalken „Ihr Firmenaccount ist noch nicht freigeschaltet“; die Schaltfläche führte auf eine Adresse des Adminhosts, die es dort nicht gibt, und endete in „Nicht gefunden“. Die kundenbezogenen Hinweisbalken zu Abonnement, Testmodus und Support erscheinen jetzt nur noch in der Kundenanwendung, und ihre Links zeigen immer auf die Kundenanwendung. Prüfung: tools/host-separation-check.php.'],
+         ]],
         ['version' => '4.49', 'date' => '09.09.2026', 'title' => 'Prüfung erkennt eine Registrierung, die inländische Umsätze nicht abdeckt',
          'entries' => [
             ['type' => 'Neu', 'text' => 'bin/billing-check.php nennt jetzt auch die Art jeder Steuerregistrierung. Deckt für das Land des Hauptsitzes nur eine One-Stop-Shop-Registrierung vor (sie gilt ausschließlich für grenzüberschreitende Umsätze in andere EU-Staaten), wird das als Fehler gemeldet: Inländische Rechnungen blieben sonst unbemerkt ohne Umsatzsteuer.'],

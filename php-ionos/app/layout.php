@@ -147,19 +147,27 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
     <?php foreach (flash_pull() as $msg): ?>
         <div class="flash flash-<?= e($msg['type']) ?>"><?= e($msg['message']) ?></div>
     <?php endforeach; ?>
-    <?php if ($ctx && !empty($ctx['support_mode'])): ?>
+    <?php
+    // Kundenbezogene Hinweisbalken nur in der Kundenanwendung: Auf einem getrennten Adminhost sind
+    // subscription.php, settings.php und support-end.php nicht erreichbar (enforce_host_rules), ein
+    // Balken dort wuerde ins Leere fuehren. Links trotzdem absolut auf die Kundenanwendung setzen,
+    // damit sie auch im Uebergangsmodus und bei kuenftigen Hostwechseln stimmen.
+    $kundenBanner = !admin_host_separated();
+    $appBase = app_base_url();
+    ?>
+    <?php if ($kundenBanner && $ctx && !empty($ctx['support_mode'])): ?>
         <div class="flash flash-warn support-banner"><strong>SUPPORT-MODUS.</strong> Sie arbeiten als Plattform-Support in der Firma
             <strong><?= e($ctx['org_name']) ?></strong> (Rolle Administrator). Einzüge, IBAN-Änderungen und Zugangsdaten sind gesperrt,
             alle Aktionen werden mit Support-Vermerk protokolliert. Endet um <?= e(date('H:i', strtotime((string)$ctx['support_expires_at']))) ?> Uhr.
-            <a href="support-end.php">Support beenden</a>
+            <a href="<?= e($appBase) ?>/support-end.php">Support beenden</a>
         </div>
     <?php endif; ?>
-    <?php if ($ctx && integration_stripe_test_mode($ctx['org_id'])): ?>
+    <?php if ($kundenBanner && $ctx && integration_stripe_test_mode($ctx['org_id'])): ?>
         <div class="flash flash-warn testmode-banner"><strong>TESTMODUS.</strong> Diese Firma ist mit einem Stripe-Testschlüssel verbunden. Es werden keine echten Lastschriften ausgeführt.
-            <?php if (can_manage_settings($ctx)): ?><a href="settings.php">Live-Schlüssel hinterlegen</a><?php endif; ?>
+            <?php if (can_manage_settings($ctx)): ?><a href="<?= e($appBase) ?>/settings.php">Live-Schlüssel hinterlegen</a><?php endif; ?>
         </div>
     <?php endif; ?>
-    <?php if ($ctx && billing_enabled() && (int)($ctx['billing_exempt'] ?? 0) !== 1 && current_script() !== 'subscription.php'): ?>
+    <?php if ($kundenBanner && $ctx && billing_enabled() && (int)($ctx['billing_exempt'] ?? 0) !== 1 && current_script() !== 'subscription.php'): ?>
         <?php if (!subscription_allows_operation($ctx)): ?>
             <?php $subPlan = plan_for_org($ctx); $subEnded = ($ctx['subscription_status'] ?? '') === 'canceled' || ($ctx['subscription_status'] ?? '') === 'past_due'; ?>
             <div class="sub-banner" role="status">
@@ -169,14 +177,14 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
                     Tarif <?= e($subPlan['name']) ?>, <?= format_eur_cents((int)$subPlan['price_cents']) ?> netto je <?= (int)$subPlan['period_days'] ?> Tage, jederzeit zum Periodenende kündbar.
                 </div>
                 <?php if ($ctx['role'] === 'owner'): ?>
-                    <a class="btn" href="subscription.php?bestellen=1"><?= $subEnded ? 'Vertrag aktivieren' : 'Jetzt freischalten' ?></a>
+                    <a class="btn" href="<?= e($appBase) ?>/subscription.php?bestellen=1"><?= $subEnded ? 'Vertrag aktivieren' : 'Jetzt freischalten' ?></a>
                 <?php else: ?>
                     <span class="hint">Nur der Inhaber des Firmenaccounts kann das Abonnement abschließen.</span>
                 <?php endif; ?>
             </div>
         <?php elseif ((int)($ctx['cancel_at_period_end'] ?? 0) === 1 && !empty($ctx['subscription_period_end'])): ?>
             <div class="flash flash-warn">Ihr Abonnement ist zum <?= format_date($ctx['subscription_period_end']) ?> gekündigt. Bis dahin bleibt der Zugriff bestehen.
-                <?php if ($ctx['role'] === 'owner'): ?><a href="subscription.php">Kündigung zurücknehmen</a><?php endif; ?></div>
+                <?php if ($ctx['role'] === 'owner'): ?><a href="<?= e($appBase) ?>/subscription.php">Kündigung zurücknehmen</a><?php endif; ?></div>
         <?php endif; ?>
     <?php endif; ?>
     <?php

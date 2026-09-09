@@ -150,6 +150,23 @@ function on_admin_host(): bool
     return $adminHost !== '' && request_host() === $adminHost;
 }
 
+/**
+ * True, wenn der Adminbereich auf einem EIGENEN Host laeuft und die aktuelle Anfrage ueber diesen kommt.
+ * Genau in diesem Fall liefert enforce_host_rules() fuer jede Kundenseite 404; Kundenelemente (Hinweisbalken
+ * zu Abonnement, Testmodus, Support) duerfen dort deshalb nicht erscheinen und nie dorthin verlinken
+ * (Befund 09.09.2026: Der Hinweisbalken verlinkte auf admin.<domain>/subscription.php und endete in
+ * "Nicht gefunden"). Unterschied zu on_admin_host(): Ein gemeinsamer Host fuer Admin und Anwendung
+ * (Uebergangsmodus) gilt hier NICHT als getrennt, dort sind Kundenseiten erreichbar.
+ */
+function admin_host_separated(): bool
+{
+    $adminHost = base_url_host(admin_base_url());
+    if ($adminHost === '' || $adminHost === base_url_host(app_base_url())) {
+        return false;
+    }
+    return request_host() === $adminHost;
+}
+
 /** Hostname aus einer Basisadresse (klein geschrieben) oder leerer String. */
 function base_url_host(string $url): string
 {
