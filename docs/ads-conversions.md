@@ -142,3 +142,45 @@ Laut Bestandsmatrix ist Consent Mode auf den bestehenden Marketingseiten vorhand
 - Der Wechsel der App-Domain (`app.smart-einzug.de`, siehe `docs/smarteinzug-rollout.md`) wirkt sich auf die Landingpage-zu-App-Weiterleitung und damit auf die Deduplizierung der Conversion-Ereignisse aus und ist vor Kampagnenstart abzustimmen.
 - Suchvolumina und tatsächliche Wettbewerberpreise sind laut Bestandsmatrix nicht aus dem Repository prüfbar.
 - Freigabe der Wettbewerber-Anzeigengruppen (SEPAHeld, GoCardless) durch die Geschäftsführung steht aus, diese bleiben bis dahin pausiert.
+
+## Conversion der abgeschlossenen Bestellung (seit 4.58)
+
+Bis 4.57 lud das Tag nur auf `register.php` und `vormerken.php`. Google Ads sah damit, dass jemand die
+Registrierung erreicht hat, aber nicht, dass daraus ein bezahltes Abonnement wurde. Für die Bewertung einer
+Anzeige ist genau das die entscheidende Zahl.
+
+**Die Ausnahme und ihre Grenzen.** Das Tag lädt zusätzlich auf `subscription.php?bestellt=1`, der
+Bestätigungsseite nach der Rückkehr aus dem Stripe-Checkout. Die Prüfung ist streng (`tracking_conversion_page()`
+in `php-ionos/app/tracking.php`): richtige Seite, genau ein Parameter, genau der Wert 1. Ein zusätzlicher
+Parameter, ein anderer Wert oder eine andere Seite öffnen die Ausnahme nicht.
+
+| Merkmal | Verhalten |
+|---|---|
+| Adresse | trägt keine Kunden-, Rechnungs- oder Mandatskennung, deshalb ist die Grundregel gewahrt |
+| Kennungen | nur die Ads-Kennung, ausdrücklich keine Analytics-Kennung |
+| Übertragen | Nettobetrag, Währung, gehashte Vorgangskennung; keine personenbezogenen Daten |
+| Voraussetzung | Einwilligung im Banner UND konfiguriertes `analytics.ads_conversion_label` |
+| Ohne Label | das Tag lädt, meldet aber keine Conversion; ein Label wird nie erfunden |
+
+**Einrichtung durch den Betreiber:**
+
+1. In Google Ads eine Conversion-Aktion für den Abschluss des Abonnements anlegen und deren Label notieren
+   (der Teil hinter dem Schrägstrich in `send_to`).
+2. In `shared/config.php` ergänzen und `restart-workers.sh` ausführen:
+
+```php
+'analytics' => [
+    'enabled'              => true,
+    'ga_id'                => '',
+    'ads_id'               => 'AW-18431688840',
+    'ads_conversion_label' => 'HIER-LABEL-AUS-GOOGLE-ADS',
+],
+```
+
+3. Mit einem frisch registrierten Firmenaccount eine Bestellung abschließen, im Banner zustimmen und in Google
+   Ads prüfen, dass die Conversion mit dem richtigen Betrag ankommt. Danach die Zahlung erstatten und das
+   Abonnement kündigen.
+
+**Was weiterhin gilt:** Jede andere angemeldete Seite bleibt ohne Tag. `php tools/app-tracking-check.php`
+(53 Fälle) prüft die Grenze, unter anderem, dass `dashboard.php`, `customer.php`, `invoices.php`,
+`settings.php` und `admin.php` auch mit angehängtem `bestellt=1` kein Tag laden.

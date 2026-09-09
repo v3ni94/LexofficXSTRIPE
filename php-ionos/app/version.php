@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.57';
+const APP_VERSION = '4.58';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.58', 'date' => '10.09.2026', 'title' => 'Abgeschlossene Bestellung als Conversion messbar',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Google Ads kann jetzt messen, dass aus einem Anzeigenklick ein bezahltes Abonnement geworden ist, nicht nur der Aufruf der Registrierung. Dafür gilt eine einzige, eng begrenzte Ausnahme im angemeldeten Bereich: die Bestätigungsseite nach der Rückkehr aus dem Checkout. Sie trägt keine Kunden-, Rechnungs- oder Mandatskennung in der Adresse und erhält ausschließlich die Ads-Kennung, keine Reichweitenmessung. Jede andere angemeldete Seite bleibt unverändert ohne Tag.'],
+            ['type' => 'Neu', 'text' => 'Gemeldet werden Nettobetrag, Währung und eine gehashte Vorgangskennung, keine personenbezogenen Daten, und ausschließlich nach Einwilligung. Die Meldung setzt das Conversion-Label der Google-Ads-Aktion voraus (Konfiguration analytics.ads_conversion_label); ohne Label meldet die Anwendung nichts, ein Label wird nie erfunden.'],
+            ['type' => 'Geändert', 'text' => 'Die Rückkehr aus dem Stripe-Checkout endet auf subscription.php?bestellt=1. Die Prüfung tools/app-tracking-check.php wurde von 31 auf 53 Fälle erweitert und lässt die Ausnahme nur in genau dieser gebundenen Form zu.'],
+         ]],
         ['version' => '4.57', 'date' => '10.09.2026', 'title' => 'Google-Tag in der Anwendung, begrenzt auf die öffentlichen Registrierungsseiten',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Auf Vorgabe des Betreibers ist die Google-Ads-Kennung jetzt auch in der Anwendung hinterlegt (app/tracking.php, assets/js/consent.js). Sie wirkt ausschließlich auf den öffentlichen Seiten register.php und vormerken.php und dort erst nach ausdrücklicher Einwilligung im Banner; vorher wird kein Google-Skript geladen und kein Cookie gesetzt. Die Kennungen kommen aus der Konfiguration (analytics.enabled, ga_id, ads_id) und werden gegen das von Google vergebene Format geprüft.'],

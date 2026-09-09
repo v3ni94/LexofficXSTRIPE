@@ -5,9 +5,9 @@
     "summary": "Kennzahlen mit frei wählbarem Zeitraum (4.43)."
   },
   "entwickler": {
-    "revision": "r22",
+    "revision": "r23",
     "date": "10.09.2026",
-    "summary": "Google-Tag der Anwendung: feste Seitenliste, keine Messung im Firmenaccount, Einwilligung als Bedingung (4.57)."
+    "summary": "Conversion der abgeschlossenen Bestellung als eng begrenzte Ausnahme im angemeldeten Bereich (4.58)."
   },
   "kunden": {
     "revision": "r4",

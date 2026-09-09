@@ -313,6 +313,10 @@ return [
         'enabled' => false,
         'ga_id' => '',            // Format G-XXXXXXXXXX, leer lassen wenn nicht gewuenscht
         'ads_id' => '',           // Format AW-000000000, leer lassen wenn nicht gewuenscht
+        // Label der Conversion-Aktion aus Google Ads (Teil hinter dem Schraegstrich in send_to).
+        // Ohne Label meldet die Anwendung keine Conversion; die Bestaetigungsseite der Bestellung laedt
+        // das Tag dann zwar, zaehlt aber nichts. Nie erfinden, aus Google Ads uebernehmen.
+        'ads_conversion_label' => '',
     ],
 
     'timezone' => 'Europe/Berlin',
