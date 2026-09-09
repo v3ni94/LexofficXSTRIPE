@@ -160,7 +160,7 @@ function billing_setup_price_needs_replacement(array $price, array $plan): bool
  */
 function billing_check_tax(array $settings, array $registrations): array
 {
-    $r = ['errors' => [], 'warnings' => [], 'info' => [], 'laender' => []];
+    $r = ['errors' => [], 'warnings' => [], 'info' => [], 'laender' => [], 'typen' => []];
     $status = (string)($settings['status'] ?? '?');
     if ($status !== 'active') {
         $r['errors'][] = sprintf('Stripe Tax ist nicht aktiv (Status %s), automatic_tax ist aber eingeschaltet. Checkout mit automatischer Steuer schlägt dann fehl.', $status);
@@ -185,15 +185,34 @@ function billing_check_tax(array $settings, array $registrations): array
         $r['info'][] = 'Stripe Tax: Hauptsitz ' . $land . '.';
     }
 
+    // Art der Registrierung mitlesen: Eine One-Stop-Shop-Registrierung (oss_union/oss_non_union) deckt nur
+    // grenzueberschreitende Umsaetze in andere EU-Staaten ab, NICHT die Umsaetze im eigenen Land. Steht fuer
+    // das Land des Hauptsitzes nur eine OSS-Registrierung, weist Stripe bei inlaendischen Verkaeufen
+    // "Steuerpflicht: nicht registriert" und 0,00 EUR aus (Vorfall 09.09.2026).
+    $inlandTyp = '';
     foreach ((array)($registrations['data'] ?? []) as $reg) {
         $reg = (array)$reg;
         if ((string)($reg['status'] ?? '') !== 'active') {
             continue;
         }
         $c = strtoupper((string)($reg['country'] ?? ''));
-        if ($c !== '' && !in_array($c, $r['laender'], true)) {
-            $r['laender'][] = $c;
+        if ($c === '') {
+            continue;
         }
+        $typ = (string)(((array)($reg['country_options'] ?? []))[strtolower($c)]['type'] ?? '');
+        if (!in_array($c, $r['laender'], true)) {
+            $r['laender'][] = $c;
+            $r['typen'][] = $c . ($typ !== '' ? ' (' . $typ . ')' : '');
+        }
+        if ($c === $land && $typ !== '') {
+            $inlandTyp = $typ;
+        }
+    }
+    if ($inlandTyp !== '' && str_starts_with($inlandTyp, 'oss')) {
+        $r['errors'][] = sprintf('Stripe Tax: Für %s besteht nur eine One-Stop-Shop-Registrierung (%s). Sie gilt für '
+            . 'grenzüberschreitende Umsätze in andere EU-Staaten, nicht für Umsätze im eigenen Land; inländische '
+            . 'Rechnungen bleiben ohne Umsatzsteuer. Zusätzlich eine Standardregistrierung für %s anlegen.',
+            $land, $inlandTyp, $land);
     }
     if ($r['laender'] === []) {
         $r['errors'][] = 'Stripe Tax: keine aktive Steuerregistrierung. Stripe berechnet dann KEINE Umsatzsteuer, '

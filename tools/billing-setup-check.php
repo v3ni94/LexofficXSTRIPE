@@ -224,7 +224,8 @@ preg_match('/\$preisIdBleibt && \$betragOderPeriodeNeu\) \{\s*throw new RuntimeE
 
 echo "\nH) Stripe Tax: Registrierung entscheidet, ob überhaupt Umsatzsteuer berechnet wird\n";
 $taxAktiv = ['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']], 'defaults' => ['tax_code' => 'txcd_muster']];
-$regDe = ['data' => [['status' => 'active', 'country' => 'DE', 'type' => 'standard']]];
+$regDe = ['data' => [['status' => 'active', 'country' => 'DE', 'country_options' => ['de' => ['type' => 'standard']]]]];
+$regOss = ['data' => [['status' => 'active', 'country' => 'DE', 'country_options' => ['de' => ['type' => 'oss_union']]]]];
 $regKeine = ['data' => []];
 $r = billing_check_tax($taxAktiv, $regDe);
 ($r['errors'] === [] && $r['warnings'] === [] && $r['laender'] === ['DE']) ? ok('aktiv mit deutscher Registrierung: ohne Beanstandung') : bad('DE-Registrierung: ' . implode(' | ', array_merge($r['errors'], $r['warnings'])));
@@ -246,6 +247,13 @@ $r['laender'] === ['DE'] ? ok('Länder werden großgeschrieben und nicht doppelt
 $r = billing_check_tax(['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']]], $regDe);
 (bool)array_filter($r['warnings'], fn($l) => str_contains($l, 'Standard-Steuercode')) ? ok('fehlender Standard-Steuercode wird gemeldet') : bad('fehlender Steuercode nicht gemeldet');
 (bool)array_filter(billing_check_tax($taxAktiv, $regDe)['info'], fn($l) => str_contains($l, 'txcd_muster')) ? ok('vorhandener Steuercode wird ausgewiesen') : bad('Steuercode nicht ausgewiesen');
+
+$r = billing_check_tax($taxAktiv, $regOss);
+(count($r['errors']) === 1 && str_contains($r['errors'][0], 'One-Stop-Shop'))
+    ? ok('nur OSS-Registrierung im eigenen Land: Fehler (inländische Umsätze bleiben ohne Steuer)') : bad('OSS-Fall: ' . implode(' | ', $r['errors']));
+billing_check_tax($taxAktiv, $regDe)['typen'] === ['DE (standard)'] ? ok('Art der Registrierung wird ausgewiesen') : bad('Registrierungsart fehlt');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'active', 'country' => 'AT', 'country_options' => ['at' => ['type' => 'oss_union']]]]]);
+(count($r['errors']) === 0) ? ok('OSS im Ausland ist kein Fehler (nur Warnung wegen fehlender Inlandsregistrierung)') : bad('OSS Ausland faelschlich als Fehler');
 
 $checkSrc = file_get_contents($root . '/php-ionos/bin/billing-check.php');
 (str_contains($checkSrc, "'/tax/registrations'") && str_contains($checkSrc, 'billing_check_tax('))

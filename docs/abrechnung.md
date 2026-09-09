@@ -46,6 +46,10 @@ meldet, wie viele Firmen beim Scharfschalten gesperrt würden. Schlüssel ersche
 - Stripe Tax aktivieren und die eigene Steuerregistrierung (Deutschland) eintragen. Die Tarifpreise sind
   Nettopreise; Stripe rechnet die Umsatzsteuer anhand der Rechnungsadresse zusätzlich auf
   (`tax_behavior = exclusive`, `automatic_tax` in der Konfiguration).
+- **Art der Registrierung beachten.** Für Umsätze im eigenen Land ist eine Standardregistrierung nötig. Eine
+  One-Stop-Shop-Registrierung (OSS) gilt ausschließlich für grenzüberschreitende Umsätze in andere EU-Staaten;
+  liegt nur sie vor, weist Stripe auf dem Beleg „Steuerpflicht: nicht registriert“ und 0,00 EUR aus.
+  `bin/billing-check.php` nennt seit 4.49 die Art je Registrierung und meldet diesen Fall als Fehler.
 - **Steuerregistrierung eintragen (entscheidend).** Stripe berechnet Umsatzsteuer nur für Länder, in denen
   eine aktive Registrierung hinterlegt ist. Fehlt sie, bleibt der Checkout beim Nettobetrag, obwohl Stripe Tax
   den Status „active“ meldet und `automatic_tax` eingeschaltet ist (Vorfall 09.09.2026: erster echter Kauf

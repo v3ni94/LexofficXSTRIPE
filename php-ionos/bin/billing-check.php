@@ -165,7 +165,8 @@ if ($client !== null) {
                 $warnings[] = 'Steuerregistrierungen nicht prüfbar (GET /tax/registrations): ' . $e->getMessage();
             }
             $taxCheck = billing_check_tax($tax, $regs);
-            printf("   Steuerregistrierungen: %s\n", $taxCheck['laender'] ? implode(', ', $taxCheck['laender']) : 'keine aktive');
+            printf("   Steuerregistrierungen: %s\n", $taxCheck['typen'] ? implode(', ', $taxCheck['typen'])
+                : ($taxCheck['laender'] ? implode(', ', $taxCheck['laender']) : 'keine aktive'));
             $collect($taxCheck);
         } catch (Throwable $e) {
             $warnings[] = 'Stripe Tax nicht prüfbar (GET /tax/settings): ' . $e->getMessage() . '. Einstellung im Stripe-Dashboard prüfen.';

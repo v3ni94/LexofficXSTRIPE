@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.48';
+const APP_VERSION = '4.49';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.49', 'date' => '09.09.2026', 'title' => 'Prüfung erkennt eine Registrierung, die inländische Umsätze nicht abdeckt',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'bin/billing-check.php nennt jetzt auch die Art jeder Steuerregistrierung. Deckt für das Land des Hauptsitzes nur eine One-Stop-Shop-Registrierung vor (sie gilt ausschließlich für grenzüberschreitende Umsätze in andere EU-Staaten), wird das als Fehler gemeldet: Inländische Rechnungen blieben sonst unbemerkt ohne Umsatzsteuer.'],
+         ]],
         ['version' => '4.48', 'date' => '09.09.2026', 'title' => 'Prüfung nennt den Standard-Steuercode des Stripe-Kontos',
          'entries' => [
             ['type' => 'Neu', 'text' => 'bin/billing-check.php weist den Standard-Steuercode aus und warnt, wenn keiner hinterlegt ist. Ohne passende Einstufung der Leistung berechnet Stripe 0,00 EUR Steuer, obwohl Registrierung und Rechnungsadresse stimmen. Der Steuercode je Produkt bleibt bewusst offen, damit keine falsche Einstufung durch das Werkzeug entsteht.'],
