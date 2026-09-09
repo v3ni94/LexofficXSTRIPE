@@ -639,6 +639,15 @@ bricht es ab (Exit 2); läuft es selbst, wird ein gleichzeitig ausgelöstes Depl
 laufenden Deployments von Hand Container neu erzeugen (Lauf #63 vom 07.09.2026).
 Von Hand: `stat -c %i /opt/smarteinzug/shared/config.php` gegen `docker compose exec -T php stat -c %i /opt/smarteinzug/shared/config.php`.
 
+**Während eines laufenden Deployments `shared/config.php` nicht bearbeiten (Vorfall 08.09.2026, Lauf #82):** Die
+Candidate-Prüfung startet einen eigenen Container mit dem neuen Code gegen genau diese Datei. Ein halb gespeicherter
+Stand lässt sie scheitern, und das Deployment bricht ab. Das ist die gewollte Wirkung, die laufende Anwendung bleibt
+unverändert und es ist kein Rollback nötig; die Meldung lautet dann `Phase=candidate-pruefung` mit der PHP-Zeile
+`Parse error ... in /opt/smarteinzug/shared/config.php`. Abhilfe: Datei korrigieren, Syntax prüfen mit
+`docker compose ... run --rm --no-deps -T php php -l /opt/smarteinzug/shared/config.php`, danach das Deployment über
+„Run workflow“ auf dem Branch erneut auslösen (nie über „Re-run“ eines alten Laufs, siehe Abschnitt „Kein Downgrade
+durch erneut gestartete alte Läufe“).
+
 
 Das Skript startet Scheduler, alle Worker und den Metrik-Sammler neu, ohne Release- oder Datenbankwechsel. Laufende
 Jobs werden über das Signalmodell kooperativ beendet und fortgesetzt.

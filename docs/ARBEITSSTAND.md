@@ -192,6 +192,17 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
 - **Performance, Phase 2 (nach einer Woche Messwerten):** Bemessung der Lexware-Worker, Lexware-Webhooks und Seitengröße erst nach
   Prüfung der Dokumentation am Primärtext (`docs/sync-performance.md`, Nachtrag 4.39).
 
+0. **Lauf #82 (4.45) fehlgeschlagen, 08.09.2026 23:55 UTC:** Die Candidate-Prüfung brach mit
+   `Parse error ... config.php on line 19` ab, weil `shared/config.php` in genau diesem Moment von Hand bearbeitet wurde
+   (`'environment' => 'prod'` ohne abschließendes Komma). Gewollte Wirkung: laufende Container unverändert, kein Rollback.
+   Die Datei ist korrigiert (`php -l` grün), Umgebung meldet jetzt `prod`. Deployment über „Run workflow“ erneut auslösen.
+0. **Stripe-Plattformabrechnung eingerichtet (08./09.09.2026):** Live-Konto der Müller Holding AG (`acct_1UCRt4…`),
+   Live-Schlüssel und Webhook-Geheimnis in `shared/config.php`, Webhook mit den fünf Ereignissen, Stripe Tax aktiv,
+   Kundenportal konfiguriert, Produkt und Preis angelegt (`price_1UDYzd…`, 25,00 EUR netto je 28 Tage, `tax_behavior`
+   exclusive), Preis-ID in `plans`. `bin/billing-check.php`: 0 Fehler, 2 Warnungen. Offen vor `billing.enabled = true`:
+   Auszahlungen im Stripe-Konto freischalten (Aufgabe „Payouts paused“), AGB- und Datenschutzlink unter öffentliche
+   Unternehmensinformationen, Entscheidung zu den drei Firmen ohne Abonnement (Hausverwaltung Müller GmbH, WEB2MEDIA GmbH,
+   M&B Consulting GmbH: befreien oder Abonnement abschließen lassen).
 0. **Vorfall 08.09.2026, 21:05 bis 21:37 UTC (Downgrade auf 4.38):** Die früher fehlgeschlagenen Läufe #73 bis #79 wurden in GitHub
    erneut gestartet („Re-run“); jeder deployte seinen alten Commit, zuletzt 4.38 (d435ca4). `.release_history` belegt die Reihenfolge
    075d617 (4.44) → 6514eb8 → 4b9f331 → d8f666f → 6de4972 → d435ca4; die Bereinigung löschte Release 075d617. Datenbank unverändert

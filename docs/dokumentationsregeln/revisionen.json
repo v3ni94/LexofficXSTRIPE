@@ -5,9 +5,9 @@
     "summary": "Kennzahlen mit frei wählbarem Zeitraum (4.43)."
   },
   "entwickler": {
-    "revision": "r13",
+    "revision": "r14",
     "date": "09.09.2026",
-    "summary": "Betrieb: Vorfall Re-run alter Läufe (Downgrade 4.44 auf 4.38) und Downgrade-Schutz in deploy.sh (4.45)."
+    "summary": "Betrieb: Downgrade-Schutz (4.45) und Hinweis, shared/config.php nicht während eines Deployments zu bearbeiten."
   },
   "kunden": {
     "revision": "r4",
