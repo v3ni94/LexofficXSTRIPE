@@ -218,7 +218,10 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
    Anmeldung, Mandantentrennung, Plattformrechte, Websicherheit, Geheimnisse, Warteschlange, Synchronisation, sevdesk,
    Datenschutz, Datenbank, Betrieb, Monitoring) lieferten 72 Rohbefunde. Die sechs als kritisch eingestuften wurden
    einzeln am Code verifiziert, behoben und mit Tests gesichert (siehe Zeile 4.52). Die übrigen 66 Befunde
-   (26 hoch, 33 mittel, 7 niedrig) liegen unbearbeitet vor und sind der nächste Arbeitsvorrat; Schwerpunkte:
+   (26 hoch, 33 mittel, 7 niedrig) liegen vollständig mit Fundstelle, Nachweis, Fehlerfall und Vorschlag in
+   `docs/pruefung-2026-09-09.md` und sind der nächste Arbeitsvorrat. Sie sind einzeln gegengeprüft, aber NICHT
+   adversarial verifiziert (die Prüfrunde wurde wegen Rechenzeit abgebrochen): vor jeder Umsetzung am Code
+   bestätigen. Schwerpunkte:
    Idempotenz und Reihenfolge der Webhooks, Support-Modus mit zu weiten Rechten, Sitzungscookie ohne Secure-Flag
    hinter dem Proxy, setup-check.php ohne Token erreichbar, Migrationen 003 und 022 nicht wiederholbar,
    Alarmierung im überwachten System, Zustimmung zur zahlungspflichtigen Bestellung nur im Frontend.
