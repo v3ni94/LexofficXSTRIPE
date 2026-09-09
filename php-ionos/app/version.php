@@ -8,19 +8,28 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.55';
+const APP_VERSION = '4.56';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
-        ['version' => '4.55', 'date' => '10.09.2026', 'title' => 'Technisches SEO-Audit der Marketingseiten, Prüfer für die interne Verlinkung',
+        ['version' => '4.56', 'date' => '10.09.2026', 'title' => 'Technisches SEO-Audit der Marketingseiten, Prüfer für die interne Verlinkung',
          'entries' => [
             ['type' => 'Neu', 'text' => 'tools/seo-linkcheck.py prüft die interne Verlinkung aller fünf Inhaltsdomains gegen den Dateibestand: defekte interne Links und indexierbare Seiten ohne eingehenden Link sind Fehler, weniger als zwei eingehende Links eine Warnung. Der GitHub-Workflow führt den Prüfer zusammen mit seo-map-check aus, sobald websites/ geändert wurde. Anlass: Die Zusammenführung vom 08.09.2026 hatte eine Seite ohne eingehenden Link zurückgelassen.'],
             ['type' => 'Behoben', 'text' => 'Die verwaiste Seite lexware-office-lastschrifteinzug ist wieder aus der Startseite und aus lexware-sepa-einzug verlinkt. Vier weitere Seiten mit nur einem eingehenden Link haben zusätzliche Verweise aus thematisch passenden Anleitungen und Beiträgen erhalten; jede indexierbare Seite hat jetzt mindestens zwei.'],
             ['type' => 'Behoben', 'text' => 'AGB- und Funktionsseite von lexware-einzug.de trugen denselben Titel und dieselbe Beschreibung wie die Seiten der Hauptdomain. Beide sind jetzt eindeutig; über alle fünf Domains gibt es keine doppelten Titel oder Beschreibungen mehr.'],
             ['type' => 'Geändert', 'text' => 'Das Fußzeilenlogo lädt auf 33 Seiten verzögert (loading lazy, decoding async); das Kopfzeilenlogo bleibt unverändert, weil es im sichtbaren Bereich liegt. Acht ungenutzte SmartEinzug-Logodateien wurden von lexware-einzug.de und lexoffice-einzug.de entfernt, was zugleich die Leadseiten-Entscheidung umsetzt, dort kein SmartEinzug-Logo vorzuhalten.'],
             ['type' => 'Neu', 'text' => 'Vollständiges technisches Audit in docs/seo: Projektkontext, Audit, Seitenmatrix und Weiterleitungsverzeichnis als CSV, Bericht zu strukturierten Daten, inhaltliche Lücken, Prüfliste und Prüfbefehle. Die Kapitel sind in der SEO- und Marketingdokumentation im Adminbereich enthalten.'],
+         ]],
+        ['version' => '4.55', 'date' => '09.09.2026', 'title' => 'Empfehlungen der Gesamtprüfung umgesetzt: Webhooks, Support-Modus, Sicherheit, Nachweise, Alarmierung',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Webhooks: Scheitert die Verarbeitung einer Meldung von Stripe, wird sie jetzt wiederholt statt still verworfen. Bisher wurde jeder Fehler mit „in Ordnung“ quittiert; eine Kündigung oder eine bezahlte Bestellung konnte dadurch dauerhaft unbemerkt bleiben. Doppelte Zustellungen und vertauschte Reihenfolgen erkennt die Anwendung jetzt auch bei den Einzügen.'],
+            ['type' => 'Behoben', 'text' => 'Support-Modus: Im Namen einer Firma lassen sich keine Bankverbindungen mehr ändern, keine Mandate erzeugen oder widerrufen, kein Not-Stopp aufheben, keine Firmendaten mit Geldbezug ändern, das Buchhaltungssystem nicht wechseln und keine Verträge akzeptieren. Die Sperren liegen jetzt in den Funktionen selbst.'],
+            ['type' => 'Behoben', 'text' => 'Sicherheit: Das Sitzungscookie trägt hinter dem Proxy zuverlässig die Kennzeichnung „nur über https“. Die Einrichtungsprüfung findet die Konfiguration des Servers und bleibt ohne Token verschlossen; zusätzlich sperrt der Webserver sie. Vergessene Platzhalter aus der Beispielkonfiguration werden überall abgewiesen.'],
+            ['type' => 'Neu', 'text' => 'Nachweis der zahlungspflichtigen Bestellung: Tarif, Nettopreis, Periode und die Fassung der AGB werden dauerhaft festgehalten (Migration 031). Bisher stand die Zustimmung nur im Protokoll, das nach 90 Tagen gelöscht wird, und die Fassung wurde aus dem Tagesdatum gebildet.'],
+            ['type' => 'Neu', 'text' => 'Alarmierung: Eine Störungsmeldung gilt erst als erledigt, wenn sie wirklich versendet wurde. Zusätzlich kann ein unabhängiger Alarmkanal eingerichtet werden (monitoring.heartbeat_url): Bleibt das regelmäßige Signal aus, weil der Server oder die Hintergrundverarbeitung steht, schlägt ein externer Dienst Alarm.'],
+            ['type' => 'Neu', 'text' => 'Prüfung tools/payment-safety-check.php auf 69 Fälle erweitert; Anleitung zur Zustellbarkeit von E-Mails (SPF, DKIM, DMARC) in der Entwicklerdokumentation.'],
          ]],
         ['version' => '4.54', 'date' => '10.09.2026', 'title' => 'Google-Ads-Tag auch auf smart-einzug.de',
          'entries' => [

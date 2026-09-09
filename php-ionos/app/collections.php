@@ -128,6 +128,12 @@ function collections_pause_reason(string $tenantId): ?string
 /** Not-Stopp der Firma setzen oder aufheben (Inhaber und Administratoren, Audit). */
 function collections_set_paused(string $tenantId, bool $paused, ?array $actor = null, string $reason = ''): void
 {
+    // Not-Stopp AUFHEBEN gibt echte Lastschriften wieder frei und ist damit eine Entscheidung der Firma;
+    // im Support-Modus gesperrt. Das AKTIVIEREN bleibt jederzeit moeglich, auch im Support (Schutzrichtung).
+    // Befund der Gesamtpruefung 09.09.2026.
+    if (!$paused && function_exists('support_mode') && support_mode()) {
+        support_guard();
+    }
     db()->prepare(
         'UPDATE organizations SET collections_paused = ?, collections_paused_at = ' . ($paused ? 'NOW()' : 'NULL') . ' WHERE id = ?'
     )->execute([$paused ? 1 : 0, $tenantId]);

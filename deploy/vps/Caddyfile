@@ -52,6 +52,12 @@
 	@denied_ext path *.sql *.md *.log *.jar *.example.php
 	respond @denied_ext 403
 
+	# Einrichtungspruefung: nur fuer die Erstinstallation auf dem Webhosting gedacht, auf dem VPS nie noetig
+	# (die Konfiguration liegt dort ausserhalb des Release). Zusaetzliche Sperre neben dem Token in der Datei
+	# selbst (Befund der Gesamtpruefung 09.09.2026: das Token-Gate griff auf dem VPS nicht).
+	@setup_check path /setup-check.php
+	respond @setup_check 403
+
 	# Keine Punktdateien oder -ordner ausliefern (.htaccess, .git*, .env*), unabhaengig von der Tiefe.
 	@dotfiles path /.* */.*
 	respond @dotfiles 403

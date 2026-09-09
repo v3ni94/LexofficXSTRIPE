@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         if ($action === 'switch_invoice_source') {
+            support_guard(); // trennt die Verbindung und loescht Zugangsdaten der Firma (Befund 09.09.2026)
             require_once __DIR__ . '/app/invoice_source_switch.php';
             if (($_POST['confirm'] ?? '') !== '1') {
                 throw new RuntimeException('Bitte bestätigen Sie den Wechsel des Buchhaltungssystems.');

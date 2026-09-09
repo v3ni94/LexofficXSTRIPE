@@ -5,9 +5,9 @@
     "summary": "Kennzahlen mit frei wählbarem Zeitraum (4.43)."
   },
   "entwickler": {
-    "revision": "r20",
+    "revision": "r21",
     "date": "09.09.2026",
-    "summary": "Gesamtprüfung 09.09.2026: Sicherungen des Geldflusses, Cursor, Jobfortsetzung, Cutover (4.51)."
+    "summary": "Webhook-Wiederholung, Support-Modus zentral, Cookie und Platzhalter, Bestellnachweis, unabhängiger Alarmkanal (4.55)."
   },
   "kunden": {
     "revision": "r4",
@@ -17,6 +17,6 @@
   "marketing": {
     "revision": "r3",
     "date": "10.09.2026",
-    "summary": "Technisches SEO-Audit, Seitenmatrix, Weiterleitungsverzeichnis, Bericht zu strukturierten Daten, Prüfliste und Prüfbefehle (4.55)."
+    "summary": "Technisches SEO-Audit, Seitenmatrix, Weiterleitungsverzeichnis, Bericht zu strukturierten Daten, Prüfliste und Prüfbefehle (4.56)."
   }
 }

@@ -202,6 +202,28 @@ Einrichtung, kein Nachweis vorhandener DNS-Einträge; im gesamten durchsuchten B
 Eine tatsächliche Prüfung müsste außerhalb dieses Repositorys im DNS der jeweiligen Absenderdomain
 erfolgen (z. B. `dig TXT <domain>` für SPF/DMARC, `dig TXT selector._domainkey.<domain>` für DKIM).
 
+## Zustellbarkeit einrichten und nachweisen (offen, Betreiber)
+
+Ohne SPF, DKIM und DMARC landen Bestätigungs-, Mandats- und Vorabankündigungsmails häufig im Spam. Das ist
+unmittelbar geldwirksam: Ohne angeklickten Mandatslink entsteht kein Mandat und damit kein Einzug. Vorgehen ohne
+erfundene Werte:
+
+1. Beim Mailanbieter (IONOS) die für die Absenderdomain gültigen Werte abrufen: SPF-Eintrag des Anbieters,
+   DKIM-Selektor und öffentlicher Schlüssel, empfohlene DMARC-Regel. Nur diese Werte verwenden.
+2. Die Einträge im DNS der Absenderdomain setzen (TXT für SPF und DMARC, TXT für `<selektor>._domainkey`).
+3. Nachweisen und das Ergebnis mit Datum in `docs/ARBEITSSTAND.md` vermerken:
+
+```bash
+dig +short TXT smart-einzug.de                      # SPF, beginnt mit v=spf1
+dig +short TXT _dmarc.smart-einzug.de               # DMARC, beginnt mit v=DMARC1
+dig +short TXT <selektor>._domainkey.smart-einzug.de # DKIM, beginnt mit v=DKIM1
+```
+
+4. Danach eine Testmail an ein externes Postfach senden (`bin/mail-check.php --send=...`) und im Kopf der
+   empfangenen Nachricht prüfen, dass SPF, DKIM und DMARC mit `pass` bewertet sind.
+
+DMARC zunächst auf `p=none` mit Berichtsadresse setzen und erst nach einigen Tagen ohne Beanstandung verschärfen.
+
 ## Offene Prüfpunkte
 
 1. **Frage:** Soll die Einzugskontingent-Warnung (`plan_quota_warning_maybe_send()`,

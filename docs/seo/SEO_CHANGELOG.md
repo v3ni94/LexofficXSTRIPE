@@ -1,6 +1,6 @@
 # Änderungsverlauf der SEO-Arbeiten
 
-## 10.09.2026, Version 4.55: Technisches Audit und risikoarme Korrekturen
+## 10.09.2026, Version 4.56: Technisches Audit und risikoarme Korrekturen
 
 Grundlage: vollständiges technisches Audit aller 62 Seiten (`SEO_AUDIT.md`). Umgesetzt wurden ausschließlich Änderungen mit geringem Risiko; alles Weitere steht als Vorschlag in `SEO_CONTENT_OPPORTUNITIES.md` und `SEO_SCHEMA_REPORT.md`.
 

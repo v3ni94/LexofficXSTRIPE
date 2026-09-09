@@ -57,7 +57,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [interest_registrations](#interest-registrations) | Vormerkungen (Warteliste) fuer angekuendigte Integrationen, zuerst sevdesk, mit Double-Opt-in (Migration 020, CLAUDE.md-Abschnitt sevdesk). | Marketing / Vorregistrierung | keine (plattformweit je Anbieter und E-Mail-Adresse) | 30 | 1 |
 | [legal_documents](#legal-documents) | Versionierte Rechtsdokumente mit Zustimmungsnachweis (z. B. Auftragsverarbeitungsvertrag nach Art. 28 DSGVO, Verschwiegenheitsvereinbarung nach § 203 StGB), Migration 023. | Recht und Vertraege | keine (plattformweit, ein Dokument gilt fuer alle oder eine Teilmenge von Firmen laut required_for) | 12 | 0 |
 | [legal_acceptances](#legal-acceptances) | Zustimmungsnachweis je Firma und Fassung eines Rechtsdokuments (wer, wann, auf welchem Weg), Migration 023. | Recht und Vertraege | organization_id | 7 | 0 |
-| [consent_records](#consent-records) | Zustimmungsnachweis zu AGB und Datenschutzerklärung je Benutzer (Gegenstand, Fassung, Zeitpunkt UTC, Weg, Quellseite, E-Mail). Ergänzt legal_acceptances (Vertragsdokumente mit Volltext) und interest_registrations (Vorregistrierung). | Konten und Firmen / Rechtsdokumente | organization_id | 9 | 0 |
+| [consent_records](#consent-records) | Zustimmungsnachweis zu AGB und Datenschutzerklärung je Benutzer (Gegenstand, Fassung, Zeitpunkt UTC, Weg, Quellseite, E-Mail). Ergänzt legal_acceptances (Vertragsdokumente mit Volltext) und interest_registrations (Vorregistrierung). | Konten und Firmen / Rechtsdokumente | organization_id | 10 | 0 |
 | [platform_roles](#platform-roles) | Rollen des Adminbereichs (Plattform-Benutzer und Rechte, Version 4.37): je Rolle eine Liste von Berechtigungscodes aus dem festen Katalog PLATFORM_PERMISSIONS in app/platform.php, oder ["*"] für Vollzugriff. Systemrollen admin, support, staff werden mit Migration 027 angelegt. | Konten und Firmen / Plattform-Administration | keine (plattformweit) | 7 | 0 |
 
 ## plans
@@ -1635,7 +1635,8 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | user_email | VARCHAR(255) | nein |  |  |
 | subject | VARCHAR(40) | nein |  | agb \| datenschutz |
 | version | VARCHAR(60) | nein |  | Fassung, z. B. agb-2026-09 |
-| archiviert | in | nein | 'registration' |  |
+| archiviert | in | ja |  |  |
+| method | VARCHAR(20) | nein | 'registration' | registration \| backend \| import |
 | source_url | VARCHAR(255) | ja |  | Seite, deren Text akzeptiert wurde |
 | deren | Text | nein | CURRENT_TIMESTAMP |  |
 

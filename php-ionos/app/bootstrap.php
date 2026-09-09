@@ -102,6 +102,20 @@ function config(string $key, $default = null)
 // Basisadressen und Host-Prüfung
 // ---------------------------------------------------------------------------
 
+/**
+ * Ist dieser Konfigurationswert noch ein Platzhalter aus app/config.example.php?
+ *
+ * Die Platzhalter sind genau 32 Zeichen lang und bestehen damit jede reine Laengenpruefung
+ * (crypto_key ab 32, cron.php ab 16, migrate.php nur nicht leer). Ein vergessener Platzhalter waere
+ * also ein oeffentlich bekanntes Geheimnis gewesen: Verschluesselung mit bekanntem Schluessel,
+ * Cron-Aufruf und Migrationsendpunkt fuer jeden ausloesbar (Befund der Gesamtpruefung 09.09.2026).
+ */
+function config_is_placeholder(?string $value): bool
+{
+    $v = trim((string)$value);
+    return $v === '' || str_contains($v, 'HIER-');
+}
+
 /** Produktname (Standard SmartEinzug). Technische Kennungen bleiben unverändert. */
 function product_name(): string
 {
@@ -408,10 +422,19 @@ enforce_host_rules();
 // stören sich aber nicht daran)
 // ---------------------------------------------------------------------------
 if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli' && !defined('SKIP_SESSION')) {
+    // Secure-Flag: nicht allein an $_SERVER['HTTPS'] haengen. Auf dem VPS endet TLS am Coolify-Proxy, Caddy
+    // spricht HTTP mit PHP; $_SERVER['HTTPS'] entsteht nur, wenn die Anfrage von einer in trusted_proxies
+    // eingetragenen Adresse kommt (Vorgabe: leer). Ohne Eintrag lief das Sitzungscookie deshalb ohne Secure
+    // (Befund der Gesamtpruefung 09.09.2026). Massgeblich ist zusaetzlich, ob die Anwendung selbst unter
+    // https angesprochen wird; das steht unabhaengig vom Proxy in der Konfiguration.
+    $secureCookie = !empty($_SERVER['HTTPS'])
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+        || str_starts_with(strtolower(app_base_url()), 'https://')
+        || str_starts_with(strtolower(admin_base_url()), 'https://');
     session_set_cookie_params([
         'lifetime' => 0,
         'path'     => '/',
-        'secure'   => !empty($_SERVER['HTTPS']),
+        'secure'   => $secureCookie,
         'httponly' => true,
         'samesite' => 'Lax',
     ]);

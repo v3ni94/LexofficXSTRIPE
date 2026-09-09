@@ -19,9 +19,14 @@ header('X-Robots-Tag: noindex');
 // Systeminformationen öffentlich abrufbar sind.
 $preConfig = null;
 $configLoadError = null;
-if (is_file(__DIR__ . '/app/config.php')) {
+// Denselben Pfad wie app/bootstrap.php ermitteln: Auf dem VPS liegt die Konfiguration ausserhalb des
+// Release-Verzeichnisses (Umgebungsvariable SMARTEINZUG_CONFIG). Bis 4.54 suchte diese Seite nur
+// app/config.php neben dem Code; dort gibt es sie auf dem VPS nicht, deshalb griff das Token-Gate nie und
+// die Systempruefung war oeffentlich abrufbar (Befund der Gesamtpruefung 09.09.2026).
+$configPath = (string)(getenv('SMARTEINZUG_CONFIG') ?: (__DIR__ . '/app/config.php'));
+if (is_file($configPath)) {
     // Kodierung prüfen (Windows-Editoren speichern gern mit BOM oder als UTF-16)
-    $raw = (string)file_get_contents(__DIR__ . '/app/config.php');
+    $raw = (string)file_get_contents($configPath);
     if (str_starts_with($raw, "\xEF\xBB\xBF")) {
         $configLoadError = 'Die Datei beginnt mit einer Byte-Order-Markierung (BOM). Bitte im Editor als "UTF-8 ohne BOM" speichern.';
     } elseif (str_starts_with($raw, "\xFF\xFE") || str_starts_with($raw, "\xFE\xFF")) {
@@ -30,7 +35,7 @@ if (is_file(__DIR__ . '/app/config.php')) {
         $configLoadError = 'Die Datei beginnt nicht mit "<?php". Vermutlich wurde eine falsche Datei hochgeladen.';
     } else {
         try {
-            $preConfig = require __DIR__ . '/app/config.php';
+            $preConfig = require $configPath;
             if (!is_array($preConfig)) {
                 $configLoadError = 'Die Datei liefert kein Konfigurations-Array (fehlt "return [" oder das abschließende "];"?).';
             }
@@ -43,8 +48,13 @@ if (is_file(__DIR__ . '/app/config.php')) {
 if (is_array($preConfig) && strlen((string)($preConfig['cron_token'] ?? '')) >= 16 && !str_contains((string)$preConfig['cron_token'], 'HIER-')) {
     if (!hash_equals((string)$preConfig['cron_token'], (string)($_GET['token'] ?? ''))) {
         http_response_code(403);
-        exit('Zugriff nur mit Token: setup-check.php?token=<cron_token aus app/config.php>');
+        exit('Zugriff nur mit Token: setup-check.php?token=<cron_token aus der Konfiguration>');
     }
+} elseif (is_array($preConfig)) {
+    // Konfiguration vorhanden, aber ohne brauchbaren cron_token: Die Seite bleibt trotzdem verschlossen,
+    // sonst waere sie genau dort offen, wo die Einrichtung noch unvollstaendig ist.
+    http_response_code(403);
+    exit('Zugriff nur mit Token. In der Konfiguration ist noch kein brauchbarer cron_token hinterlegt.');
 }
 
 $checks = [];

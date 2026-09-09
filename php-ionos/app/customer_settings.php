@@ -22,6 +22,11 @@ require_once __DIR__ . '/audit.php';
  */
 function set_customer_sepa_debit(string $tenantId, string $customerId, bool $enabled, ?array $actor = null): array
 {
+    // Support-Modus des Plattformbetreibers: gesperrt, unabhaengig von der aufrufenden Seite
+    // (Befund der Gesamtpruefung 09.09.2026: die Sperre lag nur in einzelnen Seiten und fehlte dort teils).
+    if (function_exists('support_mode') && support_mode()) {
+        support_guard();
+    }
     $pdo = db();
 
     $stmt = $pdo->prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?');
@@ -65,6 +70,11 @@ function set_customer_iban(
     ?string $bicRaw,
     ?array $actor = null
 ): array {
+    // Support-Modus des Plattformbetreibers: gesperrt, unabhaengig von der aufrufenden Seite
+    // (Befund der Gesamtpruefung 09.09.2026).
+    if (function_exists('support_mode') && support_mode()) {
+        support_guard();
+    }
     require_once __DIR__ . '/iban.php';
     require_once __DIR__ . '/collections.php';
 
@@ -168,6 +178,11 @@ function set_customer_iban(
 /** IBAN deaktivieren (Historie, Audit). */
 function deactivate_customer_iban(string $tenantId, string $customerId, string $ibanId, string $userId, ?array $actor = null): void
 {
+    // Support-Modus des Plattformbetreibers: gesperrt, unabhaengig von der aufrufenden Seite
+    // (Befund der Gesamtpruefung 09.09.2026: die Sperre lag nur in einzelnen Seiten und fehlte dort teils).
+    if (function_exists('support_mode') && support_mode()) {
+        support_guard();
+    }
     require_once __DIR__ . '/iban.php';
     $pdo = db();
     $stmt = $pdo->prepare('SELECT * FROM customer_ibans WHERE id = ? AND tenant_id = ? AND customer_id = ?');

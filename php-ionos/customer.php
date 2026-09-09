@@ -33,6 +33,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = $_POST['action'] ?? '';
     try {
+        // Support-Modus: Der Plattformbetreiber arbeitet im Namen der Firma. Bankverbindung, Mandate und die
+        // Freigabe des SEPA-Einzugs bleiben der Firma vorbehalten; die Zusage steht im Hinweisbalken und in
+        // docs/entwickler/sicherheit.md. Befund der Gesamtpruefung 09.09.2026: Auf dieser Seite fehlte die
+        // Sperre vollstaendig, eine IBAN liess sich im Support-Modus austauschen.
+        if (in_array($action, [
+            'set_sepa_debit', 'add_iban', 'deactivate_iban', 'create_mandate', 'mark_signed',
+            'upload_mandate_file', 'delete_mandate_file', 'request_mandate_digital',
+            'revoke_mandate_request', 'cancel_mandate',
+        ], true)) {
+            support_guard();
+        }
         if ($action === 'set_sepa_debit') {
             $enabled = ($_POST['sepa_debit_enabled'] ?? '1') === '1';
             set_customer_sepa_debit($tenantId, $customerId, $enabled, $ctx);

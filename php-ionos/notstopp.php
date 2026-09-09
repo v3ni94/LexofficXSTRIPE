@@ -32,6 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             flash_set('success', $msg);
         } elseif ($action === 'resume') {
+            // Support-Modus: Das Aufheben des Not-Stopps gibt echte Lastschriften wieder frei und ist damit
+            // eine geldbewegende Entscheidung der Firma. Aktivieren bleibt jederzeit moeglich (Schutzrichtung).
+            // Befund der Gesamtpruefung 09.09.2026.
+            support_guard();
             if (($_POST['confirm'] ?? '') !== '1') {
                 throw new RuntimeException('Bitte bestätigen Sie die Freigabe der Einzüge.');
             }

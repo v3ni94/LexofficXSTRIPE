@@ -1037,6 +1037,7 @@ CREATE TABLE IF NOT EXISTS consent_records (
     user_email      VARCHAR(255) NOT NULL,
     subject         VARCHAR(40)  NOT NULL,               -- agb | datenschutz | ...
     version         VARCHAR(60)  NOT NULL,               -- Fassung, archiviert in docs/einwilligungen.md
+    details         VARCHAR(255) NULL,                   -- Gegenstand der Zustimmung (z. B. Tarif, Nettopreis, Periode bei einer Bestellung)
     method          VARCHAR(20)  NOT NULL DEFAULT 'registration', -- registration | backend | import
     source_url      VARCHAR(255) NULL,                   -- Seite, deren Text akzeptiert wurde
     accepted_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

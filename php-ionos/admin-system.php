@@ -396,7 +396,17 @@ echo layout_subnav($subnavItems, $tab, 'Systembereiche'); ?>
     <h2>Alarmierung und Testversand</h2>
     <dl class="kv">
         <dt>Empfänger bei bestätigten Störungen</dt><dd><?= $cfg['alert_emails'] ? count($cfg['alert_emails']) . ' konfiguriert' : 'Nicht eingerichtet (monitoring.alert_emails)' ?>; Warnung nach <?= (int)$cfg['alert_fail_streak'] ?> Fehlprüfungen, Entwarnung nach <?= (int)$cfg['alert_ok_streak'] ?> erfolgreichen Prüfungen, je Komponente zusammengefasst.</dd>
-        <dt>Unabhängiger Alarmkanal</dt><dd>Nicht aktiv (vorbereitet, siehe docs/monitoring.md). Ein ausgefallener Mailversand kann nicht über sich selbst alarmieren.</dd>
+        <dt>Unabhängiger Alarmkanal</dt><dd><?php
+            $hbAt = monitor_mark_get('heartbeat_last_at');
+            $hbOk = monitor_mark_get('heartbeat_last_ok');
+            if ($cfg['heartbeat_url'] === '') {
+                echo 'Nicht eingerichtet (monitoring.heartbeat_url). Ein ausgefallener Mailversand oder ein stehender Server kann nicht über sich selbst alarmieren.';
+            } else {
+                echo 'Eingerichtet (Totmannschalter). Letztes Signal: '
+                    . ($hbAt ? e(format_datetime((string)$hbAt)) . ($hbOk === '1' ? ' (angenommen)' : ' (nicht angenommen)') : 'noch keines')
+                    . '. Das Signal bleibt bewusst aus, sobald eine Komponente gestört ist; der externe Dienst schlägt dann Alarm.';
+            }
+        ?></dd>
         <dt>Testversand</dt><dd><?= $cfg['test_mail_to'] !== '' ? 'Feste Testadresse konfiguriert' : 'Nicht eingerichtet (monitoring.test_mail_to)' ?>. Ergebnis ist die Annahme durch den Versandweg, kein Zustellnachweis.</dd>
     </dl>
     <?php if ($canEdit && $cfg['test_mail_to'] !== ''): ?>

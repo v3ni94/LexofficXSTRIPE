@@ -24,8 +24,19 @@ require_once __DIR__ . '/app/stripe.php';
 http_response_code(200);
 header('Content-Type: text/plain');
 
-function webhook_exit(string $reason): void
+/**
+ * Verarbeitung beenden und mit HTTP 200 quittieren (kein Fehler, nur nichts zu tun).
+ *
+ * $freigeben = true fuer Faelle, die spaeter doch verarbeitbar werden koennen (der zugehoerige Einzug ist
+ * noch nicht festgeschrieben, ein Lesezugriff bei Stripe scheiterte). Dann wird die Beanspruchung des
+ * Ereignisses zurueckgenommen, damit eine erneute Zustellung nicht als "bereits verarbeitet" abgewiesen wird.
+ */
+function webhook_exit(string $reason, bool $freigeben = false): void
 {
+    if ($freigeben && !empty($GLOBALS['webhook_event_id'])) {
+        require_once __DIR__ . '/app/webhook_events.php';
+        webhook_event_release('tenant', (string)$GLOBALS['webhook_event_id']);
+    }
     try {
         require_once __DIR__ . '/app/monitor.php';
         $lower = mb_strtolower($reason);
@@ -120,6 +131,27 @@ try {
         webhook_exit("Signaturprüfung fehlgeschlagen für tenant $tenantId");
     }
 
+    // --- Doppelte Zustellung und Reihenfolge (Befund der Gesamtpruefung 09.09.2026) ---
+    // Stripe stellt Ereignisse mehrfach und ohne garantierte Reihenfolge zu. Ohne diese Pruefung konnte ein
+    // verspaetetes payment_intent.processing eine bereits vermerkte Ruecklastschrift oder einen Erfolg
+    // ueberschreiben, und eine doppelte Zustellung fuehrte dieselbe Verarbeitung erneut aus.
+    require_once __DIR__ . '/app/webhook_events.php';
+    $eventId = (string)($event['id'] ?? '');
+    $eventCreated = (int)($event['created'] ?? 0);
+    $objectKey = is_string($paymentIntentHint) && $paymentIntentHint !== ''
+        ? $paymentIntentHint
+        : (is_string($obj['id'] ?? null) ? (string)$obj['id'] : null);
+    if (!webhook_event_claim('tenant', $eventId, (string)$eventType)) {
+        webhook_exit("Ereignis $eventId bereits verarbeitet");
+    }
+    $eventClaimed = $eventId !== '';
+    $GLOBALS['webhook_event_id'] = $eventClaimed ? $eventId : null;
+    if (webhook_event_is_stale('tenant', $objectKey, $eventCreated)) {
+        webhook_event_mark_object('tenant', $eventId, $objectKey, $eventCreated);
+        webhook_exit("veraltetes Ereignis $eventType zu $objectKey ignoriert");
+    }
+    webhook_event_mark_object('tenant', $eventId, $objectKey, $eventCreated);
+
     // --- Digitale Mandatserteilung (Checkout mode=setup) ---
     if ($isCheckout) {
         if (($obj['mode'] ?? '') !== 'setup') {
@@ -148,7 +180,7 @@ try {
         $stripe = _get_stripe_client($tenantId);
         $setupIntent = $stripe->getSetupIntent($setupIntentId);
         if (($setupIntent['status'] ?? '') !== 'succeeded') {
-            webhook_exit("SetupIntent $setupIntentId nicht erfolgreich (" . ($setupIntent['status'] ?? '?') . ')');
+            webhook_exit("SetupIntent $setupIntentId nicht erfolgreich (" . ($setupIntent['status'] ?? '?') . ')', true);
         }
         $granted = mandate_request_grant($req, $stripe, $setupIntent);
         webhook_exit($granted ? "Mandat digital erteilt (Anforderung $requestId)" : "Anforderung $requestId nicht erneut verarbeitet");
@@ -169,7 +201,7 @@ try {
             $collection = $stmt->fetch() ?: null;
         }
         if (!$collection) {
-            webhook_exit("Erstattung ohne zugehörigen Einzug (PI " . ($paymentIntentHint ?? '-') . ", Charge " . ($chargeHint ?? '-') . ")");
+            webhook_exit("Erstattung ohne zugehörigen Einzug (PI " . ($paymentIntentHint ?? '-') . ", Charge " . ($chargeHint ?? '-') . ")", true);
         }
         if ($eventType === 'charge.refunded') {
             // Objekt ist die Charge: amount_refunded ist der Gesamtstand der Erstattungen.
@@ -185,7 +217,7 @@ try {
             try {
                 $charge = _get_stripe_client($tenantId)->getCharge($chargeId);
             } catch (Throwable $e) {
-                webhook_exit('Charge ' . $chargeId . ' nicht abrufbar: ' . $e->getMessage());
+                webhook_exit('Charge ' . $chargeId . ' nicht abrufbar: ' . $e->getMessage(), true);
             }
             if (($charge['payment_intent'] ?? null) && ($collection['stripe_payment_intent_id'] ?? null)
                 && $charge['payment_intent'] !== $collection['stripe_payment_intent_id']) {
@@ -238,7 +270,7 @@ try {
             }
         }
         if (!$collection) {
-            webhook_exit("PaymentCollection nicht gefunden für PI $paymentIntentId");
+            webhook_exit("PaymentCollection nicht gefunden für PI $paymentIntentId", true);
         }
     }
 
@@ -307,7 +339,22 @@ try {
             break;
     }
 } catch (Throwable $e) {
+    // HTTP 500 statt 200: Stripe wiederholt die Zustellung. Die Beanspruchung wird zurueckgenommen, damit die
+    // Wiederholung nicht als "bereits verarbeitet" abgewiesen wird. Bis 4.54 verschluckte dieser Zweig jeden
+    // Fehler mit 200; ein Statuswechsel (Erfolg, Fehlschlag, Ruecklastschrift) konnte dauerhaft ausbleiben.
     error_log('Stripe-Webhook: unerwarteter Fehler: ' . $e->getMessage());
+    if (!empty($eventClaimed)) {
+        webhook_event_release('tenant', (string)($event['id'] ?? ''));
+    }
+    try {
+        require_once __DIR__ . '/app/monitor.php';
+        monitor_event('stripe_webhook', 'fail', null, 'processing', 'instrumented', 300);
+    } catch (Throwable $ignored) {
+        // Diagnose darf die Antwort nicht stoeren
+    }
+    http_response_code(500);
+    echo 'retry';
+    exit;
 }
 
 echo 'ok';
