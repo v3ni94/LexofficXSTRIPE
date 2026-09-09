@@ -5,9 +5,9 @@
     "summary": "Kennzahlen mit frei wählbarem Zeitraum (4.43)."
   },
   "entwickler": {
-    "revision": "r21",
-    "date": "09.09.2026",
-    "summary": "Webhook-Wiederholung, Support-Modus zentral, Cookie und Platzhalter, Bestellnachweis, unabhängiger Alarmkanal (4.55)."
+    "revision": "r22",
+    "date": "10.09.2026",
+    "summary": "Google-Tag der Anwendung: feste Seitenliste, keine Messung im Firmenaccount, Einwilligung als Bedingung (4.57)."
   },
   "kunden": {
     "revision": "r4",
@@ -15,8 +15,8 @@
     "summary": "Abschnitt 8.4: Inhalt der Vorabankündigung, Hinweis zu Stripe-Benachrichtigungen (4.44)."
   },
   "marketing": {
-    "revision": "r3",
+    "revision": "r4",
     "date": "10.09.2026",
-    "summary": "Technisches SEO-Audit, Seitenmatrix, Weiterleitungsverzeichnis, Bericht zu strukturierten Daten, Prüfliste und Prüfbefehle (4.56)."
+    "summary": "Datenschutzerklärung um die Anwendung erweitert, Google-Ads-Kennung auch in app.smart-einzug.de (4.57)."
   }
 }

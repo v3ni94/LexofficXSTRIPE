@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($existingSame) {
-    layout_header('Benutzerkonto vorhanden');
+    layout_header('Benutzerkonto vorhanden', null, ['tracking' => true]);
     ?>
 <div class="auth-wrap">
     <div class="card">
@@ -134,7 +134,7 @@ if ($existingSame) {
 }
 
 $mk = marketing_url();
-layout_header('Firmenaccount registrieren');
+layout_header('Firmenaccount registrieren', null, ['tracking' => true]);
 ?>
 <div class="auth-wrap auth-wide">
     <div class="card">

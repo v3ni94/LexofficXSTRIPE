@@ -713,3 +713,14 @@ a.stat-card.stat-link:focus-visible { outline: 2px solid #E3AC48; outline-offset
 .period-form input[type="date"] { padding: 3px 6px; font-size: 13px; width: auto; }
 .period-current { flex-basis: 100%; }
 .stat-compare { display: block; font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+
+
+/* Einwilligungsbanner der oeffentlichen Seiten (assets/js/consent.js).
+   Wird nur auf Registrierung und Vormerkung eingeblendet, nie im angemeldeten Bereich. */
+.consent { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; padding: 16px; background: rgba(46, 45, 46, 0.96); }
+.consent-box { max-width: 780px; margin: 0 auto; color: #fff; }
+.consent-title { margin: 0 0 6px; font-weight: 600; }
+.consent-text { margin: 0 0 12px; font-size: 0.9rem; line-height: 1.5; }
+.consent-text a { color: #E3AC48; }
+.consent-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 480px) { .consent-actions .btn { flex: 1 1 100%; } }

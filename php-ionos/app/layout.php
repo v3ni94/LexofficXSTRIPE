@@ -58,6 +58,13 @@ function layout_header(string $title, ?array $ctx = null, array $opts = []): voi
     </style>
     <?php endif; ?>
     <script src="<?= e(asset_url('assets/js/app.js')) ?>" defer></script>
+    <?php
+    // Google-Tag nur auf oeffentlichen Seiten ohne Anmeldung und nur nach Einwilligung,
+    // siehe app/tracking.php. Auf angemeldeten Seiten laedt hier nie ein Google-Skript.
+    if (!empty($opts['tracking']) && function_exists('tracking_head_html')) {
+        echo tracking_head_html();
+    }
+    ?>
     <?= $opts['head'] ?? '' ?>
 </head>
 <body class="<?= $useHvmCi ? 'theme-hvm' : 'theme-product' ?>">
@@ -214,6 +221,9 @@ function layout_footer(?array $ctx = null): void
             <?php if ($mk !== ''): ?>
                 · <a href="<?= e($mk) ?>/datenschutz" rel="noopener">Datenschutz</a>
                 · <a href="<?= e($mk) ?>/agb" rel="noopener">AGB</a>
+                <?php if (function_exists('tracking_allowed_for') && tracking_allowed_for((string)($_SERVER['SCRIPT_NAME'] ?? ''))): ?>
+                · <a href="#" data-consent-open>Cookie-Einstellungen</a>
+                <?php endif; ?>
             <?php endif; ?>
         </span>
         <span class="footer-disclaimer">Unabhängige Softwarelösung mit Schnittstelle zu Lexware Office. Kein Produkt der Haufe-Lexware GmbH &amp; Co. KG.</span>
