@@ -155,11 +155,18 @@ if ($client !== null) {
     if (!array_key_exists('automatic_tax', $b) || !empty($b['automatic_tax'])) {
         try {
             $tax = $client->call('GET', '/tax/settings');
-            $status = (string)($tax['status'] ?? '?');
-            printf("   Stripe Tax: Status %s\n", $status);
-            if ($status !== 'active') {
-                $errors[] = sprintf('Stripe Tax ist nicht aktiv (Status %s), automatic_tax ist aber eingeschaltet. Checkout mit automatischer Steuer schlägt dann fehl.', $status);
+            printf("   Stripe Tax: Status %s\n", (string)($tax['status'] ?? '?'));
+            // Registrierungen mitlesen: Ohne aktive Registrierung berechnet Stripe keine Umsatzsteuer,
+            // obwohl Status und automatic_tax in Ordnung aussehen (Vorfall 09.09.2026).
+            $regs = [];
+            try {
+                $regs = (array)$client->call('GET', '/tax/registrations', ['limit' => 100]);
+            } catch (Throwable $e) {
+                $warnings[] = 'Steuerregistrierungen nicht prüfbar (GET /tax/registrations): ' . $e->getMessage();
             }
+            $taxCheck = billing_check_tax($tax, $regs);
+            printf("   Steuerregistrierungen: %s\n", $taxCheck['laender'] ? implode(', ', $taxCheck['laender']) : 'keine aktive');
+            $collect($taxCheck);
         } catch (Throwable $e) {
             $warnings[] = 'Stripe Tax nicht prüfbar (GET /tax/settings): ' . $e->getMessage() . '. Einstellung im Stripe-Dashboard prüfen.';
             echo "   Stripe Tax nicht prüfbar: " . $e->getMessage() . "\n";

@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.46';
+const APP_VERSION = '4.47';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.47', 'date' => '09.09.2026', 'title' => 'Prüfung der Abrechnung erkennt fehlende Steuerregistrierung',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Beim ersten echten Kauf wurden 25,00 EUR statt 29,75 EUR belastet: Stripe berechnet Umsatzsteuer nur für Länder mit aktiver Steuerregistrierung, unabhängig davon, dass Stripe Tax den Status „active“ meldet und die Preise als Nettopreise angelegt sind. Die Prüfung sah das bisher nicht.'],
+            ['type' => 'Neu', 'text' => 'bin/billing-check.php liest die Steuerregistrierungen mit, nennt die Länder und meldet eine fehlende Registrierung als Fehler; eine Registrierung nur im Ausland und eine fehlende Adresse des Hauptsitzes werden ebenfalls beanstandet. Prüfung: tools/billing-setup-check.php.'],
+         ]],
         ['version' => '4.46', 'date' => '09.09.2026', 'title' => 'Preisänderung eines Tarifs erreicht Stripe nur über einen Ersatzpreis',
          'entries' => [
             ['type' => 'Neu', 'text' => 'In Stripe sind Betrag und Periode eines Preises unveränderlich. Die Tarifverwaltung speichert eine Änderung von Betrag oder Periode deshalb nicht mehr, solange dieselbe Stripe-Preis-ID eingetragen bleibt: Sonst zeigte die Anwendung den neuen Betrag, während Stripe auch bei neuen Bestellungen weiter den alten berechnete. Die Meldung nennt die beiden zulässigen Wege.'],

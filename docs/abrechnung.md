@@ -46,6 +46,12 @@ meldet, wie viele Firmen beim Scharfschalten gesperrt würden. Schlüssel ersche
 - Stripe Tax aktivieren und die eigene Steuerregistrierung (Deutschland) eintragen. Die Tarifpreise sind
   Nettopreise; Stripe rechnet die Umsatzsteuer anhand der Rechnungsadresse zusätzlich auf
   (`tax_behavior = exclusive`, `automatic_tax` in der Konfiguration).
+- **Steuerregistrierung eintragen (entscheidend).** Stripe berechnet Umsatzsteuer nur für Länder, in denen
+  eine aktive Registrierung hinterlegt ist. Fehlt sie, bleibt der Checkout beim Nettobetrag, obwohl Stripe Tax
+  den Status „active“ meldet und `automatic_tax` eingeschaltet ist (Vorfall 09.09.2026: erster echter Kauf
+  über 25,00 EUR statt 29,75 EUR). Im Dashboard unter Steuern, Registrierungen die deutsche Registrierung
+  anlegen. `bin/billing-check.php` liest seit 4.47 `/tax/registrations` mit und meldet eine fehlende
+  Registrierung als Fehler.
 - Produktsteuercode im Dashboard prüfen (Software als Dienstleistung). Der Code wird bewusst nicht vom
   Werkzeug gesetzt, damit keine falsche Einstufung entsteht.
 - Kundenportal konfigurieren und speichern; die Anwendung verlinkt es für Rechnungen, Zahlungsmethode

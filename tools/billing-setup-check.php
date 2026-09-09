@@ -222,5 +222,33 @@ preg_match('/\$preisIdBleibt && \$betragOderPeriodeNeu\) \{\s*throw new RuntimeE
 (strpos($adminSrc, '$preisIdBleibt =') < strpos($adminSrc, 'UPDATE plans SET name = ?'))
     ? ok('Prüfung liegt vor dem UPDATE') : bad('Prüfung liegt nach dem UPDATE');
 
+echo "\nH) Stripe Tax: Registrierung entscheidet, ob überhaupt Umsatzsteuer berechnet wird\n";
+$taxAktiv = ['status' => 'active', 'head_office' => ['address' => ['country' => 'DE']]];
+$regDe = ['data' => [['status' => 'active', 'country' => 'DE', 'type' => 'standard']]];
+$regKeine = ['data' => []];
+$r = billing_check_tax($taxAktiv, $regDe);
+($r['errors'] === [] && $r['warnings'] === [] && $r['laender'] === ['DE']) ? ok('aktiv mit deutscher Registrierung: ohne Beanstandung') : bad('DE-Registrierung: ' . implode(' | ', array_merge($r['errors'], $r['warnings'])));
+$r = billing_check_tax($taxAktiv, $regKeine);
+(count($r['errors']) === 1 && str_contains($r['errors'][0], 'keine aktive Steuerregistrierung'))
+    ? ok('aktiv ohne Registrierung: Fehler (Kunde zahlt sonst nur netto)') : bad('fehlende Registrierung nicht als Fehler gemeldet');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'expired', 'country' => 'DE']]]);
+count($r['errors']) === 1 ? ok('abgelaufene Registrierung zählt nicht als aktiv') : bad('abgelaufene Registrierung akzeptiert');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'active', 'country' => 'AT']]]);
+(count($r['errors']) === 0 && count($r['warnings']) === 1 && str_contains($r['warnings'][0], 'DE'))
+    ? ok('Registrierung nur im Ausland: Warnung für das Land des Hauptsitzes') : bad('Auslandsfall: ' . implode(' | ', array_merge($r['errors'], $r['warnings'])));
+$r = billing_check_tax(['status' => 'pending', 'head_office' => ['address' => ['country' => 'DE']]], $regDe);
+(count($r['errors']) === 1 && str_contains($r['errors'][0], 'nicht aktiv')) ? ok('Status pending bleibt ein Fehler') : bad('Status pending nicht gemeldet');
+$r = billing_check_tax(['status' => 'active'], $regDe);
+(bool)array_filter($r['errors'], fn($l) => str_contains($l, 'Hauptsitz')) ? ok('fehlende Adresse des Hauptsitzes ist ein Fehler') : bad('fehlender Hauptsitz nicht gemeldet');
+$r = billing_check_tax($taxAktiv, ['data' => [['status' => 'active', 'country' => 'de'], ['status' => 'active', 'country' => 'DE']]]);
+$r['laender'] === ['DE'] ? ok('Länder werden großgeschrieben und nicht doppelt gezählt') : bad('Länderliste: ' . implode(',', $r['laender']));
+
+$checkSrc = file_get_contents($root . '/php-ionos/bin/billing-check.php');
+(str_contains($checkSrc, "'/tax/registrations'") && str_contains($checkSrc, 'billing_check_tax('))
+    ? ok('bin/billing-check.php liest die Registrierungen und wertet sie aus') : bad('Registrierungsprüfung nicht eingebunden');
+$billingSrc = file_get_contents($root . '/php-ionos/app/billing.php');
+(str_contains($billingSrc, "'automatic_tax'") && str_contains($billingSrc, "'billing_address_collection' => 'required'"))
+    ? ok('Checkout fordert Rechnungsadresse und automatische Steuer an') : bad('Checkout-Parameter für die Steuer fehlen');
+
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail > 0 ? 1 : 0);

@@ -150,6 +150,51 @@ function billing_setup_price_needs_replacement(array $price, array $plan): bool
 }
 
 /**
+ * Stripe Tax pruefen: Ohne aktive Steuerregistrierung berechnet Stripe KEINE Umsatzsteuer, auch wenn
+ * automatic_tax eingeschaltet und der Status "active" ist. Der Kunde zahlt dann den Nettobetrag, die
+ * Steuer fehlt (Vorfall 09.09.2026: 25,00 EUR statt 29,75 EUR beim ersten echten Kauf).
+ *
+ * @param array $settings Antwort von GET /tax/settings
+ * @param array $registrations Antwort von GET /tax/registrations (Feld data)
+ * @return array{errors:string[],warnings:string[],info:string[],laender:string[]}
+ */
+function billing_check_tax(array $settings, array $registrations): array
+{
+    $r = ['errors' => [], 'warnings' => [], 'info' => [], 'laender' => []];
+    $status = (string)($settings['status'] ?? '?');
+    if ($status !== 'active') {
+        $r['errors'][] = sprintf('Stripe Tax ist nicht aktiv (Status %s), automatic_tax ist aber eingeschaltet. Checkout mit automatischer Steuer schlägt dann fehl.', $status);
+    }
+    $head = (array)($settings['head_office']['address'] ?? []);
+    $land = strtoupper((string)($head['country'] ?? ''));
+    if ($land === '') {
+        $r['errors'][] = 'Stripe Tax: keine Adresse des Hauptsitzes hinterlegt. Ohne sie kann Stripe die Steuer nicht bestimmen.';
+    } else {
+        $r['info'][] = 'Stripe Tax: Hauptsitz ' . $land . '.';
+    }
+
+    foreach ((array)($registrations['data'] ?? []) as $reg) {
+        $reg = (array)$reg;
+        if ((string)($reg['status'] ?? '') !== 'active') {
+            continue;
+        }
+        $c = strtoupper((string)($reg['country'] ?? ''));
+        if ($c !== '' && !in_array($c, $r['laender'], true)) {
+            $r['laender'][] = $c;
+        }
+    }
+    if ($r['laender'] === []) {
+        $r['errors'][] = 'Stripe Tax: keine aktive Steuerregistrierung. Stripe berechnet dann KEINE Umsatzsteuer, '
+            . 'der Kunde zahlt nur den Nettobetrag. Im Dashboard unter Steuern, Registrierungen die deutsche '
+            . 'Registrierung eintragen (Stripe-Hilfe: Tax, Registrierungen).';
+    } elseif ($land !== '' && !in_array($land, $r['laender'], true)) {
+        $r['warnings'][] = sprintf('Stripe Tax: für das Land des Hauptsitzes (%s) besteht keine aktive Registrierung (vorhanden: %s). '
+            . 'Inländische Umsätze werden dann ohne Umsatzsteuer berechnet.', $land, implode(', ', $r['laender']));
+    }
+    return $r;
+}
+
+/**
  * Einen aus Stripe gelesenen Preis gegen den Tarif prüfen.
  * @return array{errors:string[],warnings:string[],info:string[]}
  */
