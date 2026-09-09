@@ -5,7 +5,7 @@
  * 2) Anonyme, cookielose Reichweitenmessung (eigener Endpunkt, keine Cookies)
  * 3) Sticky Mobile-CTA-Leiste ein-/ausblenden
  * 4) Einwilligung (Consent), Google Analytics 4 (smart-einzug.de, lexware-einzug.de, lexoffice-einzug.de) und
- *    Google Ads (nur lexware-einzug.de): gtag.js wird erst nach
+ *    Google Ads (lexware-einzug.de und smart-einzug.de): gtag.js wird erst nach
  *    ausdrücklicher Zustimmung geladen. Ohne Zustimmung wird kein Google-Skript
  *    geladen und kein Cookie gesetzt. Entscheidung wird lokal gespeichert
  *    (localStorage, 12 Monate) und kann über "Cookie-Einstellungen" geändert werden.
@@ -24,10 +24,12 @@
     'lexoffice-einzug.de': 'G-9NCFJ1Y4Z3',
     'www.lexoffice-einzug.de': 'G-9NCFJ1Y4Z3'
   };
-  /* Google Ads Conversion-Tag, nur auf lexware-einzug.de, ebenfalls nur nach Einwilligung */
+  /* Google Ads Conversion-Tag auf lexware-einzug.de und smart-einzug.de (Vorgabe Betreiber 10.09.2026), ebenfalls nur nach Einwilligung */
   var ADS_IDS = {
     'lexware-einzug.de': 'AW-18431688840',
-    'www.lexware-einzug.de': 'AW-18431688840'
+    'www.lexware-einzug.de': 'AW-18431688840',
+    'smart-einzug.de': 'AW-18431688840',
+    'www.smart-einzug.de': 'AW-18431688840'
   };
   var CONSENT_KEY = 'le_consent_v1';
   var CONSENT_MAX_AGE = 365 * 24 * 60 * 60 * 1000;
