@@ -96,8 +96,8 @@ mail-ci 46/0, host-separation 25/0, healthcheck-redis 0 Fehler, compose-check 0,
 docs-build-check 0, legal 66/0, interest 133/0, invoice-source 42/0, platform-roles 88/0, sevdesk 129/0,
 scheduler-sync 59/0, release-version 23/0, github-poll 25/0, github-ssh-retry 43/0, migrations 12/0,
 worker-signal 17/0, deploy-runner 35/0, redis-deploy 111/0. `php -l` über alle 31.833 Zeilen PHP ohne Befund.
-Offen: `pricing-check` Abschnitt D (feste Preisangaben auf den Marketingseiten, eigener Arbeitsbereich),
-`seo-map-check` (Datei `docs/seo/keyword-map.json` fehlt).
+Nach dem Merge des Marketingstands (4.51) ebenfalls grün: pricing-check 14/14, site-qa 0 Fehler (2 Warnungen),
+seo-map-check 0 Fehler. Damit läuft `pricing-check` im GitHub-Workflow verbindlich mit, nicht mehr nur als Hinweis.
 
 **Nicht im Repository:** Die in diesem Dokument und in CLAUDE.md genannte E2E-Suite `scratchpad/e2e_saas.php` samt
 `test_monitor.php`, `test_queue.php`, `test_payment_safety.php`, `test_rules_sync.php`, `test_sync_perf.php`,

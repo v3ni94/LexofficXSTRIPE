@@ -214,14 +214,8 @@ jobs:
           lauf bash tools/release-version-check.sh
           lauf bash tools/github-poll-check.sh
           lauf bash tools/github-ssh-retry-check.sh
+          lauf php tools/pricing-check.php
           exit "$status"
-
-      # Nur als Hinweis, nicht blockierend: Abschnitt D beanstandet feste Preisangaben auf den Marketingseiten
-      # (eigener Arbeitsbereich). Ein roter Abschnitt darf das Deployment des Backends nicht anhalten.
-      - name: Preisangaben pruefen (Hinweis)
-        continue-on-error: true
-        shell: bash
-        run: php tools/pricing-check.php
 
       - name: Marketingseiten pruefen (site-qa)
         if: needs.changes.outputs.websites == 'true'
