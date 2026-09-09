@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.57';
+const APP_VERSION = '4.58';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.58', 'date' => '10.09.2026', 'title' => 'Google-Ads-Tag der Anwendung scharf geschaltet',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Auf Anweisung des Betreibers ist die Ads-Kennung AW-18431688840 jetzt als Vorgabe im Code hinterlegt (app/tracking.php, TRACKING_DEFAULT_ADS_ID), wie schon auf den Marketingseiten. Sie wirkt damit mit dem nächsten Deployment, ohne dass jemand shared/config.php auf dem Server ändern muss. Der Block analytics in der Konfiguration ist optional geworden: Er kann die Kennung überschreiben, und analytics.enabled = false schaltet Tag und Banner vollständig ab.'],
+            ['type' => 'Geändert', 'text' => 'Analytics bleibt in der Anwendung aus, weil es für app.smart-einzug.de keine eigene GA4-Property gibt; eine Kennung einer Marketingdomain würde die Messwerte vermischen. Gemessen wird also nur die Ads-Conversion, und weiterhin ausschließlich auf register.php und vormerken.php nach ausdrücklicher Einwilligung. Der Prüfer tools/app-tracking-check.php deckt die Vorgabe mit ab (35 Fälle).'],
+         ]],
         ['version' => '4.57', 'date' => '10.09.2026', 'title' => 'Google-Tag in der Anwendung, begrenzt auf die öffentlichen Registrierungsseiten',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Auf Vorgabe des Betreibers ist die Google-Ads-Kennung jetzt auch in der Anwendung hinterlegt (app/tracking.php, assets/js/consent.js). Sie wirkt ausschließlich auf den öffentlichen Seiten register.php und vormerken.php und dort erst nach ausdrücklicher Einwilligung im Banner; vorher wird kein Google-Skript geladen und kein Cookie gesetzt. Die Kennungen kommen aus der Konfiguration (analytics.enabled, ga_id, ads_id) und werden gegen das von Google vergebene Format geprüft.'],

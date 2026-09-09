@@ -308,12 +308,13 @@ return [
     // vormerken.php und dort erst nach ausdruecklicher Einwilligung im Banner.
     // Angemeldete Seiten bleiben ohne Google-Skript, weil ihre Adressen Kunden- und
     // Rechnungskennungen tragen (Auftragsverarbeitung, siehe app/tracking.php).
-    // 'enabled' false schaltet alles ab, unabhaengig von den Kennungen.
-    'analytics' => [
-        'enabled' => false,
-        'ga_id' => '',            // Format G-XXXXXXXXXX, leer lassen wenn nicht gewuenscht
-        'ads_id' => '',           // Format AW-000000000, leer lassen wenn nicht gewuenscht
-    ],
+    // Der Block ist OPTIONAL: Ohne ihn gilt die eingebaute Ads-Kennung aus app/tracking.php
+    // (TRACKING_DEFAULT_ADS_ID), Analytics bleibt aus. 'enabled' => false schaltet alles ab.
+    // 'analytics' => [
+    //     'enabled' => true,     // false schaltet Tag und Banner vollstaendig ab
+    //     'ga_id' => '',         // Format G-XXXXXXXXXX; fuer app.smart-einzug.de gibt es keine Property
+    //     'ads_id' => '',        // Format AW-000000000; ueberschreibt die eingebaute Kennung
+    // ],
 
     'timezone' => 'Europe/Berlin',
 ];

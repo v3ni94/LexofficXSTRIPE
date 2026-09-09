@@ -24,18 +24,39 @@ declare(strict_types=1);
 const TRACKING_PUBLIC_PAGES = ['register.php', 'vormerken.php'];
 
 /**
- * Konfigurierte Kennungen. Leere Werte bedeuten: kein Tag.
+ * Eingebaute Ads-Kennung (Vorgabe des Betreibers vom 10.09.2026, "scharf schalten").
+ * Sie steht wie auf den Marketingseiten im Code, weil sie ohnehin im Seitenquelltext
+ * sichtbar ist und kein Geheimnis darstellt. Damit wirkt sie mit dem naechsten
+ * Deployment, ohne dass jemand shared/config.php auf dem Server anfassen muss.
+ * Ueberschreiben mit 'analytics.ads_id', abschalten mit 'analytics.enabled' => false.
+ */
+const TRACKING_DEFAULT_ADS_ID = 'AW-18431688840';
+
+/**
+ * Fuer app.smart-einzug.de gibt es KEINE eigene GA4-Property; die Kennungen in der
+ * site.js der Marketingseiten gelten je Marketingdomain. Analytics bleibt in der
+ * Anwendung deshalb aus, solange niemand 'analytics.ga_id' setzt. Nie eine Kennung
+ * einer anderen Domain uebernehmen, die Messwerte waeren sonst vermischt.
+ */
+const TRACKING_DEFAULT_GA_ID = '';
+
+/**
+ * Wirksame Kennungen. Leere Werte bedeuten: kein Tag.
  *
  * @return array{ga: string, ads: string}
  */
 function tracking_ids(): array
 {
     $cfg = config('analytics', []);
-    if (!is_array($cfg) || empty($cfg['enabled'])) {
+    if (!is_array($cfg)) {
+        $cfg = [];
+    }
+    // Der Standard ist AN. Nur ein ausdrueckliches 'enabled' => false schaltet ab.
+    if (array_key_exists('enabled', $cfg) && !$cfg['enabled']) {
         return ['ga' => '', 'ads' => ''];
     }
-    $ga = trim((string)($cfg['ga_id'] ?? ''));
-    $ads = trim((string)($cfg['ads_id'] ?? ''));
+    $ga = trim((string)($cfg['ga_id'] ?? TRACKING_DEFAULT_GA_ID));
+    $ads = trim((string)($cfg['ads_id'] ?? TRACKING_DEFAULT_ADS_ID));
     // Nur die von Google vergebenen Formate zulassen, damit keine fremde Kennung
     // ueber eine falsch gepflegte Konfiguration in die Seite gelangt.
     if ($ga !== '' && !preg_match('/^G-[A-Z0-9]{6,15}$/', $ga)) {

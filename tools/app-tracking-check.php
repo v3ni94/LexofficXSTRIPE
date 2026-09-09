@@ -60,6 +60,20 @@ foreach ($verboten as $seite => $grund) {
 }
 
 echo "\nB) Konfiguration\n";
+$setze([]);
+$ids = tracking_ids();
+($ids['ads'] === TRACKING_DEFAULT_ADS_ID && $ids['ads'] !== '')
+    ? $ok('ohne Konfiguration greift die eingebaute Ads-Kennung (scharf ohne Servereingriff)')
+    : $bad('die eingebaute Ads-Kennung greift nicht: ' . json_encode($ids));
+($ids['ga'] === '')
+    ? $ok('ohne Konfiguration kein Analytics (keine GA4-Property fuer app.smart-einzug.de)')
+    : $bad('Analytics laeuft ohne Konfiguration: ' . json_encode($ids));
+tracking_allowed_for('/register.php')
+    ? $ok('register.php traegt das Tag ohne Servereingriff')
+    : $bad('register.php traegt das Tag nicht');
+tracking_allowed_for('/dashboard.php')
+    ? $bad('dashboard.php traegt das Tag trotz Vorgabe')
+    : $ok('dashboard.php bleibt auch mit Vorgabe ohne Tag');
 $setze(['enabled' => false, 'ga_id' => 'G-8C1W9817PV', 'ads_id' => 'AW-18431688840']);
 (!tracking_allowed_for('/register.php') && tracking_head_html() === '')
     ? $ok("'enabled' false schaltet das Tag vollstaendig ab")
@@ -67,8 +81,8 @@ $setze(['enabled' => false, 'ga_id' => 'G-8C1W9817PV', 'ads_id' => 'AW-184316888
 
 $setze(['enabled' => true, 'ga_id' => '', 'ads_id' => '']);
 (!tracking_allowed_for('/register.php') && tracking_head_html() === '')
-    ? $ok('ohne Kennungen kein Tag')
-    : $bad('ohne Kennungen wird trotzdem ein Tag ausgegeben');
+    ? $ok('ausdruecklich leere Kennungen ergeben kein Tag')
+    : $bad('leere Kennungen erzeugen trotzdem ein Tag');
 
 $setze(['enabled' => true, 'ga_id' => 'UA-12345', 'ads_id' => 'AW-abc']);
 $ids = tracking_ids();
