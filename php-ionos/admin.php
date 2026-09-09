@@ -130,6 +130,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Tarif nicht gefunden.');
             }
             $new = plan_input_from_post($_POST, $old);
+            // Geldschutz (seit 4.46): In Stripe sind Betrag und Intervall eines Preises unveraenderlich. Wird der
+            // Tarifbetrag oder die Periode geaendert, waehrend dieselbe Stripe-Preis-ID stehen bleibt, zeigt die
+            // Anwendung den neuen Betrag an, Stripe berechnet aber weiter den alten, auch bei NEUEN Bestellungen.
+            // Deshalb wird eine solche Aenderung nicht gespeichert. Zwei zulaessige Wege: Ersatzpreis anlegen
+            // (bin/billing-setup-stripe.php --tarif=CODE --preis-neu --apply) oder die Preis-ID hier leeren, dann
+            // ist der Tarif nicht mehr buchbar, bis ein passender Preis eingetragen ist.
+            $preisIdBleibt = (string)($new['stripe_price_id'] ?? '') !== ''
+                && (string)($new['stripe_price_id'] ?? '') === (string)($old['stripe_price_id'] ?? '');
+            $betragOderPeriodeNeu = (int)$new['price_cents'] !== (int)$old['price_cents']
+                || (int)$new['period_days'] !== (int)$old['period_days'];
+            if ($preisIdBleibt && $betragOderPeriodeNeu) {
+                throw new RuntimeException(
+                    'Betrag oder Periode geändert, aber die Stripe-Preis-ID bleibt gleich (' . $old['stripe_price_id'] . '). '
+                    . 'Stripe-Preise sind unveränderlich; Kunden würden weiter den alten Betrag zahlen. Entweder auf dem '
+                    . 'Server einen Ersatzpreis anlegen (bin/billing-setup-stripe.php --tarif=' . $code . ' --preis-neu --apply) '
+                    . 'und danach hier speichern, oder die Preis-ID in diesem Formular leeren (der Tarif ist dann nicht buchbar).'
+                );
+            }
             $pdo->prepare(
                 'UPDATE plans SET name = ?, price_cents = ?, period_days = ?, max_collections_per_period = ?, max_users = ?,
                         unlimited_users = ?, user_invites_enabled = ?, active = ?, public_visible = ?, sort_order = ?, stripe_price_id = ?

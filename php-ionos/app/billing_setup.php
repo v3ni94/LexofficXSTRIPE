@@ -103,7 +103,7 @@ function billing_setup_product_params(array $plan): array
  *    wäre also niedriger als der Tarifpreis.
  *  - lookup_key macht die Anlage wiederholbar (siehe billing_plan_lookup_key)
  */
-function billing_setup_price_params(array $plan, string $productId): array
+function billing_setup_price_params(array $plan, string $productId, bool $transferLookupKey = false): array
 {
     $days = (int)($plan['period_days'] ?? 0);
     if ($days < 1) {
@@ -112,7 +112,7 @@ function billing_setup_price_params(array $plan, string $productId): array
     if ((int)($plan['price_cents'] ?? 0) < 1) {
         throw new InvalidArgumentException('Tarif ' . (string)($plan['code'] ?? '?') . ': price_cents fehlt oder ist ungültig.');
     }
-    return [
+    $params = [
         'product'      => $productId,
         'currency'     => 'eur',
         'unit_amount'  => (int)$plan['price_cents'],
@@ -122,6 +122,31 @@ function billing_setup_price_params(array $plan, string $productId): array
         'recurring'    => ['interval' => 'day', 'interval_count' => $days, 'usage_type' => 'licensed'],
         'metadata'     => ['lexsepa_plan' => (string)$plan['code']],
     ];
+    if ($transferLookupKey) {
+        // Ersatzpreis nach einer Preisaenderung: Der lookup_key ist je Konto eindeutig und muss vom alten
+        // Preis uebernommen werden, sonst lehnt Stripe die Anlage ab. Der alte Preis behaelt seinen Betrag
+        // (in Stripe unveraenderlich) und rechnet laufende Abonnements weiter ab, bis diese umgestellt sind.
+        $params['transfer_lookup_key'] = 'true';
+    }
+    return $params;
+}
+
+/**
+ * Weicht ein in Stripe vorhandener Preis so vom Tarif ab, dass er durch einen NEUEN Preis ersetzt werden
+ * muss? Das ist genau bei Betrag, Periode und Waehrung der Fall (in Stripe unveraenderliche Felder);
+ * ein archivierter oder falsch besteuerter Preis ist ein anderer Fall und wird nicht hier entschieden.
+ */
+function billing_setup_price_needs_replacement(array $price, array $plan): bool
+{
+    $amount = array_key_exists('unit_amount', $price) && $price['unit_amount'] !== null ? (int)$price['unit_amount'] : null;
+    if ($amount === null || $amount !== (int)($plan['price_cents'] ?? 0)) {
+        return true;
+    }
+    if (strtolower((string)($price['currency'] ?? '')) !== 'eur') {
+        return true;
+    }
+    $days = is_array($price['recurring'] ?? null) ? billing_recurring_days((array)$price['recurring']) : null;
+    return $days === null || $days !== (int)($plan['period_days'] ?? 0);
 }
 
 /**

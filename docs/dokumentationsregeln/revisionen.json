@@ -5,9 +5,9 @@
     "summary": "Kennzahlen mit frei wählbarem Zeitraum (4.43)."
   },
   "entwickler": {
-    "revision": "r14",
+    "revision": "r15",
     "date": "09.09.2026",
-    "summary": "Betrieb: Downgrade-Schutz (4.45) und Hinweis, shared/config.php nicht während eines Deployments zu bearbeiten."
+    "summary": "Abrechnung: weitere Tarife anlegen, Preisänderung nur über Ersatzpreis (4.46); Betriebshinweise 4.45."
   },
   "kunden": {
     "revision": "r4",

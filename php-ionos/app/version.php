@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.45';
+const APP_VERSION = '4.46';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.46', 'date' => '09.09.2026', 'title' => 'Preisänderung eines Tarifs erreicht Stripe nur über einen Ersatzpreis',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'In Stripe sind Betrag und Periode eines Preises unveränderlich. Die Tarifverwaltung speichert eine Änderung von Betrag oder Periode deshalb nicht mehr, solange dieselbe Stripe-Preis-ID eingetragen bleibt: Sonst zeigte die Anwendung den neuen Betrag, während Stripe auch bei neuen Bestellungen weiter den alten berechnete. Die Meldung nennt die beiden zulässigen Wege.'],
+            ['type' => 'Neu', 'text' => 'bin/billing-setup-stripe.php --tarif=CODE --preis-neu legt den Ersatzpreis auf demselben Produkt an, übernimmt den Wiedererkennungsschlüssel, trägt die neue Preis-ID ein und archiviert den alten Preis. Laufende Abonnements behalten ihren Preis; die Anpassung von Bestandsverträgen bleibt eine kaufmännische Entscheidung. Ablauf und weitere Tarife: docs/abrechnung.md.'],
+         ]],
         ['version' => '4.45', 'date' => '09.09.2026', 'title' => 'Deployment: Schutz gegen Downgrade durch erneut gestartete alte Läufe',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Am 08.09.2026 wurden ältere, einst fehlgeschlagene GitHub-Läufe erneut gestartet; jeder Re-run deployt den Commit seines Laufs, sodass Produktion mit grünen Läufen von 4.44 auf 4.38 zurückfiel. Die Datenbank blieb unverändert. Dieses Release rollt den aktuellen Stand wieder aus.'],

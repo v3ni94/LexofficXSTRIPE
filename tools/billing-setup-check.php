@@ -186,5 +186,41 @@ preg_match("/\('unlimited_start',\s*'UNLIMITED START',\s*(\d+),\s*(\d+)/", $sche
     ? ok('Tarif UNLIMITED START im Schema: 2500 Cent je 28 Tage (Grundlage der Preisprüfung)')
     : bad('Tarifzeile im Schema nicht wie erwartet gefunden');
 
+echo "\nG) Preisänderung: Ersatzpreis statt stiller Abweichung\n";
+$planNeu = ['code' => 'unlimited_start', 'name' => 'UNLIMITED START', 'price_cents' => 3000, 'period_days' => 28,
+            'active' => 1, 'public_visible' => 1, 'stripe_price_id' => 'price_123'];
+billing_setup_price_needs_replacement($goodPrice, $planNeu) ? ok('geänderter Betrag verlangt einen neuen Preis') : bad('Betragsänderung nicht erkannt');
+!billing_setup_price_needs_replacement($goodPrice, $plan) ? ok('unveränderter Tarif verlangt keinen neuen Preis') : bad('unnötiger Ersatzpreis');
+$periodeNeu = ['code' => 'unlimited_start', 'name' => 'UNLIMITED START', 'price_cents' => 2500, 'period_days' => 30,
+               'active' => 1, 'public_visible' => 1, 'stripe_price_id' => 'price_123'];
+billing_setup_price_needs_replacement($goodPrice, $periodeNeu) ? ok('geänderte Periode verlangt einen neuen Preis') : bad('Periodenänderung nicht erkannt');
+$fremdWaehrung = ['object' => 'price', 'id' => 'price_x', 'active' => true, 'currency' => 'chf', 'unit_amount' => 2500,
+                  'type' => 'recurring', 'tax_behavior' => 'exclusive', 'recurring' => ['interval' => 'day', 'interval_count' => 28, 'usage_type' => 'licensed']];
+billing_setup_price_needs_replacement($fremdWaehrung, $plan) ? ok('fremde Währung verlangt einen neuen Preis') : bad('Währung nicht erkannt');
+$archiviert = ['object' => 'price', 'id' => 'price_a', 'active' => false, 'currency' => 'eur', 'unit_amount' => 2500,
+               'type' => 'recurring', 'tax_behavior' => 'exclusive', 'recurring' => ['interval' => 'day', 'interval_count' => 28, 'usage_type' => 'licensed']];
+!billing_setup_price_needs_replacement($archiviert, $plan) ? ok('archivierter Preis mit passendem Betrag ist kein Ersatzfall (eigener Fehlerfall)') : bad('Archivierung falsch eingeordnet');
+
+$ersatz = billing_setup_price_params($planNeu, 'prod_1', true);
+($ersatz['transfer_lookup_key'] ?? '') === 'true' ? ok('Ersatzpreis übernimmt den lookup_key (transfer_lookup_key)') : bad('transfer_lookup_key fehlt');
+($ersatz['lookup_key'] === 'lexsepa_unlimited_start' && $ersatz['unit_amount'] === 3000 && $ersatz['tax_behavior'] === 'exclusive')
+    ? ok('Ersatzpreis: gleicher lookup_key, neuer Betrag, weiterhin Nettopreis') : bad('Ersatzpreis-Parameter falsch');
+!array_key_exists('transfer_lookup_key', billing_setup_price_params($plan, 'prod_1'))
+    ? ok('Erstanlage ohne transfer_lookup_key') : bad('Erstanlage überträgt einen lookup_key');
+
+$tool = file_get_contents($root . '/php-ionos/bin/billing-setup-stripe.php');
+str_contains($tool, "--preis-neu gilt immer genau einem Tarif") ? ok('--preis-neu nur zusammen mit --tarif') : bad('--preis-neu ohne Tarifbindung');
+(strpos($tool, 'billing_setup_store_price_id($code, (string)$new[\'id\'])') < strpos($tool, "'/prices/' . rawurlencode(\$oldId), ['active' => 'false']"))
+    ? ok('erst neue Preis-ID eintragen, dann den alten Preis archivieren') : bad('Reihenfolge Eintragen/Archivieren');
+str_contains($tool, 'Laufende Abonnements behalten den alten') ? ok('Hinweis auf laufende Abonnements in der Ausgabe') : bad('Hinweis auf Bestandsabos fehlt');
+
+$adminSrc = file_get_contents($root . '/php-ionos/admin.php');
+(str_contains($adminSrc, '$preisIdBleibt') && str_contains($adminSrc, '$betragOderPeriodeNeu') && str_contains($adminSrc, 'Stripe-Preise sind unveränderlich'))
+    ? ok('Adminbereich lehnt Preisänderung bei gleichbleibender Stripe-Preis-ID ab') : bad('Adminschutz fehlt');
+preg_match('/\$preisIdBleibt && \$betragOderPeriodeNeu\) \{\s*throw new RuntimeException/', $adminSrc)
+    ? ok('Adminschutz wirft ab, bevor UPDATE plans ausgeführt wird') : bad('Adminschutz greift nicht vor dem Speichern');
+(strpos($adminSrc, '$preisIdBleibt =') < strpos($adminSrc, 'UPDATE plans SET name = ?'))
+    ? ok('Prüfung liegt vor dem UPDATE') : bad('Prüfung liegt nach dem UPDATE');
+
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail > 0 ? 1 : 0);

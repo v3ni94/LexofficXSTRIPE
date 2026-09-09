@@ -118,6 +118,58 @@ anlegen (`--apply --live-bestaetigt`, die zweite Bestätigung ist bei Live-Schl�
 Live-Konto einrichten, `bin/billing-check.php` ohne Fehler, dann `billing.enabled = true` setzen. Danach
 sofort erneut prüfen und den Hinweisbalken sowie eine Bestellung mit einem eigenen Account kontrollieren.
 
+## Weitere Tarife anlegen
+
+Tarife entstehen ausschließlich in der Tabelle `plans` (Adminbereich, Tarife). Ausgeliefert werden neben
+UNLIMITED START vier inaktive Entwürfe (BASIC, PLUS, PRO, UNLIMITED) mit Platzhalterbeträgen aus der
+Erstinstallation. Reihenfolge für einen weiteren Tarif:
+
+1. Betrag, Periode, Grenzen und Bezeichnung im Adminbereich festlegen. Erst danach in Stripe anlegen: Betrag
+   und Intervall eines Stripe-Preises sind unveränderlich, ein zu früh angelegter Preis muss später ersetzt
+   werden.
+2. Produkt und Preis anlegen. Ohne `--tarif` erfasst das Werkzeug nur buchbare Tarife (`active = 1` und
+   `public_visible = 1`); ein noch nicht öffentlicher Tarif wird gezielt benannt:
+
+```bash
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=plus
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=plus --apply --live-bestaetigt
+```
+
+3. Tarif im Adminbereich auf aktiv und öffentlich setzen. Ab zwei aktiven, öffentlichen Tarifen zeigt die
+   Anwendung Upsell und Tarifwechsel (`billing_change_plan`, `plan_upgrade_candidate`).
+4. `bin/billing-check.php` ohne Fehler.
+
+## Preis eines Tarifs ändern
+
+**Eine Preisänderung wird nicht automatisch an Stripe weitergegeben.** In Stripe sind Betrag und Intervall
+eines Preises unveränderlich. Bliebe dieselbe Preis-ID stehen, zeigte die Anwendung den neuen Betrag, Stripe
+berechnete aber weiter den alten, auch bei NEUEN Bestellungen. Deshalb gilt seit 4.46:
+
+- Der Adminbereich **speichert** eine Änderung von Betrag oder Periode **nicht**, solange dieselbe
+  Stripe-Preis-ID eingetragen bleibt, und nennt die beiden zulässigen Wege.
+- Der Ersatzpreis entsteht mit `--preis-neu`: neuer Preis auf demselben Produkt mit dem Betrag aus `plans`,
+  Übernahme des `lookup_key` (`transfer_lookup_key`), Eintrag der neuen Preis-ID, danach Archivierung des
+  alten Preises. Schlägt ein Schritt fehl, bleibt der alte, funktionierende Preis eingetragen.
+
+```bash
+# 1. Neuen Betrag im Adminbereich eintragen scheitert noch (gewollt). Zuerst den Ersatzpreis anlegen:
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=unlimited_start --preis-neu
+docker compose ... exec -T php php bin/billing-setup-stripe.php --tarif=unlimited_start --preis-neu --apply --live-bestaetigt
+docker compose ... exec -T php php bin/billing-check.php
+```
+
+Reihenfolge in der Praxis: Betrag zuerst in `plans` ändern ist nicht möglich, solange die Preis-ID steht.
+Entweder die Preis-ID im Formular leeren (Tarif ist dann bis zur Neuanlage nicht buchbar) und anschließend
+`bin/billing-setup-stripe.php --tarif=CODE --apply` aufrufen, oder den Betrag über die Datenbank
+setzen und sofort `--preis-neu` ausführen. Der zweite Weg lässt keinen Zeitraum entstehen, in dem der Tarif
+nicht buchbar ist.
+
+**Laufende Abonnements behalten den alten Preis.** Stripe rechnet bestehende Abonnements über den Preis ab,
+mit dem sie angelegt wurden, auch wenn dieser archiviert ist. Eine Preisanpassung gegenüber Bestandskunden
+ist eine kaufmännische und vertragliche Entscheidung (Ankündigungsfrist, Zustimmung, AGB) und geschieht
+bewusst nicht automatisch; sie wird in Stripe je Abonnement oder über einen Tarifwechsel in der Anwendung
+vollzogen.
+
 ## Rücknahme
 
 `billing.enabled = false` schaltet die Abrechnung sofort wieder aus: Keine Sperre, kein Hinweisbalken,
@@ -126,7 +178,8 @@ Stripe-Dashboard gekündigt werden. Die Preis-IDs in `plans` bleiben erhalten.
 
 ## Laufender Betrieb
 
-- `bin/billing-check.php` nach jeder Änderung an Tarifen, Schlüsseln oder Webhooks ausführen.
+- `bin/billing-check.php` nach jeder Änderung an Tarifen, Schlüsseln oder Webhooks ausführen. Es meldet einen
+  abweichenden Betrag als Fehler (`Stripe berechnet X, der Tarif nennt Y`).
 - Das Feld `environment` in `shared/config.php` sollte auf `'prod'` stehen. In Produktion ist es aus
   Rückwärtskompatibilität nicht zwingend (`bin/healthcheck.php --expect-env=prod` beanstandet sein Fehlen
   nicht), für Staging dagegen Pflicht. Gesetzt ist es eindeutiger und die Prüfberichte nennen die Umgebung.
