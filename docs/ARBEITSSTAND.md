@@ -1,6 +1,7 @@
 # Arbeitsstand SmartEinzug (LexofficXSTRIPE)
 
-Stand: 08.09.2026, Branch `claude/setup-lexsepa-monorepo-v5ZcZ`. Diese Datei ist der Einstieg für die Fortsetzung der Arbeit
+Stand: 10.09.2026, Prüfbranch `audit/2026-09-09-gesamtpruefung` (lokal, NICHT gepusht; Basis 66c59d5 = 4.58 auf
+`claude/setup-lexsepa-monorepo-v5ZcZ`). Übergabe des Audits: `docs/audit/HANDOVER.md`. Diese Datei ist der Einstieg für die Fortsetzung der Arbeit
 und wird bei jedem Arbeitspaket aktualisiert. Sie enthält keine Zugangsdaten. Angaben, die nicht aus Code, Tests oder
 Git-Historie belegbar sind, tragen den Vermerk „unsicher“.
 
@@ -41,6 +42,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 | Version | Inhalt | Commit | Push |
 |---|---|---|---|
+| 4.59 | Gesamtaudit (Rollen A bis F): 26 behobene Befunde in Geldfluss (Klärung mit Listenprüfung, Zeitzonen der Fristen, hängende submitting-Einzüge, Schutzschaltung als Zurückstellung, Webhook 500 statt 200, decline_code, Terminierung mit eigenen Einzügen, Storno, Erstattung, Währung, Backfill-Sperre, benannte Firmensperre), Sicherheit (C-01 Selbsterhöhung, C-02, C-03, C-05, C-06, C-09, C-10), Synchronisation (B-01, B-02, B-03, B-05, B-07, B-08, B-09, A-12), Betrieb (D-02, D-06, D-07, D-08, D-09), Oberfläche (E-01, E-02, E-04, E-05, E-07); Migration 032; Test-Schutz und Suiten collections/sync/auth/test-guard; `docs/audit/` | lokal im Prüfbranch | NEIN (Vorgabe des Auftrags: kein Push, kein Deployment) |
 | 4.11 bis 4.16 | Statusdatei, Worker-Signalmodell, Docker-CLI-Probe, Billing-Werkzeuge, Betriebsdoku im Admin, Scheduler-Waisen, verlinkte Kennzahlen, Statusseite | bis bdd42e0 | ja, produktiv aktiv (Deploy 22 s, alle Container healthy laut Serverausgabe) |
 | 4.17 | Deployjob robust gegen SSH-Netzaussetzer: `vps-ssh-retry.sh`, `vps-trigger.sh` (triggered/rejected/unclear/unreachable), Frischeprüfung des Endstatus (`JOB_STARTED_AT`), `.release-complete`-Nachweis in `deploy.sh`, Bereinigung unvollständiger Releases, Fristen je Schritt, Doku | 54caa37 | ja (Workflow-Lauf dadurch ausgelöst, Ergebnis nicht einsehbar: GitHub-API in der Session gesperrt) |
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
@@ -134,6 +136,12 @@ rot werden. Nicht getestet: der Web-Teil von `vormerken.php` (Origin-Prüfung, g
 und die statischen Prüfungen; die E2E-Suite `scratchpad/e2e_saas.php` wurde in dieser Session nicht ausgeführt (unsicher,
 ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv).
 
+## 4b. Gesamtlauf 10.09.2026 nach 4.59 (Prüfbranch)
+
+Alle 27 Bestandssuiten grün (Zahlen unverändert bis auf platform-roles 97/0 und payment-safety 69/0 mit angepasstem Fall B), neu:
+test-guard 18/0, collections 126/0 (mit SLOW; vorher gegen 66c59d5: 85/36), sync 17/0 (vorher 9/8), auth 13/0, migrations 12/0
+mit 032, `php -l` fehlerfrei. Leistungsmessung lokal (`tools/perf-probe.sh`): `docs/audit/PERFORMANCE_REPORT.md`.
+
 ## 5. Bekannte Fehler und Risiken
 
 - GitHub-Workflow-Lauf #51 (4.14) scheiterte an einem SSH-Timeout; Ursache extern (Netz/Firewall), behoben durch
@@ -198,6 +206,14 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 - Cron: Der VPS braucht keine Cron-Jobs (Abdeckungsmatrix `docs/vps/06-betrieb.md`); der alte IONOS-Cronjob ist vom
   Betreiber zu löschen (Cutover-Checkliste Punkt 12). Konfigurationsänderungen ohne Deployment erfordern
   `deploy/vps/scripts/restart-workers.sh`.
+
+## 5a. Offene Befunde des Audits (nicht behoben, Priorität laut `docs/audit/AUDIT_REPORT.md`)
+
+B-04 dasselbe Lexware-Konto in zwei Firmenaccounts (Doppel-Einzug über Firmengrenze, P1, braucht Identitätsfeld aus
+`/profile` und Entscheidung des Betreibers), B-06 Altrechnungen nach Wechsel des Buchhaltungssystems (P2, braucht Spalte
+Herkunftssystem), A-13 Import-Übernahme ohne Neuprüfung (P3), E-03 Stripe-Rohtexte (P2), E-06 Bestätigung ohne Cache (P2),
+C-04, C-08, C-11, C-12 (P3), D-10 bis D-18 (P3). Betreiberaufgaben: `trusted_proxies` setzen, Datenbankzeitzone feststellen,
+Migration 032 auf Staging prüfen (RELEASE_CHECKLIST.md).
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 

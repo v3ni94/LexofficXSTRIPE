@@ -122,6 +122,37 @@ Der Mandanten-Webhook hatte bis dahin überhaupt keine Erkennung doppelter Zuste
 Reihenfolgeschutz; ein verspätetes `payment_intent.processing` konnte einen bereits vermerkten Erfolg oder eine
 Rücklastschrift überschreiben.
 
+## 5g. Befunde des Gesamtaudits vom 10.09.2026 (Version 4.59)
+
+Vollständige Liste mit Belegen, Tests und Reststatus: `docs/audit/AUDIT_REPORT.md`; Invarianten und Zustandsmaschine:
+`docs/audit/PAYMENT_INVARIANTS.md`; Nachweis: `bash tools/collections-check.sh` (126 Fälle, vorher 36 rot).
+
+- Klärung unklarer Versuche (A-01, A-04): Freigabe eines Versuchs erst nach Ablauf der Frist UND wenn Suchindex und die
+  konsistente Liste der PaymentIntents seit dem Versuch keinen Treffer liefern (`_stripe_find_payment_intent_by_attempt_key`).
+  Das Alter eines Versuchs kommt aus `TIMESTAMPDIFF` in SQL (`age_seconds`), nicht aus PHP-Zeit gegen `created_at`; die
+  Datenbankzeitzone ist nicht dokumentiert und in der Prüfumgebung bewusst UTC. Der Webhook trägt auch Versuche im Zustand
+  `failed` nach, wenn Stripe einen PaymentIntent mit dem Schlüssel meldet.
+- Hängende Einzüge (A-02): `_collections_release_stuck_submitting()` läuft bei jeder Klärung, auch ohne offene Versuche.
+- Webhook (A-03, A-07, A-08, C-07): `webhook_retry()` antwortet mit 500 bei Datenbankfehlern der Firmenzuordnung und bei
+  Ereignissen zu Versuchen jünger als 300 Sekunden ohne Einzugsdatensatz (Stripe wiederholt); `payment_failed` mit
+  Mandats- oder Kontocode setzt `requires_review` (Liste `STRIPE_SEPA_RETRYABLE_DECLINE_CODES`, Annahme, gegen die
+  Stripe-Dokumentation zu prüfen); Objektschlüssel der Reihenfolgeprüfung je Firma.
+- Anbieterstörung (A-06, D-01): `CircuitOpenException`, `JobRetryException` und HTTP 429 werden in `_execute_with_attempt`
+  zu `CollectionDeferredException`; der nie gesendete Versuch wird verworfen (`collection_attempt_discard`). Die
+  Schutzschaltung wirkt in jedem Aufrufpfad, weil `app/stripe.php` jetzt `app/queue.php` lädt.
+- Terminierung und Status (A-09, A-10, A-11, A-14): Währung EUR erzwungen; eigene Einzüge werden immer abgezogen (Basis
+  frischer Restbetrag oder Rechnungsbetrag); Fehlermarkierung nur aus `submitting`/`scheduled`; Storno über
+  `_invoice_restore_collection_status`; Vollerstattung öffnet auch `in_collection`.
+- Nachtrag (A-05, D-04): `_attempt_backfill_collection` serialisiert je Rechnung (`FOR UPDATE` auf `invoices`) und fängt
+  die Eindeutigkeitsverletzung des neuen Index `uq_collection_tenant_pi` (Migration 032, nur ohne Dubletten) ab.
+- Sperre (D-05): `submit_collection` serialisiert über `GET_LOCK('smarteinzug_collect_<firma>', 30)`, nicht mehr über
+  `FOR UPDATE` auf `organizations`; der Not-Stopp wartet nicht auf einen hängenden Stripe-Aufruf (Nachweis
+  `COLLECTIONS_CHECK_SLOW=1`, Abschnitt 7e).
+- Antwort ohne JSON (eigener Befund): Nur ein klarer 4xx-Status ohne JSON gilt als Ablehnung; 2xx ohne lesbaren Inhalt ist
+  ein unbekanntes Ergebnis.
+- Offen (nicht behoben, dokumentiert): dasselbe Lexware-Konto in zwei Firmenaccounts (B-04), Altrechnungen nach Wechsel
+  des Buchhaltungssystems (B-06), Stripe-Rohtexte in Meldungen (E-03), Import-Übernahme ohne Neuprüfung (A-13).
+
 ## 5b. Alarmierung
 
 `app/alerts.php`, reine Leseprüfungen, keine Geheimnisse in der Ausgabe.

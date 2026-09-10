@@ -12,6 +12,7 @@ require_once __DIR__ . '/app/queue.php';
 $ctx = require_login();
 $tenantId = (string)$ctx['org_id'];
 header('Cache-Control: no-store');
+header('X-Sync-Fragment: 1'); // Kennzeichen fuer assets/js/app.js: nur Antworten dieses Endpunkts werden eingebettet (E-01)
 if (($_GET['format'] ?? '') === 'json') {
     header('Content-Type: application/json; charset=utf-8');
     $state = sync_state_get($tenantId);

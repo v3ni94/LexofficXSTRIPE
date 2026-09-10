@@ -33,8 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash_set('info', 'Bitte warten Sie eine Minute, bevor Sie die E-Mail erneut anfordern.');
     } else {
         $_SESSION['verify_mail_sent_at'] = time();
-        flash_set(email_verification_send($user) ? 'success' : 'error',
-            email_verification_send($user) ? 'Bestätigungs-E-Mail wurde erneut gesendet.' : 'E-Mail konnte nicht gesendet werden.');
+        // Einmal senden (Befund C-10: zwei Aufrufe erzeugten zwei Mails, der erste Link war sofort ungueltig)
+        $sent = email_verification_send($user);
+        flash_set($sent ? 'success' : 'error',
+            $sent ? 'Bestätigungs-E-Mail wurde erneut gesendet.' : 'E-Mail konnte nicht gesendet werden.');
     }
     redirect('verify-email.php');
 }

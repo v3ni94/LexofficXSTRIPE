@@ -539,7 +539,10 @@ function _attempts_db(): PDO
  */
 function collection_attempts_open(string $tenantId, ?string $invoiceId = null): array
 {
-    $sql = "SELECT a.*, COALESCE(i.voucher_number, '(Rechnung nicht mehr vorhanden)') AS voucher_number
+    // age_seconds aus der Datenbank: PHP (Europe/Berlin) und Datenbank (Sitzungszeitzone unbekannt, oft UTC) duerfen fuer die
+    // Fristen der Klaerung nicht gemischt werden (Befund A-04/D-03: Versuche erschienen bis zu zwei Stunden aelter).
+    $sql = "SELECT a.*, COALESCE(i.voucher_number, '(Rechnung nicht mehr vorhanden)') AS voucher_number,
+                   TIMESTAMPDIFF(SECOND, a.created_at, NOW()) AS age_seconds
             FROM collection_attempts a
             LEFT JOIN invoices i ON i.id = a.invoice_id AND i.tenant_id = a.tenant_id
             WHERE a.tenant_id = ?
@@ -610,10 +613,26 @@ function collection_attempt_finish(string $attemptId, string $status, ?string $p
     try {
         _attempts_db()->prepare(
             'UPDATE collection_attempts SET status = ?, stripe_payment_intent_id = COALESCE(?, stripe_payment_intent_id),
-                    error_text = ?, collection_id = COALESCE(?, collection_id) WHERE id = ?'
-        )->execute([$status, $paymentIntentId, $error !== null ? mb_substr($error, 0, 2000) : null, $collectionId, $attemptId]);
+                    error_text = ?, collection_id = COALESCE(?, collection_id)
+             WHERE id = ? AND (status <> \'succeeded\' OR ? <> \'failed\')' // ein bei Stripe bestaetigter Versuch wird nie zu "failed"
+        )->execute([$status, $paymentIntentId, $error !== null ? mb_substr($error, 0, 2000) : null, $collectionId, $attemptId, $status]);
     } catch (Throwable $e) {
         error_log('Versuchsjournal konnte nicht aktualisiert werden (' . $attemptId . '): ' . $e->getMessage());
+    }
+}
+
+/**
+ * Versuch verwerfen, der Stripe nie erreicht hat (Schutzschaltung, Ratenbegrenzung vor dem Netzwerkaufruf, HTTP 429):
+ * Es kann kein PaymentIntent entstanden sein, deshalb bleibt kein Journaleintrag zurueck und die Versuchsnummer
+ * (Bestandteil des Idempotenzschluessels) wird nicht verbraucht. Nur fuer Versuche im Zustand pending.
+ */
+function collection_attempt_discard(string $attemptId): void
+{
+    try {
+        _attempts_db()->prepare("DELETE FROM collection_attempts WHERE id = ? AND status = 'pending' AND stripe_payment_intent_id IS NULL")
+            ->execute([$attemptId]);
+    } catch (Throwable $e) {
+        error_log('Versuch konnte nicht verworfen werden (' . $attemptId . '): ' . $e->getMessage());
     }
 }
 
@@ -643,7 +662,19 @@ function _execute_with_attempt(
             $stripe, $tenantId, $invoice, $customer, $iban, $mandate, $description, $amountCents,
             $attempt['idempotency_key']
         );
+    } catch (CircuitOpenException | JobRetryException $e) {
+        // Schutzschaltung offen oder Ratenbegrenzung erschoepft, geworfen VOR dem Netzwerkaufruf: Stripe hat nichts erhalten.
+        // Kein fachlicher Fehlschlag, sondern Zurueckstellung (Befund A-06/D-01: terminierte Einzuege wurden bei offener
+        // Schutzschaltung endgueltig auf "fehlgeschlagen" gesetzt). Der Versuch wird geschlossen; der naechste bekommt einen
+        // neuen Schluessel, weil kein PaymentIntent entstanden sein kann.
+        collection_attempt_discard($attempt['id']);
+        throw new CollectionDeferredException('Stripe ist vorübergehend nicht erreichbar oder gedrosselt; der Einzug wurde zurückgestellt (' . $e->getMessage() . ').');
     } catch (StripeException $e) {
+        if ($e->httpStatus === 429 && !$e->outcomeUnknown) {
+            // Ratenbegrenzung des Stripe-Kontos: Anfrage abgewiesen, nichts angelegt, spaeter erneut.
+            collection_attempt_discard($attempt['id']);
+            throw new CollectionDeferredException('Stripe hat die Anfrage wegen Ratenbegrenzung abgewiesen; der Einzug wurde zurückgestellt.');
+        }
         if ($e->outcomeUnknown) {
             collection_attempt_finish($attempt['id'], 'unknown', null, $e->getMessage());
             throw new CollectionUnknownOutcomeException(
@@ -671,6 +702,30 @@ function _execute_with_attempt(
  * wird ein neuer Einzug angelegt. Gibt die Einzugs-ID oder null zurück.
  */
 function _attempt_backfill_collection(string $tenantId, array $attempt, array $pi): ?string
+{
+    // Pruefen-dann-Einfuegen je Rechnung serialisieren (Befund A-05/D-04): Webhook und Klaerungsjob koennen denselben
+    // PaymentIntent gleichzeitig nachtragen; ohne Zeilensperre entstanden zwei Einzugsdatensaetze zu einer Lastschrift.
+    $pdo = db();
+    $own = !$pdo->inTransaction();
+    if ($own) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $pdo->prepare('SELECT id FROM invoices WHERE id = ? AND tenant_id = ? FOR UPDATE')->execute([$attempt['invoice_id'], $tenantId]);
+        $id = _attempt_backfill_collection_locked($tenantId, $attempt, $pi);
+        if ($own) {
+            $pdo->commit();
+        }
+        return $id;
+    } catch (Throwable $e) {
+        if ($own && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+function _attempt_backfill_collection_locked(string $tenantId, array $attempt, array $pi): ?string
 {
     $pdo = db();
     $stmt = $pdo->prepare('SELECT id FROM payment_collections WHERE stripe_payment_intent_id = ? AND tenant_id = ?');
@@ -722,17 +777,27 @@ function _attempt_backfill_collection(string $tenantId, array $attempt, array $p
         return null;
     }
     $collectionId = uuid4();
-    $pdo->prepare(
-        'INSERT INTO payment_collections
-            (id, tenant_id, invoice_id, mandate_id, customer_iban_id, amount_cents, currency,
-             stripe_payment_intent_id, stripe_status, description, note, submitted_at, created_by_user_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    )->execute([
-        $collectionId, $tenantId, $invoice['id'], $mandate['id'], $mandate['customer_iban_id'],
-        $amount, 'EUR', $pi['id'], 'processing',
-        mb_substr((string)($pi['description'] ?? ''), 0, 140), $note,
-        date('Y-m-d H:i:s', (int)($pi['created'] ?? time())), $attempt['created_by_user_id'],
-    ]);
+    try {
+        $pdo->prepare(
+            'INSERT INTO payment_collections
+                (id, tenant_id, invoice_id, mandate_id, customer_iban_id, amount_cents, currency,
+                 stripe_payment_intent_id, stripe_status, description, note, submitted_at, created_by_user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        )->execute([
+            $collectionId, $tenantId, $invoice['id'], $mandate['id'], $mandate['customer_iban_id'],
+            $amount, 'EUR', $pi['id'], 'processing',
+            mb_substr((string)($pi['description'] ?? ''), 0, 140), $note,
+            date('Y-m-d H:i:s', (int)($pi['created'] ?? time())), $attempt['created_by_user_id'],
+        ]);
+    } catch (PDOException $e) {
+        if ((string)$e->getCode() !== '23000') {
+            throw $e;
+        }
+        // UNIQUE (tenant_id, stripe_payment_intent_id), Migration 032: ein anderer Prozess war schneller, vorhandenen Datensatz liefern
+        $stmt = $pdo->prepare('SELECT id FROM payment_collections WHERE stripe_payment_intent_id = ? AND tenant_id = ?');
+        $stmt->execute([$pi['id'], $tenantId]);
+        return (string)$stmt->fetchColumn() ?: null;
+    }
     $pdo->prepare("UPDATE invoices SET collection_status = 'in_collection' WHERE id = ?")->execute([$invoice['id']]);
     return $collectionId;
 }
@@ -771,17 +836,23 @@ function collection_attempts_resolve(string $tenantId, ?array $actor = null): ar
     $result = ['checked' => 0, 'recovered' => 0, 'cleared' => 0, 'pending' => 0];
     $open = collection_attempts_open($tenantId);
     if (!$open) {
+        // Befund A-02: Ein beanspruchter Einzug (submitting) OHNE Versuch (harter Abbruch vor dem Journal) blieb fuer immer
+        // haengen, weil die Rueckstellung nur nach der Schleife lief und diese Funktion ohne offene Versuche nie so weit kam.
+        _collections_release_stuck_submitting($tenantId);
         return $result;
     }
     $stripe = _get_stripe_client($tenantId);
     foreach ($open as $a) {
+        if (isset($GLOBALS['lexsepa_progress_tick']) && is_callable($GLOBALS['lexsepa_progress_tick'])) {
+            ($GLOBALS['lexsepa_progress_tick'])(); // Heartbeat je Versuch (Worker, Befund D-06)
+        }
         // Kooperativer Abbruchpunkt VOR jedem Stripe-Aufruf (Worker-Shutdown, app/worker_signals.php): Ein
         // begonnener Versuch (Lesen bei Stripe, dann Nachbuchen) wird nie mitten im Ablauf unterbrochen.
         if (function_exists('worker_stop_requested') && worker_stop_requested()) {
             $result['stopped'] = true;
             break;
         }
-        $ageSec = time() - (int)strtotime($a['created_at']);
+        $ageSec = isset($a['age_seconds']) ? (int)$a['age_seconds'] : time() - (int)strtotime($a['created_at']);
         if ($a['status'] === 'pending' && $ageSec < 15 * 60) {
             $result['pending']++;
             continue;
@@ -793,6 +864,12 @@ function collection_attempts_resolve(string $tenantId, ?array $actor = null): ar
             } else {
                 $found = $stripe->searchPaymentIntents(sprintf("metadata['attempt_key']:'%s'", $a['idempotency_key']));
                 $pi = $found['data'][0] ?? null;
+                if (!$pi && $a['status'] !== 'succeeded' && $ageSec >= 10 * 60) {
+                    // Der Suchindex ist nur eventuell konsistent. Vor der Freigabe eines Versuchs (danach waere ein NEUER
+                    // Schluessel und damit eine zweite Lastschrift moeglich) die konsistente Liste seit dem Versuch pruefen
+                    // (Befund A-01). Ein Fehler dieser Abfrage laesst den Versuch offen (Throwable weiter unten).
+                    $pi = _stripe_find_payment_intent_by_attempt_key($stripe, (string)$a['idempotency_key'], time() - $ageSec - 3600);
+                }
             }
         } catch (Throwable $e) {
             error_log('Klärung Versuch ' . $a['id'] . ' fehlgeschlagen: ' . $e->getMessage());
@@ -803,7 +880,8 @@ function collection_attempts_resolve(string $tenantId, ?array $actor = null): ar
             collection_attempt_recover($tenantId, $a, $pi, $actor);
             $result['recovered']++;
         } elseif ($a['status'] !== 'succeeded' && $ageSec >= 10 * 60) {
-            collection_attempt_finish($a['id'], 'failed', null, 'Kein PaymentIntent bei Stripe gefunden (Klärung ' . date('d.m.Y H:i') . ')');
+            collection_attempt_finish($a['id'], 'failed', null, 'Kein PaymentIntent bei Stripe gefunden (Klärung ' . date('d.m.Y H:i') . ', Suche und Liste)');
+            app_log('warning', 'Unklarer Einzugsversuch nach Klärung freigegeben', ['company_id' => $tenantId, 'attempt_id' => $a['id'], 'invoice_id' => $a['invoice_id'], 'amount_cents' => (int)$a['amount_cents']]);
             audit_log($tenantId, $actor, 'collection_attempt_cleared', 'invoice', $a['invoice_id'], [
                 'attempt_id' => $a['id'], 'amount_cents' => (int)$a['amount_cents'],
             ]);
@@ -812,9 +890,40 @@ function collection_attempts_resolve(string $tenantId, ?array $actor = null): ar
             $result['pending']++;
         }
     }
-    // Terminierte Einzüge, die beim Einreichen hängen geblieben sind (Status submitting,
-    // kein offener Versuch mehr), zurück auf terminiert setzen.
-    $pdo->prepare(
+    _collections_release_stuck_submitting($tenantId);
+    return $result;
+}
+
+/**
+ * PaymentIntent zu einem Versuchsschluessel ueber die konsistente Listen-API suchen (nicht ueber den Suchindex). Liest
+ * seitenweise ab $createdGte (hoechstens 20 Seiten je 100). Liefert null, wenn kein Treffer; wirft bei API-Fehlern.
+ */
+function _stripe_find_payment_intent_by_attempt_key(StripeClient $stripe, string $attemptKey, int $createdGte): ?array
+{
+    $after = null;
+    for ($page = 0; $page < 20; $page++) {
+        $res = $stripe->listPaymentIntents(max(0, $createdGte), $after, 100);
+        foreach ((array)$res['data'] as $pi) {
+            if ((string)($pi['metadata']['attempt_key'] ?? '') === $attemptKey) {
+                return $pi;
+            }
+            $after = (string)($pi['id'] ?? $after);
+        }
+        if (empty($res['has_more']) || !$res['data']) {
+            break;
+        }
+    }
+    return null;
+}
+
+/**
+ * Terminierte Einzuege, die beim Einreichen haengen geblieben sind (Status submitting, kein PaymentIntent, kein offener
+ * Versuch, seit 15 Minuten unveraendert), zurueck auf terminiert setzen. Laeuft bei jeder Klaerung, auch ohne offene Versuche.
+ */
+function _collections_release_stuck_submitting(string $tenantId): int
+{
+    $pdo = db();
+    $st = $pdo->prepare(
         "UPDATE payment_collections pc
          SET pc.stripe_status = 'scheduled', pc.note = CONCAT_WS(' ', pc.note, 'Einreichung abgebrochen, erneut terminiert')
          WHERE pc.tenant_id = ? AND pc.stripe_status = 'submitting' AND pc.stripe_payment_intent_id IS NULL
@@ -826,8 +935,9 @@ function collection_attempts_resolve(string $tenantId, ?array $actor = null): ar
                                       AND NOT EXISTS (SELECT 1 FROM payment_collections p2
                                                       WHERE p2.tenant_id = a.tenant_id
                                                         AND p2.stripe_payment_intent_id = a.stripe_payment_intent_id))))"
-    )->execute([$tenantId]);
-    return $result;
+    );
+    $st->execute([$tenantId]);
+    return $st->rowCount();
 }
 
 // ---------------------------------------------------------------------------
@@ -887,7 +997,7 @@ function collection_apply_refund(string $tenantId, array $collection, int $refun
         $pdo->prepare(
             "UPDATE invoices
              SET requires_review = 1, review_reason = ?,
-                 collection_status = CASE WHEN ? = 1 AND collection_status = 'collected' THEN 'open' ELSE collection_status END
+                 collection_status = CASE WHEN ? = 1 AND collection_status IN ('collected', 'in_collection') THEN 'open' ELSE collection_status END
              WHERE id = ? AND tenant_id = ?"
         )->execute([mb_substr($reason, 0, 255), $full ? 1 : 0, $collection['invoice_id'], $tenantId]);
     }
@@ -1099,6 +1209,10 @@ function _load_and_validate(string $tenantId, string $invoiceId): array
             'Rechnung kann nicht eingezogen werden (Status in Lexware Office: ' . $invoice['lexoffice_status'] . ').'
         );
     }
+    if (strtoupper((string)($invoice['currency'] ?: 'EUR')) !== 'EUR') {
+        // Stripe-Aufruf ist fest auf EUR; eine Fremdwaehrungsrechnung wuerde mit ihrem Nennbetrag als EUR eingezogen (Befund A-09).
+        throw new CollectionException('Rechnung ' . $invoice['voucher_number'] . ' ist nicht in EUR (' . $invoice['currency'] . '); SEPA-Einzug nicht möglich.');
+    }
     if (!$invoice['customer_id']) {
         throw new CollectionException('Rechnung hat keinen verknüpften Kunden.');
     }
@@ -1244,25 +1358,41 @@ function submit_collection(string $tenantId, string $invoiceId, ?string $schedul
         audit_log($tenantId, $actor, 'support_access_blocked', 'invoice', $invoiceId, ['aktion' => 'submit_collection']);
         throw new CollectionException('Im Support-Modus sind Einzüge gesperrt. Diese Aktion muss die Firma selbst ausführen.');
     }
-    // Firmenzeile sperren: verhindert doppelte Einzüge derselben Rechnung und
-    // Kontingentüberschreitungen durch parallele Anfragen. Die Sperre gilt bis
-    // zum Commit am Ende (auch der Stripe-Aufruf liegt darin, er dauert nur
-    // wenige Sekunden).
+    // Einzuege je Firma serialisieren (verhindert doppelte Einzuege derselben Rechnung und Kontingentueberschreitungen
+    // durch parallele Anfragen) ueber eine BENANNTE Sperre statt FOR UPDATE auf der Firmenzeile: Die Zeilensperre hielt
+    // waehrend der externen Aufrufe (Lexware, Stripe, im Stoerungsfall Minuten) auch den Not-Stopp und jede andere
+    // Aenderung an organizations auf (Befund D-05). Die Rechnungszeile bleibt in der Transaktion gesperrt.
+    $lockName = 'smarteinzug_collect_' . $tenantId;
+    $lockHeld = false;
     $ownTransaction = !$pdo->inTransaction();
     if ($ownTransaction) {
         $pdo->beginTransaction();
     }
     try {
-        $pdo->prepare('SELECT id FROM organizations WHERE id = ? FOR UPDATE')->execute([$tenantId]);
+        $lk = $pdo->prepare('SELECT GET_LOCK(?, 30)');
+        $lk->execute([$lockName]);
+        if ((int)$lk->fetchColumn() !== 1) {
+            throw new CollectionException('Für diese Firma wird gerade ein anderer Einzug verarbeitet. Bitte in wenigen Sekunden erneut versuchen.');
+        }
+        $lockHeld = true;
         $collectionId = _submit_collection_locked($tenantId, $invoiceId, $scheduledDate, $actor, $options);
         if ($ownTransaction) {
             $pdo->commit();
         }
+        $pdo->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
+        $lockHeld = false;
         $GLOBALS['lexsepa_open_amount_pending'] = [];
         return $collectionId;
     } catch (Throwable $e) {
         if ($ownTransaction && $pdo->inTransaction()) {
             $pdo->rollBack();
+        }
+        if ($lockHeld) {
+            try {
+                $pdo->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
+            } catch (Throwable $ignored) {
+                // Sperre endet spaetestens mit der Verbindung
+            }
         }
         if (!$pdo->inTransaction()) {
             _persist_pending_open_amounts();
@@ -1373,25 +1503,36 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
 
     if ($scheduledDate !== null) {
         // --- Terminiert oder vorgemerkt: noch kein Stripe-Aufruf; der Restbetrag wird bei der Einreichung live geprüft ---
+        // Restbetrag ohne API-Aufruf: frischer gespeicherter Wert, sonst der Rechnungsbetrag als Obergrenze. Eigene laufende
+        // oder erfolgreiche Einzuege werden IMMER abgezogen (Befund A-10: eine bereits eingezogene Rechnung war ohne frischen
+        // Restbetrag erneut ueber den vollen Betrag terminierbar; erst der Faelligkeitslauf wies sie ab und setzte die
+        // bezahlte Rechnung auf "fehlgeschlagen").
         $cached = invoice_open_amount_cached($invoice);
-        if ($cached !== null && $cached < $amountCents) {
-            $own = invoice_own_collections_cents($tenantId, $invoice['id']);
-            $rest = $cached - $own;
-            if ($rest <= 0) {
-                throw new CollectionException(sprintf(
-                    'Für Rechnung %s bleibt nach eigenen Einzügen kein Restbetrag (offen laut Lexware Office %s).',
-                    $invoice['voucher_number'], format_eur_cents($cached)
-                ));
-            }
+        $basis = $cached ?? $amountCents;
+        $own = invoice_own_collections_cents($tenantId, $invoice['id']);
+        $rest = $basis - $own;
+        if ($rest <= 0) {
+            throw new CollectionException(sprintf(
+                'Für Rechnung %s bleibt nach eigenen Einzügen über %s kein Restbetrag (%s %s).',
+                $invoice['voucher_number'], format_eur_cents($own),
+                $cached !== null ? 'offen laut Lexware Office' : 'Rechnungsbetrag', format_eur_cents($basis)
+            ));
+        }
+        if ($rest < $amountCents) {
             if ($confirmed !== $rest) {
                 throw new CollectionException(sprintf(
-                    'Für Rechnung %s ist laut Lexware Office nur noch ein Restbetrag von %s offen (Rechnungsbetrag %s). '
+                    'Für Rechnung %s ist nur noch ein Restbetrag von %s offen (Rechnungsbetrag %s%s). '
                     . 'Bitte die Terminierung über den Restbetrag ausdrücklich bestätigen.',
-                    $invoice['voucher_number'], format_eur_cents($rest), format_eur_cents($amountCents)
+                    $invoice['voucher_number'], format_eur_cents($rest), format_eur_cents($amountCents),
+                    $own > 0 ? ', eigene Einzüge ' . format_eur_cents($own) : ''
                 ));
             }
-            $note = sprintf('Restbetrag laut Lexware Office %s vom %s (Rechnungsbetrag %s)',
-                format_eur_cents($cached), format_datetime($invoice['open_amount_fetched_at']), format_eur_cents($amountCents));
+            $note = $cached !== null
+                ? sprintf('Restbetrag laut Lexware Office %s vom %s (Rechnungsbetrag %s%s)', format_eur_cents($cached),
+                    format_datetime($invoice['open_amount_fetched_at']), format_eur_cents($amountCents),
+                    $own > 0 ? ', eigene Einzüge ' . format_eur_cents($own) : '')
+                : sprintf('Restbetrag nach eigenen Einzügen %s (Rechnungsbetrag %s, eigene Einzüge %s)',
+                    format_eur_cents($rest), format_eur_cents($amountCents), format_eur_cents($own));
             $amountCents = $rest;
         }
 
@@ -1496,11 +1637,25 @@ function cancel_scheduled_collection(string $tenantId, string $collectionId, ?ar
     if ($upd->rowCount() !== 1) {
         throw new CollectionException('Einzug wird gerade eingereicht und kann nicht mehr storniert werden.');
     }
-    $pdo->prepare("UPDATE invoices SET collection_status = 'open' WHERE id = ?")
-        ->execute([$collection['invoice_id']]);
+    // Rechnungsstatus aus den verbleibenden Einzuegen ableiten statt pauschal "open" (Befund A-10: eine bezahlte Rechnung
+    // wurde nach dem Storno eines nachtraeglich terminierten Einzugs als offen angezeigt).
+    _invoice_restore_collection_status($tenantId, (string)$collection['invoice_id']);
     audit_log($tenantId, $actor, 'collection_cancelled', 'collection', $collectionId, [
         'amount_cents' => (int)$collection['amount_cents'], 'queued_immediate' => (int)($collection['queued_immediate'] ?? 0) === 1,
     ]);
+}
+
+/** collection_status einer Rechnung aus ihren Einzuegen ableiten (succeeded > processing/submitting > scheduled > open). */
+function _invoice_restore_collection_status(string $tenantId, string $invoiceId): void
+{
+    db()->prepare(
+        "UPDATE invoices SET collection_status = CASE
+            WHEN EXISTS (SELECT 1 FROM payment_collections p WHERE p.invoice_id = invoices.id AND p.tenant_id = invoices.tenant_id AND p.stripe_status = 'succeeded') THEN 'collected'
+            WHEN EXISTS (SELECT 1 FROM payment_collections p WHERE p.invoice_id = invoices.id AND p.tenant_id = invoices.tenant_id AND p.stripe_status IN ('processing', 'submitting')) THEN 'in_collection'
+            WHEN EXISTS (SELECT 1 FROM payment_collections p WHERE p.invoice_id = invoices.id AND p.tenant_id = invoices.tenant_id AND p.stripe_status = 'scheduled') THEN 'scheduled'
+            ELSE 'open' END
+         WHERE id = ? AND tenant_id = ?"
+    )->execute([$invoiceId, $tenantId]);
 }
 
 function reschedule_collection(string $tenantId, string $collectionId, string $newDate, ?array $actor = null): void
@@ -1792,6 +1947,9 @@ function process_scheduled_collections(?string $tenantId = null, ?array $actor =
     $skipIds = array_flip(array_map('strval', (array)($options['skip_ids'] ?? [])));
     $result['handled_ids'] = [];
     foreach ($due as $index => $collection) {
+        if (isset($GLOBALS['lexsepa_progress_tick']) && is_callable($GLOBALS['lexsepa_progress_tick'])) {
+            ($GLOBALS['lexsepa_progress_tick'])(); // Heartbeat je Einzug (Worker, Befund D-06)
+        }
         // Kooperativer Abbruchpunkt: Zeitbudget erreicht ODER der Worker wurde zum Beenden aufgefordert
         // (app/worker_signals.php). Nur ZWISCHEN zwei Einzuegen, nie mitten in einem Stripe-Aufruf; die
         // verbleibenden Einzuege uebernimmt die eingeplante Fortsetzung (siehe job_collections_due()).
@@ -1832,7 +1990,7 @@ function process_scheduled_collections(?string $tenantId = null, ?array $actor =
         } catch (Throwable $e) {
             error_log('Terminierte Lastschrift ' . $collection['id'] . ' fehlgeschlagen: ' . $e->getMessage());
             $pdo->prepare(
-                "UPDATE payment_collections SET stripe_status = 'failed', failure_reason = ? WHERE id = ?"
+                "UPDATE payment_collections SET stripe_status = 'failed', failure_reason = ? WHERE id = ? AND stripe_status IN ('submitting', 'scheduled')"
             )->execute([$e->getMessage(), $collection['id']]);
             $pdo->prepare("UPDATE invoices SET collection_status = 'failed' WHERE id = ?")
                 ->execute([$collection['invoice_id']]);
@@ -1898,6 +2056,9 @@ function _submit_single_scheduled(array $collection): void
         }
         if (!in_array($invoice['lexoffice_status'], ['open', 'overdue'], true)) {
             throw new RuntimeException('Rechnung ist in Lexware Office nicht mehr offen (' . $invoice['lexoffice_status'] . ')');
+        }
+        if (strtoupper((string)($invoice['currency'] ?: 'EUR')) !== 'EUR') {
+            throw new RuntimeException('Rechnung ist nicht in EUR (' . $invoice['currency'] . '); SEPA-Einzug nicht möglich');
         }
 
         $stmt = $pdo->prepare('SELECT * FROM sepa_mandates WHERE id = ? AND tenant_id = ?');

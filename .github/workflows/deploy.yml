@@ -216,6 +216,7 @@ jobs:
           lauf bash tools/github-poll-check.sh
           lauf bash tools/github-ssh-retry-check.sh
           lauf php tools/pricing-check.php
+          lauf bash tools/test-guard-check.sh
           exit "$status"
 
       - name: Marketingseiten pruefen (site-qa)

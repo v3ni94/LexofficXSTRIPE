@@ -197,6 +197,24 @@ function platform_role_assert(string $code): array
  * bereits (z. B. Inhaber einer Firma), wird nur die Rolle gesetzt und eine Hinweismail geschickt.
  * Ohne aktiven Mailversand wird die Einladung verweigert: ein Passwortlink darf nie im Frontend erscheinen.
  */
+/** Vollzugriff des Handelnden: Spalte is_superadmin oder Systemrolle admin. */
+function platform_actor_is_admin(array $actor): bool
+{
+    return (int)($actor['is_superadmin'] ?? 0) === 1 || (string)($actor['platform_role'] ?? '') === 'admin';
+}
+
+/**
+ * Rollen, deren Vergabe dem Vollzugriff gleichkommt: admin selbst und jede Rolle mit Benutzerverwaltung oder allen Rechten.
+ * Befund C-01 (Audit 10.09.2026): Ein Benutzer mit users.manage konnte ein Zweitkonto als admin einladen oder seiner eigenen
+ * Rolle alle Rechte geben. Solche Rollen vergibt und bearbeitet nur ein Administrator.
+ */
+function platform_role_is_privileged(array $role): bool
+{
+    $perms = (array)($role['permissions'] ?? []);
+    return ($role['code'] ?? '') === 'admin' || in_array('*', $perms, true) || in_array('users.manage', $perms, true)
+        || array_filter($perms, static fn($p): bool => is_string($p) && str_starts_with($p, 'docs.')) !== [];
+}
+
 function platform_user_invite(array $actor, string $email, ?string $firstName, ?string $lastName, string $roleCode): array
 {
     require_once __DIR__ . '/mailer.php';
@@ -208,6 +226,9 @@ function platform_user_invite(array $actor, string $email, ?string $firstName, ?
         throw new RuntimeException('Bitte eine gültige E-Mail-Adresse angeben.');
     }
     $role = platform_role_assert($roleCode);
+    if (platform_role_is_privileged($role) && !platform_actor_is_admin($actor)) {
+        throw new RuntimeException('Die Rolle Administrator sowie Rollen mit Benutzerverwaltung oder Dokumentationsrechten dürfen nur Administratoren vergeben.');
+    }
     if (!mail_enabled()) {
         throw new RuntimeException('Der Mailversand ist nicht aktiv. Ohne Versand kann kein Einladungslink zugestellt werden; ein Passwortlink wird nie im Adminbereich angezeigt.');
     }
@@ -314,6 +335,9 @@ function platform_user_set_role(array $actor, string $userId, ?string $roleCode)
         throw new RuntimeException('Die eigene Rolle kann nicht geändert werden. Bitte einen anderen Administrator darum bitten.');
     }
     $role = $roleCode !== null && $roleCode !== '' ? platform_role_assert($roleCode) : null;
+    if ($role !== null && platform_role_is_privileged($role) && !platform_actor_is_admin($actor)) {
+        throw new RuntimeException('Die Rolle Administrator sowie Rollen mit Benutzerverwaltung oder Dokumentationsrechten dürfen nur Administratoren vergeben.');
+    }
     $wasAdmin = (int)$user['is_superadmin'] === 1 || ($user['platform_role'] ?? null) === 'admin';
     $staysAdmin = $role !== null && $role['code'] === 'admin';
     if ($wasAdmin && !$staysAdmin && (int)$user['is_active'] === 1 && platform_admin_count() <= 1) {
@@ -382,6 +406,13 @@ function platform_role_save(array $actor, string $code, string $name, string $de
     $existing = platform_role_get($code);
     if ($code === 'admin') {
         throw new RuntimeException('Die Systemrolle Administrator ist nicht veränderbar.');
+    }
+    if ($code === (string)($actor['platform_role'] ?? '')) {
+        throw new RuntimeException('Die eigene Rolle kann nicht bearbeitet werden. Bitte einen Administrator darum bitten.');
+    }
+    if (!platform_actor_is_admin($actor)
+        && (platform_role_is_privileged(['code' => $code, 'permissions' => $permissions]) || ($existing !== null && platform_role_is_privileged($existing)))) {
+        throw new RuntimeException('Rollen mit Benutzerverwaltung oder Dokumentationsrechten dürfen nur Administratoren anlegen oder ändern.');
     }
     if ($isNew && $existing !== null) {
         throw new RuntimeException('Eine Rolle mit diesem Code existiert bereits.');

@@ -109,6 +109,17 @@ platform_role_save($super, 'technik', 'Technik', 'liest Doku', ['admin.view', 'd
 $verwalter = $ctxOf($verwalter['user_id']);
 $out('einladung_selbst_verweigert', $try(static fn() => platform_user_invite($verwalter, 'verwalter@plattform.test', null, null, 'admin')));
 $out('einladung_selbst_rolle_unveraendert', (string)user_load($verwalter['user_id'])['platform_role']);
+// 5c. Selbsterhoehung ueber Zweitkonto oder eigene Rollendefinition (Audit 10.09.2026, Befund C-01)
+$out('c01_zweitkonto_admin_verweigert', $try(static fn() => platform_user_invite($verwalter, 'zweitkonto@plattform.test', null, null, 'admin')));
+$out('c01_zweitkonto_nicht_angelegt', (int)$pdo->query("SELECT COUNT(*) FROM users WHERE email = 'zweitkonto@plattform.test'")->fetchColumn());
+$out('c01_eigene_rolle_bearbeiten_verweigert', $try(static fn() => platform_role_save($verwalter, 'technik', 'Technik', 'alles', array_keys(PLATFORM_PERMISSIONS), false)));
+$out('c01_eigene_rolle_unveraendert', in_array('notstopp.platform', platform_role_get('technik')['permissions'] ?? [], true) ? 0 : 1);
+$out('c01_neue_rolle_mit_users_manage_verweigert', $try(static fn() => platform_role_save($verwalter, 'schatten', 'Schatten', '', ['admin.view', 'users.manage'], true)));
+$out('c01_neue_rolle_ohne_privileg_erlaubt', $try(static fn() => platform_role_save($verwalter, 'lesen', 'Lesen', '', ['admin.view', 'companies.view'], true)));
+$out('c01_verwalter_vergibt_lesen', $try(static fn() => platform_user_set_role($verwalter, $staff['user_id'], 'lesen')));
+$out('c01_verwalter_vergibt_admin_verweigert', $try(static fn() => platform_user_set_role($verwalter, $staff['user_id'], 'admin')));
+$out('c01_admin_vergibt_admin', $try(static fn() => platform_user_set_role($roleAdmin, $staff['user_id'], 'admin')));
+platform_user_set_role($roleAdmin, $staff['user_id'], 'staff');
 $GLOBALS['config']['mail'] = ['enabled' => false];
 
 // 6. Einladung: ohne Mailversand verweigert (kein Passwortlink im Frontend), ungueltige Adresse verweigert

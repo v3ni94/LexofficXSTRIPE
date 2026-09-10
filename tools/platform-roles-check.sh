@@ -80,6 +80,15 @@ if mariadb_sandbox_available; then
     erw "Mitarbeiter deaktiviert" staff_deaktiviert 1
     erw "eigenes Konto nicht deaktivierbar" eigenes_konto_nicht_deaktivierbar verweigert
     erw "Einladung des eigenen Kontos mit hoeherer Rolle verweigert" einladung_selbst_verweigert verweigert
+    erw "C-01: users.manage laedt kein Zweitkonto als admin ein" c01_zweitkonto_admin_verweigert verweigert
+    erw "C-01: kein Konto angelegt" c01_zweitkonto_nicht_angelegt 0
+    erw "C-01: eigene Rolle nicht bearbeitbar" c01_eigene_rolle_bearbeiten_verweigert verweigert
+    erw "C-01: eigene Rolle unveraendert" c01_eigene_rolle_unveraendert 1
+    erw "C-01: neue Rolle mit users.manage nur durch Administrator" c01_neue_rolle_mit_users_manage_verweigert verweigert
+    erw "C-01: unprivilegierte Rolle weiterhin anlegbar" c01_neue_rolle_ohne_privileg_erlaubt ok
+    erw "C-01: unprivilegierte Rolle vergebbar" c01_verwalter_vergibt_lesen ok
+    erw "C-01: admin nur durch Administrator vergebbar" c01_verwalter_vergibt_admin_verweigert verweigert
+    erw "C-01: Administrator vergibt admin" c01_admin_vergibt_admin ok
     erw "eigene Rolle nach Einladungsversuch unveraendert" einladung_selbst_rolle_unveraendert technik
     erw "Einladung ohne Mailversand verweigert" einladung_ohne_mail_verweigert verweigert
     erw "Einladung mit ungueltiger Adresse verweigert" einladung_ungueltige_adresse verweigert

@@ -51,6 +51,30 @@ function webhook_exit(string $reason, bool $freigeben = false): void
     exit;
 }
 
+/**
+ * Verarbeitung abbrechen und Stripe zur WIEDERHOLUNG auffordern (HTTP 500). Fuer Fehler, die vor oder waehrend der
+ * Verarbeitung auftreten und spaeter behebbar sind: Datenbank nicht erreichbar (Befund A-03: bis zum Audit vom 10.09.2026 mit
+ * 200 quittiert, Ereignis dauerhaft verloren) oder ein Einzug, der lokal noch nicht festgeschrieben ist (Befund A-07).
+ * $freigeben = true nimmt eine bereits erfolgte Beanspruchung zurueck.
+ */
+function webhook_retry(string $reason, bool $freigeben = false): void
+{
+    if ($freigeben && !empty($GLOBALS['webhook_event_id'])) {
+        require_once __DIR__ . '/app/webhook_events.php';
+        webhook_event_release('tenant', (string)$GLOBALS['webhook_event_id']);
+    }
+    try {
+        require_once __DIR__ . '/app/monitor.php';
+        monitor_event('stripe_webhook', 'fail', null, str_starts_with(mb_strtolower($reason), 'datenbankfehler') ? 'database' : 'retry_requested', 'instrumented', 300);
+    } catch (Throwable $e) {
+        // Diagnose darf den Webhook nicht stören
+    }
+    error_log('Stripe-Webhook (Wiederholung angefordert): ' . $reason);
+    http_response_code(500);
+    echo 'retry';
+    exit;
+}
+
 $rawBody = file_get_contents('php://input') ?: '';
 $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
@@ -94,7 +118,7 @@ if (!$tenantId && is_string($paymentIntentHint) && $paymentIntentHint !== '') {
         $stmt->execute([$paymentIntentHint]);
         $tenantId = $stmt->fetchColumn() ?: null;
     } catch (Throwable $e) {
-        webhook_exit('Datenbankfehler bei Firmenzuordnung: ' . $e->getMessage());
+        webhook_retry('Datenbankfehler bei Firmenzuordnung: ' . $e->getMessage());
     }
 }
 if (!$tenantId && is_string($chargeHint) && $chargeHint !== '') {
@@ -103,7 +127,7 @@ if (!$tenantId && is_string($chargeHint) && $chargeHint !== '') {
         $stmt->execute([$chargeHint]);
         $tenantId = $stmt->fetchColumn() ?: null;
     } catch (Throwable $e) {
-        webhook_exit('Datenbankfehler bei Firmenzuordnung: ' . $e->getMessage());
+        webhook_retry('Datenbankfehler bei Firmenzuordnung: ' . $e->getMessage());
     }
 }
 
@@ -141,6 +165,9 @@ try {
     $objectKey = is_string($paymentIntentHint) && $paymentIntentHint !== ''
         ? $paymentIntentHint
         : (is_string($obj['id'] ?? null) ? (string)$obj['id'] : null);
+    // Objektbezug je Firma (Befund C-07): Eine Firma darf mit eigenem Secret die Reihenfolgepruefung fuer Objekte einer
+    // anderen Firma nicht beeinflussen. Alte Eintraege ohne Firmenpraefix passen nicht mehr und gelten als nicht vorhanden.
+    $objectKey = $objectKey !== null ? $tenantId . ':' . $objectKey : null;
     if (!webhook_event_claim('tenant', $eventId, (string)$eventType)) {
         webhook_exit("Ereignis $eventId bereits verarbeitet");
     }
@@ -252,15 +279,20 @@ try {
         $attemptKey = (string)($obj['metadata']['attempt_key'] ?? '');
         if ($attemptKey !== '' && str_starts_with($eventType, 'payment_intent.')) {
             require_once __DIR__ . '/app/collections.php';
-            $stmt = $pdo->prepare('SELECT * FROM collection_attempts WHERE idempotency_key = ? AND tenant_id = ?');
+            // Alter aus der Datenbank (Befund A-04: PHP- und Datenbankzeit duerfen nicht gemischt werden).
+            $stmt = $pdo->prepare('SELECT *, TIMESTAMPDIFF(SECOND, created_at, NOW()) AS age_seconds FROM collection_attempts WHERE idempotency_key = ? AND tenant_id = ?');
             $stmt->execute([$attemptKey, $tenantId]);
             $attempt = $stmt->fetch();
-            // Nur klar unbekannte oder ältere Versuche nachtragen: Bei einem laufenden
-            // Sofort-Einzug kann der Webhook vor dem Commit der Einzugs-Transaktion
-            // eintreffen; dann legt die Transaktion den Datensatz selbst an.
-            $ageSec = $attempt ? time() - (int)strtotime((string)$attempt['created_at']) : 0;
-            if ($attempt && in_array($attempt['status'], ['pending', 'unknown', 'succeeded'], true)
-                && ($attempt['status'] === 'unknown' || $ageSec >= 120)) {
+            $ageSec = $attempt ? (int)$attempt['age_seconds'] : 0;
+            if ($attempt && $attempt['status'] !== 'unknown' && $ageSec < 300) {
+                // Laufender Sofort-Einzug: Der Webhook kann vor dem Commit der Einzugs-Transaktion eintreffen; die
+                // Transaktion legt den Datensatz selbst an. Statt mit 200 zu quittieren (Ereignis verloren, Befund A-07)
+                // Stripe zur Wiederholung auffordern; die Beanspruchung wird freigegeben.
+                webhook_retry("Einzug zu Versuch {$attempt['id']} noch nicht festgeschrieben, Wiederholung angefordert", true);
+            }
+            if ($attempt) {
+                // Auch ein bereits als "failed" freigegebener Versuch wird nachgetragen: Ein bei Stripe existierender
+                // PaymentIntent mit diesem Schluessel belegt, dass die Freigabe falsch war (Befund A-01).
                 $recoveredId = collection_attempt_recover($tenantId, $attempt, $obj);
                 if ($recoveredId) {
                     $stmt = $pdo->prepare('SELECT * FROM payment_collections WHERE id = ? AND tenant_id = ?');
@@ -297,12 +329,24 @@ try {
 
         case 'payment_intent.payment_failed':
             $reason = $obj['last_payment_error']['message'] ?? 'Unbekannter Fehler';
+            $declineCode = (string)($obj['last_payment_error']['decline_code'] ?? '');
             $pdo->prepare(
                 "UPDATE payment_collections
                  SET stripe_status = 'failed', failure_reason = ?, completed_at = NOW() WHERE id = ?"
-            )->execute([$reason, $collection['id']]);
+            )->execute([$declineCode !== '' ? $reason . ' [' . $declineCode . ']' : $reason, $collection['id']]);
             $pdo->prepare("UPDATE invoices SET collection_status = 'failed' WHERE id = ?")
                 ->execute([$collection['invoice_id']]);
+            // Mandats- oder Kontoproblem laut Fehlercode: Klaerungsbedarf statt erneuter Einreichung mit demselben
+            // Mandat (Befund A-08); Deckungsmangel und unspezifische Bankfehler bleiben wiederholbar.
+            if (stripe_sepa_decline_needs_review($declineCode)) {
+                $pdo->prepare(
+                    "UPDATE invoices SET requires_review = 1, review_reason = ? WHERE id = ? AND tenant_id = ?"
+                )->execute([
+                    mb_substr(sprintf('Lastschrift über %s fehlgeschlagen (Stripe-Code %s). Mandat oder Bankverbindung prüfen; kein automatischer Neu-Einzug.',
+                        format_eur_cents((int)$collection['amount_cents']), $declineCode), 0, 255),
+                    $collection['invoice_id'], $tenantId,
+                ]);
+            }
             break;
 
         case 'charge.dispute.created':

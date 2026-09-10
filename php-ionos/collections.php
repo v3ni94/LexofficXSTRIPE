@@ -178,7 +178,8 @@ layout_header('Einzüge', $ctx);
 
 <div class="card">
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
-        <form method="post">
+        <form method="post"
+              onsubmit="return confirm(<?= e(json_encode('Achtung: Reicht ' . $dueCount . ' fällige Lastschrift(en) jetzt bei Stripe ein. Wirklich fortfahren?', JSON_UNESCAPED_UNICODE)) ?>)">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="process_due">
             <button type="submit" class="btn"<?= ($dueCount === 0 || $pauseReason || !$windowOpen || !empty($ctx['support_mode'])) ? ' disabled' : '' ?>
@@ -288,13 +289,14 @@ layout_header('Einzüge', $ctx);
                     <td class="hint"><?= e($c['created_by_name'] ?: ($c['created_by_email'] ?: 'System/Cron')) ?></td>
                     <td>
                         <?php if ($cancellable): ?>
-                        <form method="post" class="inline-form">
+                        <form method="post" class="inline-form"
+                              onsubmit="return confirm('Einzug umterminieren auf den ' + (this.new_date.value ? this.new_date.value.split('-').reverse().join('.') : '?') + '?')">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="reschedule">
                             <input type="hidden" name="collection_id" value="<?= e($c['id']) ?>">
                             <input type="date" name="new_date" required
                                    min="<?= $suggest->format('Y-m-d') ?>"
-                                   value="<?= e($c['scheduled_date']) ?>">
+                                   value="<?= e(max((string)$c['scheduled_date'], $suggest->format('Y-m-d'))) ?>">
                             <button type="submit" class="btn btn-sm btn-secondary">Umterminieren</button>
                         </form>
                         <form method="post" class="inline-form"

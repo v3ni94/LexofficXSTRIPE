@@ -116,6 +116,19 @@ function config_is_placeholder(?string $value): bool
     return $v === '' || str_contains($v, 'HIER-');
 }
 
+/**
+ * Laeuft die Anwendung fuer diese Anfrage unter HTTPS? Nicht allein an $_SERVER['HTTPS'] haengen: Auf dem VPS endet TLS am
+ * Coolify-Proxy; $_SERVER['HTTPS'] entsteht nur mit trusted_proxies. Massgeblich ist zusaetzlich, ob die Anwendung selbst
+ * unter https angesprochen wird (Konfiguration). Gemeinsame Grundlage fuer Sitzungs- und Geraetecookie (Befund C-03).
+ */
+function request_is_https(): bool
+{
+    return !empty($_SERVER['HTTPS'])
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+        || str_starts_with(strtolower(app_base_url()), 'https://')
+        || str_starts_with(strtolower(admin_base_url()), 'https://');
+}
+
 /** Produktname (Standard SmartEinzug). Technische Kennungen bleiben unverändert. */
 function product_name(): string
 {
@@ -428,10 +441,7 @@ if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli' && !defined('SKI
     // eingetragenen Adresse kommt (Vorgabe: leer). Ohne Eintrag lief das Sitzungscookie deshalb ohne Secure
     // (Befund der Gesamtpruefung 09.09.2026). Massgeblich ist zusaetzlich, ob die Anwendung selbst unter
     // https angesprochen wird; das steht unabhaengig vom Proxy in der Konfiguration.
-    $secureCookie = !empty($_SERVER['HTTPS'])
-        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
-        || str_starts_with(strtolower(app_base_url()), 'https://')
-        || str_starts_with(strtolower(admin_base_url()), 'https://');
+    $secureCookie = request_is_https();
     session_set_cookie_params([
         'lifetime' => 0,
         'path'     => '/',

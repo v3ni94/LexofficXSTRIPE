@@ -77,3 +77,19 @@ restlichen fälligen Einzüge blieben liegen, ohne dass ein Fehler sichtbar wurd
 **Behebung.** `queue_requeue()` liest den Zwischenstand jetzt immer frisch aus der Spalte `jobs.payload` und fällt nur
 dann auf die übergebene Kopie zurück, wenn die Datenbank nicht lesbar ist. Geprüft von
 `php tools/payment-safety-check.php`, Abschnitt C.
+
+## Nachtrag Gesamtaudit 10.09.2026 (Version 4.59)
+
+- Lebenszeichen während eines Jobs (D-02): `queue_heartbeat()` ruft den in `bin/worker.php` registrierten Callback
+  `$GLOBALS['worker_beat']` auf; Heartbeat-Datei und `worker_heartbeats` werden bei jedem Jobfortschritt aktualisiert. Ein Job
+  über 90 Sekunden macht den Container nicht mehr `unhealthy` und den Pool nicht mehr „ohne lebenden Worker“.
+- Fortschritt je Einzug und je Versuch (D-06): `job_collections_due()` und `job_unclear_attempts()` setzen
+  `$GLOBALS['lexsepa_progress_tick']`; `process_scheduled_collections()` und `collection_attempts_resolve()` rufen ihn je
+  Schleifendurchlauf. `queue.collections_seconds` ist auf 480 Sekunden begrenzt (Heartbeat-TTL 600). Heartbeat-TTL `mail` 300.
+- Fairness (D-07): `JobRequeueException::$yield` kennzeichnet die freiwillige Abgabe; `queue_requeue(..., $yield)` setzt die
+  Priorität auf mindestens normal und `available_at` eine Sekunde später, damit wartende Jobs anderer Firmen vorgehen.
+- Cron (D-08): `cron.php` sichert sich mit `GET_LOCK('smarteinzug_cron', 0)` gegen überlappende Läufe.
+- Offen (P3): `_continuations` zählt auch Fortsetzungen mit Fortschritt (D-10), `SYNC_LOCK_SECONDS` kleiner als eine
+  mögliche Schrittdauer (D-11), Nebenwirkungen in `queue_fail()` ohne `rowCount` (D-12), Marker 022/026/030 fehlen für frische
+  Datenbanken aus `schema.sql` (D-14), Kollision des `dedupe_key` verwirft `full`/Priorität (D-15), Wiederaufnahme ohne
+  `sync_run_open` (D-16), `migrations_status()` schreibt Marker (D-17), `NOT IN` mit vielen Platzhaltern (D-18).

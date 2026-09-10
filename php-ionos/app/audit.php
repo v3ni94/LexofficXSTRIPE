@@ -29,6 +29,24 @@ function client_ip(): ?string
 }
 
 /**
+ * Ist die ermittelte Adresse in Wirklichkeit ein nicht konfigurierter Reverse Proxy? Kennzeichen: private oder
+ * Loopback-Adresse UND ein X-Forwarded-For-Header, ohne dass bootstrap.php den Hop ueber trusted_proxies aufgeloest hat.
+ * Dann teilen sich alle Benutzer dieselbe Adresse; IP-bezogene Grenzen (Anmeldung, Passwort-Reset, Registrierung)
+ * wuerden die gesamte Plattform sperren (Befund C-02) und werden ausgesetzt. Die Grenzen je E-Mail-Adresse gelten weiter.
+ */
+function client_ip_is_unresolved_proxy(): bool
+{
+    if (PHP_SAPI === 'cli' || empty($_SERVER['HTTP_X_FORWARDED_FOR']) || !empty($_SERVER['TRUSTED_PROXY_HOP'])) {
+        return false;
+    }
+    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+        return false;
+    }
+    return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+}
+
+/**
  * Audit-Eintrag schreiben.
  *
  * @param array $details Beliebige Zusatzangaben (werden als JSON gespeichert).

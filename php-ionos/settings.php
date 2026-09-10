@@ -84,6 +84,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare(
                 'UPDATE integrations SET lexoffice_api_key_encrypted = NULL, lexoffice_connected = 0, lexoffice_disconnected_at = NOW() WHERE tenant_id = ?'
             )->execute([$tenantId]);
+            // Laufende Synchronisation beenden und wartende Sync-Jobs stornieren (Befund B-09): Sonst liefe der naechste Schritt
+            // mit "nicht verbunden" in Wiederholungen bzw. mit dem Cursor der alten Organisation gegen einen neuen Schluessel.
+            require_once __DIR__ . '/app/sync_state.php';
+            require_once __DIR__ . '/app/queue.php';
+            try {
+                $stSync = $pdo->prepare("SELECT status FROM sync_state WHERE tenant_id = ?");
+                $stSync->execute([$tenantId]);
+                if (($stSync->fetchColumn() ?: '') === 'running') {
+                    sync_state_cancel($tenantId, $ctx);
+                }
+                $stJobs = $pdo->prepare("SELECT id FROM jobs WHERE tenant_id = ? AND type IN ('sync_run', 'sync_run_sevdesk') AND status IN ('queued', 'retry')");
+                $stJobs->execute([$tenantId]);
+                foreach ($stJobs->fetchAll(PDO::FETCH_COLUMN) as $jobId) {
+                    queue_cancel((string)$jobId, $ctx);
+                }
+            } catch (Throwable $e) {
+                error_log('Trennen: Synchronisation konnte nicht beendet werden: ' . $e->getMessage());
+            }
             audit_log($tenantId, $ctx, 'lexoffice_disconnected', 'integration', $tenantId);
             notify_integration_change($ctx, 'Lexware-Office-Verbindung getrennt');
             flash_set('success', 'Lexware-Office-Verbindung getrennt. Bereits synchronisierte Rechnungen und Kunden bleiben erhalten.');
@@ -135,6 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!preg_match('/^(sk|rk)_(test|live)_[A-Za-z0-9]+$/', $secretKey)) {
                 throw new RuntimeException('Das Format entspricht keinem Stripe Secret Key oder Restricted Key (sk_… oder rk_…). Publishable Keys (pk_…) sind hier nicht verwendbar.');
             }
+            // Vorherige Kontozuordnung merken, BEVOR die Pruefung sie ueberschreibt (Befund A-12)
+            $stOld = $pdo->prepare('SELECT stripe_account_id, stripe_mode FROM integrations WHERE tenant_id = ?');
+            $stOld->execute([$tenantId]);
+            $oldStripe = $stOld->fetch() ?: [];
             $info = integration_verify_stripe($tenantId, $secretKey);
             if ($webhookSecret !== '') {
                 $pdo->prepare(
@@ -148,10 +170,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log($tenantId, $ctx, 'stripe_connected', 'integration', $tenantId, [
                 'webhook_secret' => $webhookSecret !== '', 'account' => $info['account_id'], 'mode' => $info['mode'],
             ]);
+            $kontowechsel = '';
+            if (!empty($oldStripe['stripe_account_id'])
+                && ((string)$oldStripe['stripe_account_id'] !== (string)$info['account_id'] || (string)($oldStripe['stripe_mode'] ?? '') !== (string)$info['mode'])) {
+                // Anderes Stripe-Konto oder Wechsel Test/Live (Befund A-12): gespeicherte Stripe-Kunden und Zahlungsmethoden der
+                // Mandate gehoeren zum alten Konto und wuerden jeden Einzug mit resource_missing scheitern lassen. Zuruecksetzen:
+                // manuelle Mandate legen die Zahlungsmethode beim naechsten Einzug neu an, digital erteilte brauchen ein neues Mandat.
+                $stReset = $pdo->prepare('UPDATE sepa_mandates SET stripe_customer_id = NULL, stripe_payment_method_id = NULL WHERE tenant_id = ? AND (stripe_customer_id IS NOT NULL OR stripe_payment_method_id IS NOT NULL)');
+                $stReset->execute([$tenantId]);
+                audit_log($tenantId, $ctx, 'stripe_account_changed', 'integration', $tenantId, [
+                    'alt' => $oldStripe['stripe_account_id'], 'neu' => $info['account_id'], 'modus_alt' => $oldStripe['stripe_mode'] ?? null, 'modus_neu' => $info['mode'],
+                    'mandate_zurueckgesetzt' => $stReset->rowCount(),
+                ]);
+                $kontowechsel = sprintf(' Hinweis: Das Stripe-Konto hat sich geändert; bei %d Mandat(en) wurde die Stripe-Zuordnung zurückgesetzt (digital erteilte Mandate müssen neu angefordert werden).', $stReset->rowCount());
+            }
             funnel_event_once($tenantId, 'stripe_connected', $ctx['user_id']);
             notify_integration_change($ctx, 'Stripe-Verbindung eingerichtet (' . $info['mode'] . ')');
             flash_set('success', 'Stripe erfolgreich verbunden: ' . ($info['business_name'] ?: $info['account_id'])
-                . ($info['mode'] === 'test' ? '. Achtung: Testmodus, es werden keine echten Lastschriften ausgeführt.' : '.'));
+                . ($info['mode'] === 'test' ? '. Achtung: Testmodus, es werden keine echten Lastschriften ausgeführt.' : '.') . $kontowechsel);
 
         } elseif ($action === 'verify_stripe') {
             $key = integration_stripe_key($integration);

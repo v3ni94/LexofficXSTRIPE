@@ -58,6 +58,19 @@ function current_user(): ?array
     if (!$userId) {
         return null;
     }
+    // Beruht die Anmeldung auf einer Gerätefreigabe, muss diese weiterhin gelten (nicht
+    // abgelaufen, nicht widerrufen). Sonst endet die Sitzung; die Anmeldung ist mit
+    // Authenticator-Code zu wiederholen (Abschnitt 5.4 und 5.8). Die Pruefung steht VOR dem
+    // Plattformkontext: Bis zum Audit vom 10.09.2026 galt sie nicht fuer Plattform-Benutzer ohne Firma (Befund C-05).
+    if (!empty($_SESSION['trusted_device_id']) && !device_session_valid((string)$_SESSION['trusted_device_id'])) {
+        auth_logout();
+        if (PHP_SAPI !== 'cli') {
+            session_start();
+            flash_set('info', 'Die Gerätefreigabe für diesen Browser ist abgelaufen oder wurde widerrufen. Bitte melden Sie sich erneut an und bestätigen Sie die Anmeldung mit Ihrem Authenticator-Code.');
+        }
+        return null;
+    }
+
     if (!$orgId && empty($_SESSION['support_session_id'])) {
         // Plattform-Benutzer ohne Firmenmitgliedschaft (Mitarbeiter, Administratoren des Betreibers): eigener
         // Kontext ohne Firma, nur fuer Adminseiten und Kontoseiten (app/platform.php, require_login()).
@@ -65,18 +78,6 @@ function current_user(): ?array
         return $ctx;
     }
     if (!$orgId) {
-        return null;
-    }
-
-    // Beruht die Anmeldung auf einer Gerätefreigabe, muss diese weiterhin gelten (nicht
-    // abgelaufen, nicht widerrufen). Sonst endet die Sitzung; die Anmeldung ist mit
-    // Authenticator-Code zu wiederholen (Abschnitt 5.4 und 5.8).
-    if (!empty($_SESSION['trusted_device_id']) && !device_session_valid((string)$_SESSION['trusted_device_id'])) {
-        auth_logout();
-        if (PHP_SAPI !== 'cli') {
-            session_start();
-            flash_set('info', 'Die Gerätefreigabe für diesen Browser ist abgelaufen oder wurde widerrufen. Bitte melden Sie sich erneut an und bestätigen Sie die Anmeldung mit Ihrem Authenticator-Code.');
-        }
         return null;
     }
 
@@ -461,7 +462,7 @@ function login_throttle_check(string $email): ?string
     }
 
     $ip = client_ip();
-    if ($ip) {
+    if ($ip && !client_ip_is_unresolved_proxy()) {
         $stmt = $pdo->prepare(
             "SELECT COUNT(*) FROM login_attempts
              WHERE ip = ? AND success = 0 AND stage NOT IN ('reset', 'register') AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)"
@@ -767,8 +768,11 @@ function twofa_verify_user(array $user, string $code): bool
     if ($step === false) {
         return false;
     }
-    db()->prepare('UPDATE users SET totp_last_step = ? WHERE id = ?')->execute([$step, $user['id']]);
-    return true;
+    // Replay-Schutz atomar (Befund C-06): Zwei gleichzeitige Anfragen mit demselben Code lasen beide den alten
+    // Zeitschritt und wurden beide angenommen. Nur die Anfrage, deren UPDATE den Zeitschritt fortschreibt, gilt.
+    $st = db()->prepare('UPDATE users SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)');
+    $st->execute([$step, $user['id'], $step]);
+    return $st->rowCount() === 1;
 }
 
 /**
@@ -1653,6 +1657,17 @@ function registration_requests_cleanup(): void
     $pdo = db();
     $pdo->exec("UPDATE registration_requests SET status = 'expired' WHERE status = 'pending' AND expires_at < NOW()");
     $pdo->exec("DELETE FROM registration_requests WHERE status <> 'pending' AND created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)");
+}
+
+/**
+ * Anmeldeversuche nach 30 Tagen loeschen (Datenminimierung, Befund C-09): Die Sperrfenster betragen Minuten, die
+ * Sicherheitsseite zeigt die letzten 15 Eintraege; eine unbegrenzte Aufbewahrung fremder E-Mail-Adressen ist nicht begruendet.
+ */
+function login_attempts_cleanup(int $days = 30): int
+{
+    $st = db()->prepare('DELETE FROM login_attempts WHERE created_at < DATE_SUB(NOW(), INTERVAL ' . max(7, $days) . ' DAY) LIMIT 5000');
+    $st->execute();
+    return $st->rowCount();
 }
 
 /** Ziel nach erfolgreicher Anmeldung: offener Registrierungsvorgang oder Dashboard. */

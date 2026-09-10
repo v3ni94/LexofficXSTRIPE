@@ -79,20 +79,48 @@
         if (!box || !window.fetch) { return; }
         var url = box.getAttribute('data-sync-poll') || 'sync-status.php';
         var every = parseInt(box.getAttribute('data-sync-interval') || '3000', 10);
-        var timer = window.setInterval(function () {
+        var fails = 0;
+        var timer = null;
+        // Abbruch mit Hinweis statt endlosem Polling (Audit 10.09.2026, Befund E-01): Nach Sitzungsende lieferte der Abruf die
+        // Login-Seite als HTML, die in die Anzeige eingebettet wurde; bei dauerhaften Serverfehlern blieb "läuft" stehen.
+        function stopWith(text) {
+            if (timer !== null) { window.clearInterval(timer); timer = null; }
+            var p = document.createElement('p');
+            p.className = 'hint';
+            p.appendChild(document.createTextNode(text + ' '));
+            var a = document.createElement('a');
+            a.href = 'invoices.php';
+            a.textContent = 'Rechnungsseite neu laden';
+            p.appendChild(a);
+            box.innerHTML = '';
+            box.appendChild(p);
+        }
+        timer = window.setInterval(function () {
             if (document.hidden) { return; }
-            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-                .then(function (r) { return r.ok ? r.text() : ''; })
+            fetch(url, { credentials: 'same-origin', cache: 'no-store', redirect: 'manual' })
+                .then(function (r) {
+                    if (r.type === 'opaqueredirect' || r.status === 401 || r.status === 403) {
+                        stopWith('Die Sitzung ist abgelaufen oder die Anmeldung wurde beendet. Die Synchronisation läuft im Hintergrund weiter.');
+                        return null;
+                    }
+                    if (!r.ok || r.headers.get('X-Sync-Fragment') !== '1') { throw new Error('unerwartete Antwort'); }
+                    fails = 0;
+                    return r.text();
+                })
                 .then(function (html) {
-                    if (!html) { return; }
+                    if (html === null || !html) { return; }
                     box.innerHTML = html;
                     var inner = box.querySelector('.sync-progress');
                     if (inner && inner.getAttribute('data-done') === '1') {
                         window.clearInterval(timer);
+                        timer = null;
                         window.location.href = 'invoices.php';
                     }
                 })
-                .catch(function () { /* nächster Versuch beim folgenden Intervall */ });
+                .catch(function () {
+                    fails++;
+                    if (fails >= 5) { stopWith('Der Fortschritt kann derzeit nicht abgerufen werden. Die Synchronisation läuft im Hintergrund weiter.'); }
+                });
         }, every);
     }
     function init() {

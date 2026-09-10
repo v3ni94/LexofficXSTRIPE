@@ -16,11 +16,36 @@ if (get_included_files()[0] === __FILE__) {
     exit('Forbidden');
 }
 
+// Circuit Breaker und Ratenbegrenzung (api_call_gate) immer laden: Bis zum Audit vom 09.09.2026 hing die Schutzschaltung
+// davon ab, ob die aufrufende Seite zufaellig app/queue.php eingebunden hatte (collections.php, customer.php und der Webhook
+// hatten es nicht), sodass Stripe-Aufrufe aus Webanfragen weder gedrosselt noch bei offener Schutzschaltung angehalten wurden.
+require_once __DIR__ . '/queue.php';
+
 class StripeException extends RuntimeException
 {
     public ?string $stripeCode = null;
+    /** HTTP-Status der Antwort (null bei Verbindungsfehler). 429 = Ratenbegrenzung des Kontos, nichts angelegt. */
+    public ?int $httpStatus = null;
     /** true, wenn nicht feststeht, ob Stripe die Anfrage verarbeitet hat (Timeout, Netzwerk, kein JSON). */
     public bool $outcomeUnknown = false;
+}
+
+/**
+ * Fehlschlaege einer SEPA-Lastschrift, nach denen KEINE automatische Wiederholung mit demselben Mandat erfolgen darf
+ * (Konto geschlossen, Lastschrift nicht autorisiert, Mandats- oder Kontodaten falsch): Die Rechnung erhaelt
+ * Klaerungsbedarf. Nur Deckungsmangel und der unspezifische Bankfehler bleiben wiederholbar.
+ * ANNAHME (Audit 10.09.2026): Codeliste nach dem bekannten Stand der Stripe-Dokumentation zu SEPA-Fehlschlaegen, ohne
+ * Netzzugriff nicht am Primaertext verifiziert; unbekannte Codes gelten vorsichtshalber als klaerungsbeduerftig.
+ */
+const STRIPE_SEPA_RETRYABLE_DECLINE_CODES = ['insufficient_funds', 'generic_could_not_process'];
+
+function stripe_sepa_decline_needs_review(?string $declineCode): bool
+{
+    $code = strtolower(trim((string)$declineCode));
+    if ($code === '') {
+        return false; // ohne Code keine Aussage: bisheriges Verhalten (Wiederholung moeglich)
+    }
+    return !in_array($code, STRIPE_SEPA_RETRYABLE_DECLINE_CODES, true);
 }
 
 class StripeClient
@@ -39,6 +64,18 @@ class StripeClient
     }
 
     /**
+     * Basisadresse der Stripe-API. Ohne Konfiguration immer api.stripe.com. Der Schluessel stripe_api_base_url ist
+     * ausschliesslich ein Testhaken fuer Pruefsuiten mit lokalem Stub (tools/lib/stripe-stub.php); tools/lib/test-guard.php
+     * verlangt ihn dort und weist jede Adresse ausserhalb von 127.0.0.1 ab. In Produktion darf er nicht gesetzt sein
+     * (bin/healthcheck.php meldet ihn als Fehler).
+     */
+    public static function baseUrl(): string
+    {
+        $override = function_exists('config') ? (string)config('stripe_api_base_url', '') : '';
+        return $override !== '' ? rtrim($override, '/') : self::BASE_URL;
+    }
+
+    /**
      * @param string $method GET|POST|DELETE
      * @param array  $params Formular-Parameter (verschachtelt erlaubt)
      */
@@ -50,7 +87,7 @@ class StripeClient
             $q = (array)config('queue', []);
             api_call_gate('stripe', (int)($q['stripe_per_second'] ?? 20), api_scope_for_key($this->secretKey), (int)($q['stripe_global_per_second'] ?? 200));
         }
-        $url = self::BASE_URL . $endpoint;
+        $url = self::baseUrl() . $endpoint;
         $ch = curl_init();
 
         $headers = ['Stripe-Version: ' . ($apiVersion ?? self::API_VERSION)];
@@ -98,8 +135,10 @@ class StripeClient
         if (!is_array($data)) {
             self::monitor('fail', $ms, 'http_' . $status);
             $ex = new StripeException('Ungültige Antwort von Stripe.');
-            // Kein JSON (z. B. Gateway-Fehlerseite): Ergebnis des Aufrufs ist unbekannt.
-            $ex->outcomeUnknown = $status === 0 || $status >= 500;
+            $ex->httpStatus = $status > 0 ? $status : null;
+            // Kein JSON (z. B. Gateway-Fehlerseite): Ergebnis des Aufrufs ist unbekannt. Nur ein klarer 4xx-Status
+            // ohne JSON gilt als Ablehnung; ein 2xx ohne lesbaren Inhalt kann eine verarbeitete Anfrage sein (Audit 10.09.2026).
+            $ex->outcomeUnknown = $status === 0 || $status >= 500 || $status < 400;
             throw $ex;
         }
 
@@ -111,6 +150,7 @@ class StripeClient
             $message = $data['error']['message'] ?? "Stripe-Fehler (HTTP $status)";
             $ex = new StripeException($message);
             $ex->stripeCode = $data['error']['code'] ?? null;
+            $ex->httpStatus = $status;
             // Ergebnis unbekannt, obwohl eine lesbare Fehlerantwort vorliegt (Befund 09.09.2026):
             //  - 5xx: Stripe kann den Vorgang bereits angelegt haben, bevor die Antwort scheiterte. Ein zweiter
             //    Versuch bekaeme einen NEUEN Idempotenz-Schluessel (collection_attempts) und wuerde eine zweite

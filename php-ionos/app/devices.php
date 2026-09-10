@@ -58,7 +58,8 @@ function device_format(?string $utc): string
 
 function device_cookie_secure(): bool
 {
-    return !empty($_SERVER['HTTPS']);
+    // Dieselbe Ableitung wie das Sitzungscookie (Befund C-03: das 90-Tage-Geraetecookie lief hinter dem Proxy ohne Secure).
+    return function_exists('request_is_https') ? request_is_https() : !empty($_SERVER['HTTPS']);
 }
 
 /** Host-only-Cookie ohne Domain-Attribut; mit __Host-Präfix, sobald es über HTTPS läuft. */

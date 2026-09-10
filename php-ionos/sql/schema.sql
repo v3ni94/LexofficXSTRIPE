@@ -246,7 +246,8 @@ CREATE TABLE IF NOT EXISTS job_runs (
     error_category    VARCHAR(60)  NULL,
     KEY ix_jobruns_type_started (job_type, started_at),
     KEY ix_jobruns_finished (finished_at),
-    KEY ix_jobruns_status_heartbeat (status, heartbeat_at)
+    KEY ix_jobruns_status_heartbeat (status, heartbeat_at),
+    KEY ix_jobruns_status_finished (status, finished_at)             -- Migration 032
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS monitor_checks (
@@ -345,7 +346,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     KEY ix_jobs_tenant (tenant_id, created_at),
     KEY ix_jobs_status_created (status, created_at),
     KEY ix_jobs_locked (locked_by, heartbeat_at),
-    KEY ix_jobs_correlation (correlation_id)
+    KEY ix_jobs_correlation (correlation_id),
+    KEY ix_jobs_status_finished (status, finished_at)                -- Migration 032
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS worker_heartbeats (
@@ -614,6 +616,7 @@ CREATE TABLE IF NOT EXISTS payment_collections (
     KEY ix_collection_pi (stripe_payment_intent_id),
     KEY ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date),
     KEY ix_collection_tenant_status (tenant_id, stripe_status),      -- Migration 026
+    UNIQUE KEY uq_collection_tenant_pi (tenant_id, stripe_payment_intent_id), -- Migration 032: ein PaymentIntent, ein Einzug (NULL mehrfach)
     CONSTRAINT fk_collection_org     FOREIGN KEY (tenant_id)        REFERENCES organizations (id)  ON DELETE CASCADE,
     CONSTRAINT fk_collection_invoice FOREIGN KEY (invoice_id)       REFERENCES invoices (id)       ON DELETE CASCADE,
     CONSTRAINT fk_collection_mandate FOREIGN KEY (mandate_id)       REFERENCES sepa_mandates (id),

@@ -41,7 +41,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [iban_history](#iban-history) | Aenderungshistorie zu Bankverbindungen (wer hat wann was geaendert und warum). | Fachdaten je Firma / SEPA-Mandate | tenant_id | 9 | 1 |
 | [sepa_mandates](#sepa-mandates) | SEPA-Lastschriftmandate der Kunden: Referenz, Unterschrift, Verfall (schema.sql-Kommentar Zeile 519f.), Bezug zu Stripe-Mandat/Zahlungsmethode. | Fachdaten je Firma / SEPA-Mandate | tenant_id | 23 | 3 |
 | [invoices](#invoices) | Aus Lexware Office synchronisierte Rechnungen (Belege) je Firma, mit Einzugsstatus. | Fachdaten je Firma / Rechnungen | tenant_id | 20 | 2 |
-| [payment_collections](#payment-collections) | Einzelner SEPA-Lastschrifteinzug zu einer Rechnung ueber Stripe (Kernobjekt des Geldflusses). | Fachdaten je Firma / Einzuege | tenant_id | 29 | 4 |
+| [payment_collections](#payment-collections) | Einzelner SEPA-Lastschrifteinzug zu einer Rechnung ueber Stripe (Kernobjekt des Geldflusses). | Fachdaten je Firma / Einzuege | tenant_id | 30 | 3 |
 | [support_sessions](#support-sessions) | Zeitlich begrenzter Support-Zugriff des Plattformbetreibers auf einen Firmenaccount (Migration 008, siehe app/support.php). | Support und Administration | organization_id | 13 | 0 |
 | [mandate_files](#mandate-files) | Hochgeladene Mandatsdokumente (PDF/JPG/PNG) je Kunde, Dateien liegen unter app/storage/mandates/ (schema.sql-Kommentar Zeile 627). | Fachdaten je Firma / SEPA-Mandate | tenant_id | 12 | 3 |
 | [collection_attempts](#collection-attempts) | Versuchsjournal: jeder Stripe-Aufruf zu einem Einzug wird VOR dem Aufruf mit Idempotenz-Schluessel festgehalten, damit bei Abbruch der Transaktion der Versuch nachvollziehbar bleibt (schema.sql-Kommentar Zeile 664-671, Migration 006). | Fachdaten je Firma / Einzuege / Zahlungssicherheit | tenant_id | 12 | 0 |
@@ -444,7 +444,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | peak_memory_bytes | INT UNSIGNED | ja |  | Wartezeit in der Warteschlange bis zur Reservierung (Migration 029) |
 | error_category | VARCHAR(60) | ja |  | bereinigte Fehlerkategorie (siehe monitor_category()), keine Rohtexte |
 
-**Indizes und Eindeutigkeit:** IX ix_jobruns_type_started (job_type, started_at); IX ix_jobruns_finished (finished_at); IX ix_jobruns_status_heartbeat (status, heartbeat_at)  
+**Indizes und Eindeutigkeit:** IX ix_jobruns_type_started (job_type, started_at); IX ix_jobruns_finished (finished_at); IX ix_jobruns_status_heartbeat (status, heartbeat_at); IX ix_jobruns_status_finished (status, finished_at)  
 **Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
 **Statuswerte und Übergänge:**  
 - `status`: running | success | failed | unknown (schema.sql-Kommentar Zeile 230); unknown wird gesetzt, wenn ein Lauf ueberfaellig ist (queue_release_stale(), _mon_mark_stale_runs())
@@ -639,7 +639,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | dedupe_key | VARCHAR(120) | ja |  | [UQ uq_jobs_dedupe] |
 | eindeutig | closed | ja |  |  |
 
-**Indizes und Eindeutigkeit:** UQ uq_jobs_dedupe (dedupe_key); IX ix_jobs_pick (status, type, available_at, priority); IX ix_jobs_tenant (tenant_id, created_at); IX ix_jobs_status_created (status, created_at); IX ix_jobs_locked (locked_by, heartbeat_at); IX ix_jobs_correlation (correlation_id)  
+**Indizes und Eindeutigkeit:** UQ uq_jobs_dedupe (dedupe_key); IX ix_jobs_pick (status, type, available_at, priority); IX ix_jobs_tenant (tenant_id, created_at); IX ix_jobs_status_created (status, created_at); IX ix_jobs_locked (locked_by, heartbeat_at); IX ix_jobs_correlation (correlation_id); IX ix_jobs_status_finished (status, finished_at)  
 **Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
 **Statuswerte und Übergänge:**  
 - `status`: queued | processing | retry | completed | partially_completed | failed | cancelled (schema.sql-Kommentar Zeile 322); Uebergaenge in app/queue.php: queue_reserve() -> processing, queue_complete() -> completed/partially_completed/failed, queue_requeue()/queue_fail() -> retry oder failed, queue_cancel() -> cancelled, queue_retry_now() -> queued
@@ -1085,13 +1085,13 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | Spalte | Typ | NULL | Standard | Bedeutung |
 |---|---|---|---|---|
 | id | CHAR(36) | nein |  | [PK; PRIMARY KEY] |
-| tenant_id | CHAR(36) | nein |  | [FK → organizations.id (ON DELETE CASCADE)] |
+| tenant_id | CHAR(36) | nein |  | [UQ uq_collection_tenant_pi] |
 | invoice_id | CHAR(36) | nein |  | [FK → invoices.id (ON DELETE CASCADE)] |
 | mandate_id | CHAR(36) | ja |  | [FK → sepa_mandates.id] |
 | customer_iban_id | CHAR(36) | ja |  | NULL bei importierten Einzügen (Migration 009) [FK → customer_ibans.id] |
 | amount_cents | INT | nein |  |  |
 | currency | CHAR(3) | nein | 'EUR' |  |
-| stripe_payment_intent_id | VARCHAR(255) | ja |  |  |
+| stripe_payment_intent_id | VARCHAR(255) | ja |  | [UQ uq_collection_tenant_pi] |
 | stripe_status | VARCHAR(50) | ja |  |  |
 | submitted_at | DATETIME | ja |  | scheduled\|submitting\|processing\|succeeded\|failed\|disputed\|refunded\|cancelled |
 | completed_at | DATETIME | ja |  |  |
@@ -1106,6 +1106,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | prenotified_at | DATETIME | ja |  |  |
 | created_at | DATETIME | nein | CURRENT_TIMESTAMP |  |
 | updated_at | DATETIME | nein | CURRENT_TIMESTAMP | [ON UPDATE CURRENT_TIMESTAMP] |
+| ein | Einzug | ja |  |  |
 | note | VARCHAR(255) | ja |  | [per ALTER ergänzt] |
 | stripe_charge_id | VARCHAR(255) | ja |  | [per ALTER ergänzt] |
 | refunded_cents | INT | nein | 0 | [per ALTER ergänzt] |
@@ -1114,8 +1115,8 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | source | VARCHAR(20) | nein | 'app' | app (im Portal ausgeloest) oder Herkunft aus Stripe-Import (Migration 009) [per ALTER ergänzt] |
 | imported_mandate_reference | VARCHAR(35) | ja |  | [per ALTER ergänzt] |
 
-**Indizes und Eindeutigkeit:** IX ix_collection_tenant (tenant_id); IX ix_collection_pi (stripe_payment_intent_id); IX ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date); IX ix_collection_tenant_status (tenant_id, stripe_status)  
-**Von der Datenbank erzwungene Beziehungen:** tenant_id → organizations.id (ON DELETE CASCADE); invoice_id → invoices.id (ON DELETE CASCADE); mandate_id → sepa_mandates.id; customer_iban_id → customer_ibans.id  
+**Indizes und Eindeutigkeit:** UQ uq_collection_tenant_pi (tenant_id, stripe_payment_intent_id); IX ix_collection_tenant (tenant_id); IX ix_collection_pi (stripe_payment_intent_id); IX ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date); IX ix_collection_tenant_status (tenant_id, stripe_status)  
+**Von der Datenbank erzwungene Beziehungen:** invoice_id → invoices.id (ON DELETE CASCADE); mandate_id → sepa_mandates.id; customer_iban_id → customer_ibans.id  
 **Statuswerte und Übergänge:**  
 - `stripe_status`: scheduled | submitting | processing | succeeded | failed | disputed | refunded | cancelled (schema.sql-Kommentar Zeile 584). Uebergaenge: scheduled -> submitting (_submit_single_scheduled()) -> processing (stripe-webhook.php) -> succeeded/failed (Stripe-Webhook, sync_collection_statuses()); scheduled -> cancelled (collections_cancel_all_pending(), cancel_scheduled_collection()).
 **Erzeugt durch:** app/collections.php (kein direkter INSERT-Treffer in Grep-Suche fuer payment_collections; INSERT vermutlich in einer Funktion wie schedule_collection()/create_collection() in app/collections.php, nicht abschliessend per Grep bestaetigt), app/stripe_import.php (Uebernahme importierter Einzuege)  

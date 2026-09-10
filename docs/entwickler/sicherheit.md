@@ -402,3 +402,25 @@ Vorgabe des Betreibers vom 10.09.2026: Die Google-Ads-Kennung soll auch in der A
    Geschäftsführung, danach Prüfung, dass alle drei Hosts dauerhaft ausschließlich über gültiges
    HTTPS erreichbar sind, bevor der Header einkommentiert wird (Browser-Cache macht eine Rücknahme
    sonst langwierig).
+
+## Gesamtaudit vom 10.09.2026 (Version 4.59)
+
+Vollständige Befundliste: `docs/audit/AUDIT_REPORT.md`. Umgesetzt in der Anmelde- und Rechteverwaltung:
+
+- Plattformrollen (C-01): Die Rolle Administrator sowie jede Rolle mit `users.manage`, `*` oder `docs.*` gilt als privilegiert
+  (`platform_role_is_privileged()`). Vergabe (`platform_user_invite`, `platform_user_set_role`) und Anlegen oder Ändern solcher
+  Rollen (`platform_role_save`) nur durch Administratoren (`platform_actor_is_admin()`); die eigene Rolle ist nie bearbeitbar.
+  Nachweis: `tools/platform-roles-check.sh`, Fälle C-01.
+- Gerätecookie (C-03): `device_cookie_secure()` nutzt `request_is_https()` aus `app/bootstrap.php`, dieselbe Ableitung wie das
+  Sitzungscookie (HTTPS, X-Forwarded-Proto, https-Basisadresse).
+- Gerätefreigabe (C-05): `current_user()` prüft `device_session_valid()` vor dem Plattformkontext; widerrufene Freigaben wirken
+  auch für Plattform-Benutzer ohne Firma.
+- TOTP-Wiederholungsschutz (C-06): `twofa_verify_user()` schreibt den Zeitschritt mit Bedingung (`totp_last_step < ?`) und
+  akzeptiert nur bei genau einer geänderten Zeile. Nachweis: `tools/auth-check.sh` (sechs parallele Prozesse).
+- IP-Grenzen hinter nicht konfiguriertem Proxy (C-02): `client_ip_is_unresolved_proxy()` (private oder Loopback-Adresse mit
+  X-Forwarded-For ohne `trusted_proxies`) setzt die IP-Sperre der Anmeldung aus; die Sperre je E-Mail-Adresse bleibt.
+  Betriebsauflage: `trusted_proxies` in `shared/config.php` belegen (RELEASE_CHECKLIST.md).
+- Datenminimierung (C-09): `login_attempts_cleanup()` löscht Anmeldeversuche nach 30 Tagen (Wartung und Cron).
+- Bestätigungsmail (C-10): `verify-email.php` sendet je Klick genau einmal.
+- Nicht umgesetzt, dokumentiert (P3): Support-Einlösetoken per GET (C-04), serverseitige Sitzungsablaufprüfung (C-08),
+  Abmeldung per GET (C-11), Cron-Token in der URL (C-12).
