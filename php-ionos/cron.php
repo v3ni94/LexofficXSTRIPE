@@ -41,7 +41,9 @@ if (strlen($expected) < 16 || config_is_placeholder($expected) || !hash_equals($
 // und Synchronisation sind einzeln geschuetzt, Klaerung, Alarm-Mails und Nachsendungen waren es nicht. Die Sperre endet mit
 // der Datenbankverbindung dieses Aufrufs.
 try {
-    if ((int)db()->query("SELECT GET_LOCK('smarteinzug_cron', 0)")->fetchColumn() !== 1) {
+    $cronLock = db()->prepare('SELECT GET_LOCK(?, 0)'); // Name je Datenbank wie bei Migrationen (Gegenpruefung F-12)
+    $cronLock->execute(['smarteinzug_cron_' . substr(md5((string)(config('db')['name'] ?? 'smarteinzug')), 0, 16)]);
+    if ((int)$cronLock->fetchColumn() !== 1) {
         echo "Ein anderer Cron-Lauf ist noch aktiv; dieser Aufruf endet ohne Arbeit.\n";
         exit;
     }

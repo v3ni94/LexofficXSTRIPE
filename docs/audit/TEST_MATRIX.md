@@ -19,7 +19,7 @@ redis-deploy 111/0.
 | Suite | Befehl | Inhalt | Vorher (66c59d5) | Nachher |
 |---|---|---|---|---|
 | Test-Schutz | `bash tools/test-guard-check.sh` | 18 synthetische Konfigurationen, jede Produktions- oder Live-Eigenschaft bricht vor jeder Nebenwirkung ab | neu | 18/0 |
-| Geldfluss | `bash tools/collections-check.sh` (`COLLECTIONS_CHECK_SLOW=1` für Timeout und Not-Stopp) | 121 Fälle, echte `app/collections.php`, Stripe-Stub, echter Webhook-Endpunkt, echte parallele Prozesse | 85 bestanden, 36 fehlgeschlagen (Protokoll `collections-check-vorher.log`) | 121/0 (ohne SLOW); mit SLOW siehe Abschnitt 4 |
+| Geldfluss | `bash tools/collections-check.sh` (`COLLECTIONS_CHECK_SLOW=1` für den 31-Sekunden-Timeout) | 136 Fälle, echte `app/collections.php`, Stripe-Stub mit Paginierung, echter Webhook-Endpunkt, echte parallele Prozesse | 85 bestanden, 36 fehlgeschlagen (Protokoll `collections-check-vorher.log`, Stand vor Gegenprüfung: 121 Fälle) | 136/0 |
 | Synchronisation | `bash tools/sync-check.sh` | Fake-Rechnungsquelle: Kontaktfehler, fehlender Kontakt, Nachprüfungsfehler, bezahlte Rechnung mit terminiertem Einzug, 401-Kategorie | 9 bestanden, 8 fehlgeschlagen (gegen alte sync.php/lexoffice.php) | 17/0 |
 | Anmeldesicherheit | `bash tools/auth-check.sh` | statische Sicherungen C-01, C-03, C-05, C-06, C-09, C-10, D-02, D-08, B-03, B-05; TOTP-Wettlauf mit sechs Prozessen; Bereinigung login_attempts | 9 bestanden, 4 fehlgeschlagen (statische Fälle; der Wettlauf ließ sich mit Prozessen nicht reproduzieren, Fenster zu klein) | 13/0 |
 | Plattformrollen | `bash tools/platform-roles-check.sh` | +9 Fälle C-01 (Zweitkonto, eigene Rolle, privilegierte Rollen) | 88/0 (alte Fälle), neue Fälle gegen alten Code nicht ausgeführt | 97/0 |
@@ -57,6 +57,21 @@ redis-deploy 111/0.
 | 27 | Test-Schutz verhindert externe Nebenwirkung | test-guard-check 18/0; collections-check 1 (Konfiguration mit externer Stripe-Adresse abgewiesen) | automatisiert |
 | 28 | Kernfunktionen weiterhin | alle 27 vorhandenen Suiten nach den Änderungen (Abschnitt 4) | automatisiert |
 
-## 4. Läufe nach den Korrekturen
+## 4. Läufe nach den Korrekturen (Endlauf 10.09.2026, nach Gegenprüfung F)
 
-Siehe Abschnitt „Endlauf“ in AUDIT_REPORT.md (wird nach dem letzten Lauf ergänzt).
+| Suite | Ergebnis |
+|---|---|
+| test-guard | 20/0 |
+| collections (mit `COLLECTIONS_CHECK_SLOW=1`) | 136/0 (neu: 7a2 Paginierung, 7e Not-Stopp im Standardlauf, 7f Timeout, 13b Fälligkeitslauf trifft bezahlte Rechnung) |
+| sync | 18/0 |
+| auth | 13/0 |
+| platform-roles | 102/0 |
+| payment-safety 69/0, totp-policy 76/0, host-separation 25/0, billing-setup 83/0, docs-access 23/0, admin-period 44/0, pricing 14/0, app-tracking 53/0, mail-ci 46/0, healthcheck-redis 0 Fehler, compose 0, staging-isolation 0, docs-build 0, release-version 23/0, github-poll 25/0, github-ssh-retry 43/0 | grün |
+| migrations 12/0 (mit 032), scheduler-sync 59/0, worker-signal 17/0, sevdesk 129/0, invoice-source 42/0, interest 133/0, legal 66/0, deploy-runner 35/0, redis-deploy 111/0 | grün |
+| `php -l` alle Dateien, `node --check app.js` | fehlerfrei |
+
+Nachweis rot vor der Korrektur: collections 85/36 (Protokoll `collections-check-vorher.log` im Prüfstand), sync 9/8, auth 9/4
+(statische Fälle), platform-roles: neue Fälle nicht gegen den alten Code ausgeführt.
+
+Hinweis zur Zählung: Der TOTP-Wettlauf (auth-check Abschnitt 2) ließ sich mit sechs Prozessen gegen den alten Code nicht
+reproduzieren; die Korrektur ist statisch und funktional (akzeptiert genau einmal) belegt, nicht durch ein rotes Vorher.

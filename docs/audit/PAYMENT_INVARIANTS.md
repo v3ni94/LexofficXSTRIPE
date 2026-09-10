@@ -35,7 +35,7 @@ Kein Codepfad verwendet den Plattformschlüssel für Kundeneinzüge (statisch ge
 
 | Zustand | Bedeutung | Erlaubte Übergänge (Quelle) |
 |---|---|---|
-| scheduled | terminiert oder vorgemerkt, noch kein Stripe-Aufruf | submitting (Beanspruchung durch den Fälligkeitslauf), cancelled (Storno), failed (Prüfung vor dem Aufruf scheitert) |
+| scheduled | terminiert oder vorgemerkt, noch kein Stripe-Aufruf | submitting (Beanspruchung durch den Fälligkeitslauf), cancelled (Storno durch Nutzer, durch Synchronisation bei bezahlter Rechnung, durch den Fälligkeitslauf bei nicht mehr offener Rechnung), failed (Prüfung vor dem Aufruf scheitert, z. B. Mandat) |
 | submitting | von genau einem Lauf beansprucht, Aufruf läuft oder Ergebnis unbekannt | processing (Erfolg), scheduled (Zurückstellung, Freigabe), failed (endgültige Ablehnung) |
 | processing | von Stripe angenommen, Bankeinzug läuft (mehrere Tage) | succeeded, failed (Webhook oder Abgleich), disputed |
 | succeeded | Bankeinzug bestätigt | disputed (Rücklastschrift), refunded (Vollerstattung); Teilerstattung bleibt succeeded mit `refunded_cents` |
@@ -63,9 +63,9 @@ Erstattung: failed bzw. open mit `requires_review = 1`; Klärung nur durch Inhab
 
 | Nr. | Invariante | Umsetzung | Nachweis |
 |---|---|---|---|
-| I1 | Höchstens ein PaymentIntent je fachlich erlaubtem Versuch; parallele Anfragen (Browser, Sammel-Einzug, Cron, Worker) erzeugen keine zweite Lastschrift | Firmenzeile `FOR UPDATE` im Sofortpfad, Rechnungszeile `FOR UPDATE`, atomare Beanspruchung `UPDATE ... WHERE stripe_status = 'scheduled'`, UNIQUE Idempotenzschlüssel | automatisiert: `tools/collections-check.sh` Abschnitte 2, 4 (sechs echte parallele Prozesse), 8 (drei parallele Fälligkeitsläufe) |
+| I1 | Höchstens ein PaymentIntent je fachlich erlaubtem Versuch; parallele Anfragen (Browser, Sammel-Einzug, Cron, Worker) erzeugen keine zweite Lastschrift | benannte Sperre `GET_LOCK('smarteinzug_collect_<firma>')` im Sofortpfad (seit Audit, vorher Firmenzeile `FOR UPDATE`), Rechnungszeile `FOR UPDATE`, atomare Beanspruchung `UPDATE ... WHERE stripe_status = 'scheduled'`, UNIQUE Idempotenzschlüssel | automatisiert: `tools/collections-check.sh` Abschnitte 2, 4 (sechs echte parallele Prozesse), 8 (drei parallele Fälligkeitsläufe) |
 | I2 | Idempotenzschlüssel wird vor dem Aufruf persistiert und bei technischer Wiederholung nie neu vergeben | `collection_attempt_begin` vor `_execute_stripe_collection`; unknown blockiert | automatisiert: Abschnitt 7, 7a, 7b, 7d |
-| I3 | Ein unbekanntes Ergebnis wird nie als „nicht ausgeführt“ behandelt; Freigabe nur nach Frist UND konsistenter Prüfung gegen Stripe (Liste, nicht nur Suchindex) | `collection_attempts_resolve` (seit Audit: Listenprüfung `listPaymentIntents` vor der Freigabe) | automatisiert: 7a (Suchindex hängt, Liste findet), 7b (nichts angelegt) |
+| I3 | Ein unbekanntes Ergebnis wird nie als „nicht ausgeführt“ behandelt; Freigabe nur nach Frist UND konsistenter Prüfung gegen Stripe (Liste im Zeitfenster um den Versuch, nicht nur Suchindex); ist die Liste nicht vollständig lesbar, bleibt der Versuch offen | `collection_attempts_resolve`, `_stripe_find_payment_intent_by_attempt_key` (Ausnahme statt Freigabe bei erschöpftem Seitenlimit, F-01) | automatisiert: 7a (Suchindex hängt, Liste findet), 7a2 (mehrere Seiten), 7b (nichts angelegt) |
 | I4 | Mandant, Kunde, Mandat, IBAN und Stripe-Konto gehören zusammen | alle Abfragen mit `tenant_id`, Mandat je Firma und Kunde, Schlüssel je Firma aus `integrations` | automatisiert: Abschnitt 3, 14a; statisch: Rolle C |
 | I5 | Betrag serverseitig, nie größer als Rechnungsbetrag oder Restbetrag, Teilzahlung nur mit Bestätigung, bezahlt blockiert | `_determine_collection_amount`, Live-Prüfung im Fälligkeitslauf | automatisiert: Abschnitt 5, 12a |
 | I6 | Nur EUR | Währung der Rechnung und des Zahlungsstands | automatisiert: Abschnitt 5 (CHF abgewiesen) |

@@ -215,6 +215,41 @@ function platform_role_is_privileged(array $role): bool
         || array_filter($perms, static fn($p): bool => is_string($p) && str_starts_with($p, 'docs.')) !== [];
 }
 
+/** Rechte des Handelnden (Administrator: alle). */
+function platform_actor_permissions(array $actor): array
+{
+    if (platform_actor_is_admin($actor)) {
+        return ['*'];
+    }
+    $role = platform_role_get((string)($actor['platform_role'] ?? ''));
+    return $role ? (array)$role['permissions'] : [];
+}
+
+/**
+ * Darf der Handelnde diese Rechte vergeben? Nicht-Administratoren nur eine Teilmenge der eigenen Rechte (Gegenpruefung
+ * F-03: sonst liesse sich ueber eine neue Rolle mit support.sessions oder notstopp.platform mehr Zugriff verschaffen, als
+ * die eigene Rolle hat).
+ */
+function platform_actor_may_grant(array $actor, array $permissions): bool
+{
+    $own = platform_actor_permissions($actor);
+    if (in_array('*', $own, true)) {
+        return true;
+    }
+    foreach ($permissions as $p) {
+        if (!in_array((string)$p, $own, true)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/** Ist das Zielkonto ein Administrator (Spalte oder Systemrolle)? Fuer Nicht-Administratoren unantastbar. */
+function platform_target_is_admin(array $user): bool
+{
+    return (int)($user['is_superadmin'] ?? 0) === 1 || (string)($user['platform_role'] ?? '') === 'admin';
+}
+
 function platform_user_invite(array $actor, string $email, ?string $firstName, ?string $lastName, string $roleCode): array
 {
     require_once __DIR__ . '/mailer.php';
@@ -228,6 +263,9 @@ function platform_user_invite(array $actor, string $email, ?string $firstName, ?
     $role = platform_role_assert($roleCode);
     if (platform_role_is_privileged($role) && !platform_actor_is_admin($actor)) {
         throw new RuntimeException('Die Rolle Administrator sowie Rollen mit Benutzerverwaltung oder Dokumentationsrechten dürfen nur Administratoren vergeben.');
+    }
+    if (!platform_actor_may_grant($actor, (array)$role['permissions'])) {
+        throw new RuntimeException('Diese Rolle enthält Rechte, die Sie selbst nicht besitzen; sie kann nur von einem Administrator vergeben werden.');
     }
     if (!mail_enabled()) {
         throw new RuntimeException('Der Mailversand ist nicht aktiv. Ohne Versand kann kein Einladungslink zugestellt werden; ein Passwortlink wird nie im Adminbereich angezeigt.');
@@ -338,6 +376,12 @@ function platform_user_set_role(array $actor, string $userId, ?string $roleCode)
     if ($role !== null && platform_role_is_privileged($role) && !platform_actor_is_admin($actor)) {
         throw new RuntimeException('Die Rolle Administrator sowie Rollen mit Benutzerverwaltung oder Dokumentationsrechten dürfen nur Administratoren vergeben.');
     }
+    if ($role !== null && !platform_actor_may_grant($actor, (array)$role['permissions'])) {
+        throw new RuntimeException('Diese Rolle enthält Rechte, die Sie selbst nicht besitzen; sie kann nur von einem Administrator vergeben werden.');
+    }
+    if (!platform_actor_is_admin($actor) && platform_target_is_admin($user)) {
+        throw new RuntimeException('Administratorkonten können nur von Administratoren geändert werden.');
+    }
     $wasAdmin = (int)$user['is_superadmin'] === 1 || ($user['platform_role'] ?? null) === 'admin';
     $staysAdmin = $role !== null && $role['code'] === 'admin';
     if ($wasAdmin && !$staysAdmin && (int)$user['is_active'] === 1 && platform_admin_count() <= 1) {
@@ -368,6 +412,9 @@ function platform_user_set_active(array $actor, string $userId, bool $active): v
     }
     if ((string)($actor['user_id'] ?? '') === $userId) {
         throw new RuntimeException('Das eigene Konto kann hier nicht deaktiviert werden.');
+    }
+    if (!platform_actor_is_admin($actor) && platform_target_is_admin($user)) {
+        throw new RuntimeException('Administratorkonten können nur von Administratoren deaktiviert oder reaktiviert werden.');
     }
     $isAdmin = (int)$user['is_superadmin'] === 1 || ($user['platform_role'] ?? null) === 'admin';
     if (!$active && $isAdmin && (int)$user['is_active'] === 1 && platform_admin_count() <= 1) {
@@ -413,6 +460,9 @@ function platform_role_save(array $actor, string $code, string $name, string $de
     if (!platform_actor_is_admin($actor)
         && (platform_role_is_privileged(['code' => $code, 'permissions' => $permissions]) || ($existing !== null && platform_role_is_privileged($existing)))) {
         throw new RuntimeException('Rollen mit Benutzerverwaltung oder Dokumentationsrechten dürfen nur Administratoren anlegen oder ändern.');
+    }
+    if (!platform_actor_may_grant($actor, $permissions) || ($existing !== null && !platform_actor_may_grant($actor, (array)$existing['permissions']))) {
+        throw new RuntimeException('Eine Rolle darf nur Rechte enthalten, die Sie selbst besitzen; weitergehende Rollen legt ein Administrator an.');
     }
     if ($isNew && $existing !== null) {
         throw new RuntimeException('Eine Rolle mit diesem Code existiert bereits.');

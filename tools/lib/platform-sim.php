@@ -105,7 +105,7 @@ $out('eigenes_konto_nicht_deaktivierbar', $try(static fn() => platform_user_set_
 // 5b. Einladung eines bestehenden Kontos laeuft ueber die Schutzregeln (Review 4.41): eigene Rolle nicht per Einladung eskalieren
 $GLOBALS['config']['mail'] = ['enabled' => true, 'transport' => 'log'];
 $verwalter = $ctxOf($mk('verwalter@plattform.test', 0, 'technik'));
-platform_role_save($super, 'technik', 'Technik', 'liest Doku', ['admin.view', 'docs.technical', 'users.manage'], false);
+platform_role_save($super, 'technik', 'Technik', 'liest Doku', ['admin.view', 'docs.technical', 'users.manage', 'companies.view'], false);
 $verwalter = $ctxOf($verwalter['user_id']);
 $out('einladung_selbst_verweigert', $try(static fn() => platform_user_invite($verwalter, 'verwalter@plattform.test', null, null, 'admin')));
 $out('einladung_selbst_rolle_unveraendert', (string)user_load($verwalter['user_id'])['platform_role']);
@@ -115,8 +115,15 @@ $out('c01_zweitkonto_nicht_angelegt', (int)$pdo->query("SELECT COUNT(*) FROM use
 $out('c01_eigene_rolle_bearbeiten_verweigert', $try(static fn() => platform_role_save($verwalter, 'technik', 'Technik', 'alles', array_keys(PLATFORM_PERMISSIONS), false)));
 $out('c01_eigene_rolle_unveraendert', in_array('notstopp.platform', platform_role_get('technik')['permissions'] ?? [], true) ? 0 : 1);
 $out('c01_neue_rolle_mit_users_manage_verweigert', $try(static fn() => platform_role_save($verwalter, 'schatten', 'Schatten', '', ['admin.view', 'users.manage'], true)));
+// Teilmenge der eigenen Rechte (technik: admin.view, docs.technical, users.manage) ist erlaubt (F-03), fremde Rechte nicht
 $out('c01_neue_rolle_ohne_privileg_erlaubt', $try(static fn() => platform_role_save($verwalter, 'lesen', 'Lesen', '', ['admin.view', 'companies.view'], true)));
+$out('f03_fremdes_recht_verweigert', $try(static fn() => platform_role_save($verwalter, 'lesen2', 'Lesen 2', '', ['admin.view', 'plans.manage'], true)));
 $out('c01_verwalter_vergibt_lesen', $try(static fn() => platform_user_set_role($verwalter, $staff['user_id'], 'lesen')));
+// Gegenpruefung F-03: nur Teilmenge der eigenen Rechte, Administratorkonten unantastbar
+$out('f03_rolle_mit_fremden_rechten_verweigert', $try(static fn() => platform_role_save($verwalter, 'betrieb', 'Betrieb', '', ['admin.view', 'support.sessions', 'notstopp.platform', 'plans.manage'], true)));
+$out('f03_admin_entfernen_verweigert', $try(static fn() => platform_user_set_role($verwalter, $roleAdmin['user_id'], null)));
+$out('f03_admin_deaktivieren_verweigert', $try(static fn() => platform_user_set_active($verwalter, $roleAdmin['user_id'], false)));
+$out('f03_admin_rolle_unveraendert', (string)user_load($roleAdmin['user_id'])['platform_role']);
 $out('c01_verwalter_vergibt_admin_verweigert', $try(static fn() => platform_user_set_role($verwalter, $staff['user_id'], 'admin')));
 $out('c01_admin_vergibt_admin', $try(static fn() => platform_user_set_role($roleAdmin, $staff['user_id'], 'admin')));
 platform_user_set_role($roleAdmin, $staff['user_id'], 'staff');

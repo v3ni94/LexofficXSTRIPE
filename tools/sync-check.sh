@@ -22,6 +22,7 @@ OUT="$($SIM kontaktfehler 2>&1)"
 erw "Kundennummer bleibt erhalten" kunde_nummer 20017
 erw "E-Mail bleibt erhalten" kunde_email buchhaltung@bestand.test
 erw "Kunde bleibt kein Laufkunde" kunde_walkin 0
+erw "technischer Fehler laesst den Schritt scheitern (Wiederholung), statt Daten zu verwerfen (F-07)" status fehler
 echo "2) B-01 Kontakt fachlich nicht vorhanden (neuer Kunde)"
 OUT="$($SIM kontaktfehlt 2>&1)"
 erw "Ersatzkunde 10001 wie bisher" kunde_nummer 10001

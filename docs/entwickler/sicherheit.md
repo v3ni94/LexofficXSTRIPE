@@ -411,13 +411,17 @@ Vollständige Befundliste: `docs/audit/AUDIT_REPORT.md`. Umgesetzt in der Anmeld
   (`platform_role_is_privileged()`). Vergabe (`platform_user_invite`, `platform_user_set_role`) und Anlegen oder Ändern solcher
   Rollen (`platform_role_save`) nur durch Administratoren (`platform_actor_is_admin()`); die eigene Rolle ist nie bearbeitbar.
   Nachweis: `tools/platform-roles-check.sh`, Fälle C-01.
+- Gegenprüfung F-03: Nicht-Administratoren vergeben und definieren nur Rechte, die Teilmenge ihrer eigenen sind
+  (`platform_actor_may_grant()`); Konten mit Rolle admin oder `is_superadmin` sind für sie unantastbar (Rolle, Deaktivierung).
 - Gerätecookie (C-03): `device_cookie_secure()` nutzt `request_is_https()` aus `app/bootstrap.php`, dieselbe Ableitung wie das
   Sitzungscookie (HTTPS, X-Forwarded-Proto, https-Basisadresse).
 - Gerätefreigabe (C-05): `current_user()` prüft `device_session_valid()` vor dem Plattformkontext; widerrufene Freigaben wirken
   auch für Plattform-Benutzer ohne Firma.
 - TOTP-Wiederholungsschutz (C-06): `twofa_verify_user()` schreibt den Zeitschritt mit Bedingung (`totp_last_step < ?`) und
   akzeptiert nur bei genau einer geänderten Zeile. Nachweis: `tools/auth-check.sh` (sechs parallele Prozesse).
-- IP-Grenzen hinter nicht konfiguriertem Proxy (C-02): `client_ip_is_unresolved_proxy()` (private oder Loopback-Adresse mit
+- IP-Grenzen hinter nicht konfiguriertem Proxy (C-02, F-02): Anmeldung, Registrierung und Passwort-Reset; das Aussetzen wird
+  einmal je Prozess protokolliert und als Monitor-Ereignis `proxy_config` erfasst.
+- IP-Grenzen (Detail): `client_ip_is_unresolved_proxy()` (private oder Loopback-Adresse mit
   X-Forwarded-For ohne `trusted_proxies`) setzt die IP-Sperre der Anmeldung aus; die Sperre je E-Mail-Adresse bleibt.
   Betriebsauflage: `trusted_proxies` in `shared/config.php` belegen (RELEASE_CHECKLIST.md).
 - Datenminimierung (C-09): `login_attempts_cleanup()` löscht Anmeldeversuche nach 30 Tagen (Wartung und Cron).

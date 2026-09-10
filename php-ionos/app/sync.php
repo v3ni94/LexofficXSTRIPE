@@ -229,8 +229,7 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
                 // derselben Position endlos (sechs Wiederholungen, dann alle auto_sync_hours erneut am selben Cursor).
                 // Technische Fehler (Stoerung, Drosselung, Zeitueberschreitung, Zugang) werden weitergereicht und wiederholt;
                 // ein fachlicher Fehler dieses einen Belegs wird gezaehlt, protokolliert und uebersprungen.
-                $cat = function_exists('monitor_category') ? monitor_category($e) : 'other';
-                if (in_array($cat, ['timeout', 'connection', 'connection_refused', 'dns', 'tls', 'http_5xx', 'throttled', 'auth'], true)) {
+                if (_sync_error_is_technical($e)) {
                     throw $e;
                 }
                 $cursor['result']['errors'] = (int)($cursor['result']['errors'] ?? 0) + 1;
@@ -613,12 +612,11 @@ function _sync_upsert_customer(
             // (Sammelkunde 10001, is_walk_in, ohne E-Mail). Bestehende Kunden bleiben unveraendert; bei technischen Fehlern
             // (Stoerung, Drosselung, Zeitueberschreitung, Zugang) scheitert der Schritt und wird wiederholt; nur ein fachlich
             // nicht lieferbarer Kontakt fuehrt fuer einen NEUEN Kunden zum Ersatzkunden.
-            if ($existing) {
-                return $existing['id'];
+            if (_sync_error_is_technical($e)) {
+                throw $e; // wird wiederholt (auch fuer bestehende Kunden, Gegenpruefung F-07)
             }
-            $cat = function_exists('monitor_category') ? monitor_category($e) : 'other';
-            if (in_array($cat, ['timeout', 'connection', 'connection_refused', 'dns', 'tls', 'http_5xx', 'throttled', 'auth'], true)) {
-                throw $e;
+            if ($existing) {
+                return $existing['id']; // fachlich fehlender Kontakt: bestehende Daten unveraendert lassen
             }
             $contact = [];
         }
@@ -712,7 +710,7 @@ function _sync_cancel_scheduled_collections(string $tenantId, string $invoiceId,
     $n = 0;
     $grund = 'Storniert durch Synchronisation: Rechnung in Lexware Office ' . ($newStatus === 'paid' ? 'bezahlt' : 'storniert') . ' (' . date('d.m.Y') . ')';
     foreach ($st->fetchAll() as $c) {
-        $upd = $pdo->prepare("UPDATE payment_collections SET stripe_status = 'cancelled', note = CONCAT_WS(' ', note, ?) WHERE id = ? AND tenant_id = ? AND stripe_status = 'scheduled' AND scheduled_submitted = 0");
+        $upd = $pdo->prepare("UPDATE payment_collections SET stripe_status = 'cancelled', note = LEFT(CONCAT_WS(' ', note, ?), 255) WHERE id = ? AND tenant_id = ? AND stripe_status = 'scheduled' AND scheduled_submitted = 0");
         $upd->execute([mb_substr($grund, 0, 255), $c['id'], $tenantId]);
         if ($upd->rowCount() === 1) {
             $n++;
@@ -722,4 +720,20 @@ function _sync_cancel_scheduled_collections(string $tenantId, string $invoiceId,
         }
     }
     return $n;
+}
+
+/**
+ * Technischer (wiederholbarer) Fehler gegen fachlichen Fehler eines Belegs: Stoerung, Drosselung, Zeitueberschreitung, Zugang,
+ * Datenbank und eine nicht lesbare Antwort (HTML statt JSON) werden weitergereicht und wiederholt (Gegenpruefung F-07).
+ */
+function _sync_error_is_technical(Throwable $e): bool
+{
+    if ($e instanceof PDOException) {
+        return true;
+    }
+    if ($e instanceof LexofficeException && str_contains($e->getMessage(), 'Ungültige Antwort')) {
+        return true;
+    }
+    $cat = function_exists('monitor_category') ? monitor_category($e) : 'other';
+    return in_array($cat, ['timeout', 'connection', 'connection_refused', 'dns', 'tls', 'http_5xx', 'throttled', 'auth', 'database'], true);
 }

@@ -138,9 +138,10 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 
 ## 4b. Gesamtlauf 10.09.2026 nach 4.59 (Prüfbranch)
 
-Alle 27 Bestandssuiten grün (Zahlen unverändert bis auf platform-roles 97/0 und payment-safety 69/0 mit angepasstem Fall B), neu:
-test-guard 18/0, collections 126/0 (mit SLOW; vorher gegen 66c59d5: 85/36), sync 17/0 (vorher 9/8), auth 13/0, migrations 12/0
-mit 032, `php -l` fehlerfrei. Leistungsmessung lokal (`tools/perf-probe.sh`): `docs/audit/PERFORMANCE_REPORT.md`.
+Alle 27 Bestandssuiten grün (platform-roles 102/0 mit neuen Fällen, payment-safety 69/0 mit angepasstem Fall B), neu:
+test-guard 20/0, collections 136/0 (mit SLOW; vorher gegen 66c59d5: 85/36), sync 18/0 (vorher 9/8), auth 13/0, migrations 12/0
+mit 032, docs-build 0 Fehler, `php -l` fehlerfrei. Gegenprüfung F: 18 Gegenbeispiele, 13 umgesetzt, 5 dokumentiert
+(`docs/audit/AUDIT_REPORT.md` Abschnitt 6). Leistungsmessung lokal (`tools/perf-probe.sh`): `docs/audit/PERFORMANCE_REPORT.md`.
 
 ## 5. Bekannte Fehler und Risiken
 

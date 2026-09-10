@@ -107,13 +107,39 @@ im Normalbetrieb; A-01 und A-04 hätten sie nur in Kombination mit einer Stripe-
 
 ## 5. Endlauf (Version 4.59, Prüfbranch)
 
-Alle 27 Bestandssuiten grün, platform-roles 97/0 (neue Fälle), payment-safety 69/0 (Fall B angepasst). Neu: test-guard 18/0,
-collections 126/0 mit SLOW, sync 17/0, auth 13/0, migrations 12/0 mit 032, docs-build 0 Fehler, `php -l` fehlerfrei,
-`node --check app.js` fehlerfrei. Leistung: PERFORMANCE_REPORT.md.
+Nach den Korrekturen aus der Gegenprüfung (Abschnitt 6): collections 136/0 (mit SLOW), sync 18/0, auth 13/0, platform-roles
+102/0, test-guard 20/0, migrations 12/0, alle übrigen Bestandssuiten grün, docs-build 0 Fehler, `php -l` fehlerfrei (Tabelle in
+TEST_MATRIX.md Abschnitt 4). Leistung: PERFORMANCE_REPORT.md.
 
 ## 6. Unabhängige Gegenprüfung (Rolle F)
 
-Ergebnis wird nach Abschluss der Gegenprüfung ergänzt.
+Die Gegenprüfung suchte Gegenbeispiele zu allen Korrekturen (nur lesend) und lieferte 18 Befunde; 13 wurden umgesetzt,
+5 als Entscheidung oder Restrisiko dokumentiert. Bestätigt ohne Gegenbeispiel: benannte Sperre (kein Zyklus mit der
+Rechnungszeile des Nachtrags), Zustandsübergänge des Versuchsjournals, Verwerfen nie gesendeter Versuche (Gate vor curl),
+Rücksetzung hängender Einzüge, Webhook-Freigabe und Objektschlüssel, Fristen aus SQL, Währungsprüfung, Erstattung,
+Storno durch Synchronisation, Worker-Lebenszeichen, Reihenfolge in `current_user`, atomarer TOTP-Schutz, Proxy-Erkennung
+(kein Aussetzen auf Servern ohne Proxy), Migration 032 (Syntax, Splitter, Indexnamen), Import gegen den neuen Index.
+
+| ID | Prio | Gegenbeispiel | Umsetzung |
+|---|---|---|---|
+| F-01 | P1 | Listenprüfung endete nach 20 Seiten mit `null` und gab den Versuch frei (große Firma, 2.500 Einzüge im Fenster) | Zeitfenster `created[gte/lte]` um den Versuch, 50 Seiten, bei erschöpftem Limit Ausnahme statt Freigabe (Versuch bleibt offen); Stub mit echter Paginierung, Fall 7a2 (Seitengröße 2) |
+| F-02 | P2 | C-02 nur für die Anmeldung; Registrierungs- und Reset-Drossel weiter plattformweit; Aussetzen unbemerkt | Registrierung und Reset einbezogen, Warnung im Protokoll und Monitor-Ereignis `proxy_config` einmal je Prozess |
+| F-03 | P2 | `users.manage` konnte eine Rolle mit fremden Rechten (Support-Sitzungen, Not-Stopp, Tarife) anlegen und Administratoren entfernen | Nicht-Administratoren vergeben nur Teilmengen der eigenen Rechte (`platform_actor_may_grant`), Administratorkonten unantastbar; 4 Fälle in platform-roles |
+| F-04 | P2 | Fälligkeitslauf traf eine inzwischen bezahlte Rechnung: Einzug und Rechnung `failed` | `CollectionCoveredException`: Einzug `cancelled` mit Vermerk, Rechnungsstatus aus verbleibenden Einzügen, Zähler `cancelled_covered`; Fall 12b |
+| F-05 | P3 | Wiederherstellung lieferte `collected` bei Teileinzug | `collected` nur bei voller Deckung (Summe erfolgreicher Einzüge abzüglich Erstattungen) |
+| F-06 | P3 | Teilerstattung zählte voll als eigener Einzug, legitimer Rest blockiert | `SUM(amount_cents - refunded_cents)` |
+| F-07 | P3 | Datenbank- und Antwortfehler als fachlich eingestuft; bestehende Kunden bei technischem Fehler still übersprungen | `_sync_error_is_technical()` (PDOException, „Ungültige Antwort“, Kategorie database), Prüfung vor dem Rückgabepfad; Fall in sync-check |
+| F-08 | P3 | tautologischer Fenstertest, D-05 nur im SLOW-Lauf | Fenstertest entfernt (Fensterlogik in Abschnitt 9), D-05 mit 5-Sekunden-Stub im Standardlauf |
+| F-09 | P3 | PAYMENT_INVARIANTS I1 nannte noch `FOR UPDATE` | korrigiert |
+| F-10 | P3 | Migration 032 lässt den Index bei Dubletten still weg | dokumentiert (RELEASE_CHECKLIST Punkt 3, migrations.md); kein automatischer Hinweis |
+| F-11 | P3 | Umbenennung des Gerätecookies verwirft bestehende Freigaben | Übergang: alter und neuer Name werden gelesen, alter beim Löschen entfernt |
+| F-12 | P3 | Cron-Sperre ohne Datenbankbezug | Sperrname mit Datenbankhash wie bei Migrationen |
+| F-13 | P3 | Kontowechsel-Erkennung bei `stripe_mode = NULL` im Altbestand | Modus nur vergleichen, wenn Altwert gesetzt |
+| F-14 | P3 | `not_open` ohne Obergrenze im Recheck (Kosten je Lauf für gelöschte Belege) | offen, dokumentiert |
+| F-15 | P3 | HIGH-Priorität nach Fairness-Abgabe dauerhaft normal | bewusste Entscheidung, dokumentiert in queue-worker.md |
+| F-16 | P3 | Test-Schutz: Namensregel („latest“), Lexware-Adresse nicht verpflichtend | Wortgrenze für „test“, `lexware_api_base_url` verpflichtend lokal; Selbsttest erweitert |
+| F-17 | P3 | Idempotenzschlüssel nach echtem 429 wiederverwendet (falls Stripe 429 speichert) | Annahme dokumentiert: Stripe speichert nur begonnene Ausführungen; offen |
+| F-18 | P3 | `failed`-Versuch unter 300 s erhält 500 (unnötige Wiederholungen) | offen, Endzustand konsistent |
 
 ## 7. Gesamturteil
 

@@ -125,7 +125,7 @@ Rücklastschrift überschreiben.
 ## 5g. Befunde des Gesamtaudits vom 10.09.2026 (Version 4.59)
 
 Vollständige Liste mit Belegen, Tests und Reststatus: `docs/audit/AUDIT_REPORT.md`; Invarianten und Zustandsmaschine:
-`docs/audit/PAYMENT_INVARIANTS.md`; Nachweis: `bash tools/collections-check.sh` (126 Fälle, vorher 36 rot).
+`docs/audit/PAYMENT_INVARIANTS.md`; Nachweis: `bash tools/collections-check.sh` (136 Fälle, vorher 36 rot).
 
 - Klärung unklarer Versuche (A-01, A-04): Freigabe eines Versuchs erst nach Ablauf der Frist UND wenn Suchindex und die
   konsistente Liste der PaymentIntents seit dem Versuch keinen Treffer liefern (`_stripe_find_payment_intent_by_attempt_key`).
@@ -148,6 +148,10 @@ Vollständige Liste mit Belegen, Tests und Reststatus: `docs/audit/AUDIT_REPORT.
 - Sperre (D-05): `submit_collection` serialisiert über `GET_LOCK('smarteinzug_collect_<firma>', 30)`, nicht mehr über
   `FOR UPDATE` auf `organizations`; der Not-Stopp wartet nicht auf einen hängenden Stripe-Aufruf (Nachweis
   `COLLECTIONS_CHECK_SLOW=1`, Abschnitt 7e).
+- Gegenprüfung F (10.09.2026): Listenprüfung mit Zeitfenster und Ausnahme bei unvollständiger Liste (F-01); der Fälligkeitslauf
+  storniert Einzüge auf inzwischen bezahlte oder abgedeckte Rechnungen statt sie als fehlgeschlagen zu führen
+  (`CollectionCoveredException`, F-04); Wiederherstellung des Rechnungsstatus nur bei voller Deckung `collected` (F-05);
+  eigene Einzüge abzüglich Teilerstattungen (F-06).
 - Antwort ohne JSON (eigener Befund): Nur ein klarer 4xx-Status ohne JSON gilt als Ablehnung; 2xx ohne lesbaren Inhalt ist
   ein unbekanntes Ergebnis.
 - Offen (nicht behoben, dokumentiert): dasselbe Lexware-Konto in zwei Firmenaccounts (B-04), Altrechnungen nach Wechsel

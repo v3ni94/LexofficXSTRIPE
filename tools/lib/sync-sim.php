@@ -47,7 +47,11 @@ $runSync = static function (string $tenant) use ($fake): array {
     sync_state_start($tenant, ['user_id' => null, 'email' => 'sim']);
     $last = [];
     for ($i = 0; $i < 20; $i++) {
-        $last = sync_state_step($tenant);
+        try {
+            $last = sync_state_step($tenant);
+        } catch (Throwable $e) {
+            return ['error' => $e->getMessage()];
+        }
         if (!empty($last['done']) || !empty($last['skipped'])) {
             break;
         }
@@ -71,7 +75,7 @@ switch ($argv[2] ?? '') {
         $fake->invoices[$R1] = ['number' => 'RE-1', 'voucherStatus' => 'open', 'contactId' => $K1, 'amount' => 100.0, 'updatedDate' => $upd];
         $fake->contacts[$K1] = new LexofficeException('Lexware Office Serverfehler 503 nach Retries.');
         $r = $runSync($T);
-        $out('status', $r['status'] ?? '?');
+        $out('status', isset($r['error']) ? 'fehler' : ($r['status'] ?? '?'));
         $k = $kunde($T, $K1);
         $out('kunde_nummer', $k['customer_number'] ?? '(fehlt)');
         $out('kunde_email', $k['email'] ?? '(fehlt)');

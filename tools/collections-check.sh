@@ -35,7 +35,7 @@ STUB_PID=$!
 for i in $(seq 1 50); do curl -s -o /dev/null -u sk_test_x: "http://127.0.0.1:$PORT/v1/account" && break; sleep 0.1; done
 
 echo "1) Pruefstand"
-mariadb_sandbox_start "$T/mdb" "'features' => ['queue' => true], 'stripe_api_base_url' => 'http://127.0.0.1:$PORT', 'collections' => ['grace_hours' => 0, 'window_enabled' => false], 'queue' => ['stripe_per_second' => 100, 'stripe_global_per_second' => 500], 'base_url' => 'http://127.0.0.1:$WPORT'," || exit 1
+mariadb_sandbox_start "$T/mdb" "'features' => ['queue' => true], 'stripe_api_base_url' => 'http://127.0.0.1:$PORT', 'lexware_api_base_url' => 'http://127.0.0.1:1', 'collections' => ['grace_hours' => 0, 'window_enabled' => false], 'queue' => ['stripe_per_second' => 100, 'stripe_global_per_second' => 500], 'base_url' => 'http://127.0.0.1:$WPORT'," || exit 1
 mariadb --socket="$MDB_SOCK" -uroot -e "SET GLOBAL time_zone = '+00:00'"
 export LEX_FAKE_FILE="$T/lex.json"; echo '{}' > "$LEX_FAKE_FILE"
 SIM="php $ROOT/tools/lib/collections-sim.php $ROOT"
@@ -131,6 +131,20 @@ erw "Rechnung in_collection" invoice_status in_collection
 OUT="$($SIM submit $A "$(INV 4)")"; erw "nach Nachtrag kein weiterer Einzug" result error
 [[ "$(pis_fuer "$(INV 4)")" == 1 ]] && ok "weiterhin genau ein PaymentIntent" || bad "PaymentIntents INV4: $(pis_fuer "$(INV 4)")"
 rm -f "$STRIPE_STUB_DIR/search_lag"
+echo "7a2) Listenpruefung ueber mehrere Seiten (F-01): Seitengroesse 2, Treffer auf einer spaeteren Seite"
+SQL "UPDATE invoices SET collection_status = 'none', open_amount = NULL WHERE id = '$(INV 1)'"
+SQL "DELETE FROM payment_collections WHERE invoice_id = '$(INV 1)'; DELETE FROM collection_attempts WHERE invoice_id = '$(INV 1)'"
+rm -f "$STRIPE_STUB_DIR"/idem/*
+mode http500; OUT="$($SIM submit $A "$(INV 1)")"; erw "500: Versuch unknown" error_class CollectionUnknownOutcomeException; mode ok
+sleep 1
+for i in 1 2 3; do SQL "UPDATE invoices SET collection_status = 'none', open_amount = NULL WHERE id = '$(INVB $i)'"; SQL "DELETE FROM payment_collections WHERE invoice_id = '$(INVB $i)'; DELETE FROM collection_attempts WHERE invoice_id = '$(INVB $i)'"; $SIM submit $B "$(INVB $i)" >/dev/null 2>&1; done
+touch "$STRIPE_STUB_DIR/search_lag"; echo 2 > "$STRIPE_STUB_DIR/pi_page_size"; : > "$STRIPE_STUB_DIR/list.log"
+SQL "UPDATE collection_attempts SET created_at = DATE_SUB(created_at, INTERVAL 20 MINUTE) WHERE invoice_id = '$(INV 1)'"
+OUT="$($SIM resolve $A)"
+erw "Treffer auf spaeterer Seite gefunden und nachgetragen" recovered 1
+erw "nicht freigegeben" cleared 0
+[[ "$(wc -l < "$STRIPE_STUB_DIR/list.log")" -ge 2 ]] && ok "Liste wurde ueber mehrere Seiten gelesen ($(wc -l < "$STRIPE_STUB_DIR/list.log") Seiten)" || bad "F-01: nur $(wc -l < "$STRIPE_STUB_DIR/list.log") Seite(n) gelesen"
+rm -f "$STRIPE_STUB_DIR/pi_page_size" "$STRIPE_STUB_DIR/search_lag"
 echo "7b) Klaerung: Stripe hat nichts angelegt (HTTP 409): Freigabe erst nach Frist und Listenpruefung"
 mode http409
 OUT="$($SIM submit $A "$(INV 5)")"; erw "409 endet in der Klaerung" error_class CollectionUnknownOutcomeException
@@ -150,20 +164,29 @@ mode ok
 OUT="$($SIM submit $A "$(INV 6)")"; erw "neuer Versuch nach klarer Ablehnung erlaubt" result ok
 [[ "$(pis_fuer "$(INV 6)")" == 1 ]] && ok "genau ein PaymentIntent fuer Rechnung 6" || bad "PaymentIntents INV6: $(pis_fuer "$(INV 6)")"
 echo "7d) Antwort ohne JSON mit HTTP 502 (Proxy): unbekannt, keine Wiederholung"
+SQL "UPDATE invoices SET collection_status = 'none', open_amount = NULL WHERE id = '$(INVB 1)'"; SQL "DELETE FROM payment_collections WHERE invoice_id = '$(INVB 1)'; DELETE FROM collection_attempts WHERE invoice_id = '$(INVB 1)'"; rm -f "$STRIPE_STUB_DIR"/idem/*
 mode http502html
 OUT="$($SIM submit $B "$(INVB 1)")"; erw "502 ohne JSON endet in der Klaerung" error_class CollectionUnknownOutcomeException
 mode ok
+echo "7e) Not-Stopp waehrend eines laufenden Einzugs (D-05, langsamer Stub 5 s)"
+SQL "UPDATE invoices SET collection_status = 'none', open_amount = NULL WHERE id = '$(INVB 4)'"
+mode slow5
+$SIM submit $B "$(INVB 4)" > "$T/slow.txt" 2>&1 & SLOWPID=$!
+sleep 2
+OUT="$($SIM pause $B 1)"; erw "Not-Stopp waehrend des laufenden Einzugs gesetzt" result ok
+D="$(feld "$OUT" dauer_ms)"; [[ -n "$D" && $D -lt 2500 ]] && ok "Not-Stopp wartet nicht auf den Einzug (${D} ms)" || bad "D-05: Not-Stopp brauchte ${D} ms"
+wait $SLOWPID; OUT="$(cat "$T/slow.txt")"; erw "laufender Einzug endet regulaer" result ok
+mode ok
+OUT="$($SIM pause $B 0)"; erw "Not-Stopp wieder aufgehoben" result ok
 if [[ "${COLLECTIONS_CHECK_SLOW:-0}" == 1 ]]; then
-    echo "7e) Zeitueberschreitung (31 s) und Not-Stopp waehrend eines haengenden Einzugs (D-05)"
+    echo "7f) Zeitueberschreitung (31 s)"
+    SQL "UPDATE invoices SET collection_status = 'none', open_amount = NULL WHERE id = '$(INVB 2)'"; SQL "DELETE FROM payment_collections WHERE invoice_id = '$(INVB 2)'; DELETE FROM collection_attempts WHERE invoice_id = '$(INVB 2)'"; rm -f "$STRIPE_STUB_DIR"/idem/*
+    VORHER=$(pis_fuer "$(INVB 2)")
     mode timeout
-    $SIM submit $B "$(INVB 2)" > "$T/slow.txt" 2>&1 & SLOWPID=$!
-    sleep 3
-    OUT="$($SIM pause $B 1)"; erw "Not-Stopp waehrend des haengenden Einzugs gesetzt" result ok
-    D="$(feld "$OUT" dauer_ms)"; [[ -n "$D" && $D -lt 5000 ]] && ok "Not-Stopp wartet nicht auf den Einzug (${D} ms)" || bad "D-05: Not-Stopp brauchte ${D} ms"
-    wait $SLOWPID; OUT="$(cat "$T/slow.txt")"; erw "Timeout endet in der Klaerung" error_class CollectionUnknownOutcomeException
+    OUT="$($SIM submit $B "$(INVB 2)")"; erw "Timeout endet in der Klaerung" error_class CollectionUnknownOutcomeException
     mode ok
-    [[ "$(pis_fuer "$(INVB 2)")" == 1 ]] && ok "PaymentIntent trotz Timeout genau einmal" || bad "PaymentIntents INVB2: $(pis_fuer "$(INVB 2)")"
-    OUT="$($SIM pause $B 0)"; erw "Not-Stopp wieder aufgehoben" result ok
+    [[ "$(pis_fuer "$(INVB 2)")" == $((VORHER + 1)) ]] && ok "PaymentIntent trotz Timeout genau einmal angelegt" || bad "PaymentIntents INVB2: $(pis_fuer "$(INVB 2)") (vorher $VORHER)"
+    OUT="$($SIM submit $B "$(INVB 2)")"; erw "bis zur Klaerung kein weiterer Versuch" result error
 fi
 
 echo "8) Terminierte Einzuege: Fenster, parallele Laeufe, Beanspruchung"
@@ -174,8 +197,6 @@ MORGEN="$(date -d '+1 day' +%F)"
 for i in 1 2 3 4 5 6; do OUT="$($SIM submit $B "$(INVB $i)" - "$MORGEN")"; [[ "$(feld "$OUT" result)" == ok ]] || bad "Terminierung $i: $(feld "$OUT" error)"; done
 [[ "$(SQL "SELECT COUNT(*) FROM payment_collections WHERE tenant_id = '$B' AND stripe_status = 'scheduled'")" == 6 ]] && ok "sechs terminierte Einzuege" || bad "terminierte Einzuege"
 [[ "$(pis)" == 0 ]] && ok "Terminierung erzeugt keinen PaymentIntent" || bad "PaymentIntents nach Terminierung: $(pis)"
-OUT="$($SIM process_window $B '2026-09-10 12:00:00')"
-erw "ausserhalb des Fensters wird nichts eingereicht (Fenster in Konfiguration deaktiviert => offen)" submitted 0 2>/dev/null || true
 SQL "UPDATE payment_collections SET scheduled_date = CURDATE() WHERE tenant_id = '$B'"
 PIDS=(); for i in 1 2 3; do $SIM process $B > "$T/proc$i.txt" 2>&1 & PIDS+=($!); done; wait "${PIDS[@]}"
 SUBM=$(cat "$T"/proc*.txt | sed -n 's/^submitted=//p' | paste -sd+ | bc)
@@ -232,9 +253,10 @@ echo "12a) Teilweise eingezogen: Rest terminierbar"
 SQL "UPDATE payment_collections SET amount_cents = 6000 WHERE id = '$CID'"
 OUT="$($SIM submit $B "$(INVB 2)" - "$MORGEN")"; erw "Rest ohne Bestaetigung: Rueckfrage" result error
 OUT="$($SIM submit $B "$(INVB 2)" 4000 "$MORGEN")"; erw "Rest 40,00 EUR mit Bestaetigung terminierbar" result ok
-OUT="$($SIM state "$(INVB 2)")"; erwp "zweiter Einzug ueber 4000 Cent scheduled" c1 "scheduled|-|4000|*"
-OUT="$($SIM cancel $B "$(feld "$OUT" c1 | cut -d'|' -f4)")"; erw "Storno des terminierten Rests" result ok
-[[ "$(SQL "SELECT collection_status FROM invoices WHERE id = '$(INVB 2)'")" == collected ]] && ok "Storno stellt collected wieder her (nicht open)" || bad "A-10 Storno: Status $(SQL "SELECT collection_status FROM invoices WHERE id = '$(INVB 2)'")"
+OUT="$($SIM state "$(INVB 2)")"; printf '%s\n' "$OUT" | grep -qE '^c[0-9]+=scheduled\|-\|4000\|' && ok "zweiter Einzug ueber 4000 Cent scheduled" || bad "kein terminierter Einzug ueber 4000 Cent: $(printf '%s\n' "$OUT" | grep -E '^c[0-9]+=' | tr '\n' ' ')"
+CREST="$(SQL "SELECT id FROM payment_collections WHERE invoice_id = '$(INVB 2)' AND stripe_status = 'scheduled' AND amount_cents = 4000 LIMIT 1")"
+OUT="$($SIM cancel $B "$CREST")"; erw "Storno des terminierten Rests" result ok
+[[ "$(SQL "SELECT collection_status FROM invoices WHERE id = '$(INVB 2)'")" == open ]] && ok "Storno des Rests: Rechnung mit Teileinzug 60,00 EUR gilt als offen, nicht als eingezogen (F-05)" || bad "A-10/F-05 Storno: Status $(SQL "SELECT collection_status FROM invoices WHERE id = '$(INVB 2)'")"
 
 echo "13) Erstattung nach verlorenem Erfolgsereignis (A-14)"
 SQL "UPDATE payment_collections SET stripe_status = 'processing', completed_at = NULL, amount_cents = 10000 WHERE id = '$CID'"
@@ -243,9 +265,19 @@ OUT="$($SIM refund $B "$CID" 10000)"; erw "Vollerstattung uebernommen" result ch
 OUT="$($SIM state "$(INVB 2)")"
 erw "Rechnung mit Klaerungsbedarf" requires_review 1
 erw "Rechnung nach Vollerstattung wieder open (auch aus in_collection)" invoice_status open
-erwp "Einzug refunded" c0 "refunded|*"
+printf '%s\n' "$OUT" | grep -qE '^c[0-9]+=refunded\|' && ok "Einzug refunded" || bad "kein Einzug im Zustand refunded"
 OUT="$($SIM review_clear $B "$(INVB 2)")"; erw "Klaerung abgeschlossen" result ok
 OUT="$($SIM submit $B "$(INVB 2)" - "$MORGEN")"; erw "danach wieder terminierbar" result ok
+
+echo "13b) Faelligkeitslauf trifft bezahlte Rechnung (F-04): Storno statt Fehlschlag"
+C5="$(SQL "SELECT id FROM payment_collections WHERE invoice_id = '$(INVB 2)' AND stripe_status = 'scheduled' ORDER BY created_at DESC LIMIT 1")"
+[[ -n "$C5" ]] && ok "terminierter Einzug aus 13 vorhanden" || bad "kein terminierter Einzug fuer 13b"
+SQL "UPDATE payment_collections SET scheduled_date = CURDATE() WHERE id = '$C5'"
+echo "{\"bbbbbbbb-5555-0000-0000-000000000002\": 0}" > "$LEX_FAKE_FILE"
+OUT="$($SIM process $B)"; erw "kein Fehlschlag" failed 0; erw "als storniert gezaehlt" cancelled_covered 1
+echo '{}' > "$LEX_FAKE_FILE"
+[[ "$(SQL "SELECT stripe_status FROM payment_collections WHERE id = '$C5'")" == cancelled ]] && ok "Einzug storniert, nicht failed" || bad "F-04: $(SQL "SELECT stripe_status FROM payment_collections WHERE id = '$C5'")"
+[[ "$(SQL "SELECT collection_status FROM invoices WHERE id = '$(INVB 2)'")" == open ]] && ok "Rechnung nicht als fehlgeschlagen markiert" || bad "F-04 Rechnung: $(SQL "SELECT collection_status FROM invoices WHERE id = '$(INVB 2)'")"
 
 echo "14) Webhook-Endpunkt (echter HTTP-Aufruf gegen stripe-webhook.php)"
 ( cd "$ROOT/php-ionos" && SMARTEINZUG_CONFIG="$SMARTEINZUG_CONFIG" php -S "127.0.0.1:$WPORT" >"$T/web.log" 2>&1 ) &

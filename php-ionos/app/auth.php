@@ -984,7 +984,7 @@ function password_reset_request(string $email): void
 
     // Drossel je IP-Adresse und je Adresse (unabhängig von Cookies): höchstens
     // 5 Anforderungen in 15 Minuten, sonst stille Ablehnung.
-    $ip = client_ip();
+    $ip = client_ip_is_unresolved_proxy() ? null : client_ip(); // Proxy-Adresse zaehlt nicht (Befund C-02, Gegenpruefung F-02)
     $stmt = db()->prepare(
         "SELECT COUNT(*) FROM login_attempts WHERE stage = 'reset' AND created_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)
            AND (email = ? OR (ip IS NOT NULL AND ip = ?))"
@@ -1538,8 +1538,8 @@ function registration_classify(string $email, string $orgName): array
 function register_throttle_check(): ?string
 {
     $ip = client_ip();
-    if (!$ip) {
-        return null;
+    if (!$ip || client_ip_is_unresolved_proxy()) {
+        return null; // hinter nicht konfiguriertem Proxy teilen alle Benutzer eine Adresse (Befund C-02, Gegenpruefung F-02)
     }
     $stmt = db()->prepare(
         "SELECT COUNT(*) FROM login_attempts

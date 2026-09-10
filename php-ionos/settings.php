@@ -172,7 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $kontowechsel = '';
             if (!empty($oldStripe['stripe_account_id'])
-                && ((string)$oldStripe['stripe_account_id'] !== (string)$info['account_id'] || (string)($oldStripe['stripe_mode'] ?? '') !== (string)$info['mode'])) {
+                && ((string)$oldStripe['stripe_account_id'] !== (string)$info['account_id']
+                    || (!empty($oldStripe['stripe_mode']) && (string)$oldStripe['stripe_mode'] !== (string)$info['mode']))) {
                 // Anderes Stripe-Konto oder Wechsel Test/Live (Befund A-12): gespeicherte Stripe-Kunden und Zahlungsmethoden der
                 // Mandate gehoeren zum alten Konto und wuerden jeden Einzug mit resource_missing scheitern lassen. Zuruecksetzen:
                 // manuelle Mandate legen die Zahlungsmethode beim naechsten Einzug neu an, digital erteilte brauchen ein neues Mandat.

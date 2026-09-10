@@ -87,8 +87,8 @@ function test_guard_assert_config(array $cfg, ?string $configFile): void
     if ((int)($db['port'] ?? 3306) === 3306) {
         test_guard_fail('Datenbank-Port 3306: die Sandbox nutzt einen eigenen Port, ein Standardport deutet auf eine dauerhafte Instanz.');
     }
-    if (!str_contains(strtolower((string)($db['name'] ?? '')), 'test')) {
-        test_guard_fail('Datenbankname enthaelt kein "test" (' . (string)($db['name'] ?? '?') . ').');
+    if (!preg_match('/(^|_)test(_|$)/', strtolower((string)($db['name'] ?? '')))) {
+        test_guard_fail('Datenbankname traegt kein eigenstaendiges Wort "test" (' . (string)($db['name'] ?? '?') . ').');
     }
 
     $mail = $cfg['mail'] ?? null;
@@ -115,7 +115,10 @@ function test_guard_assert_config(array $cfg, ?string $configFile): void
         test_guard_fail('stripe_api_base_url zeigt nicht auf 127.0.0.1 (' . $stripeUrl . ').');
     }
     $lexUrl = trim((string)($cfg['lexware_api_base_url'] ?? ''));
-    if ($lexUrl !== '' && !test_guard_is_local_url($lexUrl)) {
+    if ($lexUrl === '') {
+        test_guard_fail('lexware_api_base_url fehlt: ohne lokale Adresse wuerde ein Abruf api.lexware.io erreichen (Gegenpruefung F-16).');
+    }
+    if (!test_guard_is_local_url($lexUrl)) {
         test_guard_fail('lexware_api_base_url zeigt nicht auf 127.0.0.1 (' . $lexUrl . ').');
     }
     $sev = (array)($cfg['sevdesk'] ?? []);

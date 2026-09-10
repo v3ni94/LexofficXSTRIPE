@@ -238,9 +238,12 @@ class StripeClient
      * Für den Einmal-Import bestehender Einzüge aus einer früheren Installation.
      * @return array{data:array,has_more:bool}
      */
-    public function listPaymentIntents(int $createdGte, ?string $startingAfter = null, int $limit = 100): array
+    public function listPaymentIntents(int $createdGte, ?string $startingAfter = null, int $limit = 100, ?int $createdLte = null): array
     {
         $params = ['created' => ['gte' => $createdGte], 'limit' => max(1, min(100, $limit)), 'expand' => ['data.latest_charge']];
+        if ($createdLte !== null) {
+            $params['created']['lte'] = $createdLte;
+        }
         if ($startingAfter !== null && $startingAfter !== '') {
             $params['starting_after'] = $startingAfter;
         }

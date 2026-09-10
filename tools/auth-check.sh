@@ -18,7 +18,7 @@ grep -q "totp_last_step IS NULL OR totp_last_step < ?" "$A" && grep -q "return \
 grep -q "request_is_https()" "$ROOT/php-ionos/app/devices.php" && grep -q "^function request_is_https" "$ROOT/php-ionos/app/bootstrap.php" && grep -q "\$secureCookie = request_is_https();" "$ROOT/php-ionos/app/bootstrap.php" && ok "Sitzungs- und Geraetecookie leiten Secure gleich ab (C-03)" || bad "C-03: Secure-Flag uneinheitlich"
 [[ "$(grep -c "email_verification_send(\$user)" "$ROOT/php-ionos/verify-email.php")" == 1 ]] && ok "Bestaetigungsmail wird je Klick genau einmal gesendet (C-10)" || bad "C-10: Mehrfachversand"
 grep -q "login_attempts_cleanup" "$ROOT/php-ionos/app/jobs.php" && grep -q "login_attempts_cleanup" "$ROOT/php-ionos/cron.php" && ok "Bereinigung login_attempts in Wartung und Cron (C-09)" || bad "C-09: Bereinigung fehlt"
-grep -q "GET_LOCK('smarteinzug_cron'" "$ROOT/php-ionos/cron.php" && ok "Cron gegen ueberlappende Laeufe gesperrt (D-08)" || bad "D-08: keine Cron-Sperre"
+grep -q "smarteinzug_cron_" "$ROOT/php-ionos/cron.php" && grep -q "SELECT GET_LOCK(?, 0)" "$ROOT/php-ionos/cron.php" && ok "Cron gegen ueberlappende Laeufe gesperrt, Sperrname je Datenbank (D-08, F-12)" || bad "D-08: keine Cron-Sperre"
 grep -q "GLOBALS\['worker_beat'\]" "$ROOT/php-ionos/app/queue.php" && grep -q "GLOBALS\['worker_beat'\] = \$beat" "$ROOT/php-ionos/bin/worker.php" && ok "Worker-Lebenszeichen bei jedem Jobfortschritt (D-02)" || bad "D-02: Heartbeat waehrend Job fehlt"
 grep -q "(HTTP 401)" "$ROOT/php-ionos/app/lexoffice.php" && ok "401-Meldung fuer die Fehlerkategorie erkennbar (B-03)" || bad "B-03"
 grep -q "sync_invoice_source(\$tenantId); // prüft Verbindung" "$ROOT/php-ionos/invoices.php" && ok "manueller Sync ueber die Adaptergrenze (B-05)" || bad "B-05"
@@ -28,7 +28,7 @@ echo "2) Parallele Zweitbestaetigung mit demselben Code (echte Prozesse)"
 source "$ROOT/tools/lib/mariadb-sandbox.sh"
 if ! mariadb_sandbox_available; then echo "uebersprungen: keine lokale MariaDB"; echo "Ergebnis: $PASS bestanden, $FAIL fehlgeschlagen"; exit $(( FAIL > 0 )); fi
 T="$(mktemp -d)"; cleanup() { mariadb_sandbox_stop; rm -rf "$T"; }; trap cleanup EXIT INT TERM
-mariadb_sandbox_start "$T/mdb" "'stripe_api_base_url' => 'http://127.0.0.1:1'," || exit 1
+mariadb_sandbox_start "$T/mdb" "'stripe_api_base_url' => 'http://127.0.0.1:1', 'lexware_api_base_url' => 'http://127.0.0.1:1'," || exit 1
 SIM="php $ROOT/tools/lib/auth-sim.php $ROOT"
 # Nicht am Ende eines 30-Sekunden-Schritts starten, damit alle Parallelaufrufe denselben Code sehen
 for i in 1 2 3; do OUT="$($SIM seed)"; S=$(feld "$OUT" sekunde_im_schritt); [[ $S -lt 22 ]] && break; sleep $((30 - S)); done

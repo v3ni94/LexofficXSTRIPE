@@ -43,7 +43,20 @@ function client_ip_is_unresolved_proxy(): bool
     if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
         return false;
     }
-    return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+    $unresolved = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+    static $gemeldet = false;
+    if ($unresolved && !$gemeldet) {
+        // Sichtbar machen, dass IP-Grenzen ausgesetzt sind (Gegenpruefung F-02): Betreiber muss trusted_proxies setzen.
+        $gemeldet = true;
+        error_log('trusted_proxies fehlt oder passt nicht: Anfrage von ' . $ip . ' mit X-Forwarded-For; IP-bezogene Sperren ausgesetzt.');
+        try {
+            require_once __DIR__ . '/monitor.php';
+            monitor_event('proxy_config', 'fail', null, 'unresolved_proxy', 'instrumented', 3600);
+        } catch (Throwable $e) {
+            // Diagnose darf die Anfrage nicht stoeren
+        }
+    }
+    return $unresolved;
 }
 
 /**

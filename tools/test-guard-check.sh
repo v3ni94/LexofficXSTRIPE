@@ -23,7 +23,7 @@ return array_replace_recursive([
     'app_secret' => str_repeat('a', 64), 'cron_token' => str_repeat('b', 32),
     'db' => ['host' => '127.0.0.1', 'port' => 23999, 'name' => 'se_test', 'user' => 'se_test', 'pass' => 'x', 'charset' => 'utf8mb4'],
     'redis' => null, 'storage_dir' => '$T/storage',
-    'stripe_api_base_url' => 'http://127.0.0.1:28999',
+    'stripe_api_base_url' => 'http://127.0.0.1:28999', 'lexware_api_base_url' => 'http://127.0.0.1:28998',
 ], [ $2 ]);
 PHP
 }
@@ -45,7 +45,9 @@ OUT="$(laden "$T/ok.php")"; RC=$?
 echo "2) Synthetische Produktionsmerkmale werden abgewiesen"
 erwarte_abbruch "Datenbank auf fremdem Host" "'db' => ['host' => 'db.example.invalid']" "nicht lokal"
 erwarte_abbruch "Datenbank auf Standardport 3306" "'db' => ['port' => 3306]" "3306"
-erwarte_abbruch "Datenbankname ohne test" "'db' => ['name' => 'smarteinzug']" 'kein "test"'
+erwarte_abbruch "Datenbankname ohne test" "'db' => ['name' => 'smarteinzug']" 'Wort "test"'
+erwarte_abbruch "Datenbankname latest (F-16)" "'db' => ['name' => 'latest']" 'Wort "test"'
+erwarte_abbruch "Lexware ohne Stub-Adresse (F-16)" "'lexware_api_base_url' => ''" "lexware_api_base_url fehlt"
 erwarte_abbruch "Mailversand aktiv" "'mail' => ['enabled' => true, 'transport' => 'smtp']" "mail.enabled"
 erwarte_abbruch "Totmannschalter gesetzt" "'monitoring' => ['heartbeat_url' => 'https://hc.example.invalid/ping']" "heartbeat_url"
 erwarte_abbruch "Plattform-Abrechnung aktiv" "'billing' => ['enabled' => true]" "billing.enabled"

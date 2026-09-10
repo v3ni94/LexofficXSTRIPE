@@ -85,10 +85,15 @@ if mariadb_sandbox_available; then
     erw "C-01: eigene Rolle nicht bearbeitbar" c01_eigene_rolle_bearbeiten_verweigert verweigert
     erw "C-01: eigene Rolle unveraendert" c01_eigene_rolle_unveraendert 1
     erw "C-01: neue Rolle mit users.manage nur durch Administrator" c01_neue_rolle_mit_users_manage_verweigert verweigert
-    erw "C-01: unprivilegierte Rolle weiterhin anlegbar" c01_neue_rolle_ohne_privileg_erlaubt ok
+    erw "C-01: Rolle aus eigenen Rechten weiterhin anlegbar" c01_neue_rolle_ohne_privileg_erlaubt ok
+    erw "F-03: einzelnes fremdes Recht verweigert" f03_fremdes_recht_verweigert verweigert
     erw "C-01: unprivilegierte Rolle vergebbar" c01_verwalter_vergibt_lesen ok
     erw "C-01: admin nur durch Administrator vergebbar" c01_verwalter_vergibt_admin_verweigert verweigert
     erw "C-01: Administrator vergibt admin" c01_admin_vergibt_admin ok
+    erw "F-03: Rolle mit Rechten ausserhalb der eigenen verweigert" f03_rolle_mit_fremden_rechten_verweigert verweigert
+    erw "F-03: Administrator nicht durch users.manage entfernbar" f03_admin_entfernen_verweigert verweigert
+    erw "F-03: Administrator nicht durch users.manage deaktivierbar" f03_admin_deaktivieren_verweigert verweigert
+    erw "F-03: Administratorrolle unveraendert" f03_admin_rolle_unveraendert admin
     erw "eigene Rolle nach Einladungsversuch unveraendert" einladung_selbst_rolle_unveraendert technik
     erw "Einladung ohne Mailversand verweigert" einladung_ohne_mail_verweigert verweigert
     erw "Einladung mit ungueltiger Adresse verweigert" einladung_ungueltige_adresse verweigert

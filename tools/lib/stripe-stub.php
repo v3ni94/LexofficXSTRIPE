@@ -177,6 +177,11 @@ if ($method === 'POST' && $path === '/payment_intents') {
         sleep(31);
         stub_json(200, $pi);
     }
+    if ($mode === 'slow5') {
+        flock($lock, LOCK_UN);
+        sleep(5); // langsamer Aufruf ohne Zeitueberschreitung (Not-Stopp waehrend eines laufenden Einzugs, D-05)
+        stub_json(200, $pi);
+    }
     stub_json(200, $pi);
 }
 if ($method === 'GET' && $path === '/payment_intents/search') {
@@ -193,13 +198,24 @@ if ($method === 'GET' && $path === '/payment_intents/search') {
     stub_json(200, ['object' => 'search_result', 'data' => $hits, 'has_more' => false]);
 }
 if ($method === 'GET' && $path === '/payment_intents') {
+    // Liste wie Stripe: absteigend nach created, starting_after als Cursor, limit je Seite (Testdatei pi_page_size begrenzt
+    // die Seitengroesse zusaetzlich, damit die Paginierung mit wenigen Datensaetzen geprueft wird)
     $gte = (int)($query['created']['gte'] ?? 0);
-    $hits = [];
+    $lte = isset($query['created']['lte']) ? (int)$query['created']['lte'] : PHP_INT_MAX;
+    $limit = max(1, min(100, (int)($query['limit'] ?? 10)));
+    if (is_file("$dir/pi_page_size")) { $limit = min($limit, max(1, (int)file_get_contents("$dir/pi_page_size"))); }
+    $all = [];
     foreach (stub_load('pis') as $pi) {
-        if ((int)$pi['created'] >= $gte) { $hits[] = $pi; }
+        if ((int)$pi['created'] >= $gte && (int)$pi['created'] <= $lte) { $all[] = $pi; }
     }
-    usort($hits, static fn($a, $b) => $b['created'] <=> $a['created']);
-    stub_json(200, ['object' => 'list', 'data' => $hits, 'has_more' => false]);
+    usort($all, static fn($a, $b) => [$b['created'], $b['id']] <=> [$a['created'], $a['id']]);
+    $start = 0;
+    if (!empty($query['starting_after'])) {
+        foreach ($all as $i => $pi) { if ($pi['id'] === $query['starting_after']) { $start = $i + 1; break; } }
+    }
+    $page = array_slice($all, $start, $limit);
+    file_put_contents("$dir/list.log", 'page start=' . $start . ' n=' . count($page) . "\n", FILE_APPEND);
+    stub_json(200, ['object' => 'list', 'data' => $page, 'has_more' => $start + $limit < count($all)]);
 }
 if ($method === 'GET' && preg_match('#^/payment_intents/([^/]+)$#', $path, $m)) {
     $pis = stub_load('pis');
