@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.67';
+const APP_VERSION = '4.68';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.68', 'date' => '11.09.2026', 'title' => 'Einrichtungsskript für das Marketing-Versandprofil auf dem VPS',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'deploy/vps/scripts/setup-marketing-mail.sh richtet das Versandprofil mail_marketing (Amazon SES) auf dem Server ein: Abfrage von Region, SMTP-Zugangsdaten (unsichtbar) und Absender mit Plausibilitätsprüfung, Sicherung der Konfiguration, Einfügen des Blocks, Webhook-Token, Syntaxprüfung im Container mit Rückfall auf die Sicherung, Neuerzeugen der Worker, Zustandsanzeige; --status und --test=ADRESSE für die laufende Kontrolle. Anlass: Einfügen langer Befehlsblöcke in die SSH-Sitzung war fehleranfällig.'],
+         ]],
         ['version' => '4.67', 'date' => '11.09.2026', 'title' => 'Prüfung des Marketing-Versandprofils auf dem Server',
          'entries' => [
             ['type' => 'Neu', 'text' => 'php bin/mail-check.php --marketing zeigt den Zustand des Versandprofils mail_marketing (aktiv, Absender, SMTP-Host mit SES-Region, Zugangsdaten gesetzt, Webhook-Token, Ratenbegrenzung und Nachrichten der letzten 24 Stunden) und sendet mit --send=ADRESSE eine Testnachricht über dieses Profil mit den Kopfzeilen List-Unsubscribe und Precedence: bulk. Fehlermeldungen nennen die häufigen SES-Ursachen (Identität nicht verifiziert, Sandbox, falsche Region).'],

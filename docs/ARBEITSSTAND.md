@@ -45,6 +45,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 | Version | Inhalt | Commit | Push |
 |---|---|---|---|
+| 4.68 | `deploy/vps/scripts/setup-marketing-mail.sh`: Einrichtung des Marketingprofils auf dem VPS ohne Einfügen langer Blöcke (Abfragen, Sicherung, Block einfügen, Syntaxprüfung mit Rückfall, restart-workers, Zustand; `--status`, `--test=`) | siehe git log | ja |
 | 4.67 | `bin/mail-check.php --marketing [--send=]`: Zustand des Marketingprofils und Testversand über SES vom Server; Grundlage der Konsoleneinrichtung | siehe git log | ja |
 | 4.66 | Marketing: gesperrte Schaltflächen (Test, Freigabe) nennen den Grund (Profil inaktiv, SMTP unvollständig, Test fehlt); Betreiber hielt den ausgegrauten Testknopf für einen Fehler. Marketingversand bleibt bis zur SES-Einrichtung gesperrt | siehe git log | ja |
 | 4.65 | Marketing-Vorschau: Iframe lädt nicht mehr `?vorschau=` nach (Caddy `X-Frame-Options: DENY` auf dem Adminhost, Browser „Verbindung abgelehnt“), sondern bettet den HTML-Code per `srcdoc` in das sandbox-iframe ein; Link „in neuem Fenster öffnen“ bleibt | siehe git log | ja |

@@ -94,8 +94,11 @@ Werte aus der SES-Konsole übernehmen, nichts raten. Zugangsdaten nie ins Reposi
 4. **Postfach `kontakt@mail.smart-einzug.de`:** SES sendet nur. Antworten gehen an `reply_to` (`kontakt@smart-einzug.de`,
    dieselbe registrierbare Domain). Eine Weiterleitung für `kontakt@mail.smart-einzug.de` ist nur nötig, wenn Empfänger
    direkt an den Absender schreiben; sonst laufen Antworten über Reply-To.
-5. **SMTP-Zugangsdaten:** SES, SMTP settings, Create SMTP credentials. Prüfung danach im php-Container mit
-   `php bin/mail-check.php --marketing` (Zustand) und `--marketing --send=ADRESSE` (Testnachricht über das Profil). Der Endpunkt lautet
+5. **SMTP-Zugangsdaten:** SES, SMTP settings, Create SMTP credentials. Einrichtung auf dem VPS ohne Handarbeit an der
+   Konfiguration: `bash /opt/smarteinzug/deploy/scripts/setup-marketing-mail.sh` fragt Region, SMTP-Zugangsdaten und
+   Absender ab (Passwort unsichtbar), sichert `shared/config.php`, fügt den Block `mail_marketing` ein, erzeugt den
+   Webhook-Token, prüft die Syntax im Container, erzeugt die Worker neu und zeigt den Zustand. Danach `--status` (Zustand)
+   und `--test=ADRESSE` (Testnachricht über das Profil); beides ruft `bin/mail-check.php --marketing` auf. Der Endpunkt lautet
    `email-smtp.<region>.amazonaws.com`, Port 587 mit STARTTLS. Benutzername und Passwort nach `shared/config.php`, Block
    `mail_marketing` (siehe `config.example.php`): `enabled` true, `transport` smtp, `from_address`
    `kontakt@mail.smart-einzug.de`, `reply_to` `kontakt@smart-einzug.de`, `webhook_token` als Zufallswert mit mindestens 32

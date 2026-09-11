@@ -5,9 +5,9 @@
     "summary": "Marketingmodul (4.63) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r32",
+    "revision": "r33",
     "date": "11.09.2026",
-    "summary": "bin/mail-check.php --marketing (4.67)."
+    "summary": "setup-marketing-mail.sh (4.68)."
   },
   "kunden": {
     "revision": "r4",
