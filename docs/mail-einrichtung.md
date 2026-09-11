@@ -118,6 +118,13 @@ include:_spf-eu.ionos.com ~all` vorhanden, `_dmarc` als CNAME auf `dmarc.ionos.d
 DKIM im IONOS-Kundenbereich aktiv, Transport der Anwendung tatsächlich `smtp` über das Postfach `kontakt@smart-einzug.de`,
 DMARC in eigene Hand nehmen (TXT statt CNAME, Berichte an eigene Adresse). Der Punkt Reply-To ist seit 4.61 im Code gelöst.
 
+Erledigt am 11.09.2026 (Betreiber, nachgewiesen): Transport `smtp` über `smtp.ionos.de` mit dem Postfach `kontakt@smart-einzug.de`
+(`bin/mail-check.php` auf dem VPS), DKIM aktiv (Mailkopf mit `dkim=pass header.d=smart-einzug.de header.s=s1-ionos`),
+`from_name` auf `SmartEinzug` vereinheitlicht (`restart-workers.sh`), DMARC als eigener TXT-Eintrag
+`v=DMARC1; p=none; rua=mailto:kontakt@smart-einzug.de; fo=1` beim autoritativen Nameserver `ns1034.ui-dns.de` bestätigt, der
+frühere CNAME auf `dmarc.ionos.de` ist entfernt. Damit stehen alle vier Zeilen von `--zustellbarkeit` auf OK, sobald der
+Resolver-Cache abgelaufen ist. Nächste Stufe nach zwei Wochen mit sauberen Berichten: `p=quarantine`, später `p=reject`, SPF `-all`.
+
 ## Auswertung eines Mailkopfs vom 11.09.2026 (Willkommensmail, 4.58)
 
 Ergebnis: Versand über `mout.kundenserver.de` (IONOS), beim ersten Empfang durch Google SPF PASS, DKIM PASS mit `s1-ionos`
