@@ -34,6 +34,7 @@ const PLATFORM_PERMISSIONS = [
     'support.tickets'    => ['Support',         'Support-Anfragen beantworten und schließen'],
     'support.sessions'   => ['Support',         'Auf Firmenaccounts wechseln (Support-Modus, mit 2FA-Code)'],
     'support.users'      => ['Support',         'Konten entsperren und 2FA zurücksetzen'],
+    'support.customers'  => ['Support',         'Kundenprofile pflegen: Firmenname, Anschrift und Kontaktdaten der Benutzer ändern (mit Grund, protokolliert, Inhaber wird informiert)'],
     'monitoring.view'    => ['System',          'Systemübersicht, Dienste, Jobs, Störungen einsehen'],
     'monitoring.edit'    => ['System',          'Störungen und Wartung, Jobs, Synchronisation bearbeiten'],
     'legal.view'         => ['Rechtsdokumente', 'Rechtsdokumente und Fassungen einsehen'],
@@ -47,7 +48,7 @@ const PLATFORM_PERMISSIONS = [
 const PLATFORM_SYSTEM_ROLES = [
     'admin'   => ['name' => 'Administrator', 'description' => 'Vollzugriff auf alle Bereiche, entspricht dem bisherigen Superadmin.', 'permissions' => '*'],
     'support' => ['name' => 'Mitarbeiter Support', 'description' => 'Support-Anfragen, Firmenzugriff, Konten entsperren; Systemübersicht nur lesend.',
-                  'permissions' => ['admin.view', 'companies.view', 'support.view', 'support.tickets', 'support.sessions', 'support.users', 'monitoring.view', 'interest.view']],
+                  'permissions' => ['admin.view', 'companies.view', 'support.view', 'support.tickets', 'support.sessions', 'support.users', 'support.customers', 'monitoring.view', 'interest.view']],
     'staff'   => ['name' => 'Mitarbeiter', 'description' => 'Lesender Zugriff auf Firmen, Vormerkungen und Systemübersicht.',
                   'permissions' => ['admin.view', 'companies.view', 'monitoring.view', 'interest.view']],
 ];

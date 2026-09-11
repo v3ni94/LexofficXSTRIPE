@@ -147,3 +147,49 @@ $out('plattform_user_ohne_org', _platform_user_without_org($roleAdmin['user_id']
 // 8. Audit
 $acts = $pdo->query("SELECT action, COUNT(*) FROM audit_log WHERE action LIKE 'platform_%' GROUP BY action ORDER BY action")->fetchAll(PDO::FETCH_KEY_PAIR);
 $out('audit_aktionen', implode(',', array_keys($acts)));
+
+// 9. Kundenprofil (4.62, app/customer_profile.php): Support pflegt Kontaktdaten, nie Felder mit Geld- oder Zugangsbezug
+require_once $root . '/php-ionos/app/customer_profile.php';
+// Die Systemrolle support wurde in Abschnitt 4 veraendert; fuer die Rechtepruefung wieder auf den Seed aus schema.sql
+// (identisch mit PLATFORM_SYSTEM_ROLES und Migration 033) zuruecksetzen.
+$pdo->prepare("UPDATE platform_roles SET permissions = ? WHERE code = 'support'")->execute([json_encode(PLATFORM_SYSTEM_ROLES['support']['permissions'])]);
+platform_roles_reset_cache();
+$pdo->exec("DELETE FROM organizations WHERE name LIKE 'Profil-Test%'");
+$orgId = uuid4();
+$pdo->prepare("INSERT INTO organizations (id, name, mandate_prefix, street, zip, city, country, creditor_identifier, pre_notification_days) VALUES (?, 'Profil-Test GmbH', 'PT', 'Altweg 1', '40789', 'Monheim', 'DE', 'DE98ZZZ09999999999', 14)")->execute([$orgId]);
+$kundeId = $mk('inhaber@kunde-profil.test', 0, null);
+$pdo->prepare("UPDATE users SET display_name = 'Inhaber', phone_business = '+49 2173 1' WHERE id = ?")->execute([$kundeId]);
+$pdo->prepare("INSERT INTO organization_members (id, organization_id, user_id, role, status) VALUES (?, ?, ?, 'owner', 'active')")->execute([uuid4(), $orgId, $kundeId]);
+$supportCtx = $ctxOf($mk('support2@plattform.test', 0, 'support'));
+$staffCtx = $ctxOf($mk('staff2@plattform.test', 0, 'staff'));
+$out('p_support_recht', platform_can($supportCtx, 'support.customers'));
+$out('p_staff_kein_recht', !platform_can($staffCtx, 'support.customers'));
+$out('p_staff_org_verweigert', $try(static fn() => customer_org_update($staffCtx, $orgId, ['name' => 'X GmbH'], 'Ticket 4711')));
+$out('p_grund_zu_kurz_verweigert', $try(static fn() => customer_org_update($supportCtx, $orgId, ['name' => 'X GmbH'], 'kurz')));
+$out('p_land_ungueltig_verweigert', $try(static fn() => customer_org_update($supportCtx, $orgId, ['name' => 'X GmbH', 'country' => 'Deutschland'], 'Ticket 4711')));
+$diff = customer_org_update($supportCtx, $orgId, ['name' => 'Profil-Test AG', 'street' => 'Neuweg 2', 'zip' => '40789', 'city' => 'Monheim am Rhein', 'country' => 'de',
+    'creditor_identifier' => 'DE00ZZZ00000000000', 'mandate_prefix' => 'XX', 'pre_notification_days' => 1, 'plan_code' => 'gratis'], 'Ticket 4711, Anruf des Inhabers');
+$row = $pdo->query("SELECT name, street, city, country, creditor_identifier, mandate_prefix, pre_notification_days, plan_code FROM organizations WHERE id = " . $pdo->quote($orgId))->fetch();
+$out('p_org_geaendert', $row['name'] === 'Profil-Test AG' && $row['street'] === 'Neuweg 2' && $row['city'] === 'Monheim am Rhein' && $row['country'] === 'DE');
+$out('p_org_diff_felder', implode(',', array_keys($diff)));
+$out('p_org_geldfelder_unveraendert', $row['creditor_identifier'] === 'DE98ZZZ09999999999' && $row['mandate_prefix'] === 'PT' && (int)$row['pre_notification_days'] === 14 && $row['plan_code'] === 'unlimited_start');
+$out('p_org_keine_aenderung_leer', customer_org_update($supportCtx, $orgId, ['name' => 'Profil-Test AG', 'street' => 'Neuweg 2', 'zip' => '40789', 'city' => 'Monheim am Rhein', 'country' => 'DE'], 'Ticket 4711') === []);
+$out('p_staff_user_verweigert', $try(static fn() => customer_user_update($staffCtx, $kundeId, ['display_name' => 'Neu'], 'Ticket 4711')));
+$out('p_user_telefon_ungueltig_verweigert', $try(static fn() => customer_user_update($supportCtx, $kundeId, ['display_name' => 'Neu', 'phone_business' => 'abc'], 'Ticket 4711')));
+$diffU = customer_user_update($supportCtx, $kundeId, ['display_name' => 'Max Muster', 'first_name' => 'Max', 'last_name' => 'Muster', 'phone_business' => '+49 2173 99', 'phone_private' => '',
+    'email' => 'boese@angreifer.test', 'is_active' => 0, 'platform_role' => 'admin', 'totp_enabled' => 0], 'Ticket 4712, Schreiben des Kunden');
+$u = user_load($kundeId);
+$out('p_user_geaendert', $u['display_name'] === 'Max Muster' && $u['first_name'] === 'Max' && $u['phone_business'] === '+49 2173 99' && $u['phone_private'] === null);
+$out('p_user_zugang_unveraendert', $u['email'] === 'inhaber@kunde-profil.test' && (int)$u['is_active'] === 1 && $u['platform_role'] === null && (int)$u['totp_enabled'] === 1);
+$out('p_user_diff_ohne_klartext_telefon', isset($diffU['phone_business']) && $diffU['phone_business'] === ['vorher' => true, 'nachher' => true] && !str_contains(json_encode($diffU), '2173'));
+$out('p_superadmin_ziel_verweigert', $try(static fn() => customer_user_update($supportCtx, $super['user_id'], ['display_name' => 'Neu'], 'Ticket 4711')));
+$out('p_plattformbenutzer_durch_support_verweigert', $try(static fn() => customer_user_update($supportCtx, $staffCtx['user_id'], ['display_name' => 'Neu'], 'Ticket 4711')));
+$out('p_plattformbenutzer_durch_admin', $try(static fn() => customer_user_update($roleAdmin, $staffCtx['user_id'], ['display_name' => 'Neu'], 'Ticket 4711')));
+$pa = $pdo->query("SELECT action, COUNT(*) FROM audit_log WHERE action IN ('org_updated_support','profile_updated_support') GROUP BY action ORDER BY action")->fetchAll(PDO::FETCH_KEY_PAIR);
+$out('p_audit', implode(',', array_map(static fn($k, $v) => "$k:$v", array_keys($pa), $pa)));
+$aud = $pdo->query("SELECT details_json FROM audit_log WHERE action = 'org_updated_support' ORDER BY id DESC LIMIT 1")->fetchColumn();
+$out('p_audit_grund_und_vorher', str_contains((string)$aud, 'Ticket 4711') && str_contains((string)$aud, 'Altweg 1') && str_contains((string)$aud, 'Neuweg 2'));
+$out('p_geloeschte_firma_null', customer_org_load(uuid4()) === null);
+$s = customer_search('Profil-Test');
+$out('p_suche_firma', count($s['orgs']) === 1 && $s['orgs'][0]['id'] === $orgId);
+$out('p_suche_user', count(customer_search('kunde-profil.test')['users']) === 1);

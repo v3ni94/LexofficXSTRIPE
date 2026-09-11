@@ -148,6 +148,13 @@ Empfohlenes Vorgehen beim Umzug: Solange die Anwendung noch auf dem Webhosting l
 
 `scratchpad/test_migrate_endpoint.php` (29 Prüfungen) gegen `lexsepa_e2e` über den lokalen PHP-Server: 405 mit Allow, 401 bei fehlendem, leerem, falschem Token, URL-Parameter und cron_token; 200 ohne offene Migrationen; Einspielen, exaktes einmaliges Ausführen, Überspringen bei Wiederholung; Fehler mit Abbruch, `failed`-Zeile, keine Wiederholung, Folgemigration nicht ausgeführt; manuelle Klärung und Fortsetzung; verwaistes `running` wird `unknown` und blockiert; 409 bei fremder Sperre ohne Ausführung; Login, Cron und Setup-Check starten keine Migration; leerer Server-Token liefert 500 auch bei leerem Client-Token. Der Test bricht ab, wenn die Konfiguration nicht auf `lexsepa_e2e` zeigt oder `migration_token` fehlt bzw. dem `cron_token` gleicht. Es wurde keine produktive Migration ausgeführt.
 
+## Migration 033 (Kundenprofil, 4.62)
+
+`033_support_customers.sql` trägt der Systemrolle `support` das neue Recht `support.customers` nach (Kundenprofile pflegen,
+`admin-kunde.php`). Die Rechte einer Rolle liegen als JSON-Array in `platform_roles.permissions`; die Konstante
+`PLATFORM_SYSTEM_ROLES` ist nur Rückfall. Idempotent über `JSON_CONTAINS`, ändert nur die Systemrolle, eigene Rollen
+bleiben unverändert (bewusste Vergabe im Adminbereich). Kein Strukturwechsel.
+
 ## Migration 032 (Audit 10.09.2026)
 
 `032_audit_indizes_eindeutigkeit.sql` legt `ix_jobs_status_finished`, `ix_jobruns_status_finished` und, NUR wenn der Bestand

@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.61';
+const APP_VERSION = '4.62';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.62', 'date' => '11.09.2026', 'title' => 'Kundenprofil im Support: alle Daten einer Firma und ihrer Benutzer, Kontaktdaten pflegen',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Im Supportbereich öffnet ein Klick auf Firma oder Inhaber das Kundenprofil (admin-kunde.php): Stammdaten, Anschrift, Tarif und Abonnement, Verbindungen, SEPA-Einstellungen, alle Benutzer mit Namen, Telefonnummern, Rolle, Kontostatus und letzter Anmeldung, Support-Anfragen, Support-Sitzungen und die letzten Protokolleinträge; je Benutzer eine eigene Profilseite mit seinen Firmen. Auch aus der Firmenliste der Plattform-Administration erreichbar.'],
+            ['type' => 'Neu', 'text' => 'Der Support pflegt Kontaktdaten direkt: Firmenname, Straße, PLZ, Ort, Land sowie Anzeigename, Vor- und Nachname und Telefonnummern der Benutzer. Jede Änderung braucht einen Grund, wird mit Vorher und Nachher protokolliert und dem Inhaber beziehungsweise dem Benutzer per Sicherheits-E-Mail angezeigt. Neues Recht support.customers (Systemrolle Mitarbeiter Support, Migration 033).'],
+            ['type' => 'Geändert', 'text' => 'Nicht änderbar durch den Support bleiben Gläubiger-Identifikationsnummer, Mandatspräfix, Vorabankündigung, Mandatspflicht, Tarif, Abonnement, E-Mail-Adresse, Passwort, Zwei-Faktor und Rollen; die Sperre liegt in der Funktion, Eingaben dazu werden ignoriert. Plattform-Benutzer ändert nur ein Administrator. Prüfstand tools/platform-roles-check.sh um 23 Fälle erweitert.'],
+         ]],
         ['version' => '4.61', 'date' => '11.09.2026', 'title' => 'Zustellbarkeit ausgehender E-Mails: Antwortadresse, Auto-Submitted, Abmeldung mit einem Klick',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Die Kopfzeile Reply-To wird nur noch gesetzt, wenn die konfigurierte Antwortadresse gültig ist, sich vom Absender unterscheidet und zur Absenderdomain gehört. Eine Antwortadresse auf fremder Domain (bisherige Vorgabe info@mueller-holding.ag bei Absender smart-einzug.de) ist ein bekanntes Merkmal für Spamfilter und widersprach dem Fußtext „Antworten erreichen uns über die Adresse im Absender“; sie wird ignoriert und im Fehlerprotokoll vermerkt. Antworten gehen an kontakt@smart-einzug.de. bin/mail-check.php zeigt die wirksame Antwortadresse.'],

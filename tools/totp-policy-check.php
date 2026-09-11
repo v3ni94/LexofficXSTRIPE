@@ -85,13 +85,14 @@ foreach ($entfallen as [$f, $a, $t, $audit]) {
     $ok("$f $a: $t ohne 2FA", $b !== null && !str_contains($b, 'require_recent_totp('));
     $ok("$f $a: Nachweis bleibt ($audit)", $b !== null && str_contains($b, $audit));
 }
-foreach (['admin-system.php', 'admin.php', 'admin-legal.php', 'admin-support.php'] as $f) {
+foreach (['admin-system.php', 'admin.php', 'admin-legal.php', 'admin-support.php', 'admin-kunde.php'] as $f) {
     $ok("$f: csrf_check() im POST-Zweig", str_contains($src($f), 'csrf_check();'));
 }
 
 echo "4) Formulare: Codefeld nur, wo der Code verlangt wird\n";
 foreach ([['admin-system.php', 'test_mail'], ['admin-system.php', 'test_prenotification'], ['admin-system.php', 'publish_now'], ['admin-system.php', 'sync_enqueue'], ['admin-system.php', 'org_sync_resume'],
-          ['admin.php', 'plan_update'], ['admin.php', 'org_plan'], ['admin.php', 'interest_delete'], ['admin-legal.php', 'import_draft'], ['admin-legal.php', 'create']] as [$f, $a]) {
+          ['admin.php', 'plan_update'], ['admin.php', 'org_plan'], ['admin.php', 'interest_delete'], ['admin-legal.php', 'import_draft'], ['admin-legal.php', 'create'],
+          ['admin-kunde.php', 'org_update'], ['admin-kunde.php', 'user_update']] as [$f, $a]) {
     $fs = $forms($src($f), $a);
     $ok("$f Formular $a ohne Codefeld", $fs !== [] && !array_filter($fs, static fn(string $x): bool => str_contains($x, 'name="code"')));
 }

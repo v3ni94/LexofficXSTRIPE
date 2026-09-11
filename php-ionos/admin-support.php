@@ -82,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $orgs = $pdo->query(
     "SELECT o.id, o.name, o.plan_code, o.subscription_status, o.created_at, o.onboarding_completed, o.collections_paused,
             (SELECT u.email FROM organization_members m JOIN users u ON u.id = m.user_id WHERE m.organization_id = o.id AND m.role = 'owner' LIMIT 1) AS owner_email,
+            (SELECT u.id FROM organization_members m JOIN users u ON u.id = m.user_id WHERE m.organization_id = o.id AND m.role = 'owner' LIMIT 1) AS owner_id,
             (SELECT COUNT(*) FROM organization_members m WHERE m.organization_id = o.id AND m.status = 'active') AS members,
             i.lexoffice_connected, i.stripe_connected, i.lexoffice_last_sync
      FROM organizations o LEFT JOIN integrations i ON i.tenant_id = o.id
@@ -89,7 +90,7 @@ $orgs = $pdo->query(
 )->fetchAll();
 $active = support_sessions_active();
 $recent = support_sessions_recent(30);
-$locked = $pdo->query("SELECT email, locked_until, failed_login_count FROM users WHERE locked_until IS NOT NULL AND locked_until > NOW() ORDER BY locked_until DESC LIMIT 20")->fetchAll();
+$locked = $pdo->query("SELECT id, email, locked_until, failed_login_count FROM users WHERE locked_until IS NOT NULL AND locked_until > NOW() ORDER BY locked_until DESC LIMIT 20")->fetchAll();
 $supportQuery = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 if ($supportQuery !== '') {
     $needle = mb_strtolower($supportQuery);
@@ -129,7 +130,7 @@ layout_header('Support', $ctx);
 
 <div class="card" id="firmenzugriff">
     <h2>Auf Firma wechseln (Support-Zugriff)</h2>
-    <p class="hint">Sie arbeiten dann <?= SUPPORT_SESSION_MINUTES ?> Minuten in der Kundenanwendung dieser Firma mit der Rolle Administrator.
+    <p class="hint">Ein Klick auf den Firmennamen oder den Inhaber öffnet das Kundenprofil mit Stammdaten, Anschrift, Telefonnummern, Benutzern, Anfragen und Protokoll; Kontaktdaten pflegt der Support dort direkt (Recht support.customers). Für alles andere: Sie arbeiten dann <?= SUPPORT_SESSION_MINUTES ?> Minuten in der Kundenanwendung dieser Firma mit der Rolle Administrator.
         Einzüge, IBAN-Änderungen und Zugangsdaten sind im Support-Modus gesperrt, jede Aktion wird mit Support-Vermerk protokolliert und der
         Inhaber erhält eine Sicherheits-E-Mail. Grund (z.B. Ticketnummer) und aktueller 2FA-Code sind Pflicht.</p>
     <form method="get" class="inline-form" style="margin-bottom: 12px;">
@@ -147,8 +148,8 @@ layout_header('Support', $ctx);
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="support_start">
                     <input type="hidden" name="org_id" value="<?= e($o['id']) ?>">
-                    <td><strong><?= e($o['name']) ?></strong><?= (int)$o['collections_paused'] ? ' <span class="badge badge-warn">Not-Stopp</span>' : '' ?><br><small class="hint"><?= (int)$o['members'] ?> Benutzer, seit <?= e(date('d.m.Y', strtotime((string)$o['created_at']))) ?></small></td>
-                    <td><?= e((string)($o['owner_email'] ?? '')) ?></td>
+                    <td><a href="admin-kunde.php?org=<?= e($o['id']) ?>" title="Kundenprofil: Stammdaten, Benutzer, Anfragen, Protokoll"><strong><?= e($o['name']) ?></strong></a><?= (int)$o['collections_paused'] ? ' <span class="badge badge-warn">Not-Stopp</span>' : '' ?><br><small class="hint"><?= (int)$o['members'] ?> Benutzer, seit <?= e(date('d.m.Y', strtotime((string)$o['created_at']))) ?></small></td>
+                    <td><?php if (!empty($o['owner_id'])): ?><a href="admin-kunde.php?user=<?= e($o['owner_id']) ?>&amp;org=<?= e($o['id']) ?>" title="Benutzerprofil des Inhabers"><?= e((string)($o['owner_email'] ?? '')) ?></a><?php else: ?><?= e((string)($o['owner_email'] ?? '')) ?><?php endif; ?></td>
                     <td><?= e((string)$o['plan_code']) ?><br><small class="hint"><?= e((string)$o['subscription_status']) ?><?= (int)$o['onboarding_completed'] ? '' : ', Einrichtung offen' ?></small></td>
                     <td><?= (int)($o['lexoffice_connected'] ?? 0) ? 'Lexware' : '<span class="hint">kein Lexware</span>' ?> · <?= (int)($o['stripe_connected'] ?? 0) ? 'Stripe' : '<span class="hint">kein Stripe</span>' ?></td>
                     <td><?= $o['lexoffice_last_sync'] ? e(date('d.m.Y H:i', strtotime((string)$o['lexoffice_last_sync']))) : '-' ?></td>
@@ -257,7 +258,7 @@ layout_header('Support', $ctx);
     <p class="hint">2FA-Reset nur nach eindeutiger Identitätsprüfung des Nutzers (z.B. Rückruf über bekannte Firmennummer). Wird als
         Support-Reset besonders protokolliert; der Nutzer erhält eine Sicherheits-E-Mail. Zur Bestätigung sind Ihr Passwort und 2FA-Code nötig.</p>
     <?php if ($locked): ?>
-        <p class="hint">Derzeit gesperrte Konten: <?php foreach ($locked as $l): ?><code><?= e($l['email']) ?></code> (bis <?= e(date('H:i', strtotime((string)$l['locked_until']))) ?>) <?php endforeach; ?></p>
+        <p class="hint">Derzeit gesperrte Konten: <?php foreach ($locked as $l): ?><a href="admin-kunde.php?user=<?= e($l['id']) ?>"><code><?= e($l['email']) ?></code></a> (bis <?= e(date('H:i', strtotime((string)$l['locked_until']))) ?>) <?php endforeach; ?></p>
     <?php endif; ?>
     <form method="post" class="inline-form" style="flex-wrap: wrap; gap: 10px;">
         <?= csrf_field() ?>

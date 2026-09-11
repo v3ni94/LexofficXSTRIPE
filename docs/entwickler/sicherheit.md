@@ -149,13 +149,14 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
   einer Auswahl des Katalogs; `admin.view` ist immer enthalten.
 - **Berechtigungskatalog** (`PLATFORM_PERMISSIONS`): `admin.view`, `companies.view`, `companies.plan`, `companies.manage` (Wechselsperre des Buchhaltungssystems aufheben, seit 4.38), `plans.manage`,
   `notstopp.platform`, `interest.view`, `interest.manage`, `support.view`, `support.tickets`, `support.sessions`,
-  `support.users`, `monitoring.view`, `monitoring.edit`, `legal.view`, `legal.manage`, `docs.admin`, `docs.technical`,
+  `support.users`, `support.customers` (Kundenprofile pflegen, seit 4.62), `monitoring.view`, `monitoring.edit`, `legal.view`, `legal.manage`, `docs.admin`, `docs.technical`,
   `users.manage`. Jede Adminseite verlangt ein Eintrittsrecht (`require_platform`) und prüft je POST-Aktion serverseitig
   das passende Recht; Menüpunkte und Formulare werden zusätzlich ausgeblendet, sind aber nie der Schutz.
 - **Zuordnung:** `admin.php` (`admin.view`; Kennzahlen/Firmen `companies.view`, Tarif je Firma `companies.plan`, Wechselsperre aufheben `companies.manage`,
   Tarife `plans.manage`, Not-Stopp `notstopp.platform`, Vormerkungen `interest.view`/`interest.manage`),
   `admin-support.php` (`support.view`; Firmenwechsel `support.sessions`, Anfragen `support.tickets`, Entsperren und
-  2FA-Reset `support.users`), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen
+  2FA-Reset `support.users`), `admin-kunde.php` (`support.view`; Firmenname, Anschrift und Kontaktdaten der Benutzer ändern
+  `support.customers`, siehe Abschnitt Kundenprofil), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen
   `monitoring.edit`, zusätzlich `monitoring.editors`), `admin-legal.php` (`legal.view`/`legal.manage`),
   `admin-doc.php` (`admin.view`, je Datei `docs_can_access()`: `docs.admin`, `docs.technical`), `admin-users.php`
   (`users.manage`). Der Support-Modus (`support_session_redeem()`, `_current_user_support()`) verlangt `support.sessions`
@@ -181,6 +182,25 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
   `platform_role_changed`, `platform_role_deleted`. Prüfung: `bash tools/platform-roles-check.sh` (83 Prüfungen gegen
   eine temporäre MariaDB: Rechte je Rolle, Dokumentationsrechte, Rollenpflege, Schutzregeln, Einladung ohne Mail,
   Plattformkontext, Audit).
+
+## Kundenprofil im Adminbereich (seit 4.62)
+
+`admin-kunde.php` zeigt einer Plattformrolle mit `support.view` alle Daten einer Firma (`?org=`) oder eines Benutzers
+(`?user=`): Stammdaten, Anschrift, Tarif und Abonnement, Verbindungen, SEPA-Einstellungen (nur lesend), Mitglieder mit
+Telefonnummern und Kontostatus, Support-Anfragen, Support-Sitzungen und die letzten Protokolleinträge. Die Logik liegt in
+`app/customer_profile.php`:
+
+- **Änderbar** (Recht `support.customers`, Systemrolle Mitarbeiter Support seit Migration 033): Firma `name`, `street`, `zip`,
+  `city`, `country`; Benutzer `display_name`, `first_name`, `last_name`, `phone_private`, `phone_business`
+  (`CUSTOMER_PROFILE_EDITABLE`). Jede Änderung verlangt einen Grund (5 bis 255 Zeichen), schreibt Vorher/Nachher ins
+  Audit (`org_updated_support`, `profile_updated_support`; Telefonnummern nur als gesetzt/nicht gesetzt) und sendet dem
+  Inhaber beziehungsweise dem Benutzer eine Sicherheitsmail (`security_notify_owner()`, `security_notify_user()`).
+- **Nie änderbar** (`CUSTOMER_PROFILE_LOCKED_FIELDS`, Sperre in der Funktion, nicht in der Seite): Gläubiger-Identifikationsnummer,
+  Mandatspräfix, Vorabankündigung und Frist, Mandatspflicht, Verschwiegenheitspflicht, Tarif, Abonnement, Not-Stopp;
+  E-Mail-Adresse (Anmeldename), Passwort, 2FA, Aktivstatus, Plattformrolle. Eingaben zu diesen Feldern werden ignoriert.
+  Plattform-Benutzer ändert nur ein Administrator (`platform_actor_is_admin()`), Superadmin-Konten niemand.
+- Kein 2FA-Code (Kontaktdaten ohne Geld- oder Zugangsbezug, Beschluss 07.09.2026), immer CSRF und Audit. Prüfstand:
+  `bash tools/platform-roles-check.sh` (Abschnitt Kundenprofil), `php tools/totp-policy-check.php`.
 
 ## Support-Modus
 

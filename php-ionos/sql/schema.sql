@@ -1064,6 +1064,6 @@ CREATE TABLE IF NOT EXISTS platform_roles (
 INSERT IGNORE INTO platform_roles (code, name, description, permissions, is_system) VALUES
     ('admin',   'Administrator',        'Vollzugriff auf alle Bereiche, entspricht dem bisherigen Superadmin.', '["*"]', 1),
     ('support', 'Mitarbeiter Support',  'Support-Anfragen, Firmenzugriff, Konten entsperren; Systemübersicht nur lesend.',
-        '["admin.view","companies.view","support.view","support.tickets","support.sessions","support.users","monitoring.view","interest.view"]', 1),
+        '["admin.view","companies.view","support.view","support.tickets","support.sessions","support.users","support.customers","monitoring.view","interest.view"]', 1),
     ('staff',   'Mitarbeiter',          'Lesender Zugriff auf Firmen, Vormerkungen und Systemübersicht.',
         '["admin.view","companies.view","monitoring.view","interest.view"]', 1);

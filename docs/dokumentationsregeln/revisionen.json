@@ -1,13 +1,13 @@
 {
   "unternehmen": {
-    "revision": "r6",
-    "date": "10.09.2026",
-    "summary": "Auditbericht und Release-Checkliste (4.59) referenziert."
+    "revision": "r7",
+    "date": "11.09.2026",
+    "summary": "Kundenprofil im Support (4.62) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r26",
+    "revision": "r27",
     "date": "11.09.2026",
-    "summary": "Kopfzeilen der Zustellbarkeit (Reply-To nur Absenderdomain, Auto-Submitted, List-Unsubscribe One-Click) und Schritt-für-Schritt-Anleitung IONOS (4.61)."
+    "summary": "Kundenprofil admin-kunde.php, Recht support.customers, Migration 033 (4.62)."
   },
   "kunden": {
     "revision": "r4",
