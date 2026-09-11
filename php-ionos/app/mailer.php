@@ -173,7 +173,31 @@ function mail_options_normalize(array $options): array
     if ($url !== '' && preg_match('~^https?://[^\s<>"]+$~', $url) === 1) {
         $out['unsubscribe_url'] = $url;
     }
+    if (($options['profile'] ?? '') === 'marketing') {
+        $out['profile'] = 'marketing';
+    }
     return $out;
+}
+
+/**
+ * Versandprofil (seit 4.63): 'system' = config('mail') fuer alle Nachrichten der Anwendung (Bestaetigungen, Sicherheit,
+ * Vorabankuendigung); 'marketing' = config('mail_marketing') fuer Werbenachrichten des Marketingmoduls (eigener Absender
+ * auf eigener Subdomain, eigener SMTP-Weg, eigene Reputation). Fehlt der Block, ist das Profil nicht aktiv.
+ */
+function mail_profile_config(string $profile): array
+{
+    if ($profile === 'marketing') {
+        $cfg = config('mail_marketing');
+        return is_array($cfg) ? $cfg : ['enabled' => false];
+    }
+    $cfg = config('mail');
+    return is_array($cfg) ? $cfg : ['enabled' => false];
+}
+
+/** Profil aktiv (enabled === true)? */
+function mail_profile_enabled(string $profile): bool
+{
+    return !empty(mail_profile_config($profile)['enabled']);
 }
 
 /**
@@ -246,7 +270,13 @@ function mail_header_lines(array $cfg, string $contentType, bool $plainOnly, arr
     $lines[] = 'MIME-Version: 1.0';
     $lines[] = 'Date: ' . date('r');
     $lines[] = 'Message-ID: ' . mail_generate_message_id();
-    $lines[] = 'Auto-Submitted: auto-generated';
+    if (($options['profile'] ?? 'system') === 'marketing') {
+        // Werbenachricht: Massenversand kennzeichnen (Precedence: bulk), kein Auto-Submitted (RFC 3834 gilt fuer
+        // automatische Antworten und Systemmeldungen, nicht fuer redaktionelle Nachrichten an viele Empfaenger).
+        $lines[] = 'Precedence: bulk';
+    } else {
+        $lines[] = 'Auto-Submitted: auto-generated';
+    }
     if (isset($options['unsubscribe_url'])) {
         $lines[] = 'List-Unsubscribe: <' . $options['unsubscribe_url'] . '>';
         $lines[] = 'List-Unsubscribe-Post: List-Unsubscribe=One-Click';
@@ -269,10 +299,16 @@ function mail_addr_ref(string $to): string
     return 'ref ' . substr(hash('sha256', $lower), 0, 12) . ($domain !== false ? ' ' . $domain : '');
 }
 
-/** Direkte Übergabe an den Versandweg (mail(), SMTP oder Testprotokoll). $options siehe mail_send(). */
+/**
+ * Direkte Übergabe an den Versandweg (mail(), SMTP oder Testprotokoll). $options siehe mail_send(); zusaetzlich
+ * 'profile' => 'marketing' fuer das Versandprofil des Marketingmoduls (config('mail_marketing'), seit 4.63): eigener
+ * Absender und SMTP-Weg, keine Monitoring-Marken des Systemversands.
+ */
 function mail_send_direct(string $to, string $subject, string $textBody, ?string $htmlBody = null, array $options = []): bool
 {
-    if (!mail_enabled()) {
+    $options = mail_options_normalize($options);
+    $profile = $options['profile'] ?? 'system';
+    if (!mail_profile_enabled($profile)) {
         return false;
     }
 
@@ -282,7 +318,8 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
         return false;
     }
 
-    $cfg = config('mail');
+    $cfg = mail_profile_config($profile);
+    $monitor = $profile === 'system';
     $fromAddress = mail_sanitize_header((string)($cfg['from_address'] ?? ''));
 
     $subject = mail_sanitize_header($subject);
@@ -303,10 +340,12 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
         $written = @file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
         if ($written === false) {
             error_log('mail_send: Schreiben der Mail-Logdatei fehlgeschlagen: ' . $logFile);
-            mail_monitor_mark(false, 'log_write_failed');
+            if ($monitor) { mail_monitor_mark(false, 'log_write_failed'); }
+            $GLOBALS['mail_last_error'] = ['kind' => 'transport', 'text' => 'Logdatei nicht beschreibbar'];
             return false;
         }
-        mail_monitor_mark(true, null);
+        if ($monitor) { mail_monitor_mark(true, null); }
+        $GLOBALS['mail_last_error'] = null;
         return true;
     }
 
@@ -314,7 +353,7 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
         try {
             mail_smtp_send((array)($cfg['smtp'] ?? []), $fromAddress, $to,
                 'To: ' . $to . "\r\n" . 'Subject: ' . $encodedSubject . "\r\n" . $headers, $body);
-            mail_monitor_mark(true, null);
+            if ($monitor) { mail_monitor_mark(true, null); }
             $GLOBALS['mail_last_error'] = null;
             return true;
         } catch (Throwable $e) {
@@ -328,7 +367,7 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
             // Endgültige Ablehnung des Empfängers oder der Nachricht (5xx auf RCPT TO oder DATA) ist kein Transportproblem
             $rejected = (bool)preg_match('/(RCPT TO|abgelehnt)[^\d]*5\d\d|"RCPT TO[^"]*": 5\d\d/i', $msg);
             $GLOBALS['mail_last_error'] = ['kind' => $rejected ? 'rejected' : 'transport', 'text' => $msg];
-            mail_monitor_mark(false, $rejected ? null : $e);
+            if ($monitor) { mail_monitor_mark(false, $rejected ? null : $e); }
             return false;
         }
     }
@@ -340,7 +379,7 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
     } else {
         $GLOBALS['mail_last_error'] = null;
     }
-    mail_monitor_mark((bool)$result, $result ? null : 'mail_function_false');
+    if ($monitor) { mail_monitor_mark((bool)$result, $result ? null : 'mail_function_false'); }
     return $result;
 }
 

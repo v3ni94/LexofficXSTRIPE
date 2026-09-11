@@ -10,11 +10,11 @@ feld() { printf '%s' "$1" | sed -n "s/^$2=//p" | tail -n1; }
 erw() { [[ "$(feld "$OUT" "$2")" == "$3" ]] && ok "$1" || bad "$1 ($2=$(feld "$OUT" "$2"), erwartet $3)"; }
 
 echo "1) Statische Pruefungen"
-for f in app/platform.php app/auth.php app/layout.php admin-users.php admin.php admin-support.php admin-kunde.php app/customer_profile.php admin-system.php admin-legal.php admin-doc.php admin-system-data.php app/docs.php app/monitor.php app/support.php twofa-setup.php support-end.php verify-email.php; do
+for f in app/platform.php app/auth.php app/layout.php admin-users.php admin.php admin-support.php admin-kunde.php app/customer_profile.php admin-marketing.php app/marketing.php abmelden.php marketing-webhook.php admin-system.php admin-legal.php admin-doc.php admin-system-data.php app/docs.php app/monitor.php app/support.php twofa-setup.php support-end.php verify-email.php; do
     php -l "$ROOT/php-ionos/$f" >/dev/null 2>&1 && ok "php -l $f" || bad "php -l $f"
 done
 grep -q "CREATE TABLE IF NOT EXISTS platform_roles" "$ROOT/php-ionos/sql/migrations/027_platform_roles.sql" && grep -q "platform_role " "$ROOT/php-ionos/sql/schema.sql" && grep -q "CREATE TABLE IF NOT EXISTS platform_roles" "$ROOT/php-ionos/sql/schema.sql" && ok "Migration 027 und schema.sql" || bad "Migration 027"
-for f in admin.php admin-support.php admin-kunde.php admin-system.php admin-legal.php admin-doc.php admin-users.php; do
+for f in admin.php admin-support.php admin-kunde.php admin-marketing.php admin-system.php admin-legal.php admin-doc.php admin-users.php; do
     grep -q "require_platform(" "$ROOT/php-ionos/$f" && ok "$f nutzt require_platform" || bad "$f ohne require_platform"
 done
 ! grep -rn "require_superadmin()" "$ROOT/php-ionos" --include=*.php | grep -v "function require_superadmin" | grep -q . && ok "keine Seite ruft mehr require_superadmin() direkt" || bad "require_superadmin() noch in Verwendung"
@@ -26,7 +26,7 @@ grep -q "'users.manage'" "$ROOT/php-ionos/admin-users.php" && ok "Benutzerverwal
 grep -q "mail_enabled()" "$ROOT/php-ionos/app/platform.php" && grep -q "nie im Adminbereich angezeigt\|nie im Frontend" "$ROOT/php-ionos/app/platform.php" && ok "Einladung nur per Mail, kein Passwortlink im Frontend" || bad "Einladung ohne Mailpflicht"
 grep -q "platform_only" "$ROOT/php-ionos/app/auth.php" && grep -q "is_admin_script(\$script)" "$ROOT/php-ionos/app/auth.php" && ok "Plattformkontext: Kundenseiten leiten in den Adminbereich" || bad "Plattformkontext"
 grep -q "admin_subnav_items(\$ctx)" "$ROOT/php-ionos/admin-legal.php" && grep -q "admin_subnav_items(\$ctx)" "$ROOT/php-ionos/admin-users.php" && ok "Reiterleiste nach Rechten gefiltert" || bad "Reiterleiste"
-! grep -q "—" "$ROOT/php-ionos/app/platform.php" "$ROOT/php-ionos/admin-users.php" "$ROOT/php-ionos/admin-kunde.php" "$ROOT/php-ionos/app/customer_profile.php" && ok "keine Gedankenstriche" || bad "Gedankenstrich"
+! grep -q "—" "$ROOT/php-ionos/app/platform.php" "$ROOT/php-ionos/admin-users.php" "$ROOT/php-ionos/admin-kunde.php" "$ROOT/php-ionos/app/customer_profile.php" "$ROOT/php-ionos/admin-marketing.php" "$ROOT/php-ionos/app/marketing.php" && ok "keine Gedankenstriche" || bad "Gedankenstrich"
 # Kundenprofil (4.62): Recht im Katalog, in der Systemrolle support (Konstante, schema.sql, Migration 033), dokumentiert; Seite prueft je POST
 grep -q "'support.customers'" "$ROOT/php-ionos/app/platform.php" && grep -q '"support.customers"' "$ROOT/php-ionos/sql/schema.sql" && grep -q "support.customers" "$ROOT/php-ionos/sql/migrations/033_support_customers.sql" && ok "support.customers im Katalog, Seed und Migration 033" || bad "support.customers unvollstaendig"
 grep -q "support.customers" "$ROOT/docs/entwickler/sicherheit.md" && ok "support.customers dokumentiert (sicherheit.md)" || bad "support.customers nicht dokumentiert"

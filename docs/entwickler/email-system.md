@@ -263,6 +263,17 @@ DMARC zunächst auf `p=none` mit Berichtsadresse setzen und erst nach einigen Ta
    Mailanbieter genannten Selektor) und Abgleich mit den Vorgaben des eingesetzten
    SMTP-Anbieters.
 
+## Versandprofile: system und marketing (4.63)
+
+`mail_send_direct()` wählt über die Option `profile` das Versandprofil: `system` (Vorgabe, `config('mail')`) für alle
+Nachrichten der Anwendung und `marketing` (`config('mail_marketing')`) für Werbenachrichten des Marketingmoduls
+(`app/marketing.php`, `docs/marketing.md`). `mail_profile_config()`/`mail_profile_enabled()` liefern Block und Schalter;
+das Marketingprofil hat eigenen Absender (Subdomain), eigenen SMTP-Weg (Amazon SES), eigene Logdatei und setzt keine
+Monitoring-Marken des Systemversands (`mail_last_ok_at`, `mail_last_fail_at` bleiben Systemkennzahlen). Kopfzeilen des
+Marketingprofils: `Precedence: bulk` statt `Auto-Submitted`, immer `List-Unsubscribe` und `List-Unsubscribe-Post`. Die
+Reply-To-Regel (gleiche registrierbare Domain) gilt für beide Profile; `kontakt@smart-einzug.de` als Antwortadresse zu
+`kontakt@mail.smart-einzug.de` ist zulässig. Prüfstand: `bash tools/marketing-check.sh`, `php tools/mail-ci-check.php`.
+
 ## Zustellbarkeitsprüfung (4.60)
 
 `app/mail_dns.php` wertet SPF, DMARC, DKIM und die Absenderkonsistenz aus, ohne selbst DNS abzufragen; die Abfrage liegt in

@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.62';
+const APP_VERSION = '4.63';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.63', 'date' => '11.09.2026', 'title' => 'Marketingmodul: Empfängerlisten, Sperrliste, Kampagnen mit Vorschau, Testversand und Freigabe, eigener Versandweg über Amazon SES',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Neuer Reiter Marketing im Adminbereich (Rechte marketing.view und marketing.manage). Empfängerlisten aus den Firmenaccounts (Inhaber, wahlweise Administratoren, als Bestandskunden) und aus CSV-Importen mit Rechtsgrundlage und Vermerk je Import; CSV-Export je Liste. Die Kunden der Firmen und die Vormerkungen sind bewusst keine Quelle.'],
+            ['type' => 'Neu', 'text' => 'Dauerhafte, listenübergreifende Sperrliste: Abmeldungen (Link und One-Click), Beschwerden und harte Rückläufer aus Amazon SES sowie von Hand gesperrte Adressen. Gesperrte Adressen werden bei Import, Freigabe und unmittelbar vor dem Senden geprüft und nie angeschrieben, auch nach erneutem Import; Abmeldungen und Beschwerden lassen sich nicht aufheben.'],
+            ['type' => 'Neu', 'text' => 'Kampagnen im Design der Systemmails (zentrale Vorlage, Pflichtangaben, Platzhalter für Name und Firma), Vorschau im abgeschirmten Fenster und als Text, Testversand an eine frei gewählte Adresse, Freigabe des Massenversands nur nach Testversand und mit 2FA-Code; anhalten, fortsetzen, abbrechen. Versand als Hintergrundjob marketing_send mit Ratenbegrenzung je Sekunde und je 24 Stunden (im Adminbereich einstellbar, Vorgabe 1 und 200, die Grenzen der SES-Sandbox); jede Adresse wird genau einmal je Kampagne angeschrieben.'],
+            ['type' => 'Neu', 'text' => 'Eigenes Versandprofil mail_marketing (Absender kontakt@mail.smart-einzug.de, SMTP über Amazon SES) getrennt vom Systemversand über IONOS, damit die Reputation der Bestätigungs- und Sicherheitsmails unberührt bleibt. Kopfzeilen List-Unsubscribe mit One-Click und Precedence: bulk; abmelden.php führt Abmeldungen aus. Rückläufer und Beschwerden nimmt marketing-webhook.php von Amazon SNS entgegen (Token und Signaturprüfung). Migration 034, Anleitung zur SES-Einrichtung in docs/marketing.md; Prüfstand tools/marketing-check.sh (137 Fälle).'],
+         ]],
         ['version' => '4.62', 'date' => '11.09.2026', 'title' => 'Kundenprofil im Support: alle Daten einer Firma und ihrer Benutzer, Kontaktdaten pflegen',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Im Supportbereich öffnet ein Klick auf Firma oder Inhaber das Kundenprofil (admin-kunde.php): Stammdaten, Anschrift, Tarif und Abonnement, Verbindungen, SEPA-Einstellungen, alle Benutzer mit Namen, Telefonnummern, Rolle, Kontostatus und letzter Anmeldung, Support-Anfragen, Support-Sitzungen und die letzten Protokolleinträge; je Benutzer eine eigene Profilseite mit seinen Firmen. Auch aus der Firmenliste der Plattform-Administration erreichbar.'],

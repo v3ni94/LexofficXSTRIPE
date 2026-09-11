@@ -160,6 +160,31 @@ return [
         ],
     ],
 
+    // Versandprofil des Marketingmoduls (4.63, admin-marketing.php): Werbe- und Informationsnachrichten laufen ueber
+    // einen EIGENEN Absender auf einer eigenen Subdomain und einen eigenen SMTP-Weg (Amazon SES), damit die
+    // Reputation der Systemmails (kontakt@smart-einzug.de ueber IONOS) unberuehrt bleibt. SES-Endpunkt je Region:
+    // email-smtp.<region>.amazonaws.com (zum Beispiel eu-central-1), Port 587 STARTTLS, SMTP-Zugangsdaten aus IAM.
+    // Die Subdomain braucht bei IONOS die DKIM-CNAMEs aus der SES-Konsole, einen SPF-Eintrag mit include:amazonses.com
+    // und die MAIL-FROM-Domain von SES; Anleitung docs/marketing.md. webhook_token schuetzt marketing-webhook.php
+    // (SNS-Benachrichtigungen zu Ruecklaeufern und Beschwerden), zusaetzlich zur Signaturpruefung.
+    // Ratenbegrenzung (je Sekunde, je 24 Stunden) wird im Adminbereich gesetzt (platform_settings), nicht hier.
+    'mail_marketing' => [
+        'enabled'      => false,
+        'transport'    => 'smtp',
+        'from_address' => 'kontakt@mail.smart-einzug.de',
+        'from_name'    => 'SmartEinzug',
+        'reply_to'     => 'kontakt@smart-einzug.de',      // gleiche registrierbare Domain wie der Absender
+        'log_file'     => __DIR__ . '/../mail-marketing.log',
+        'smtp' => [
+            'host'       => 'email-smtp.HIER-REGION.amazonaws.com',
+            'port'       => 587,
+            'encryption' => 'tls',
+            'user'       => 'HIER-SES-SMTP-BENUTZERNAME',
+            'pass'       => 'HIER-SES-SMTP-PASSWORT',
+        ],
+        'webhook_token' => 'HIER-ZUFALLSWERT-MINDESTENS-32-ZEICHEN',
+    ],
+
     // --- Lexware Office Public API ---
     // Kanonische Basis-URL laut Lexware-Dokumentation. Die frühere Domain
     // api.lexoffice.io wird bei Verbindungsfehlern automatisch als Ausweich-

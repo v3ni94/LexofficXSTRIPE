@@ -148,6 +148,13 @@ Empfohlenes Vorgehen beim Umzug: Solange die Anwendung noch auf dem Webhosting l
 
 `scratchpad/test_migrate_endpoint.php` (29 Prüfungen) gegen `lexsepa_e2e` über den lokalen PHP-Server: 405 mit Allow, 401 bei fehlendem, leerem, falschem Token, URL-Parameter und cron_token; 200 ohne offene Migrationen; Einspielen, exaktes einmaliges Ausführen, Überspringen bei Wiederholung; Fehler mit Abbruch, `failed`-Zeile, keine Wiederholung, Folgemigration nicht ausgeführt; manuelle Klärung und Fortsetzung; verwaistes `running` wird `unknown` und blockiert; 409 bei fremder Sperre ohne Ausführung; Login, Cron und Setup-Check starten keine Migration; leerer Server-Token liefert 500 auch bei leerem Client-Token. Der Test bricht ab, wenn die Konfiguration nicht auf `lexsepa_e2e` zeigt oder `migration_token` fehlt bzw. dem `cron_token` gleicht. Es wurde keine produktive Migration ausgeführt.
 
+## Migration 034 (Marketingmodul, 4.63)
+
+`034_marketing.sql` legt `marketing_lists`, `marketing_recipients`, `marketing_suppressions`, `marketing_campaigns`,
+`marketing_sends` und `marketing_events` an (alle `CREATE TABLE IF NOT EXISTS`, Zeitpunkte in UTC) und setzt die
+Ratenbegrenzung `marketing_rate_per_second` = 1 und `marketing_rate_per_day` = 200 in `platform_settings` (`INSERT IGNORE`,
+im Adminbereich änderbar). Kein Eingriff in bestehende Tabellen. Details `docs/marketing.md`.
+
 ## Migration 033 (Kundenprofil, 4.62)
 
 `033_support_customers.sql` trägt der Systemrolle `support` das neue Recht `support.customers` nach (Kundenprofile pflegen,

@@ -55,7 +55,7 @@ DOCUMENTS = [
             'vps/07-cutover-checkliste.md', 'vps/08-hostinger-coolify.md',
             'betrieb-migration-vps.md', 'migrations.md', 'queue-worker.md', 'monitoring.md', 'multiaccount.md',
             'device-trust.md', 'status-page.md', 'sync-performance.md', 'integrations.md', 'einwilligungen.md',
-            'sevdesk.md', 'mail-einrichtung.md', 'rechtsdokumente.md',
+            'sevdesk.md', 'mail-einrichtung.md', 'marketing.md', 'rechtsdokumente.md',
             'dokumentationsregeln/README.md', 'entwickler/abdeckung-und-offene-punkte.md',
             'audit/AUDIT_REPORT.md', 'audit/PAYMENT_INVARIANTS.md', 'audit/TEST_MATRIX.md',
             'audit/PERFORMANCE_REPORT.md', 'audit/RELEASE_CHECKLIST.md', 'audit/HANDOVER.md',

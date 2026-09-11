@@ -34,6 +34,7 @@ Datei:Funktion belegt; nicht Auffindbares ist als „nicht gefunden" gekennzeich
   | Monitoring und Statusseite | Scheduler alle 240 s | `monitor_collect` | worker-maintenance |
   | Alarme, Mandatserinnerungen | Scheduler stündlich | `alerts`, `mandate_reminders` | worker-mail |
   | E-Mail-Versand | bei Bedarf aus der Anwendung | `mail` | worker-mail |
+  | Werbeversand des Marketingmoduls (seit 4.63) | Freigabe einer Kampagne; Scheduler alle 300 s, solange Kampagnen offen sind | `marketing_send` | worker-mail |
   | Bereinigungen, Nachsenden wartender Mails, Pruning | Scheduler stündlich | `maintenance` | worker-maintenance |
   | Hängende Jobs freigeben | Scheduler alle 30 s (`queue_release_stale()`) | (keiner) | Scheduler |
 

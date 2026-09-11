@@ -14,7 +14,8 @@
  *     sind damit ausgeschlossen).
  *  2. Datenbank: Host 127.0.0.1, localhost oder ::1, Port ungleich 3306 (die Sandbox aus
  *     tools/lib/mariadb-sandbox.sh nutzt zufaellige Ports ab 23000) und ein Name, der "test" enthaelt.
- *  3. Kein Mailversand (mail.enabled leer) und kein Totmannschalter (monitoring.heartbeat_url leer).
+ *  3. Kein Mailversand (mail.enabled leer; mail_marketing nur mit Transport log und ohne SES-Host) und kein
+ *     Totmannschalter (monitoring.heartbeat_url leer).
  *  4. Plattform-Abrechnung aus (billing.enabled leer), kein Live-Schluessel (sk_live_, rk_live_) in der Konfiguration.
  *  5. Stripe erreicht nur den lokalen Stub: stripe_api_base_url MUSS gesetzt sein und mit http://127.0.0.1 beginnen.
  *     Lexware und sevdesk duerfen, wenn konfiguriert, ebenfalls nur 127.0.0.1 ansprechen.
@@ -94,6 +95,13 @@ function test_guard_assert_config(array $cfg, ?string $configFile): void
     $mail = $cfg['mail'] ?? null;
     if (is_array($mail) && !empty($mail['enabled'])) {
         test_guard_fail('mail.enabled ist gesetzt; Pruefsuiten duerfen keine E-Mails versenden.');
+    }
+    $mm = $cfg['mail_marketing'] ?? null;
+    if (is_array($mm) && !empty($mm['enabled']) && (string)($mm['transport'] ?? 'smtp') !== 'log') {
+        test_guard_fail('mail_marketing.enabled ist gesetzt und der Transport ist nicht log; Pruefsuiten duerfen keine Werbemails versenden.');
+    }
+    if (is_array($mm) && str_contains(strtolower((string)(($mm['smtp'] ?? [])['host'] ?? '')), 'amazonaws')) {
+        test_guard_fail('mail_marketing.smtp.host zeigt auf Amazon SES.');
     }
     $mon = (array)($cfg['monitoring'] ?? []);
     if (trim((string)($mon['heartbeat_url'] ?? '')) !== '') {

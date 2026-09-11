@@ -109,6 +109,7 @@ function queue_type_defaults(string $type): array
         'maintenance'      => ['max_attempts' => 2, 'heartbeat_ttl' => 300],
         'alerts'           => ['max_attempts' => 2, 'heartbeat_ttl' => 1800],
         'mandate_reminders'=> ['max_attempts' => 3, 'heartbeat_ttl' => 1800],
+        'marketing_send'   => ['max_attempts' => 5, 'heartbeat_ttl' => 300], // Werbeversand (4.63), Heartbeat alle 5 Nachrichten
     ];
     return $map[$type] ?? ['max_attempts' => 5, 'heartbeat_ttl' => 300];
 }
@@ -661,7 +662,7 @@ function queue_tenant_active(string $tenantId, string|array $type): ?array
 function queue_type_label(string $type): string
 {
     return ['sync_run' => 'Synchronisation Lexware Office', 'sync_run_sevdesk' => 'Synchronisation sevdesk', 'collections_due' => 'Einzugsverarbeitung', 'unclear_attempts' => 'Klärung unklarer Einzugsversuche', 'mail' => 'E-Mail-Versand',
-            'monitor_collect' => 'Monitoring-Sammler', 'maintenance' => 'Wartungsaufgaben', 'alerts' => 'Alarmierung', 'mandate_reminders' => 'Mandats-Erinnerungen'][$type] ?? $type;
+            'monitor_collect' => 'Monitoring-Sammler', 'maintenance' => 'Wartungsaufgaben', 'alerts' => 'Alarmierung', 'mandate_reminders' => 'Mandats-Erinnerungen', 'marketing_send' => 'Werbeversand (Marketing)'][$type] ?? $type;
 }
 
 // ---------------------------------------------------------------------------

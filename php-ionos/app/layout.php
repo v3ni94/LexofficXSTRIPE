@@ -281,6 +281,7 @@ function admin_subnav_items(array $ctx): array
         'support' => ['label' => 'Support', 'href' => 'admin-support.php', 'perm' => 'support.view'],
         'system'  => ['label' => 'System', 'href' => 'admin-system.php', 'perm' => 'monitoring.view'],
         'legal'   => ['label' => 'Rechtsdokumente', 'href' => 'admin-legal.php', 'perm' => 'legal.view'],
+        'marketing' => ['label' => 'Marketing', 'href' => 'admin-marketing.php', 'perm' => 'marketing.view'],
         'users'   => ['label' => 'Benutzer und Rechte', 'href' => 'admin-users.php', 'perm' => 'users.manage'],
     ];
     $out = [];

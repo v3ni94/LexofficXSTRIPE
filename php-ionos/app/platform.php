@@ -42,6 +42,8 @@ const PLATFORM_PERMISSIONS = [
     'docs.admin'         => ['Dokumentation',   'Unternehmens- und Verkaufsdokumentation lesen (intern)'],
     'docs.technical'     => ['Dokumentation',   'Entwickler- und Betriebsdokumentation lesen (streng vertraulich)'],
     'users.manage'       => ['Benutzer',        'Plattform-Benutzer einladen, Rollen vergeben, Rollen anlegen'],
+    'marketing.view'     => ['Marketing',       'Marketing: Listen, Sperrliste, Kampagnen und Versandstatistik einsehen, CSV-Export'],
+    'marketing.manage'   => ['Marketing',       'Marketing: Listen importieren, Sperrliste pflegen, Kampagnen anlegen, testen und freigeben (Freigabe mit 2FA-Code), Ratenbegrenzung setzen'],
 ];
 
 /** Systemrollen (werden von Migration 027 angelegt und hier als Rueckfall gefuehrt). '*' = alle Rechte. */

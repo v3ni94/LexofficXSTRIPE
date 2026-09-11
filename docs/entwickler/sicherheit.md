@@ -83,6 +83,7 @@ Geldfluss-Jobtypen) und wird bei jeder neuen Aktion dort ergänzt.
 | Geldfluss | `process_due_now` (`collections.php`), `apply` (`stripe-import.php`), Jobaktionen `job_retry_now`/`job_cancel`/`job_close`/`job_release` für `collections_due` und `unclear_attempts` (`QUEUE_MONEY_TYPES`, `queue_type_is_money()`) | ja; dieselben Jobaktionen für `sync_run`, `mail`, `alerts`, `mandate_reminders`, `monitor_collect`, `maintenance` nein |
 | Kontosicherheit | `change_password` (`security.php`), `transfer_ownership` (`team.php`, zusätzlich Passwort), `switch_invoice_source` (`settings.php`, Projektregel) | ja |
 | Rechtsdokumente | `publish`/`retire` (`admin-legal.php`, Außenwirkung für alle Firmen) | ja; `import_draft`, `create`, `delete` (nur unveröffentlichte Fassungen) nein |
+| Werbeversand freigeben (seit 4.63) | `campaign_start` (`admin-marketing.php`): Massenversand einer Kampagne an alle aktiven Empfänger der gewählten Listen, außenwirksam und nicht rückholbar; zusätzlich nur nach Testversand | ja; Entwurf, Vorschau, Testversand, Anhalten, Fortsetzen, Abbrechen, Listen, Sperrliste, Ratenbegrenzung nein (CSRF und Audit) |
 | Support-Modus, zentral gesperrt (seit 4.55) | Der Plattformbetreiber arbeitet im Namen der Firma. Gesperrt sind: Einzüge, IBAN setzen und deaktivieren, SEPA-Freigabe je Kunde, Mandate erzeugen und widerrufen, Aufheben des Not-Stopps (Aktivieren bleibt möglich), Firmendaten mit Geldbezug (Gläubiger-Identifikationsnummer, Pflicht zum unterschriebenen Mandat, Vorabankündigung und Frist), Wechsel des Buchhaltungssystems, Zustimmung zu AVV und Verschwiegenheitsvereinbarung. Die Prüfung liegt in den Funktionen selbst (`app/customer_settings.php`, `app/collections.php`, `app/legal.php`), nicht nur in den Seiten | nein (Sperre, kein Code; `php tools/payment-safety-check.php` Abschnitt H) |
 | Sitzungscookie (seit 4.55) | `Secure` wird gesetzt, sobald die Anwendung unter https angesprochen wird (`app_base_url`, `admin_base_url`) oder der Proxy https meldet, nicht mehr allein anhand von `$_SERVER['HTTPS']`. Hinter dem Coolify-Proxy mit leerem `trusted_proxies` lief das Cookie sonst ohne Secure | nein |
 | Platzhalter der Beispielkonfiguration (seit 4.55) | `config_is_placeholder()` erkennt die 32 Zeichen langen Platzhalter aus `app/config.example.php`. Verschlüsselung, Cron-Endpunkt und Migrationsendpunkt weisen sie ab; die reinen Längenprüfungen ließen sie bis 4.54 durch | nein |
@@ -150,13 +151,14 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
 - **Berechtigungskatalog** (`PLATFORM_PERMISSIONS`): `admin.view`, `companies.view`, `companies.plan`, `companies.manage` (Wechselsperre des Buchhaltungssystems aufheben, seit 4.38), `plans.manage`,
   `notstopp.platform`, `interest.view`, `interest.manage`, `support.view`, `support.tickets`, `support.sessions`,
   `support.users`, `support.customers` (Kundenprofile pflegen, seit 4.62), `monitoring.view`, `monitoring.edit`, `legal.view`, `legal.manage`, `docs.admin`, `docs.technical`,
-  `users.manage`. Jede Adminseite verlangt ein Eintrittsrecht (`require_platform`) und prüft je POST-Aktion serverseitig
+  `users.manage`, `marketing.view`, `marketing.manage` (Marketingmodul, seit 4.63, keine Systemrolle außer Administrator). Jede Adminseite verlangt ein Eintrittsrecht (`require_platform`) und prüft je POST-Aktion serverseitig
   das passende Recht; Menüpunkte und Formulare werden zusätzlich ausgeblendet, sind aber nie der Schutz.
 - **Zuordnung:** `admin.php` (`admin.view`; Kennzahlen/Firmen `companies.view`, Tarif je Firma `companies.plan`, Wechselsperre aufheben `companies.manage`,
   Tarife `plans.manage`, Not-Stopp `notstopp.platform`, Vormerkungen `interest.view`/`interest.manage`),
   `admin-support.php` (`support.view`; Firmenwechsel `support.sessions`, Anfragen `support.tickets`, Entsperren und
   2FA-Reset `support.users`), `admin-kunde.php` (`support.view`; Firmenname, Anschrift und Kontaktdaten der Benutzer ändern
-  `support.customers`, siehe Abschnitt Kundenprofil), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen
+  `support.customers`, siehe Abschnitt Kundenprofil), `admin-marketing.php` (`marketing.view`; Ändern `marketing.manage`, Massenversand
+  zusätzlich 2FA-Code, `docs/marketing.md`), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen
   `monitoring.edit`, zusätzlich `monitoring.editors`), `admin-legal.php` (`legal.view`/`legal.manage`),
   `admin-doc.php` (`admin.view`, je Datei `docs_can_access()`: `docs.admin`, `docs.technical`), `admin-users.php`
   (`users.manage`). Der Support-Modus (`support_session_redeem()`, `_current_user_support()`) verlangt `support.sessions`

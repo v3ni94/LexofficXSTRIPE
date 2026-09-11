@@ -49,6 +49,8 @@ erwarte_abbruch "Datenbankname ohne test" "'db' => ['name' => 'smarteinzug']" 'W
 erwarte_abbruch "Datenbankname latest (F-16)" "'db' => ['name' => 'latest']" 'Wort "test"'
 erwarte_abbruch "Lexware ohne Stub-Adresse (F-16)" "'lexware_api_base_url' => ''" "lexware_api_base_url fehlt"
 erwarte_abbruch "Mailversand aktiv" "'mail' => ['enabled' => true, 'transport' => 'smtp']" "mail.enabled"
+erwarte_abbruch "Marketingversand aktiv ueber SMTP" "'mail_marketing' => ['enabled' => true, 'transport' => 'smtp', 'smtp' => ['host' => '127.0.0.1']]" "mail_marketing.enabled"
+erwarte_abbruch "Marketing-SMTP-Host bei Amazon SES" "'mail_marketing' => ['enabled' => false, 'transport' => 'log', 'smtp' => ['host' => 'email-smtp.eu-central-1.amazonaws.com']]" "Amazon SES"
 erwarte_abbruch "Totmannschalter gesetzt" "'monitoring' => ['heartbeat_url' => 'https://hc.example.invalid/ping']" "heartbeat_url"
 erwarte_abbruch "Plattform-Abrechnung aktiv" "'billing' => ['enabled' => true]" "billing.enabled"
 erwarte_abbruch "Live-Schluessel in der Konfiguration" "'billing' => ['stripe_secret_key' => 'sk_' . 'live_TESTGUARD']" "Live-Schluessel"

@@ -1,13 +1,13 @@
 {
   "unternehmen": {
-    "revision": "r7",
+    "revision": "r8",
     "date": "11.09.2026",
-    "summary": "Kundenprofil im Support (4.62) in der Funktionsübersicht."
+    "summary": "Marketingmodul (4.63) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r27",
+    "revision": "r28",
     "date": "11.09.2026",
-    "summary": "Kundenprofil admin-kunde.php, Recht support.customers, Migration 033 (4.62)."
+    "summary": "Marketingmodul (docs/marketing.md, Versandprofile, Rechte, Schnittstellen, Jobtyp marketing_send, Migration 034; 4.63)."
   },
   "kunden": {
     "revision": "r4",

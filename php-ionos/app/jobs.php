@@ -31,9 +31,9 @@ function jobs_pools(): array
         'lexware'     => ['sync_run'],
         'sevdesk'     => ['sync_run_sevdesk'], // eigener Container worker-sevdesk (4.38); gleicher Handler, getrennte Drosselung
         'stripe'      => ['collections_due', 'unclear_attempts'],
-        'mail'        => ['mail', 'alerts', 'mandate_reminders'],
+        'mail'        => ['mail', 'alerts', 'mandate_reminders', 'marketing_send'],
         'maintenance' => ['monitor_collect', 'maintenance'],
-        'all'         => ['sync_run', 'sync_run_sevdesk', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'monitor_collect', 'maintenance'],
+        'all'         => ['sync_run', 'sync_run_sevdesk', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'marketing_send', 'monitor_collect', 'maintenance'],
     ];
 }
 
@@ -81,6 +81,7 @@ function job_handle(array $job, string $workerId): array
         case 'mail':              return job_mail($job);
         case 'alerts':            return ['status' => 'completed', 'result' => alerts_cron_notify()];
         case 'mandate_reminders': return job_mandate_reminders($job);
+        case 'marketing_send':    return job_marketing_send($job);
         case 'monitor_collect':   return ['status' => 'completed', 'result' => monitor_collect(['source' => 'worker', 'budget' => 8.0])];
         case 'maintenance':       return job_maintenance($job);
         default:
@@ -316,6 +317,39 @@ function job_mail(array $job): array
     return ['status' => 'completed', 'result' => ['accepted' => true], 'prune' => true];
 }
 
+/**
+ * Werbeversand des Marketingmoduls (app/marketing.php, 4.63): arbeitet freigegebene Kampagnen mit Ratenbegrenzung ab.
+ * Zeitbudget je Versuch, danach Fortsetzung mit Fairness (Systemmails des Pools mail gehen vor). Tagesgrenze erreicht:
+ * Job endet, der Scheduler reiht ihn alle 300 s neu ein, solange Kampagnen offen sind. Transportfehler: Fehlversuch mit
+ * Backoff (Adresse bleibt queued, kein Doppelversand: jede Adresse wird vor dem Senden einzeln beansprucht).
+ */
+function job_marketing_send(array $job): array
+{
+    require_once __DIR__ . '/marketing.php';
+    $n = 0;
+    $tick = static function (array $stats) use ($job, &$n): bool {
+        $n++;
+        if ($n % 5 === 0) {
+            queue_heartbeat($job, null, sprintf('%d gesendet, %d fehlgeschlagen', $stats['sent'], $stats['failed']));
+        }
+        return worker_stop_requested();
+    };
+    $stats = marketing_send_process(MARKETING_JOB_BUDGET_SECONDS, $tick);
+    if ($stats['stopped']) {
+        throw new JobRequeueException('Worker wird beendet, Werbeversand wird fortgesetzt');
+    }
+    if (isset($stats['transport_error'])) {
+        circuit_failure('mail_marketing', 'connection');
+        throw new JobRetryException('Versandweg des Marketingprofils hat die Nachricht nicht angenommen: ' . $stats['transport_error']);
+    }
+    if ($stats['remaining'] > 0 && !$stats['daily_limit']) {
+        $e = new JobRequeueException('Zeitbudget je Versuch erreicht, Werbeversand wird fortgesetzt');
+        $e->yield = true;
+        throw $e;
+    }
+    return ['status' => 'completed', 'result' => ['sent' => $stats['sent'], 'failed' => $stats['failed'], 'skipped' => $stats['skipped'], 'daily_limit' => $stats['daily_limit'], 'remaining' => $stats['remaining']]];
+}
+
 function job_mandate_reminders(array $job): array
 {
     if (empty(config('features', [])['mandate_request'])) {
@@ -381,6 +415,11 @@ function scheduler_tick(): array
         ['maintenance', 3600, 'low', 'maintenance:hourly'],
         ['mandate_reminders', 3600, 'low', 'mandates:remind'],
     ];
+    require_once __DIR__ . '/marketing.php';
+    if (marketing_campaigns_pending()) {
+        // Werbeversand: nur solange Kampagnen offen sind (Fortsetzung nach Tagesgrenze oder Transportfehler)
+        $tasks[] = [MARKETING_JOB_TYPE, 300, 'low', MARKETING_JOB_DEDUPE];
+    }
     foreach ($tasks as [$type, $interval, $prio, $dedupe]) {
         $last = queue_ts(monitor_mark_get('sched_' . $type));
         if ($last !== null && $now - $last < $interval) {

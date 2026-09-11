@@ -65,6 +65,17 @@ Automatisch eingesammelt aus den Abschnitten „Offene Prüfpunkte“ der Entwic
 | tests-und-nachverfolgbarkeit.md | Keines der vorhandenen `tools/*`-Werkzeuge ist als Schritt in `.github/workflows/deploy.yml` eingebunden; ihre Ausführung vor einem Commit ist nur durch `CLAUDE.md` organisatorisch vorgeschrieben, nicht technisch erzwungen. Eine Ergänzung des Workflows um zumindest die schnellen, datenbankfreien Prüfungen (`tools/mail-ci-check.php`, `tools/pricing-check.php`, `tools/billing-setup-check.php`, `tools/healthcheck-redis-check.php`, `tools/docs-build-check.py`, `tools/staging-isolation-check.py`) wäre eine mögliche Verbesserung, wurde aber nicht umgesetzt und ist hier nicht empfohlen, ohne dass die Geschäftsführung die Erweiterung des Workflows freigibt. |
 | tests-und-nachverfolgbarkeit.md | Für „Kunden/Mandate“, „Firmen/Team/Rollen“, „Lexware-Verbindung“ und „Webhooks“ wurde kein einziges automatisches Testwerkzeug im Repository gefunden; eine Ergänzung wäre fachlich sinnvoll, ist aber nicht Teil dieses Auftrags. |
 
+### Marketingmodul (4.63)
+
+- **Offen (Betreiber):** SES-Identität `mail.smart-einzug.de` mit DKIM und MAIL-FROM-Domain verifizieren, DNS bei IONOS
+  eintragen, SMTP-Zugangsdaten in `shared/config.php`, Produktionsfreigabe des SES-Kontos, SNS-Thema mit HTTPS-Abonnement auf
+  `marketing-webhook.php`. Prüfverfahren: `docs/marketing.md`, Schritt 8 (Testnachricht an Gmail, „Original anzeigen“).
+- **Annahme (im Prüfstand mit eigenem Zertifikat belegt, nicht mit echtem Ereignis):** Aufbau der SNS-Signaturprüfung und
+  Struktur der SES-Ereignisse nach AWS-Dokumentation. Prüfverfahren: erster echter Rückläufer erzeugt ein Ereignis `bounce`;
+  andernfalls steht „SNS-Nachricht mit ungueltiger Signatur abgewiesen“ im Anwendungsprotokoll.
+- **Offen (Entscheidung):** Aufbewahrungsdauer von `marketing_events` und versendeten Kampagnen (derzeit unbegrenzt, als
+  Nachweis); Bereinigung als Wartungsaufgabe nachziehen, sobald eine Frist festgelegt ist.
+
 ## Zuständigkeiten
 
 | Thema | Zuständig | Nachweis |
