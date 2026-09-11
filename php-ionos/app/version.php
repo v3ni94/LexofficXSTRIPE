@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.65';
+const APP_VERSION = '4.66';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.66', 'date' => '11.09.2026', 'title' => 'Marketing: Grund gesperrter Schaltflächen sichtbar',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die Schaltflächen „Testnachricht senden“ und „Massenversand freigeben“ nennen jetzt direkt daneben, warum sie gesperrt sind (Versandprofil mail_marketing nicht aktiv, SMTP-Zugangsdaten unvollständig, Testversand fehlt). Bisher waren sie ohne Erklärung ausgegraut und wirkten wie ein Fehler.'],
+         ]],
         ['version' => '4.65', 'date' => '11.09.2026', 'title' => 'Marketing: Vorschau im Adminbereich wieder sichtbar',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Kampagnenvorschau blieb leer mit der Browsermeldung „admin.smart-einzug.de hat die Verbindung abgelehnt“. Ursache: Der Webserver setzt für den Adminhost die Kopfzeile X-Frame-Options DENY, und die Vorschau wurde als eigene Seite in ein Iframe nachgeladen. Der HTML-Code der Nachricht wird jetzt direkt in das abgeschirmte Iframe eingebettet (srcdoc, ohne Skripte und ohne eigene Herkunft); zusätzlich gibt es den Link „Vorschau in neuem Fenster öffnen“.'],

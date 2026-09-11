@@ -298,13 +298,14 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
         <form method="post" class="inline-form" style="flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
             <?= csrf_field() ?><input type="hidden" name="action" value="campaign_test"><input type="hidden" name="campaign_id" value="<?= e($c['id']) ?>">
             <input type="email" name="test_to" placeholder="Testempfänger (eigene Adresse)" required style="max-width: 320px;" value="<?= e((string)($ctx['email'] ?? '')) ?>">
-            <button type="submit" class="btn btn-sm btn-secondary" <?= $profil['enabled'] ? '' : 'disabled' ?>>Testnachricht senden</button>
+            <button type="submit" class="btn btn-sm btn-secondary" <?= $profil['enabled'] ? '' : 'disabled title="Versandprofil mail_marketing nicht aktiv"' ?>>Testnachricht senden</button>
+            <?php if (!$profil['enabled']): ?><span class="hint"><strong>Gesperrt:</strong> Das Versandprofil mail_marketing ist in shared/config.php nicht aktiv. Testversand und Freigabe laufen ausschließlich über dieses Profil (Amazon SES), nie über den Systemversand. Einrichtung: Dokumentation, Kapitel Marketing.</span><?php elseif (!$profil['smtp_ok']): ?><span class="hint"><strong>Achtung:</strong> SMTP-Zugangsdaten des Marketingprofils unvollständig, der Versand würde fehlschlagen.</span><?php endif; ?>
         </form>
         <form method="post" class="inline-form" style="flex-wrap: wrap; gap: 10px;" onsubmit="return confirm('Massenversand an alle aktiven Empfänger der gewählten Listen freigeben? Der Versand lässt sich anhalten, aber gesendete Nachrichten nicht zurückholen.');">
             <?= csrf_field() ?><input type="hidden" name="action" value="campaign_start"><input type="hidden" name="campaign_id" value="<?= e($c['id']) ?>">
             <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Aktueller 2FA-Code" required class="code-input" style="max-width: 160px;">
-            <button type="submit" class="btn btn-danger" <?= $profil['enabled'] && $c['test_sent_at'] ? '' : 'disabled' ?>>Massenversand freigeben</button>
-            <span class="hint">Freigabe nur nach Testversand; Zweitbestätigung per 2FA-Code, protokolliert.</span>
+            <button type="submit" class="btn btn-danger" <?= $profil['enabled'] && $c['test_sent_at'] ? '' : 'disabled title="' . (!$profil['enabled'] ? 'Versandprofil mail_marketing nicht aktiv' : 'Zuerst Testversand durchführen') . '"' ?>>Massenversand freigeben</button>
+            <span class="hint"><?= !$profil['enabled'] ? '<strong>Gesperrt:</strong> Versandprofil nicht aktiv. ' : (!$c['test_sent_at'] ? '<strong>Gesperrt:</strong> zuerst Testversand. ' : '') ?>Freigabe nur nach Testversand; Zweitbestätigung per 2FA-Code, protokolliert.</span>
         </form>
         <form method="post" class="inline-form" style="margin-top: 14px;" onsubmit="return confirm('Entwurf löschen?');"><?= csrf_field() ?><input type="hidden" name="action" value="campaign_delete"><input type="hidden" name="campaign_id" value="<?= e($c['id']) ?>"><button type="submit" class="btn btn-sm btn-ghost">Entwurf löschen</button></form>
         <?php endif; ?>
