@@ -39,6 +39,48 @@ function mail_product_name(): string
     return $name !== '' ? $name : 'SmartEinzug';
 }
 
+/**
+ * Kopfzeilenwert (Betreff, Anzeigename) nach RFC 2047 kodieren (4.64). Reiner ASCII-Text bleibt unveraendert. Sonst wird der
+ * Text an Wortgrenzen in Base64-Teile zerlegt, jeder Teil hoechstens 75 Zeichen lang, gefaltet mit CRLF und Leerzeichen.
+ * Anlass: mb_encode_mimeheader() (Q-Kodierung) teilte den Betreff „Bitte E-Mail-Adresse bestaetigen“ mitten im Wort in zwei
+ * kodierte Teile („best=C3=A4tige“ und „n“); korrekt dekodierbar, aber unsauber und ein vermeidbares Merkmal fuer Filter.
+ * Multibyte-Zeichen werden nie getrennt (Zerlegung nach Woertern, ein zu langes Wort nach Zeichen).
+ */
+function mail_encode_header_value(string $value): string
+{
+    $value = mail_sanitize_header($value);
+    if ($value === '' || !preg_match('/[^\x20-\x7E]/', $value)) {
+        return $value;
+    }
+    $maxBytes = 45; // base64(45 Byte) = 60 Zeichen + 12 Zeichen Rahmen "=?UTF-8?B?" und "?=" = 72 <= 75
+    $chunks = [];
+    $current = '';
+    foreach (preg_split('/(?<= )/u', $value) ?: [] as $word) {
+        if ($current !== '' && strlen($current) + strlen($word) > $maxBytes) {
+            $chunks[] = $current;
+            $current = '';
+        }
+        while (strlen($word) > $maxBytes) {
+            // ueberlanges Wort zeichenweise fuellen, nie innerhalb eines Multibyte-Zeichens trennen
+            $take = '';
+            foreach (preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $ch) {
+                if (strlen($current) + strlen($take) + strlen($ch) > $maxBytes) {
+                    break;
+                }
+                $take .= $ch;
+            }
+            $chunks[] = $current . $take;
+            $current = '';
+            $word = substr($word, strlen($take));
+        }
+        $current .= $word;
+    }
+    if ($current !== '') {
+        $chunks[] = $current;
+    }
+    return implode("\r\n ", array_map(static fn(string $c): string => '=?UTF-8?B?' . base64_encode($c) . '?=', $chunks));
+}
+
 /** Hostname für die Message-ID, abgeleitet aus der Basisadresse der Anwendung. */
 function mail_message_id_host(): string
 {
@@ -257,7 +299,7 @@ function mail_header_lines(array $cfg, string $contentType, bool $plainOnly, arr
 {
     $fromAddress = mail_sanitize_header((string)($cfg['from_address'] ?? ''));
     $fromName = mail_sanitize_header((string)($cfg['from_name'] ?? mail_product_name()));
-    $encodedFromName = mb_encode_mimeheader($fromName, 'UTF-8', 'Q', "\r\n");
+    $encodedFromName = mail_encode_header_value($fromName);
     $fromHeader = $fromAddress !== '' ? sprintf('%s <%s>', $encodedFromName, $fromAddress) : $encodedFromName;
     $replyTo = mail_reply_to_effective($cfg, $fromAddress);
     $options = mail_options_normalize($options);
@@ -323,7 +365,7 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
     $fromAddress = mail_sanitize_header((string)($cfg['from_address'] ?? ''));
 
     $subject = mail_sanitize_header($subject);
-    $encodedSubject = mb_encode_mimeheader($subject, 'UTF-8', 'Q', "\r\n");
+    $encodedSubject = mail_encode_header_value($subject);
 
     [$contentType, $body] = mail_build_body($textBody, $htmlBody);
     $headers = implode("\r\n", mail_header_lines((array)$cfg, $contentType, $htmlBody === null, $options));

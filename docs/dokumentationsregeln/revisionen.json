@@ -5,9 +5,9 @@
     "summary": "Marketingmodul (4.63) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r28",
+    "revision": "r29",
     "date": "11.09.2026",
-    "summary": "Marketingmodul (docs/marketing.md, Versandprofile, Rechte, Schnittstellen, Jobtyp marketing_send, Migration 034; 4.63)."
+    "summary": "Kopfzeilenkodierung (4.64) und Auswertung des Mailkopfs vom 11.09.2026."
   },
   "kunden": {
     "revision": "r4",

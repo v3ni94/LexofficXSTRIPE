@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.63';
+const APP_VERSION = '4.64';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.64', 'date' => '11.09.2026', 'title' => 'Kopfzeilenkodierung von Betreff und Absendername an Wortgrenzen',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Betreff und Anzeigename werden nach RFC 2047 als Base64-Wörter an Wortgrenzen kodiert und gefaltet. Die bisherige Q-Kodierung der PHP-Standardfunktion teilte Wörter mit Umlauten beim Zeilenumbruch mitten im Wort („best=C3=A4tige“ und „n“ in der Willkommensmail), was korrekt dekodierbar, aber unsauber war. Befund aus der Auswertung eines Mailkopfs vom 11.09.2026; die Authentifizierung dieser Mail (SPF, DKIM, DMARC über IONOS) war in Ordnung, das SPF-Softfail entstand erst durch eine Weiterleitung beim Empfänger.'],
+         ]],
         ['version' => '4.63', 'date' => '11.09.2026', 'title' => 'Marketingmodul: Empfängerlisten, Sperrliste, Kampagnen mit Vorschau, Testversand und Freigabe, eigener Versandweg über Amazon SES',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Neuer Reiter Marketing im Adminbereich (Rechte marketing.view und marketing.manage). Empfängerlisten aus den Firmenaccounts (Inhaber, wahlweise Administratoren, als Bestandskunden) und aus CSV-Importen mit Rechtsgrundlage und Vermerk je Import; CSV-Export je Liste. Die Kunden der Firmen und die Vormerkungen sind bewusst keine Quelle.'],

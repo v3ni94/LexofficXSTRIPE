@@ -263,6 +263,13 @@ DMARC zunächst auf `p=none` mit Berichtsadresse setzen und erst nach einigen Ta
    Mailanbieter genannten Selektor) und Abgleich mit den Vorgaben des eingesetzten
    SMTP-Anbieters.
 
+## Kopfzeilenkodierung (4.64)
+
+`mail_encode_header_value()` kodiert Betreff und Anzeigename nach RFC 2047: reiner ASCII-Text bleibt unverändert, sonst
+Base64-Wörter (`=?UTF-8?B?…?=`) mit höchstens 75 Zeichen je Teil, Trennung nur an Wortgrenzen (überlange Wörter
+zeichenweise, nie innerhalb eines Multibyte-Zeichens), Faltung mit CRLF und Leerzeichen. Ersetzt `mb_encode_mimeheader()`,
+das beim Zeilenumbruch mitten im Wort trennte. Prüfung: `php tools/mail-ci-check.php`, Abschnitt 5.
+
 ## Versandprofile: system und marketing (4.63)
 
 `mail_send_direct()` wählt über die Option `profile` das Versandprofil: `system` (Vorgabe, `config('mail')`) für alle

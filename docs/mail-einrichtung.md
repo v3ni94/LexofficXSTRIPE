@@ -118,6 +118,18 @@ include:_spf-eu.ionos.com ~all` vorhanden, `_dmarc` als CNAME auf `dmarc.ionos.d
 DKIM im IONOS-Kundenbereich aktiv, Transport der Anwendung tatsächlich `smtp` über das Postfach `kontakt@smart-einzug.de`,
 DMARC in eigene Hand nehmen (TXT statt CNAME, Berichte an eigene Adresse). Der Punkt Reply-To ist seit 4.61 im Code gelöst.
 
+## Auswertung eines Mailkopfs vom 11.09.2026 (Willkommensmail, 4.58)
+
+Ergebnis: Versand über `mout.kundenserver.de` (IONOS), beim ersten Empfang durch Google SPF PASS, DKIM PASS mit `s1-ionos`
+und `d=smart-einzug.de`, DMARC PASS, IONOS `X-Spam-Flag: NO`. DKIM ist also aktiv. Das in der Gmail-Übersicht angezeigte
+SPF-SOFTFAIL entstand erst beim zweiten Hop: Die Mail an `emb@mueller-holding.ag` wurde auf `timo@muellerhv.de`
+weitergeleitet, der Return-Path blieb `kontakt@smart-einzug.de`, und Googles Weiterleitungsserver steht naturgemäß nicht im
+SPF. ARC trägt die ursprünglichen Ergebnisse weiter (`arc=pass`), weitergeleitete Mails mit Bestätigungslink werden aber
+strenger eingestuft. Die direkt zugestellte Testmail desselben Tages lag im Posteingang. Folgerungen: Zustellbarkeitstests
+immer an die Zieladresse ohne Weiterleitung; `from_name` auf „SmartEinzug“ vereinheitlichen (Kopf sagte „Smart-Einzug“, Text
+„SmartEinzug“); Betreffkodierung an Wortgrenzen (4.64); DMARC-Berichte über einen eigenen TXT-Eintrag beziehen, um
+Weiterleitungsfälle zu sehen.
+
 ## Kopfzeilen der Nachrichten (seit 4.61)
 
 Jede Nachricht der Anwendung trägt neben From, Date, Message-ID und MIME-Version die Kopfzeile `Auto-Submitted:
