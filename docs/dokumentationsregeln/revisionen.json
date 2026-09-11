@@ -5,9 +5,9 @@
     "summary": "Auditbericht und Release-Checkliste (4.59) referenziert."
   },
   "entwickler": {
-    "revision": "r25",
+    "revision": "r26",
     "date": "11.09.2026",
-    "summary": "Zustellbarkeitsprüfung bin/mail-check.php --zustellbarkeit und app/mail_dns.php (4.60)."
+    "summary": "Kopfzeilen der Zustellbarkeit (Reply-To nur Absenderdomain, Auto-Submitted, List-Unsubscribe One-Click) und Schritt-für-Schritt-Anleitung IONOS (4.61)."
   },
   "kunden": {
     "revision": "r4",

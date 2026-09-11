@@ -208,7 +208,7 @@ function interest_register(array $input, ?string $sourceDomain = null): array
     $confirmUrl = app_base_url() . '/vormerken.php?token=' . $token;
     $unsubscribeUrl = app_base_url() . '/vormerken.php?abmelden=' . $manage;
     $tpl = mail_tpl_interest_confirm($providerName, $confirmUrl, $unsubscribeUrl);
-    if (mail_send($v['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
+    if (mail_send($v['email'], $tpl['subject'], $tpl['text'], $tpl['html'], ['unsubscribe_url' => $unsubscribeUrl])) {
         // Erfolg: Token dieser Mail werden gueltig (genau ein gueltiger Bestaetigungs- und Abmeldetoken je Eintrag, der
         // aus der juengsten zugestellten Mail); eine eventuell gesetzte Wartemarke wird aufgehoben.
         if ($tokenSpeichernNachVersand) {
@@ -263,14 +263,15 @@ function interest_send_pending(int $limit = 50): int
         $manage = bin2hex(random_bytes(32));
         $pdo->prepare('UPDATE interest_registrations SET token_hash = ?, token_expires_at = ?, manage_token_hash = ? WHERE id = ?')
             ->execute([hash('sha256', $token), gmdate('Y-m-d H:i:s', time() + INTEREST_TOKEN_DAYS * 86400), hash('sha256', $manage), $row['id']]);
+        $unsubscribeUrl = app_base_url() . '/vormerken.php?abmelden=' . $manage;
         $tpl = mail_tpl_interest_confirm(
             (string)($provider['name'] ?? $row['provider_code']),
             app_base_url() . '/vormerken.php?token=' . $token,
-            app_base_url() . '/vormerken.php?abmelden=' . $manage,
+            $unsubscribeUrl,
             date('d.m.Y', interest_ts($row['consent_at'] ?? $row['created_at'])),
             $row['source_domain'] ?? null
         );
-        if (mail_send_queued((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
+        if (mail_send_queued((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'], ['unsubscribe_url' => $unsubscribeUrl])) {
             $pdo->prepare('UPDATE interest_registrations SET mail_pending = 0, mail_pending_since = NULL, last_mail_at = UTC_TIMESTAMP() WHERE id = ?')->execute([$row['id']]);
             $n++;
         }
@@ -338,13 +339,14 @@ function interest_send_confirmed_mail(array $row, ?string &$manageToken = null):
     $manageToken = null;
     $neu = bin2hex(random_bytes(32));
     $provider = integration_provider((string)$row['provider_code']);
+    $unsubscribeUrl = app_base_url() . '/vormerken.php?abmelden=' . $neu;
     $tpl = mail_tpl_interest_confirmed(
         (string)($provider['name'] ?? $row['provider_code']),
-        app_base_url() . '/vormerken.php?abmelden=' . $neu,
+        $unsubscribeUrl,
         public_base_url() . ($row['provider_code'] === 'sevdesk' ? '/integrationen/sevdesk/' : '/integrationen/')
     );
     $sender = defined('IN_WORKER') ? 'mail_send_queued' : 'mail_send';
-    if ($sender((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'])) {
+    if ($sender((string)$row['email'], $tpl['subject'], $tpl['text'], $tpl['html'], ['unsubscribe_url' => $unsubscribeUrl])) {
         db()->prepare('UPDATE interest_registrations SET manage_token_hash = ?, mail_pending = 0, mail_pending_since = NULL, last_mail_at = UTC_TIMESTAMP() WHERE id = ?')
             ->execute([hash('sha256', $neu), $row['id']]);
         $manageToken = $neu;
@@ -352,6 +354,16 @@ function interest_send_confirmed_mail(array $row, ?string &$manageToken = null):
     }
     db()->prepare('UPDATE interest_registrations SET mail_pending = 1, mail_pending_since = COALESCE(mail_pending_since, UTC_TIMESTAMP()) WHERE id = ?')->execute([$row['id']]);
     return false;
+}
+
+/**
+ * Abmeldung mit einem Klick (RFC 8058): Postfachanbieter senden an die Adresse aus List-Unsubscribe einen POST mit dem
+ * Formularfeld List-Unsubscribe=One-Click, ohne dass ein Mensch eine Seite sieht. Diese Anfrage gilt wie ein Klick auf
+ * „Jetzt abmelden“; die Berechtigung ergibt sich allein aus Token B in der Adresse (vormerken.php?abmelden=...).
+ */
+function interest_is_one_click_unsubscribe(string $method, array $post): bool
+{
+    return strtoupper($method) === 'POST' && (string)($post['List-Unsubscribe'] ?? '') === 'One-Click';
 }
 
 /** Abmeldung über Token B: 'unsubscribed' oder 'invalid'. */

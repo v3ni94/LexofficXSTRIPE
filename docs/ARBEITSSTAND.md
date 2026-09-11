@@ -1,6 +1,6 @@
 # Arbeitsstand SmartEinzug (LexofficXSTRIPE)
 
-Stand: 10.09.2026, Prüfbranch `audit/2026-09-09-gesamtpruefung` (lokal, NICHT gepusht; Basis 66c59d5 = 4.58 auf
+Stand: 11.09.2026, Prüfbranch `audit/2026-09-09-gesamtpruefung` (lokal, NICHT gepusht; Basis 66c59d5 = 4.58 auf
 `claude/setup-lexsepa-monorepo-v5ZcZ`). Übergabe des Audits: `docs/audit/HANDOVER.md`. Diese Datei ist der Einstieg für die Fortsetzung der Arbeit
 und wird bei jedem Arbeitspaket aktualisiert. Sie enthält keine Zugangsdaten. Angaben, die nicht aus Code, Tests oder
 Git-Historie belegbar sind, tragen den Vermerk „unsicher“.
@@ -42,6 +42,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 | Version | Inhalt | Commit | Push |
 |---|---|---|---|
+| 4.61 | Kopfzeilen der Zustellbarkeit: `mail_header_lines()`, `mail_reply_to_effective()` (Reply-To nur auf Absenderdomain, fremde Domain ignoriert und protokolliert), `Auto-Submitted: auto-generated`, `List-Unsubscribe`/`List-Unsubscribe-Post` One-Click nur für die drei Vormerkungsmails (Option `unsubscribe_url` durch `mail_send`, Payload `options`, `job_mail`), `interest_is_one_click_unsubscribe()` in `vormerken.php`; Vorgabe `config.example.php` auf kontakt@smart-einzug.de; Anleitung für Betreiber in `docs/mail-einrichtung.md` (Server-Transport, DKIM-Schalter, DMARC-TXT mit rua, Testmail, Postmaster Tools); mail-ci-check 76/0 | lokal im Prüfbranch | NEIN |
 | 4.60 | Zustellbarkeit ausgehender Mails: `bin/mail-check.php --zustellbarkeit` (DNS-Abfrage auf dem VPS), `app/mail_dns.php` (Auswertung SPF, DMARC, DKIM, Absenderkonsistenz), `tools/mail-dns-check.php` 30/0; Anlass Spam-Einstufung von kontakt@smart-einzug.de; DNS-Zone laut Betreiber vollständig für IONOS-Versand, offene Prüfpunkte DKIM-Schalter, Transport, DMARC in eigener Hand, Reply-To | lokal im Prüfbranch | NEIN |
 | 4.59 | Gesamtaudit (Rollen A bis F): 26 behobene Befunde in Geldfluss (Klärung mit Listenprüfung, Zeitzonen der Fristen, hängende submitting-Einzüge, Schutzschaltung als Zurückstellung, Webhook 500 statt 200, decline_code, Terminierung mit eigenen Einzügen, Storno, Erstattung, Währung, Backfill-Sperre, benannte Firmensperre), Sicherheit (C-01 Selbsterhöhung, C-02, C-03, C-05, C-06, C-09, C-10), Synchronisation (B-01, B-02, B-03, B-05, B-07, B-08, B-09, A-12), Betrieb (D-02, D-06, D-07, D-08, D-09), Oberfläche (E-01, E-02, E-04, E-05, E-07); Migration 032; Test-Schutz und Suiten collections/sync/auth/test-guard; `docs/audit/` | lokal im Prüfbranch | NEIN (Vorgabe des Auftrags: kein Push, kein Deployment) |
 | 4.11 bis 4.16 | Statusdatei, Worker-Signalmodell, Docker-CLI-Probe, Billing-Werkzeuge, Betriebsdoku im Admin, Scheduler-Waisen, verlinkte Kennzahlen, Statusseite | bis bdd42e0 | ja, produktiv aktiv (Deploy 22 s, alle Container healthy laut Serverausgabe) |

@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.60';
+const APP_VERSION = '4.61';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.61', 'date' => '11.09.2026', 'title' => 'Zustellbarkeit ausgehender E-Mails: Antwortadresse, Auto-Submitted, Abmeldung mit einem Klick',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die Kopfzeile Reply-To wird nur noch gesetzt, wenn die konfigurierte Antwortadresse gültig ist, sich vom Absender unterscheidet und zur Absenderdomain gehört. Eine Antwortadresse auf fremder Domain (bisherige Vorgabe info@mueller-holding.ag bei Absender smart-einzug.de) ist ein bekanntes Merkmal für Spamfilter und widersprach dem Fußtext „Antworten erreichen uns über die Adresse im Absender“; sie wird ignoriert und im Fehlerprotokoll vermerkt. Antworten gehen an kontakt@smart-einzug.de. bin/mail-check.php zeigt die wirksame Antwortadresse.'],
+            ['type' => 'Neu', 'text' => 'Jede Nachricht trägt Auto-Submitted: auto-generated (RFC 3834), damit Abwesenheitsnotizen und Autoresponder nicht auf Systemnachrichten antworten.'],
+            ['type' => 'Neu', 'text' => 'Die drei Nachrichten der Vormerkung (Bestätigung, Nachsendung, bestätigt) tragen List-Unsubscribe und List-Unsubscribe-Post (One-Click, RFC 8058). Gmail, Outlook und Apple Mail zeigen damit eine eigene Abmeldeschaltfläche; der Klick führt die Abmeldung über vormerken.php ohne Rückfrage aus, die Berechtigung ergibt sich allein aus dem Abmeldetoken der Nachricht. Vertragsnachrichten (Willkommen, Sicherheit, Vorabankündigung) bleiben ohne Abmeldekopfzeile. Die Abmeldeadresse läuft als Option durch mail_send() und den Warteschlangen-Payload; andere Kopfzeilen lassen sich darüber nicht setzen.'],
+            ['type' => 'Geändert', 'text' => 'Vorgabe der Mailkonfiguration (config.example.php) auf das Postfach kontakt@smart-einzug.de für Absender, SMTP-Benutzer und Antwortadresse; docs/mail-einrichtung.md enthält die Schritt-für-Schritt-Anleitung für Server und IONOS (Transport prüfen, DKIM einschalten, DMARC als eigener TXT-Eintrag mit Berichtsadresse, Testmail mit „Original anzeigen“, Postmaster Tools). php tools/mail-ci-check.php prüft Kopfzeilen, Reihenfolge, Header-Injection und Weitergabe (76 Fälle).'],
+         ]],
         ['version' => '4.60', 'date' => '11.09.2026', 'title' => 'Zustellbarkeit ausgehender E-Mails prüfbar (SPF, DKIM, DMARC, Absenderkonsistenz)',
          'entries' => [
             ['type' => 'Neu', 'text' => 'php bin/mail-check.php --zustellbarkeit prüft auf dem Server per DNS die Voraussetzungen für die Zustellung: SPF der Absenderdomain (ein Eintrag, Anbieter des SMTP-Relays enthalten, Abschluss ~all oder -all), DMARC (Richtlinie, Berichtsempfänger, Verweis auf den Anbieter), DKIM-Selektoren (Schlüssel abrufbar oder nur Verweis) sowie die Konsistenz von Absender, Versandpostfach und Antwortadresse. Ausgabe je Punkt als OK, PRUEFEN, FEHLT oder UNKLAR mit Handlungsanweisung. Anlass: Nachrichten von kontakt@smart-einzug.de landeten trotz vollständiger DNS-Einträge im Spam-Ordner.'],

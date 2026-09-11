@@ -46,9 +46,22 @@ Kundendaten; Beispiele sind synthetisch.
 
 - `config('mail')['from_address']`, `['from_name']` (Standard `SmartEinzug`, ansonsten
   `product_name()`, `app/mailer.php:178, 33-40`).
-- `config('mail')['reply_to']`, optional, wird als eigener `Reply-To`-Header gesetzt, sofern
-  vorhanden (`app/mailer.php:179-181, 192-194`); laut `config.example.php:149` standardmäßig auf
-  `info@mueller-holding.ag` vorgesehen.
+- `config('mail')['reply_to']`, optional. Seit 4.61 setzt `mail_reply_to_effective()` den Header
+  `Reply-To` nur, wenn die Adresse gültig ist, sich vom Absender unterscheidet und dieselbe registrierbare
+  Domain wie `from_address` hat; eine fremde Domain (bis 4.60 Vorgabe `info@mueller-holding.ag`) wird
+  ignoriert und einmal je Prozess protokolliert (`mail_log_once()`). Vorgabe in `config.example.php`
+  ist `kontakt@smart-einzug.de`, identisch mit dem Absender, also ohne eigenen Header.
+- Alle Kopfzeilen entstehen in `mail_header_lines(array $cfg, string $contentType, bool $plainOnly,
+  array $options)`: From, Reply-To (wirksam), MIME-Version, Date, Message-ID, `Auto-Submitted:
+  auto-generated` (RFC 3834, jede Nachricht), bei Option `unsubscribe_url` `List-Unsubscribe: <URL>` und
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), dann Content-Type. Optionen laufen
+  als fünfter Parameter durch `mail_send()`, `mail_send_queued()` und `mail_send_direct()` sowie als
+  Schlüssel `options` im Payload des Jobtyps `mail` (`mail_queue_payload()`, `job_mail()`);
+  `mail_options_normalize()` lässt nur `unsubscribe_url` mit `http(s)://` zu, andere Schlüssel werden
+  verworfen (kein Durchreichen beliebiger Kopfzeilen). Gesetzt wird die Option ausschließlich von den
+  drei Vormerkungsmails in `app/interest.php`; die One-Click-Anfrage der Postfachanbieter (POST mit Feld
+  `List-Unsubscribe=One-Click` an `vormerken.php?abmelden=B`) erkennt `interest_is_one_click_unsubscribe()`
+  und führt die Abmeldung ohne Rückfrage aus. Prüfung: `php tools/mail-ci-check.php`, Abschnitt 4.
 - Header-Werte werden vor dem Versand von `\r`/`\n` bereinigt (`mail_sanitize_header()`,
   `app/mailer.php:27-30`), Schutz vor Header-Injection über Freitextfelder (z. B. Betreff aus
   Support-Ticket).
@@ -243,8 +256,8 @@ DMARC zunächst auf `p=none` mit Berichtsadresse setzen und erst nach einigen Ta
    **Quelle:** kein Fund außerhalb von `app/monitor.php:1481-1488` (nur `alert_emails` der
    Administratoren). **Prüfverfahren:** Abgleich mit `docs/status-page.md` und Rückfrage bei der
    Produktverantwortlichen, ob ein Abonnement-Mechanismus für Kunden geplant ist.
-4. **Frage:** Sind SPF, DKIM und DMARC für die tatsächlich verwendete Absenderdomain (z. B.
-   `noreply@lexware-einzug.de` laut `config.example.php:147`) im Produktivbetrieb eingerichtet?
+4. **Frage:** Sind SPF, DKIM und DMARC für die tatsächlich verwendete Absenderdomain
+   (`kontakt@smart-einzug.de`) im Produktivbetrieb eingerichtet und ist die DKIM-Signatur bei IONOS aktiv?
    **Quelle:** siehe Abschnitt „SPF, DKIM, DMARC" oben. **Prüfverfahren:** DNS-Abfrage gegen die
    produktiv genutzte Absenderdomain (`dig TXT`, `dig TXT default._domainkey.<domain>` oder den vom
    Mailanbieter genannten Selektor) und Abgleich mit den Vorgaben des eingesetzten

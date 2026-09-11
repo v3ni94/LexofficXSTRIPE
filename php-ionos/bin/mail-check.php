@@ -36,7 +36,11 @@ $mask = static fn(?string $v): string => $v === null || $v === '' ? '(leer)' : (
 cli_out('Mailversand: ' . (mail_enabled() ? 'AKTIV' : 'NICHT AKTIV (mail.enabled = false)'));
 cli_out('Transport:   ' . (string)($cfg['transport'] ?? '(leer)'));
 cli_out('Absender:    ' . (string)($cfg['from_name'] ?? '') . ' <' . (string)($cfg['from_address'] ?? '(leer)') . '>');
-cli_out('Antwort an:  ' . (string)($cfg['reply_to'] ?? '(leer)'));
+$replyEff = mail_reply_to_effective($cfg, trim((string)($cfg['from_address'] ?? '')));
+cli_out('Antwort an:  ' . (string)($cfg['reply_to'] ?? '(leer)') . ' (Header Reply-To: ' . ($replyEff === null
+    ? (trim((string)($cfg['reply_to'] ?? '')) === '' || strcasecmp(trim((string)($cfg['reply_to'] ?? '')), trim((string)($cfg['from_address'] ?? ''))) === 0
+        ? 'nicht gesetzt, Antworten gehen an den Absender' : 'NICHT GESETZT, Adresse ungueltig oder auf fremder Domain; Antworten gehen an den Absender')
+    : $replyEff) . ')');
 cli_out('SMTP:        ' . (string)($smtp['host'] ?? '(leer)') . ':' . (string)($smtp['port'] ?? '') . ' ' . (string)($smtp['encryption'] ?? ''));
 cli_out('SMTP-Nutzer: ' . $mask((string)($smtp['user'] ?? '')));
 cli_out('SMTP-Passwort gesetzt: ' . (empty($smtp['pass']) || $smtp['pass'] === 'HIER-POSTFACH-PASSWORT' ? 'NEIN' : 'ja'));

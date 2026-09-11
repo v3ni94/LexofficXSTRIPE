@@ -7,6 +7,7 @@
  *   POST token=A, aktion=bestaetigen -> Bestätigung, danach Seite mit freiwilligen Angaben
  *   GET  ?abmelden=B                 -> Seite "Abmelden" mit Button;  POST abmelden=B, aktion=abmelden -> Abmeldung
  *   POST abmelden=B, aktion=angaben  -> freiwillige Angaben (nur bestätigte Einträge)
+ *   POST ?abmelden=B mit Feld List-Unsubscribe=One-Click -> Abmeldung ohne Rückfrage (RFC 8058, Postfachanbieter)
  *
  * Token A (Bestätigung, 7 Tage) und Token B (Abmeldung und Angaben, dauerhaft) sind getrennt und nur als SHA-256
  * gespeichert. Links aus E-Mails führen nur auf Seiten mit Button, damit Linkvorschauen und Sicherheitsscanner
@@ -77,6 +78,9 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $tokenA = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
 $tokenB = trim((string)($_GET['abmelden'] ?? $_POST['abmelden'] ?? ''));
 $aktion = (string)($_POST['aktion'] ?? '');
+if ($tokenB !== '' && interest_is_one_click_unsubscribe($method, $_POST)) {
+    $aktion = 'abmelden';
+}
 
 // --- Token B: Abmeldung und freiwillige Angaben ---------------------------------------------------------
 if ($tokenB !== '') {

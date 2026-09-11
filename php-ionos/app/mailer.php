@@ -106,7 +106,7 @@ function mail_build_body(string $textBody, ?string $htmlBody): array
  * Wie mail_send(), bevorzugt aber auch innerhalb eines Workers die Warteschlange (Pool mail mit Ratenbegrenzung und
  * Circuit Breaker) statt des Direktversands. Fuer Nachsendungen aus dem Wartungsjob gedacht.
  */
-function mail_send_queued(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
+function mail_send_queued(string $to, string $subject, string $textBody, ?string $htmlBody = null, array $options = []): bool
 {
     if (!mail_enabled()) {
         return false;
@@ -118,15 +118,20 @@ function mail_send_queued(string $to, string $subject, string $textBody, ?string
             if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
                 return false;
             }
-            queue_push('mail', ['to' => $to, 'subject' => mb_substr($subject, 0, 255), 'text' => $textBody, 'html' => $htmlBody], ['priority' => 'normal']);
+            queue_push('mail', mail_queue_payload($to, $subject, $textBody, $htmlBody, $options), ['priority' => 'normal']);
             return true;
         }
     } catch (Throwable $e) {
     }
-    return mail_send($to, $subject, $textBody, $htmlBody);
+    return mail_send($to, $subject, $textBody, $htmlBody, $options);
 }
 
-function mail_send(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
+/**
+ * @param array $options Versandoptionen, siehe mail_header_lines(): 'unsubscribe_url' (Abmeldeadresse fuer die Kopfzeilen
+ *                       List-Unsubscribe und List-Unsubscribe-Post, nur fuer Nachrichten mit eigener Abmeldung wie die
+ *                       Vormerkung). Werden bei Warteschlangenbetrieb im Payload mitgefuehrt (job_mail).
+ */
+function mail_send(string $to, string $subject, string $textBody, ?string $htmlBody = null, array $options = []): bool
 {
     if (!mail_enabled()) {
         return false;
@@ -139,14 +144,118 @@ function mail_send(string $to, string $subject, string $textBody, ?string $htmlB
                 if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
                     return false;
                 }
-                queue_push('mail', ['to' => $to, 'subject' => mb_substr($subject, 0, 255), 'text' => $textBody, 'html' => $htmlBody], ['priority' => 'normal']);
+                queue_push('mail', mail_queue_payload($to, $subject, $textBody, $htmlBody, $options), ['priority' => 'normal']);
                 return true;
             }
         } catch (Throwable $e) {
             // Queue nicht verfügbar: direkt versenden
         }
     }
-    return mail_send_direct($to, $subject, $textBody, $htmlBody);
+    return mail_send_direct($to, $subject, $textBody, $htmlBody, $options);
+}
+
+/** Payload des Jobtyps mail; Optionen nur mitfuehren, wenn gesetzt (kompakter Payload, unveraenderte Altjobs). */
+function mail_queue_payload(string $to, string $subject, string $textBody, ?string $htmlBody, array $options): array
+{
+    $payload = ['to' => $to, 'subject' => mb_substr($subject, 0, 255), 'text' => $textBody, 'html' => $htmlBody];
+    $options = mail_options_normalize($options);
+    if ($options !== []) {
+        $payload['options'] = $options;
+    }
+    return $payload;
+}
+
+/** Bekannte Versandoptionen bereinigen; unbekannte Schluessel werden verworfen (kein Durchreichen beliebiger Kopfzeilen). */
+function mail_options_normalize(array $options): array
+{
+    $out = [];
+    $url = isset($options['unsubscribe_url']) ? mail_sanitize_header((string)$options['unsubscribe_url']) : '';
+    if ($url !== '' && preg_match('~^https?://[^\s<>"]+$~', $url) === 1) {
+        $out['unsubscribe_url'] = $url;
+    }
+    return $out;
+}
+
+/**
+ * Wirksame Antwortadresse (Zustellbarkeit, 4.61): Der Header Reply-To wird nur gesetzt, wenn die konfigurierte Adresse
+ * gueltig ist, sich vom Absender unterscheidet und zur registrierbaren Domain des Absenders gehoert. Eine Antwortadresse
+ * auf fremder Domain (Vorgabe bis 4.60: info@mueller-holding.ag bei Absender smart-einzug.de) ist ein bekanntes Merkmal
+ * fuer Spamfilter und widerspricht dem Fusstext der Vorlagen; sie wird nicht gesetzt und einmal je Prozess protokolliert.
+ * Antworten laufen dann auf den Absender selbst.
+ */
+function mail_reply_to_effective(array $cfg, string $fromAddress): ?string
+{
+    $replyTo = isset($cfg['reply_to']) && $cfg['reply_to'] !== null ? mail_sanitize_header((string)$cfg['reply_to']) : '';
+    if ($replyTo === '') {
+        return null;
+    }
+    if (!filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
+        mail_log_once('reply_to_invalid', 'mail_send: mail.reply_to ist keine gueltige Adresse und wird nicht gesetzt.');
+        return null;
+    }
+    if (strcasecmp($replyTo, $fromAddress) === 0) {
+        return null;
+    }
+    require_once __DIR__ . '/mail_dns.php';
+    $fromDomain = mail_dns_registrable(mail_dns_domain_of($fromAddress));
+    $replyDomain = mail_dns_registrable(mail_dns_domain_of($replyTo));
+    if ($fromDomain === '' || $replyDomain !== $fromDomain) {
+        mail_log_once('reply_to_foreign', 'mail_send: mail.reply_to liegt auf einer anderen Domain als der Absender ('
+            . $replyDomain . ' statt ' . $fromDomain . ') und wird nicht gesetzt (Zustellbarkeit); Antworten erreichen den Absender.');
+        return null;
+    }
+    return $replyTo;
+}
+
+/** Schreibt eine Meldung genau einmal je Prozess ins Fehlerprotokoll (Konfigurationshinweise ohne Wiederholung je Mail). */
+function mail_log_once(string $key, string $message): void
+{
+    static $seen = [];
+    if (isset($seen[$key])) {
+        return;
+    }
+    $seen[$key] = true;
+    error_log($message);
+}
+
+/**
+ * Kopfzeilen einer Nachricht (ohne To und Subject, die je Transport getrennt uebergeben werden).
+ *
+ * Feste Zeilen: From, Reply-To (nur wirksam, siehe mail_reply_to_effective), MIME-Version, Date, Message-ID,
+ * Auto-Submitted: auto-generated (RFC 3834, alle Nachrichten der Anwendung sind Systemnachrichten; Abwesenheitsnotizen
+ * und Autoresponder antworten dann nicht) und Content-Type. Mit Option 'unsubscribe_url' zusaetzlich List-Unsubscribe
+ * und List-Unsubscribe-Post: List-Unsubscribe=One-Click (RFC 8058): Grosse Postfachanbieter zeigen dann eine eigene
+ * Abmeldefunktion und werten die Nachricht nicht als unerwuenschte Werbung; die Abmeldung fuehrt vormerken.php aus.
+ *
+ * @return string[] Zeilen ohne Zeilenumbruch
+ */
+function mail_header_lines(array $cfg, string $contentType, bool $plainOnly, array $options = []): array
+{
+    $fromAddress = mail_sanitize_header((string)($cfg['from_address'] ?? ''));
+    $fromName = mail_sanitize_header((string)($cfg['from_name'] ?? mail_product_name()));
+    $encodedFromName = mb_encode_mimeheader($fromName, 'UTF-8', 'Q', "\r\n");
+    $fromHeader = $fromAddress !== '' ? sprintf('%s <%s>', $encodedFromName, $fromAddress) : $encodedFromName;
+    $replyTo = mail_reply_to_effective($cfg, $fromAddress);
+    $options = mail_options_normalize($options);
+
+    $lines = [];
+    $lines[] = 'From: ' . $fromHeader;
+    if ($replyTo !== null) {
+        $lines[] = 'Reply-To: ' . $replyTo;
+    }
+    $lines[] = 'MIME-Version: 1.0';
+    $lines[] = 'Date: ' . date('r');
+    $lines[] = 'Message-ID: ' . mail_generate_message_id();
+    $lines[] = 'Auto-Submitted: auto-generated';
+    if (isset($options['unsubscribe_url'])) {
+        $lines[] = 'List-Unsubscribe: <' . $options['unsubscribe_url'] . '>';
+        $lines[] = 'List-Unsubscribe-Post: List-Unsubscribe=One-Click';
+    }
+    $lines[] = 'Content-Type: ' . $contentType;
+    if ($plainOnly) {
+        $lines[] = 'Content-Transfer-Encoding: quoted-printable';
+    }
+    return $lines;
 }
 
 /**
@@ -160,8 +269,8 @@ function mail_addr_ref(string $to): string
     return 'ref ' . substr(hash('sha256', $lower), 0, 12) . ($domain !== false ? ' ' . $domain : '');
 }
 
-/** Direkte Übergabe an den Versandweg (mail(), SMTP oder Testprotokoll). */
-function mail_send_direct(string $to, string $subject, string $textBody, ?string $htmlBody = null): bool
+/** Direkte Übergabe an den Versandweg (mail(), SMTP oder Testprotokoll). $options siehe mail_send(). */
+function mail_send_direct(string $to, string $subject, string $textBody, ?string $htmlBody = null, array $options = []): bool
 {
     if (!mail_enabled()) {
         return false;
@@ -175,31 +284,12 @@ function mail_send_direct(string $to, string $subject, string $textBody, ?string
 
     $cfg = config('mail');
     $fromAddress = mail_sanitize_header((string)($cfg['from_address'] ?? ''));
-    $fromName = mail_sanitize_header((string)($cfg['from_name'] ?? mail_product_name()));
-    $replyTo = isset($cfg['reply_to']) && $cfg['reply_to'] !== null
-        ? mail_sanitize_header((string)$cfg['reply_to'])
-        : null;
 
     $subject = mail_sanitize_header($subject);
     $encodedSubject = mb_encode_mimeheader($subject, 'UTF-8', 'Q', "\r\n");
-    $encodedFromName = mb_encode_mimeheader($fromName, 'UTF-8', 'Q', "\r\n");
-    $fromHeader = $fromAddress !== '' ? sprintf('%s <%s>', $encodedFromName, $fromAddress) : $encodedFromName;
 
     [$contentType, $body] = mail_build_body($textBody, $htmlBody);
-
-    $headerLines = [];
-    $headerLines[] = 'From: ' . $fromHeader;
-    if ($replyTo !== null && $replyTo !== '') {
-        $headerLines[] = 'Reply-To: ' . $replyTo;
-    }
-    $headerLines[] = 'MIME-Version: 1.0';
-    $headerLines[] = 'Date: ' . date('r');
-    $headerLines[] = 'Message-ID: ' . mail_generate_message_id();
-    $headerLines[] = 'Content-Type: ' . $contentType;
-    if ($htmlBody === null) {
-        $headerLines[] = 'Content-Transfer-Encoding: quoted-printable';
-    }
-    $headers = implode("\r\n", $headerLines);
+    $headers = implode("\r\n", mail_header_lines((array)$cfg, $contentType, $htmlBody === null, $options));
 
     $transport = $cfg['transport'] ?? 'mail';
 

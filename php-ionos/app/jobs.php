@@ -301,7 +301,8 @@ function job_mail(array $job): array
         throw new JobFailedException('Leerer oder bereinigter Nachrichteninhalt, Versand verweigert.');
     }
     api_call_gate('mail', 20);
-    $ok = mail_send_direct($to, (string)($p['subject'] ?? ''), (string)($p['text'] ?? ''), isset($p['html']) ? (string)$p['html'] : null);
+    $ok = mail_send_direct($to, (string)($p['subject'] ?? ''), (string)($p['text'] ?? ''), isset($p['html']) ? (string)$p['html'] : null,
+        is_array($p['options'] ?? null) ? $p['options'] : []);
     if (!$ok) {
         $err = mail_last_error();
         if ($err && ($err['kind'] ?? '') === 'rejected') {

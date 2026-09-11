@@ -141,18 +141,21 @@ return [
     // dann im Portal angezeigt und die E-Mail-Verifizierung entfällt.
     // transport 'smtp' versendet über ein Postfach mit Benutzername und Passwort
     // (IONOS: smtp.ionos.de, Port 587, encryption 'tls'; Benutzer = volle E-Mail-Adresse).
+    // Zustellbarkeit: from_address, smtp.user und reply_to gehören zur selben Domain (SPF, DKIM und DMARC
+    // gelten für die Domain des sichtbaren Absenders). Eine Antwortadresse auf fremder Domain setzt die
+    // Anwendung nicht (mail_reply_to_effective); Prüfung mit php bin/mail-check.php --zustellbarkeit.
     'mail' => [
         'enabled'      => false,
         'transport'    => 'smtp',
-        'from_address' => 'noreply@lexware-einzug.de',   // muss zum SMTP-Postfach passen
+        'from_address' => 'kontakt@smart-einzug.de',     // muss zum SMTP-Postfach passen
         'from_name'    => 'SmartEinzug',
-        'reply_to'     => 'info@mueller-holding.ag',
+        'reply_to'     => 'kontakt@smart-einzug.de',     // gleiche Domain wie from_address; identisch = kein eigener Header
         'log_file'     => __DIR__ . '/../mail.log',
         'smtp' => [
             'host'       => 'smtp.ionos.de',
             'port'       => 587,
             'encryption' => 'tls',                       // 'tls' (Port 587) | 'ssl' (Port 465)
-            'user'       => 'noreply@lexware-einzug.de',
+            'user'       => 'kontakt@smart-einzug.de',
             'pass'       => 'HIER-POSTFACH-PASSWORT',
         ],
     ],
