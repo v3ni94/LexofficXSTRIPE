@@ -10,7 +10,11 @@
  *   admin-marketing.php                    Uebersicht, Einstellungen, Listen, Sperrliste, Kampagnen
  *   admin-marketing.php?liste=<id>         Empfaenger einer Liste       ?export=<id>   CSV der Liste
  *   admin-marketing.php?kampagne=<id>      Kampagne bearbeiten, Vorschau, Test, Freigabe, Versandzeilen
- *   admin-marketing.php?vorschau=<id>      HTML-Fassung fuer das Vorschaufenster (sandbox-iframe)
+ *   admin-marketing.php?vorschau=<id>      HTML-Fassung der Nachricht als eigene Seite (Link „in neuem Fenster oeffnen“).
+ *                                          Das Vorschaufenster auf der Kampagnenseite bettet den HTML-Code dagegen direkt
+ *                                          per srcdoc in ein sandbox-iframe ein: Caddy liefert fuer den Adminhost
+ *                                          X-Frame-Options DENY, ein nachgeladenes Dokument wuerde die Einbettung verweigern
+ *                                          (Befund 11.09.2026, „hat die Verbindung abgelehnt“).
  */
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/auth.php';
@@ -30,7 +34,7 @@ $ctx = require_platform('marketing.view');
 $canManage = platform_can($ctx, 'marketing.manage');
 $pdo = db();
 
-// --- Vorschau (nur HTML der Nachricht, im sandbox-iframe angezeigt) -------------------------------------------------
+// --- Vorschau als eigene Seite (neues Fenster); das Iframe der Kampagnenseite nutzt srcdoc, siehe Kopfkommentar ---------
 if (($_GET['vorschau'] ?? '') !== '') {
     $c = marketing_campaign_load((string)$_GET['vorschau']);
     if ($c === null) {
@@ -281,7 +285,8 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
 <div class="card" id="vorschau">
     <h2>Vorschau (Musterdaten Erika Muster, Muster GmbH)</h2>
     <p class="hint">Betreff: <strong><?= e(marketing_campaign_preview($c)['subject']) ?></strong> · Absender: <?= e($profil['from_name']) ?> &lt;<?= e($profil['from']) ?>&gt;<?= $profil['reply_to'] !== '' ? ' · Antworten an ' . e($profil['reply_to']) : '' ?></p>
-    <iframe src="admin-marketing.php?vorschau=<?= e($c['id']) ?>" sandbox="" title="Vorschau der Nachricht" style="width: 100%; height: 720px; border: 1px solid var(--color-border, #ddd); background: #fff;"></iframe>
+    <iframe srcdoc="<?= e(marketing_campaign_preview($c)['html']) ?>" sandbox="" referrerpolicy="no-referrer" title="Vorschau der Nachricht" style="width: 100%; height: 720px; border: 1px solid var(--color-border, #ddd); background: #fff;"></iframe>
+    <p class="hint"><a href="admin-marketing.php?vorschau=<?= e($c['id']) ?>" target="_blank" rel="noopener">Vorschau in neuem Fenster öffnen</a> (Ansicht ohne Rahmen, zum Beispiel für die Prüfung auf dem Mobilgerät).</p>
     <details style="margin-top: 10px;"><summary>Textfassung</summary><pre style="white-space: pre-wrap; font-size: 13px;"><?= e(marketing_campaign_preview($c)['text']) ?></pre></details>
 </div>
 

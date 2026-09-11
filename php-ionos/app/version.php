@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.64';
+const APP_VERSION = '4.65';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.65', 'date' => '11.09.2026', 'title' => 'Marketing: Vorschau im Adminbereich wieder sichtbar',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Kampagnenvorschau blieb leer mit der Browsermeldung „admin.smart-einzug.de hat die Verbindung abgelehnt“. Ursache: Der Webserver setzt für den Adminhost die Kopfzeile X-Frame-Options DENY, und die Vorschau wurde als eigene Seite in ein Iframe nachgeladen. Der HTML-Code der Nachricht wird jetzt direkt in das abgeschirmte Iframe eingebettet (srcdoc, ohne Skripte und ohne eigene Herkunft); zusätzlich gibt es den Link „Vorschau in neuem Fenster öffnen“.'],
+         ]],
         ['version' => '4.64', 'date' => '11.09.2026', 'title' => 'Kopfzeilenkodierung von Betreff und Absendername an Wortgrenzen',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Betreff und Anzeigename werden nach RFC 2047 als Base64-Wörter an Wortgrenzen kodiert und gefaltet. Die bisherige Q-Kodierung der PHP-Standardfunktion teilte Wörter mit Umlauten beim Zeilenumbruch mitten im Wort („best=C3=A4tige“ und „n“ in der Willkommensmail), was korrekt dekodierbar, aber unsauber war. Befund aus der Auswertung eines Mailkopfs vom 11.09.2026; die Authentifizierung dieser Mail (SPF, DKIM, DMARC über IONOS) war in Ordnung, das SPF-Softfail entstand erst durch eine Weiterleitung beim Empfänger.'],

@@ -53,8 +53,9 @@ Jede Funktion in `app/marketing.php` prüft ihr Recht selbst (`marketing_require
    gesetzt). CSV-Export je Liste (formelsicher, UTF-8 mit BOM).
 3. **Sperrliste:** Adresse von Hand sperren (mit Vermerk), suchen, Rückläufer- und manuelle Sperren mit Grund aufheben.
 4. **Kampagne:** interner Name, Betreff, Überschrift, Text (Absätze durch Leerzeilen), optional Schaltfläche (https),
-   Fußnote, Listen. Vorschau mit Musterdaten im abgeschirmten Fenster (`?vorschau=`, sandbox-iframe, eigene CSP) und als
-   Textfassung. Testversand an eine eigene Adresse (Betreff mit Vorsatz TEST, zählt zur Tagesgrenze). Freigabe mit 2FA-Code:
+   Fußnote, Listen. Vorschau mit Musterdaten im abgeschirmten Fenster (sandbox-iframe mit eingebettetem HTML per `srcdoc`, weil Caddy
+   für den Adminhost `X-Frame-Options: DENY` setzt und ein nachgeladenes Dokument die Einbettung verweigern würde), zusätzlich
+   als eigene Seite `?vorschau=` in neuem Fenster (eigene CSP) und als Textfassung. Testversand an eine eigene Adresse (Betreff mit Vorsatz TEST, zählt zur Tagesgrenze). Freigabe mit 2FA-Code:
    Die Anwendung bildet je Adresse genau eine Versandzeile (`marketing_sends`, Dublette über mehrere Listen wird einmal
    angeschrieben), markiert gesperrte Adressen als übersprungen und reiht den Versandjob ein.
 5. **Versand:** Jobtyp `marketing_send` im Pool `mail` (Container `worker-mail`), ein Job für alle Kampagnen
