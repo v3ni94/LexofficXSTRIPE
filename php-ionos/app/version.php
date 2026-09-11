@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.66';
+const APP_VERSION = '4.67';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.67', 'date' => '11.09.2026', 'title' => 'Prüfung des Marketing-Versandprofils auf dem Server',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'php bin/mail-check.php --marketing zeigt den Zustand des Versandprofils mail_marketing (aktiv, Absender, SMTP-Host mit SES-Region, Zugangsdaten gesetzt, Webhook-Token, Ratenbegrenzung und Nachrichten der letzten 24 Stunden) und sendet mit --send=ADRESSE eine Testnachricht über dieses Profil mit den Kopfzeilen List-Unsubscribe und Precedence: bulk. Fehlermeldungen nennen die häufigen SES-Ursachen (Identität nicht verifiziert, Sandbox, falsche Region).'],
+         ]],
         ['version' => '4.66', 'date' => '11.09.2026', 'title' => 'Marketing: Grund gesperrter Schaltflächen sichtbar',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Die Schaltflächen „Testnachricht senden“ und „Massenversand freigeben“ nennen jetzt direkt daneben, warum sie gesperrt sind (Versandprofil mail_marketing nicht aktiv, SMTP-Zugangsdaten unvollständig, Testversand fehlt). Bisher waren sie ohne Erklärung ausgegraut und wirkten wie ein Fehler.'],

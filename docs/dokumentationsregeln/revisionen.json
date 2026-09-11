@@ -5,9 +5,9 @@
     "summary": "Marketingmodul (4.63) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r31",
+    "revision": "r32",
     "date": "11.09.2026",
-    "summary": "Marketing: Sperrgrund an den Schaltflaechen (4.66)."
+    "summary": "bin/mail-check.php --marketing (4.67)."
   },
   "kunden": {
     "revision": "r4",

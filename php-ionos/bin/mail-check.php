@@ -12,6 +12,12 @@
  *                                             (From, SMTP-Postfach, Reply-To) bewerten; kein Versand, kein Zugriff auf Stripe
  *                                             oder Lexware. Auf dem VPS im php-Container ausfuehren (dort ist DNS erreichbar).
  *                                             Zusatz --dkim-selektoren=s1-ionos,s2-ionos ergaenzt die Liste der geprueften Selektoren.
+ *   php bin/mail-check.php --marketing        Versandprofil des Marketingmoduls (config mail_marketing, Amazon SES) anzeigen:
+ *                                             aktiv, Absender, SMTP-Host (Region), Zugangsdaten gesetzt, Webhook-Token, Ratenbegrenzung.
+ *   php bin/mail-check.php --marketing --send=ADRESSE
+ *                                             Testnachricht ueber das MARKETINGprofil senden (Betreff mit Vorsatz TEST, Kopfzeilen
+ *                                             List-Unsubscribe und Precedence: bulk); zaehlt zur Tagesgrenze. In der SES-Sandbox nur
+ *                                             an verifizierte Adressen.
  *
  * Exit 0 = Mailversand aktiv und (bei --send) erfolgreich uebergeben; 1 = nicht aktiv oder Fehler.
  * Auf dem VPS im php-Container ausfuehren (docker compose ... exec -T php php bin/mail-check.php), weil dort
@@ -23,6 +29,60 @@ require __DIR__ . '/_cli.php';
 require_once dirname(__DIR__) . '/app/mailer.php';
 
 $opts = cli_opts($argv);
+function mail_dns_domain_of_safe(string $a): string { $p = strrpos($a, '@'); return $p === false ? $a : substr($a, $p + 1); }
+if (isset($opts['marketing'])) {
+    // Marketingprofil (4.67): eigener Absender und SMTP-Weg des Marketingmoduls, getrennt vom Systemversand.
+    require_once dirname(__DIR__) . '/app/marketing.php';
+    $mc = mail_profile_config('marketing');
+    $ms = (array)($mc['smtp'] ?? []);
+    $st = marketing_profile_status();
+    $maskM = static fn(?string $v): string => $v === null || $v === '' ? '(leer)' : (str_contains((string)$v, 'HIER-') ? '(Platzhalter)' : (mb_strlen($v) <= 4 ? '****' : mb_substr($v, 0, 2) . str_repeat('*', max(4, mb_strlen($v) - 4)) . mb_substr($v, -2)));
+    cli_out('Marketingprofil (mail_marketing): ' . ($st['enabled'] ? 'AKTIV' : 'NICHT AKTIV (enabled fehlt oder false)'));
+    cli_out('Transport:   ' . $st['transport'] . ($st['ses'] ? ' (Amazon SES)' : ''));
+    cli_out('Absender:    ' . $st['from_name'] . ' <' . $st['from'] . '>');
+    cli_out('Antwort an:  ' . ($st['reply_to'] !== '' ? $st['reply_to'] : '(leer)') . ' (Header Reply-To: ' . (mail_reply_to_effective($mc, $st['from']) ?? 'nicht gesetzt') . ')');
+    cli_out('SMTP:        ' . ($st['smtp_host'] !== '' ? $st['smtp_host'] : '(leer)') . ':' . (string)($ms['port'] ?? '') . ' ' . (string)($ms['encryption'] ?? ''));
+    cli_out('SMTP-Nutzer: ' . $maskM((string)($ms['user'] ?? '')) . ', Passwort: ' . (empty($ms['pass']) || str_contains((string)$ms['pass'], 'HIER-') ? 'FEHLT' : 'gesetzt'));
+    cli_out('Webhook-Token: ' . ($st['webhook_ok'] ? 'gesetzt' : 'FEHLT oder Platzhalter') . ' (marketing-webhook.php?token=...)');
+    try {
+        $rates = marketing_rates();
+        cli_out('Ratenbegrenzung: ' . $rates['per_second'] . ' je Sekunde, ' . $rates['per_day'] . ' je 24 Stunden; letzte 24 h: ' . marketing_sent_last_24h() . ' Nachrichten');
+    } catch (Throwable $e) {
+        cli_out('Ratenbegrenzung: nicht lesbar (Migration 034 fehlt?): ' . $e->getMessage());
+    }
+    if (!$st['enabled'] || !$st['smtp_ok']) {
+        cli_out('Ergebnis: Profil nicht einsatzbereit. Block mail_marketing in shared/config.php pruefen (docs/marketing.md), danach scripts/restart-workers.sh.');
+        exit(1);
+    }
+    $toM = (string)($opts['send'] ?? '');
+    if ($toM === '') {
+        cli_out('Ergebnis: Profil einsatzbereit. Testversand mit --marketing --send=ADRESSE.');
+        exit(0);
+    }
+    if (!filter_var($toM, FILTER_VALIDATE_EMAIL)) {
+        cli_out('Ungueltige Testadresse.');
+        exit(1);
+    }
+    $unsub = app_base_url() . '/abmelden.php?t=TEST';
+    $layoutM = mail_layout('Testnachricht des Marketingprofils', [
+        'Diese Testnachricht bestaetigt, dass das Versandprofil mail_marketing von ' . mail_product_name() . ' konfiguriert ist.',
+        'Gesendet am ' . date('d.m.Y') . ' um ' . date('H:i') . ' Uhr ueber ' . $st['smtp_host'] . '.',
+    ], null, 'Diese Nachricht wurde von einem Administrator ausgeloest und dient nur der Pruefung.', ['label' => 'Keine weiteren Nachrichten', 'url' => $unsub]);
+    try {
+        $okM = mail_send_direct($toM, 'TEST: Marketingprofil von ' . mail_product_name(), $layoutM['text'], $layoutM['html'], ['profile' => 'marketing', 'unsubscribe_url' => $unsub]);
+    } catch (Throwable $e) {
+        cli_out('Versand fehlgeschlagen: ' . get_class($e) . ' ' . $e->getMessage());
+        exit(1);
+    }
+    if ($okM) {
+        cli_out('Testnachricht an ' . $toM . ' uebergeben. Im Postfach "Original anzeigen": SPF und DKIM PASS fuer ' . mail_dns_domain_of_safe($st['from']) . ', Kopfzeilen List-Unsubscribe und Precedence: bulk.');
+        exit(0);
+    }
+    $err = mail_last_error();
+    cli_out('Versand fehlgeschlagen: ' . (string)($err['text'] ?? 'Versandweg hat die Nachricht nicht angenommen') . ' (Art: ' . (string)($err['kind'] ?? '?') . ').');
+    cli_out('Haeufige Ursachen bei SES: Absenderdomain nicht verifiziert (554 Message rejected: Email address is not verified), Sandbox ohne verifizierten Empfaenger, falsche Region im SMTP-Host, SMTP-Zugangsdaten statt IAM-Schluessel.');
+    exit(1);
+}
 $cfg = (array)config('mail', []);
 $smtp = (array)($cfg['smtp'] ?? []);
 $queueOn = false;
