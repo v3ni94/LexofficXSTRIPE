@@ -217,6 +217,7 @@ jobs:
           lauf bash tools/github-ssh-retry-check.sh
           lauf php tools/pricing-check.php
           lauf bash tools/test-guard-check.sh
+          lauf php tools/mail-dns-check.php
           exit "$status"
 
       - name: Marketingseiten pruefen (site-qa)

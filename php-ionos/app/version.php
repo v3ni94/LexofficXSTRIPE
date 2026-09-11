@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.59';
+const APP_VERSION = '4.60';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.60', 'date' => '11.09.2026', 'title' => 'Zustellbarkeit ausgehender E-Mails prüfbar (SPF, DKIM, DMARC, Absenderkonsistenz)',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'php bin/mail-check.php --zustellbarkeit prüft auf dem Server per DNS die Voraussetzungen für die Zustellung: SPF der Absenderdomain (ein Eintrag, Anbieter des SMTP-Relays enthalten, Abschluss ~all oder -all), DMARC (Richtlinie, Berichtsempfänger, Verweis auf den Anbieter), DKIM-Selektoren (Schlüssel abrufbar oder nur Verweis) sowie die Konsistenz von Absender, Versandpostfach und Antwortadresse. Ausgabe je Punkt als OK, PRUEFEN, FEHLT oder UNKLAR mit Handlungsanweisung. Anlass: Nachrichten von kontakt@smart-einzug.de landeten trotz vollständiger DNS-Einträge im Spam-Ordner.'],
+            ['type' => 'Neu', 'text' => 'Die Auswertung liegt in app/mail_dns.php ohne Netzzugriff und ist mit php tools/mail-dns-check.php (30 Fälle, darunter die reale Zone von smart-einzug.de) abgesichert. Bewusste Aussagegrenze: Ein DKIM-Eintrag im DNS beweist nicht, dass signiert wird; der Nachweis steht nur im Kopf einer empfangenen Nachricht (Authentication-Results).'],
+         ]],
         ['version' => '4.59', 'date' => '10.09.2026', 'title' => 'Gesamtaudit Geldfluss, Sicherheit, Synchronisation und Betrieb (Prüfbranch, noch nicht ausgerollt)',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Klärung unklarer Einzugsversuche: Ein Versuch wird erst freigegeben, wenn neben dem Stripe-Suchindex auch die konsistente Liste der PaymentIntents seit dem Versuch keinen Treffer liefert. Der Suchindex ist nur eventuell konsistent; eine zu frühe Freigabe hätte mit neuem Idempotenzschlüssel eine zweite Lastschrift ermöglicht. Ein bei Stripe vorhandener PaymentIntent zu einem bereits freigegebenen Versuch wird über den Webhook nachgetragen. Fristen der Klärung werden in der Datenbank berechnet und sind damit unabhängig von der Zeitzone des Datenbankservers.'],

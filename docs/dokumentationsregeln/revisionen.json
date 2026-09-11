@@ -5,9 +5,9 @@
     "summary": "Auditbericht und Release-Checkliste (4.59) referenziert."
   },
   "entwickler": {
-    "revision": "r24",
-    "date": "10.09.2026",
-    "summary": "Gesamtaudit 4.59: Geldfluss (Klärung, Webhook, Terminierung), Sicherheit, Synchronisation, Worker-Heartbeat, Migration 032, neue Prüfsuiten, docs/audit."
+    "revision": "r25",
+    "date": "11.09.2026",
+    "summary": "Zustellbarkeitsprüfung bin/mail-check.php --zustellbarkeit und app/mail_dns.php (4.60)."
   },
   "kunden": {
     "revision": "r4",

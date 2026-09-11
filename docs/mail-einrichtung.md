@@ -79,3 +79,32 @@ Adminbereich, System, Jobs anzustoßen.
 Alle E-Mails laufen durch `mail_layout()` (`app/mailer.php`): Kopfnaht mit Goldsegment, Wortmarke SmartEinzug, Goldbalken
 unter der Überschrift, Fließtext Anthrazit, Gold nur als Akzent, Fußband in Anthrazit mit den Pflichtangaben der Müller
 Holding AG (Sitz, Registergericht, HRB, Vorstand, Aufsichtsratsvorsitzender). `php tools/mail-ci-check.php` prüft das.
+
+## Zustellbarkeit prüfen (seit 4.60)
+
+Wenn Nachrichten im Spam-Ordner landen, zuerst auf dem VPS im php-Container ausführen:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T php php bin/mail-check.php --zustellbarkeit
+```
+
+Das Werkzeug prüft SPF, DMARC und DKIM der Absenderdomain per DNS sowie die Konsistenz von Absender (`mail.from_address`),
+Versandpostfach (`mail.smtp.user`) und Antwortadresse (`mail.reply_to`). Jede Zeile trägt OK, PRUEFEN, FEHLT oder UNKLAR und
+eine Handlungsanweisung. Grenzen: Der Eintrag eines DKIM-Selektors im DNS beweist nicht, dass der Anbieter signiert; bei
+IONOS zeigen `s1-ionos._domainkey` und `s2-ionos._domainkey` als CNAME auf einen gemeinsamen Schlüssel und werden mit der
+Mailkonfiguration angelegt, unabhängig vom Schalter im Kundenbereich. Der abschließende Nachweis ist immer eine Testmail
+(`--send=ADRESSE`) an ein Gmail-Postfach und dort „Original anzeigen“: SPF, DKIM und DMARC müssen PASS zeigen, `header.d`
+muss die Absenderdomain sein.
+
+Per DNS aus der Prüfumgebung am 11.09.2026 nachgewiesen: `_spf-eu.ionos.com` gibt ausschließlich IONOS-Adressbereiche frei
+(212.227.x, 82.165.159.x, 217.72.192.x, zwei IPv6-Netze); die Adresse des VPS 72.61.80.67 (PTR `srv1960492.hstgr.cloud`,
+generischer Hostinger-Name) ist nicht enthalten. `dmarc.ionos.de` liefert `v=DMARC1; p=none;` ohne `rua`, es erhält also
+niemand Berichte. `s1-ionos._domainkey.smart-einzug.de` löst über den CNAME auf einen Schlüssel des Anbieters auf.
+Folge: Sendet die Anwendung nicht über `smtp.ionos.de`, sondern direkt vom VPS, scheitert SPF (Softfail) und es fehlt
+jede DKIM-Signatur; zusammen mit dem generischen PTR ist das die typische Spam-Einstufung.
+
+Stand der Zone smart-einzug.de am 11.09.2026 (Auszug des Betreibers): SPF `v=spf1
+include:_spf-eu.ionos.com ~all` vorhanden, `_dmarc` als CNAME auf `dmarc.ionos.de`, DKIM `s1-ionos`/`s2-ionos` als CNAME auf
+`s1.dkim.ionos.com`/`s2.dkim.ionos.com`. Damit fehlt für den Versand über `smtp.ionos.de` kein Eintrag. Offene Prüfpunkte:
+DKIM im IONOS-Kundenbereich aktiv, Transport der Anwendung tatsächlich `smtp` über das Postfach `kontakt@smart-einzug.de`,
+DMARC in eigene Hand nehmen (TXT statt CNAME, Berichte an eigene Adresse), `mail.reply_to` auf die Absenderdomain.

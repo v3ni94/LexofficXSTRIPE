@@ -8,6 +8,10 @@
  *                                             Muster der Vorabankuendigung (Musterrechnung, Mustermandat) an ADRESSE senden
  *   php bin/mail-check.php --vorabankuendigung --html=DATEI
  *                                             HTML-Fassung des Musters in DATEI schreiben (Vorschau ohne Versand, auch ohne mail.enabled)
+ *   php bin/mail-check.php --zustellbarkeit   SPF, DKIM, DMARC der Absenderdomain per DNS pruefen und die Absenderkonsistenz
+ *                                             (From, SMTP-Postfach, Reply-To) bewerten; kein Versand, kein Zugriff auf Stripe
+ *                                             oder Lexware. Auf dem VPS im php-Container ausfuehren (dort ist DNS erreichbar).
+ *                                             Zusatz --dkim-selektoren=s1-ionos,s2-ionos ergaenzt die Liste der geprueften Selektoren.
  *
  * Exit 0 = Mailversand aktiv und (bei --send) erfolgreich uebergeben; 1 = nicht aktiv oder Fehler.
  * Auf dem VPS im php-Container ausfuehren (docker compose ... exec -T php php bin/mail-check.php), weil dort
@@ -45,6 +49,62 @@ if ($replyTo !== '' && !filter_var($replyTo, FILTER_VALIDATE_EMAIL)) {
 $fromAddr = trim((string)($cfg['from_address'] ?? ''));
 if ($fromAddr !== '' && !filter_var($fromAddr, FILTER_VALIDATE_EMAIL)) {
     cli_out('WARNUNG: from_address ist keine gueltige E-Mail-Adresse (' . $fromAddr . ').');
+}
+
+if (isset($opts['zustellbarkeit'])) {
+    // Zustellbarkeit (Audit 11.09.2026): notwendige DNS-Voraussetzungen und Absenderkonsistenz. Aussagegrenze siehe
+    // app/mail_dns.php: Ob wirklich signiert wird, zeigt nur der Kopf einer empfangenen Nachricht.
+    require_once dirname(__DIR__) . '/app/mail_dns.php';
+    $transport = (string)($cfg['transport'] ?? 'mail');
+    $fromAddr = trim((string)($cfg['from_address'] ?? ''));
+    $domain = mail_dns_domain_of($fromAddr);
+    $ergebnisse = mail_dns_alignment($fromAddr, (string)($smtp['user'] ?? ''), $cfg['reply_to'] ?? null, $transport);
+    if ($domain === '') {
+        cli_out(mail_dns_bericht($ergebnisse));
+        exit(1);
+    }
+    $txtOf = static function (string $name): array {
+        $out = [];
+        foreach ((array)(@dns_get_record($name, DNS_TXT) ?: []) as $r) {
+            if (isset($r['txt'])) {
+                $out[] = (string)$r['txt'];
+            } elseif (isset($r['entries']) && is_array($r['entries'])) {
+                $out[] = implode('', $r['entries']);
+            }
+        }
+        return $out;
+    };
+    $cnameOf = static function (string $name): string {
+        foreach ((array)(@dns_get_record($name, DNS_CNAME) ?: []) as $r) {
+            if (!empty($r['target'])) {
+                return (string)$r['target'];
+            }
+        }
+        return '';
+    };
+    $ergebnisse[] = mail_dns_spf($txtOf($domain), $transport, (string)($smtp['host'] ?? ''));
+    $dmarcName = '_dmarc.' . $domain;
+    $ergebnisse[] = mail_dns_dmarc($txtOf($dmarcName), $cnameOf($dmarcName) !== '', $domain);
+    $selektoren = ['s1-ionos', 's2-ionos', 'default', 'mail', 'dkim', 'selector1', 'selector2', 's1', 's2', 'k1', 'smtp'];
+    foreach (array_filter(array_map('trim', explode(',', (string)($opts['dkim-selektoren'] ?? '')))) as $s) {
+        $selektoren[] = $s;
+    }
+    $treffer = [];
+    foreach (array_unique($selektoren) as $sel) {
+        $name = $sel . '._domainkey.' . $domain;
+        $txt = $txtOf($name);
+        $cname = $cnameOf($name);
+        if ($txt || $cname !== '') {
+            $treffer[$sel] = ['txt' => $txt, 'cname' => $cname];
+        }
+    }
+    $ergebnisse[] = mail_dns_dkim($treffer);
+    cli_out('Zustellbarkeit fuer Absender ' . $fromAddr . ' (Transport ' . $transport . ($transport === 'smtp' ? ' ueber ' . (string)($smtp['host'] ?? '?') : '') . ')');
+    echo mail_dns_bericht($ergebnisse), "\n";
+    $gesamt = mail_dns_gesamtstatus($ergebnisse);
+    cli_out('Gesamt: ' . strtoupper($gesamt) . '. Abschliessender Nachweis: Testmail an ein Gmail-Postfach senden (--send=ADRESSE) und dort'
+        . ' "Original anzeigen" oeffnen; SPF, DKIM und DMARC muessen jeweils PASS zeigen, header.d muss ' . $domain . ' sein.');
+    exit(in_array($gesamt, ['fehler', 'unklar'], true) ? 1 : 0);
 }
 
 $sample = isset($opts['vorabankuendigung']);

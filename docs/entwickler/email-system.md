@@ -249,3 +249,13 @@ DMARC zunächst auf `p=none` mit Berichtsadresse setzen und erst nach einigen Ta
    produktiv genutzte Absenderdomain (`dig TXT`, `dig TXT default._domainkey.<domain>` oder den vom
    Mailanbieter genannten Selektor) und Abgleich mit den Vorgaben des eingesetzten
    SMTP-Anbieters.
+
+## Zustellbarkeitsprüfung (4.60)
+
+`app/mail_dns.php` wertet SPF, DMARC, DKIM und die Absenderkonsistenz aus, ohne selbst DNS abzufragen; die Abfrage liegt in
+`bin/mail-check.php --zustellbarkeit` (nur dort, damit die Logik in `tools/mail-dns-check.php` ohne Netz geprüft werden kann).
+Regeln: genau ein `v=spf1`-Eintrag, Anbieter des SMTP-Relays muss im Eintrag vorkommen, Transport `mail` ist eine Warnung
+(Server-Adresse müsste im SPF stehen); DMARC als CNAME oder mit fremdem `rua` ist eine Warnung, fehlende Richtlinie ein
+Fehler; DKIM nur mit Verweis ohne Schlüssel ist UNKLAR (Signatur beim Anbieter vermutlich nicht eingeschaltet); Absender und
+Versandpostfach auf verschiedenen Domains ist ein Fehler (Alignment), Reply-To auf fremder Domain eine Warnung. Der
+Gesamtstatus ist der schlechteste Einzelwert; Exit 1 bei FEHLT oder UNKLAR. Betriebsanleitung: `docs/mail-einrichtung.md`.
