@@ -1,6 +1,8 @@
-# Release-Checkliste nach dem Audit (Stand 10.09.2026)
+# Release-Checkliste nach dem Audit (Stand 11.09.2026, ergänzt um 4.60 bis 4.63)
 
-Der Prüfbranch `audit/2026-09-09-gesamtpruefung` wurde nicht gepusht und nicht ausgerollt. Diese Liste beschreibt, was vor,
+Der Prüfbranch `audit/2026-09-09-gesamtpruefung` wurde nicht gepusht und nicht ausgerollt. Er enthält inzwischen 4.59 (Audit), 4.60 und 4.61
+(Zustellbarkeit), 4.62 (Kundenprofil, Migration 033) und 4.63 (Marketingmodul, Migration 034); die Punkte 7 bis 9 in Abschnitt 1
+und 4 bis 6 in Abschnitt 2 betreffen diese Nachträge. Diese Liste beschreibt, was vor,
 während und nach dem Ausrollen zu tun ist. Jeder Punkt nennt Zweck und Risiko.
 
 ## 1. Vor dem Ausrollen (Staging)
@@ -22,6 +24,18 @@ während und nach dem Ausrollen zu tun ist. Jeder Punkt nennt Zweck und Risiko.
 6. Stripe-Testkonto: einen vollständigen Einzug im Testmodus ausführen (Sofort, terminiert, Rücklastschrift-Testereignis aus
    dem Dashboard) und prüfen, dass die Webhook-Antworten 200 bzw. 500 (Wiederholung) im Dashboard sichtbar sind.
    Zweck: Verhalten gegen echtes Stripe. Risiko: keines im Testmodus.
+7. Migrationen 033 und 034 auf Staging einspielen (`php bin/migrate.php`): 033 ergänzt der Systemrolle `support` das Recht
+   `support.customers` (Prüfung: `SELECT permissions FROM platform_roles WHERE code = 'support'` enthält den Code), 034 legt die
+   sechs `marketing_*`-Tabellen an und setzt `marketing_rate_per_second` = 1, `marketing_rate_per_day` = 200. Beide additiv und
+   wiederholbar (`tools/migrations-check.sh` 12/0 am 11.09.2026). Risiko: keines für bestehende Daten.
+8. Mailkonfiguration (`docs/mail-einrichtung.md`): `mail.reply_to` auf `kontakt@smart-einzug.de` oder leer; seit 4.61 wird eine
+   Antwortadresse auf fremder Domain ohnehin nicht mehr gesetzt (Eintrag im Fehlerprotokoll). Auf Staging eine Vormerkung
+   durchspielen und im Postfach prüfen: `Auto-Submitted`, `List-Unsubscribe`, Schaltfläche „Abbestellen“, One-Click führt zur
+   Abmeldung. Zweck: Zustellbarkeit. Risiko: keines.
+9. Marketingmodul (`docs/marketing.md`): Block `mail_marketing` in `shared/config.php` vorerst mit `enabled` false lassen, bis
+   die SES-Identität `mail.smart-einzug.de` verifiziert, das SES-Konto aus der Sandbox entlassen und das SNS-Thema für
+   Rückläufer eingerichtet ist. Ohne aktives Profil lassen sich Kampagnen anlegen und in der Vorschau prüfen, aber weder testen
+   noch versenden. Rechte `marketing.view`/`marketing.manage` bewusst über eigene Rollen vergeben (Administrator hat sie).
 
 ## 2. Ausrollen (Produktion)
 
@@ -29,6 +43,12 @@ während und nach dem Ausrollen zu tun ist. Jeder Punkt nennt Zweck und Risiko.
 2. Not-Stopp der Plattform während des Ausrollens ist nicht nötig (Migration 032 ist additiv, Cutover ohne Datenänderung).
 3. Nach dem Cutover: `php bin/healthcheck.php --all`, Adminbereich System (Worker lebend, keine hängenden Jobs), einen
    Blick in `payment_collections` mit `stripe_status = 'submitting'` (sollte leer sein oder jünger als 15 Minuten).
+4. Migrationen 033 und 034 laufen isoliert vor dem Cutover; sie ändern keine bestehenden Zeilen außer `platform_roles.support`.
+5. Nach dem Cutover `php bin/mail-check.php --zustellbarkeit` im php-Container (erst ab 4.60 verfügbar) und eine Testmail an ein
+   Gmail-Postfach mit „Original anzeigen“ (SPF, DKIM, DMARC PASS, `header.d=smart-einzug.de`).
+6. Supportbereich: Kundenprofil einer Testfirma öffnen (`admin-kunde.php`), eine Adressänderung mit Grund speichern, Sicherheitsmail
+   beim Inhaber und Protokolleintrag `org_updated_support` prüfen. Reiter Marketing: Übersicht zeigt „Profil nicht aktiv“, solange
+   `mail_marketing.enabled` false ist.
 
 ## 3. Überwachung nach dem Ausrollen (erste 72 Stunden)
 

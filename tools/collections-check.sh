@@ -193,7 +193,9 @@ echo "8) Terminierte Einzuege: Fenster, parallele Laeufe, Beanspruchung"
 SQL "UPDATE invoices SET collection_status = 'none' WHERE tenant_id = '$B'"
 SQL "DELETE FROM payment_collections WHERE tenant_id = '$B'; DELETE FROM collection_attempts WHERE tenant_id = '$B'"
 rm -f "$STRIPE_STUB_DIR"/idem/*; : > "$STRIPE_STUB_DIR/pi.log"
-MORGEN="$(date -d '+1 day' +%F)"
+# Naechster Werktag (Mo bis Fr): validate_scheduled_date() weist Wochenenden ab; ein Lauf am Freitag oder Samstag terminierte
+# sonst auf einen unzulaessigen Tag (Befund 11.09.2026, 41 datumsabhaengige Fehlschlaege).
+MORGEN="$(date -d '+1 day' +%F)"; while [[ "$(date -d "$MORGEN" +%u)" -ge 6 ]]; do MORGEN="$(date -d "$MORGEN +1 day" +%F)"; done
 for i in 1 2 3 4 5 6; do OUT="$($SIM submit $B "$(INVB $i)" - "$MORGEN")"; [[ "$(feld "$OUT" result)" == ok ]] || bad "Terminierung $i: $(feld "$OUT" error)"; done
 [[ "$(SQL "SELECT COUNT(*) FROM payment_collections WHERE tenant_id = '$B' AND stripe_status = 'scheduled'")" == 6 ]] && ok "sechs terminierte Einzuege" || bad "terminierte Einzuege"
 [[ "$(pis)" == 0 ]] && ok "Terminierung erzeugt keinen PaymentIntent" || bad "PaymentIntents nach Terminierung: $(pis)"
