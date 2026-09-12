@@ -624,7 +624,10 @@ Verbindung lokal unbekannt geblieben ist.
 ### Auslöser
 - Stripe-Webhook `stripe-webhook.php` (Ereignisse `payment_intent.processing`/`succeeded`/`payment_failed`,
   `charge.dispute.created`, `charge.refunded`, `charge.refund.updated`, `checkout.session.completed`).
-- Manueller Statusabgleich: Aktion `sync_status` auf `collections.php:60` (`sync_collection_statuses()`).
+- Manueller Statusabgleich: Aktion `sync_status` auf `collections.php` (`sync_collection_statuses()`); prüft laufende
+  Einzüge einzeln und seit 4.73 zusätzlich abgeschlossene Einzüge (`succeeded`, `refunded`) der letzten
+  `collections.sync_lookback_days` Tage (Vorgabe 70) über die Liste der PaymentIntents mit eingebetteter Charge auf
+  Rücklastschrift (`collection_apply_dispute()`) und Erstattungsstand (`collection_apply_refund()`).
 - Manuelle Klärung: Aktion `resolve_attempts` auf `collections.php:52` (`collection_attempts_resolve()`).
 - Automatisch: Cron (`cron.php:100-111`) und Warteschlangen-Job `unclear_attempts`
   (`app/jobs.php:213-243`, alle 600 s geplant, `app/jobs.php:333`), jeweils für Firmen mit Versuchen älter als
@@ -665,6 +668,8 @@ Gelesen: `integrations` (Webhook-Secret), `payment_collections`, `collection_att
 
 ### Externe Schnittstellenaufrufe
 - `getPaymentIntent()` (Statusabgleich laufender Einzüge, `sync_collection_statuses()`).
+- `listPaymentIntents()` mit `expand[]=data.latest_charge` (Rückschau des Statusabgleichs auf Rücklastschrift und
+  Erstattung, `sync_collection_statuses()`, seit 4.73; höchstens 20 Seiten je Aufruf).
 - `searchPaymentIntents("metadata['attempt_key']:'<key>'")` (Klärung nach Idempotenzschlüssel,
   `collection_attempts_resolve()`, `app/collections.php:757`).
 - `getCharge()` (Ladung der Charge zur Erstattungssumme bei `charge.refund.updated`, da das Refund-Objekt selbst

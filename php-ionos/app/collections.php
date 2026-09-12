@@ -167,8 +167,15 @@ function collections_rules_config(): array
         'window_start'   => $time($c['window_start'] ?? null, '23:00'),
         'window_end'     => $time($c['window_end'] ?? null, '06:00'),
         'overdue_days'   => max(1, min(30, (int)($c['overdue_days'] ?? 3))),
+        // Rueckschau des manuellen Statusabgleichs auf abgeschlossene Einzuege (Ruecklastschrift, Erstattung), in Tagen.
+        // Vorgabe 70: SEPA-Basislastschriften koennen bis acht Wochen nach der Belastung ohne Angabe von Gruenden
+        // zurueckgegeben werden; zwei Wochen Puffer. Hoechstens 400 Tage (13 Monate bei nicht autorisierten Lastschriften).
+        'sync_lookback_days' => max(1, min(400, (int)($c['sync_lookback_days'] ?? 70))),
     ];
 }
+
+/** Hoechstzahl der Listenseiten (je 100 PaymentIntents) eines manuellen Statusabgleichs; darueber meldet er truncated. */
+const COLLECTIONS_SYNC_MAX_PAGES = 20;
 
 /** Aktuelle Zeit; in Tests über $GLOBALS['lexsepa_now_override'] setzbar. */
 function collections_now(): DateTimeImmutable
@@ -1018,6 +1025,48 @@ function collection_apply_refund(string $tenantId, array $collection, int $refun
 }
 
 /**
+ * Rücklastschrift (Stripe Dispute zur Charge) an einem Einzug vermerken. Quelle ist der Webhook
+ * (charge.dispute.created) oder seit 4.73 der manuelle Statusabgleich, der die Charge bereits erfolgreicher
+ * Einzüge bei Stripe nachliest. Idempotent: ein bereits als disputed vermerkter Einzug bleibt unverändert (false).
+ *
+ * Wirkung: stripe_status 'disputed', Rechnung collection_status 'failed' MIT requires_review = 1. Ohne diese Marke
+ * wäre die Rechnung sofort wieder Kandidat des automatischen Einzugs (die Auswahl schließt 'failed' nicht aus) und
+ * eine widerrufene Lastschrift würde erneut eingereicht (Befund 09.09.2026). Es gibt keinen automatischen Neu-Einzug.
+ */
+function collection_apply_dispute(string $tenantId, array $collection, ?string $chargeId = null, ?array $actor = null, string $source = 'webhook'): bool
+{
+    $pdo = db();
+    if (($collection['stripe_status'] ?? '') === 'disputed') {
+        return false;
+    }
+    $reason = 'SEPA-Lastschrift wurde vom Kunden widerrufen';
+    $pdo->prepare(
+        "UPDATE payment_collections
+         SET stripe_status = 'disputed', failure_reason = ?, completed_at = NOW(),
+             stripe_charge_id = COALESCE(stripe_charge_id, ?)
+         WHERE id = ? AND tenant_id = ?"
+    )->execute([$reason, $chargeId !== '' ? $chargeId : null, $collection['id'], $tenantId]);
+    $pdo->prepare(
+        "UPDATE invoices
+         SET collection_status = 'failed', requires_review = 1, review_reason = ?
+         WHERE id = ? AND tenant_id = ?"
+    )->execute([
+        mb_substr(sprintf(
+            'Lastschrift über %s wurde vom Kunden widerrufen (Rücklastschrift, festgestellt am %s). Kein automatischer Neu-Einzug, bitte Sachverhalt prüfen.',
+            format_eur_cents((int)$collection['amount_cents']),
+            date('d.m.Y')
+        ), 0, 255),
+        $collection['invoice_id'],
+        $tenantId,
+    ]);
+    audit_log($tenantId, $actor, 'collection_disputed', 'collection', $collection['id'], [
+        'amount_cents' => (int)$collection['amount_cents'], 'payment_intent' => $collection['stripe_payment_intent_id'] ?? null,
+        'charge' => $chargeId, 'source' => $source,
+    ]);
+    return true;
+}
+
+/**
  * Klärung einer Rechnung abschließen (Inhaber oder Administrator): Flag
  * requires_review zurücksetzen. Der Grund bleibt im Audit-Log erhalten.
  */
@@ -1736,14 +1785,24 @@ function reschedule_collection(string $tenantId, string $collectionId, string $n
 }
 
 /**
- * Status laufender Einzüge ("processing") bei Stripe abfragen und lokal
- * nachziehen. Reiner Lesezugriff, löst keine Zahlung aus. Bei Erfolg werden
- * Charge und Stripe-Mandatsdaten gespeichert.
+ * Status von Einzügen bei Stripe abfragen und lokal nachziehen (manueller Statusabgleich, reiner Lesezugriff,
+ * löst keine Zahlung aus). Zwei Teile:
  *
- * Eine spätere SEPA-Rücklastschrift (bis zu 8 Wochen nach Belastung) wird
- * nur über den Stripe-Webhook (charge.dispute.created) erkannt.
+ *  1. Laufende Einzüge ("processing"): PaymentIntent einzeln abrufen; succeeded setzt den Einzug auf erfolgreich
+ *     und speichert Charge und Stripe-Mandatsdaten, canceled/requires_payment_method setzt fehlgeschlagen.
+ *  2. Seit 4.73: Abgeschlossene Einzüge (succeeded, refunded) der letzten collections.sync_lookback_days Tage
+ *     (Vorgabe 70) werden über EINE seitenweise Liste (listPaymentIntents mit eingebetteter Charge) auf
+ *     Rücklastschrift (charge.disputed) und Erstattungsstand (charge.amount_refunded) geprüft; Treffer laufen
+ *     über collection_apply_dispute() bzw. collection_apply_refund(), also mit derselben Wirkung wie die
+ *     Webhook-Ereignisse charge.dispute.created und charge.refunded (Klärungsbedarf, kein Neu-Einzug).
+ *     Anlass: SEPA-Rücklastschriften kommen bis zu acht Wochen nach der Belastung; ohne funktionierenden Webhook
+ *     blieben sie bisher unerkannt. Die Liste ist nach Erstellungszeit absteigend sortiert und endet, sobald alle
+ *     lokalen Kandidaten gefunden sind oder COLLECTIONS_SYNC_MAX_PAGES erreicht ist (dann truncated = true).
  *
- * @return array{checked:int,succeeded:int,failed:int,unchanged:int}
+ * Firmenbezug: Es werden nur Einzüge der Firma verändert; PaymentIntents ohne lokalen Einzug dieser Firma werden
+ * übersprungen (die Liste kommt ohnehin aus dem Stripe-Konto der Firma).
+ *
+ * @return array{checked:int,succeeded:int,failed:int,unchanged:int,reviewed:int,disputed:int,refunded:int,lookback_days:int,truncated:bool}
  */
 function sync_collection_statuses(string $tenantId, ?array $actor = null): array
 {
@@ -1755,8 +1814,21 @@ function sync_collection_statuses(string $tenantId, ?array $actor = null): array
     $stmt->execute([$tenantId]);
     $pending = $stmt->fetchAll();
 
-    $result = ['checked' => count($pending), 'succeeded' => 0, 'failed' => 0, 'unchanged' => 0];
-    if (!$pending) {
+    $lookback = collections_rules_config()['sync_lookback_days'];
+    $stmt = $pdo->prepare(
+        "SELECT * FROM payment_collections
+         WHERE tenant_id = ? AND stripe_status IN ('succeeded', 'refunded') AND stripe_payment_intent_id IS NOT NULL
+           AND COALESCE(submitted_at, completed_at, created_at) >= (NOW() - INTERVAL ? DAY)
+         ORDER BY COALESCE(submitted_at, completed_at, created_at) ASC, id ASC"
+    );
+    $stmt->execute([$tenantId, $lookback]);
+    $settled = $stmt->fetchAll();
+
+    $result = [
+        'checked' => count($pending), 'succeeded' => 0, 'failed' => 0, 'unchanged' => 0,
+        'reviewed' => count($settled), 'disputed' => 0, 'refunded' => 0, 'lookback_days' => $lookback, 'truncated' => false,
+    ];
+    if (!$pending && !$settled) {
         return $result;
     }
 
@@ -1795,6 +1867,59 @@ function sync_collection_statuses(string $tenantId, ?array $actor = null): array
         } else {
             $result['unchanged']++;
         }
+    }
+
+    if ($settled) {
+        $byPi = [];
+        foreach ($settled as $c) {
+            $byPi[(string)$c['stripe_payment_intent_id']] = $c;
+        }
+        // Zeitfenster der Liste: ab dem ältesten Kandidaten, zwei Tage Puffer gegen Zeitzonenunterschiede
+        // zwischen Datenbank (NOW()) und Stripe (created, UTC).
+        $first = $settled[0];
+        $oldest = strtotime((string)($first['submitted_at'] ?? $first['completed_at'] ?? $first['created_at'] ?? 'now')) ?: time();
+        $createdGte = max(0, $oldest - 2 * 86400);
+        $after = null;
+        $pages = 0;
+        do {
+            try {
+                $page = $stripe->listPaymentIntents($createdGte, $after, 100);
+            } catch (Throwable $e) {
+                error_log('Statusabgleich: Liste der PaymentIntents nicht abrufbar: ' . $e->getMessage());
+                $result['truncated'] = true;
+                break;
+            }
+            foreach ($page['data'] as $pi) {
+                $piId = (string)($pi['id'] ?? '');
+                $after = $piId !== '' ? $piId : $after;
+                if ($piId === '' || !isset($byPi[$piId])) {
+                    continue; // kein Einzug dieser Firma
+                }
+                $collection = $byPi[$piId];
+                unset($byPi[$piId]);
+                $charge = $pi['latest_charge'] ?? null;
+                if (!is_array($charge)) {
+                    continue; // ohne eingebettete Charge keine Aussage über Rücklastschrift oder Erstattung
+                }
+                $chargeId = (string)($charge['id'] ?? '');
+                if (!empty($charge['disputed']) || !empty($charge['dispute'])) {
+                    if (collection_apply_dispute($tenantId, $collection, $chargeId !== '' ? $chargeId : null, $actor, 'sync_status')) {
+                        $result['disputed']++;
+                    }
+                    continue;
+                }
+                $refundedCents = (int)($charge['amount_refunded'] ?? 0);
+                if ($refundedCents !== (int)($collection['refunded_cents'] ?? 0)
+                    && collection_apply_refund($tenantId, $collection, $refundedCents, $chargeId !== '' ? $chargeId : null, $actor, 'sync_status')) {
+                    $result['refunded']++;
+                }
+            }
+            $pages++;
+            if ($byPi && $pages >= COLLECTIONS_SYNC_MAX_PAGES && !empty($page['has_more'])) {
+                $result['truncated'] = true;
+                break;
+            }
+        } while ($byPi && !empty($page['has_more']));
     }
 
     audit_log($tenantId, $actor, 'collection_status_sync', 'organization', $tenantId, $result);

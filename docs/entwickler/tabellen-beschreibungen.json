@@ -806,7 +806,7 @@
     "veraendert_durch": [
       "app/stripe_import.php stripe_import_apply() (collection_status bei Uebernahme importierter Einzuege)",
       "app/sync.php sync_invoices_step()/sync_invoices()/_sync_process_voucher() (lexoffice_status, collection_status, lexoffice_updated_at, last_synced_at, voucher_number, customer_id, contact_name, ... bei jeder Synchronisation)",
-      "app/collections.php collections_cancel_all_pending(), _persist_open_amount() (open_amount, open_amount_fetched_at), _attempt_backfill_collection(), invoice_review_clear() (requires_review, review_reason), _submit_collection_locked(), cancel_scheduled_collection(), sync_collection_statuses(), process_scheduled_collections(), _submit_single_scheduled()",
+      "app/collections.php collections_cancel_all_pending(), _persist_open_amount() (open_amount, open_amount_fetched_at), _attempt_backfill_collection(), invoice_review_clear() (requires_review, review_reason), collection_apply_dispute() (collection_status failed, requires_review, review_reason), collection_apply_refund() (requires_review, review_reason, collection_status), _submit_collection_locked(), cancel_scheduled_collection(), sync_collection_statuses(), process_scheduled_collections(), _submit_single_scheduled()",
       "stripe-webhook.php (collection_status bei erfolgreichem/fehlgeschlagenem Einzug laut Stripe-Ereignis)"
     ],
     "gelesen_durch": [
@@ -838,7 +838,7 @@
       "app/collections.php (kein direkter INSERT-Treffer in Grep-Suche fuer payment_collections; INSERT vermutlich in einer Funktion wie schedule_collection()/create_collection() in app/collections.php, nicht abschliessend per Grep bestaetigt), app/stripe_import.php (Uebernahme importierter Einzuege)"
     ],
     "veraendert_durch": [
-      "app/collections.php collections_cancel_all_pending(), collection_attempts_resolve(), store_stripe_mandate_data() (stripe_charge_id), _submit_collection_locked() (prenotified_at), cancel_scheduled_collection(), reschedule_collection() (scheduled_date, submit_not_before, queued_immediate, prenotified_at), sync_collection_statuses(), process_scheduled_collections() (note, stripe_status, failure_reason), _submit_single_scheduled() (stripe_status, customer_iban_id, mandate_id, amount_cents, note)",
+      "app/collections.php collections_cancel_all_pending(), collection_attempts_resolve(), store_stripe_mandate_data() (stripe_charge_id), _submit_collection_locked() (prenotified_at), cancel_scheduled_collection(), reschedule_collection() (scheduled_date, submit_not_before, queued_immediate, prenotified_at), sync_collection_statuses() (seit 4.73 auch Rueckschau auf abgeschlossene Einzuege), collection_apply_dispute() (stripe_status disputed, failure_reason, completed_at, stripe_charge_id; aus Webhook und Statusabgleich), collection_apply_refund() (refunded_cents, refunded_at, refund_note, stripe_status), process_scheduled_collections() (note, stripe_status, failure_reason), _submit_single_scheduled() (stripe_status, customer_iban_id, mandate_id, amount_cents, note)",
       "stripe-webhook.php (stripe_status, completed_at anhand Stripe-Ereignis)"
     ],
     "gelesen_durch": [

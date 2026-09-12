@@ -126,7 +126,7 @@ return [
                 . '<h3>Kein automatischer Neu-Einzug</h3>'
                 . '<p>Ein neuer Einzug nach einer Rücklastschrift wird nicht automatisch ausgelöst. Ein neuer Einzug durchläuft alle Prüfungen erneut.</p>'
                 . '<h3>Klärung abschließen</h3>'
-                . '<p>Die Klärung abschließen dürfen nur Inhaber oder Administrator. Die Funktion "Status mit Stripe abgleichen" verändert nichts bei Stripe, sie liest den Status nur.</p>'
+                . '<p>Die Klärung abschließen dürfen nur Inhaber oder Administrator. Die Funktion "Status mit Stripe abgleichen" verändert nichts bei Stripe, sie liest den Status nur. Sie prüft dabei auch die erfolgreichen Einzüge der letzten Wochen auf Rücklastschriften und Erstattungen, falls eine Webhook-Meldung ausgeblieben ist.</p>'
                 . '<h3>Warum kein automatischer Neu-Einzug</h3>'
                 . '<p>Nach einer Rücklastschrift oder Erstattung ist der Grund dafür zunächst zu prüfen, etwa ein Widerspruch des Kunden oder eine fehlerhafte IBAN. Ein automatischer Neu-Einzug ohne diese Prüfung würde dasselbe Ergebnis riskieren. Ein manuell ausgelöster neuer Einzug durchläuft danach wieder alle Prüfungen, einschließlich der erneuten Restbetragsprüfung bei Lexware Office.</p>'
                 . '<h3>Wo Sie das sehen</h3>'

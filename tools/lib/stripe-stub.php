@@ -15,6 +15,8 @@
  *   timeout       schlaeft laenger als CURLOPT_TIMEOUT (31 s) und legt den PaymentIntent an
  * Steuerdatei STRIPE_STUB_DIR/search_lag: Suche liefert leer (Suchindex haengt), Liste liefert weiterhin alles.
  * Steuerdatei STRIPE_STUB_DIR/pi_status: Status neu angelegter PaymentIntents (Vorgabe processing).
+ * Zustandsdatei STRIPE_STUB_DIR/charges.json: Ueberschreibungen je Charge-ID ({"ch_x": {"disputed": true,
+ *   "amount_refunded": 4000}}) fuer GET /charges/{id} und die eingebettete Charge der Liste (expand=data.latest_charge).
  *
  * Authentifizierung: Basic mit Benutzer sk_test_... (Live-Praefixe werden mit 401 abgewiesen, damit die Suite
  * niemals mit einem Live-Schluessel laeuft). Idempotenz: gleicher Schluessel liefert die gespeicherte Antwort
@@ -69,6 +71,19 @@ function stub_mode(): string
 function stub_error(int $code, string $type, string $stripeCode, string $message): never
 {
     stub_json($code, ['error' => ['type' => $type, 'code' => $stripeCode, 'message' => $message]]);
+}
+/** Charge-Objekt zu einem PaymentIntent, Felder disputed/amount_refunded/dispute aus charges.json ueberschreibbar. */
+function stub_charge(array $pi): array
+{
+    $id = (string)($pi['latest_charge'] ?? '');
+    $over = stub_load('charges')[$id] ?? [];
+    $disputed = (bool)($over['disputed'] ?? false);
+    return [
+        'id' => $id, 'object' => 'charge', 'payment_intent' => $pi['id'], 'amount' => $pi['amount'],
+        'amount_refunded' => (int)($over['amount_refunded'] ?? 0), 'refunded' => (int)($over['amount_refunded'] ?? 0) >= (int)$pi['amount'] && (int)($over['amount_refunded'] ?? 0) > 0,
+        'disputed' => $disputed, 'dispute' => $disputed ? ($over['dispute'] ?? 'dp_' . substr($id, 3)) : null,
+        'payment_method_details' => ['type' => 'sepa_debit', 'sepa_debit' => ['mandate' => 'mandate_stub', 'last4' => '0000']],
+    ];
 }
 
 // Auth: nur Testschluessel
@@ -214,7 +229,11 @@ if ($method === 'GET' && $path === '/payment_intents') {
         foreach ($all as $i => $pi) { if ($pi['id'] === $query['starting_after']) { $start = $i + 1; break; } }
     }
     $page = array_slice($all, $start, $limit);
-    file_put_contents("$dir/list.log", 'page start=' . $start . ' n=' . count($page) . "\n", FILE_APPEND);
+    $expand = (array)($query['expand'] ?? []);
+    if (in_array('data.latest_charge', $expand, true)) {
+        foreach ($page as $i => $pi) { $page[$i]['latest_charge'] = stub_charge($pi); }
+    }
+    file_put_contents("$dir/list.log", 'page start=' . $start . ' n=' . count($page) . (in_array('data.latest_charge', $expand, true) ? ' expand=latest_charge' : '') . "\n", FILE_APPEND);
     stub_json(200, ['object' => 'list', 'data' => $page, 'has_more' => $start + $limit < count($all)]);
 }
 if ($method === 'GET' && preg_match('#^/payment_intents/([^/]+)$#', $path, $m)) {
@@ -226,8 +245,7 @@ if ($method === 'GET' && preg_match('#^/payment_intents/([^/]+)$#', $path, $m)) 
 if ($method === 'GET' && preg_match('#^/charges/([^/]+)$#', $path, $m)) {
     foreach (stub_load('pis') as $pi) {
         if (($pi['latest_charge'] ?? '') === $m[1]) {
-            stub_json(200, ['id' => $m[1], 'object' => 'charge', 'payment_intent' => $pi['id'], 'amount' => $pi['amount'], 'amount_refunded' => 0,
-                'payment_method_details' => ['type' => 'sepa_debit', 'sepa_debit' => ['mandate' => 'mandate_stub', 'last4' => '0000']]]);
+            stub_json(200, stub_charge($pi));
         }
     }
     stub_error(404, 'invalid_request_error', 'resource_missing', 'No such charge');

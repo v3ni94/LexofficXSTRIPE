@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.72';
+const APP_VERSION = '4.73';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.73', 'date' => '12.09.2026', 'title' => 'Statusabgleich erkennt Rücklastschriften und Erstattungen nachträglich',
+         'entries' => [
+            ['type' => 'Neu', 'text' => '„Status mit Stripe abgleichen“ (Einzüge) prüft zusätzlich alle erfolgreichen und erstatteten Einzüge der letzten 70 Tage (collections.sync_lookback_days, höchstens 400) über eine seitenweise Liste der PaymentIntents mit eingebetteter Charge auf Rücklastschrift (charge.disputed) und Erstattungsstand (amount_refunded). Treffer wirken wie die Webhook-Ereignisse: Einzug disputed beziehungsweise refunded, Rechnung mit Klärungsbedarf, kein automatischer Neu-Einzug. Anlass: SEPA-Rücklastschriften kommen bis zu acht Wochen nach der Belastung; blieb der Webhook aus, wurden sie bisher nicht erkannt.'],
+            ['type' => 'Geändert', 'text' => 'Rücklastschriften laufen aus Webhook und Statusabgleich über die gemeinsame Funktion collection_apply_dispute() (idempotent, Audit collection_disputed mit Quelle). Die Schaltfläche ist immer aktiv und nennt die Zahl laufender Einzüge; die Meldung zeigt geprüfte, neu vermerkte Rücklastschriften und Erstattungen sowie einen Hinweis, falls die Liste bei Stripe nicht vollständig gelesen werden konnte.'],
+            ['type' => 'Behoben', 'text' => 'Gesperrte Schaltflächen (disabled) sahen wie aktive aus, ein Klick blieb ohne Rückmeldung (Befund 12.09.2026 an „Status mit Stripe abgleichen“ ohne laufende Einzüge). Sie werden jetzt sichtbar abgeschwächt und tragen den Mauszeiger „nicht erlaubt“.'],
+            ['type' => 'Geändert', 'text' => 'Prüfstand tools/collections-check.sh Abschnitt 14d (36 neue Fälle): Rücklastschrift, Voll- und Teilerstattung Wochen nach dem Erfolg, Idempotenz, Rückschau-Grenze, Mandantentrennung, reiner Lesezugriff; Stripe-Stub mit expand=data.latest_charge und Charge-Überschreibungen. payment-safety-check prüft die gemeinsame Funktion.'],
+         ]],
         ['version' => '4.72', 'date' => '12.09.2026', 'title' => 'Google-Tag und Conversion „Kauf (1)“ auch auf lexware-einzug.de',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Auf Vorgabe des Betreibers steht das Google-Tag (AW-18431688840) jetzt auch im Kopf aller 14 Seiten von lexware-einzug.de, in derselben Fassung wie auf smart-einzug.de: Voreinstellung nach Google Consent Mode mit allen vier Speicherarten auf „denied“, danach der Ereignis-Schnipsel der Conversion „Kauf (1)“. Die Content-Security-Policy der Domain erlaubt beide Inline-Skripte über ihren SHA-256-Hash, nicht über unsafe-inline.'],

@@ -337,6 +337,62 @@ SQL "DELETE FROM collection_attempts WHERE id = 'dddddddd-0000-0000-0000-0000000
 ev evt_10 payment_intent.processing $((NOW-1)) "{\"id\":\"pi_fremd\",\"object\":\"payment_intent\",\"status\":\"processing\",\"amount\":10000,\"metadata\":{\"tenant_id\":\"$A\"}}" > "$T/e10.json"
 hook whsec_stub_FA "$T/e10.json"; [[ "$HOOK_CODE" == 200 ]] && ok "unbekannter PaymentIntent ohne Versuch: 200 (nichts zu tun)" || bad "unbekannter PI: $HOOK_CODE"
 
+P14=$(pis)
+echo "14d) Statusabgleich erkennt Ruecklastschrift und Erstattung Wochen nach dem Erfolg (4.73)"
+charge_of() { php -r '$p = json_decode((string)file_get_contents($argv[1]), true) ?: []; echo (string)($p[$argv[2]]["latest_charge"] ?? "");' "$STRIPE_STUB_DIR/pis.json" "$1"; }
+charge_set() { # $1 charge-id, $2 feld, $3 json-wert: Ueberschreibung der Charge im Stub (charges.json)
+    php -r '$f = $argv[1]; $d = is_file($f) ? (json_decode((string)file_get_contents($f), true) ?: []) : []; $d[$argv[2]][$argv[3]] = json_decode($argv[4], true); file_put_contents($f, json_encode($d));' "$STRIPE_STUB_DIR/charges.json" "$1" "$2" "$3"
+}
+PIA1="$(SQL "SELECT stripe_payment_intent_id FROM payment_collections WHERE invoice_id = '$(INV 1)' LIMIT 1")"; CHA1="$(charge_of "$PIA1")"
+PIA2="$(SQL "SELECT stripe_payment_intent_id FROM payment_collections WHERE invoice_id = '$(INV 2)' LIMIT 1")"; CHA2="$(charge_of "$PIA2")"
+PIA3="$(SQL "SELECT stripe_payment_intent_id FROM payment_collections WHERE invoice_id = '$(INV 3)' LIMIT 1")"; CHA3="$(charge_of "$PIA3")"
+[[ -n "$CHA1" && -n "$CHA2" && -n "$CHA3" ]] && ok "Charges der Einzuege 1 bis 3 von Firma A beim Stub bekannt" || bad "Charges fehlen: '$CHA1' '$CHA2' '$CHA3'"
+OUT="$($SIM sync_status $A)"; erw "Abgleich ohne Aenderung bei Stripe: keine Ruecklastschrift" disputed 0; erw "keine Erstattung" refunded 0
+# Einzug 1: Wochen spaeter Ruecklastschrift bei Stripe, Webhook blieb aus
+SQL "UPDATE payment_collections SET stripe_status = 'succeeded', completed_at = NOW() WHERE invoice_id = '$(INV 1)'"
+SQL "UPDATE invoices SET collection_status = 'collected' WHERE id = '$(INV 1)'"
+charge_set "$CHA1" disputed true
+OUT="$($SIM sync_status $A)"; erw "Ruecklastschrift des erfolgreichen Einzugs erkannt" disputed 1
+erwp "abgeschlossene Einzuege wurden in die Rueckschau einbezogen" reviewed "[1-9]*"
+OUT="$($SIM state "$(INV 1)")"; erwp "Einzug disputed" c0 "disputed|*"; erw "Rechnung failed" invoice_status failed
+erw "Klaerungsbedarf gesetzt (kein automatischer Neu-Einzug)" requires_review 1; erwp "Grund nennt die Ruecklastschrift" review_reason "*widerrufen*"
+OUT="$($SIM submit $A "$(INV 1)")"; erw "Rechnung nach Ruecklastschrift nicht ohne Klaerung einziehbar" result error
+OUT="$($SIM sync_status $A)"; erw "Wiederholung: Ruecklastschrift nicht doppelt vermerkt (idempotent)" disputed 0
+[[ "$(SQL "SELECT COUNT(*) FROM audit_log WHERE action = 'collection_disputed' AND target_id = (SELECT id FROM payment_collections WHERE invoice_id = '$(INV 1)')")" == 1 ]] && ok "genau ein Audit-Eintrag collection_disputed" || bad "Audit collection_disputed: $(SQL "SELECT COUNT(*) FROM audit_log WHERE action = 'collection_disputed'")"
+# Einzug 3: Vollerstattung bei Stripe
+SQL "UPDATE payment_collections SET stripe_status = 'succeeded', completed_at = NOW() WHERE invoice_id = '$(INV 3)'"
+SQL "UPDATE invoices SET collection_status = 'collected' WHERE id = '$(INV 3)'"
+charge_set "$CHA3" amount_refunded 4000
+OUT="$($SIM sync_status $A)"; erw "Vollerstattung erkannt" refunded 1; erw "keine weitere Ruecklastschrift" disputed 0
+OUT="$($SIM state "$(INV 3)")"; erwp "Einzug refunded" c0 "refunded|*"; erw "Erstattungsbetrag uebernommen" c0_refunded 4000
+erw "Rechnung wieder open" invoice_status open; erw "Klaerungsbedarf gesetzt" requires_review 1
+OUT="$($SIM sync_status $A)"; erw "Wiederholung: Erstattungsstand unveraendert" refunded 0
+# Einzug 2: Teilerstattung
+SQL "UPDATE payment_collections SET stripe_status = 'succeeded', completed_at = NOW() WHERE invoice_id = '$(INV 2)'"
+SQL "UPDATE invoices SET collection_status = 'collected' WHERE id = '$(INV 2)'"
+charge_set "$CHA2" amount_refunded 2500
+OUT="$($SIM sync_status $A)"; erw "Teilerstattung erkannt" refunded 1
+OUT="$($SIM state "$(INV 2)")"; erwp "Einzug bleibt succeeded" c0 "succeeded|*"; erw "Teilbetrag vermerkt" c0_refunded 2500
+erw "Rechnung bleibt collected" invoice_status collected; erw "Klaerungsbedarf gesetzt" requires_review 1
+# Rueckschau-Grenze: aelter als sync_lookback_days wird nicht geprueft
+SQL "UPDATE payment_collections SET submitted_at = NOW() - INTERVAL 400 DAY, completed_at = NOW() - INTERVAL 400 DAY, created_at = NOW() - INTERVAL 400 DAY WHERE invoice_id = '$(INV 2)'"
+charge_set "$CHA2" disputed true
+OUT="$($SIM sync_status $A)"; erw "Einzug ausserhalb der Rueckschau (400 Tage) wird nicht geprueft" disputed 0
+erw "Rueckschau der Vorgabe 70 Tage" lookback_days 70
+OUT="$($SIM state "$(INV 2)")"; erwp "Einzug ausserhalb der Rueckschau unveraendert" c0 "succeeded|*"
+SQL "UPDATE payment_collections SET submitted_at = NOW(), completed_at = NOW(), created_at = NOW() WHERE invoice_id = '$(INV 2)'"
+OUT="$($SIM sync_status $A)"; erw "innerhalb der Rueckschau: Ruecklastschrift erkannt" disputed 1
+OUT="$($SIM state "$(INV 2)")"; erwp "Einzug disputed" c0 "disputed|*"
+# Mandantentrennung: Ruecklastschrift zu einem Einzug von Firma B darf der Abgleich von Firma A nicht vermerken
+PIB4="$(SQL "SELECT stripe_payment_intent_id FROM payment_collections WHERE invoice_id = '$(INVB 4)' LIMIT 1")"; CHB4="$(charge_of "$PIB4")"
+charge_set "$CHB4" disputed true
+OUT="$($SIM sync_status $A)"; erw "Abgleich von Firma A vermerkt nichts an Einzuegen von Firma B" disputed 0
+OUT="$($SIM state "$(INVB 4)")"; erwp "Einzug von Firma B unveraendert succeeded" c0 "succeeded|*"
+OUT="$($SIM sync_status $B)"; erw "Abgleich von Firma B erkennt die eigene Ruecklastschrift" disputed 1
+OUT="$($SIM state "$(INVB 4)")"; erwp "Einzug von Firma B disputed" c0 "disputed|*"; erw "Rechnung von Firma B mit Klaerungsbedarf" requires_review 1
+grep -q "expand=latest_charge" "$STRIPE_STUB_DIR/list.log" && ok "Rueckschau nutzt die Liste mit eingebetteter Charge (ein Aufruf je 100 Einzuege)" || bad "Liste ohne expand=data.latest_charge"
+[[ "$(pis)" == "$P14" ]] && ok "kein PaymentIntent durch den Statusabgleich (reiner Lesezugriff)" || bad "Statusabgleich hat PaymentIntents angelegt: $(pis) statt $P14"
+
 echo "15) Statische Sicherungen"
 grep -q "AND stripe_status IN ('submitting', 'scheduled')" "$ROOT/php-ionos/app/collections.php" && ok "Fehlermarkierung nur aus submitting/scheduled (A-11)" || bad "A-11 Fehlermarkierung ohne Zustandsbedingung"
 [[ "$(grep -c "webhook_retry('Datenbankfehler bei Firmenzuordnung" "$ROOT/php-ionos/stripe-webhook.php")" == 2 ]] && grep -q "http_response_code(500)" <(sed -n '/^function webhook_retry/,/^}/p' "$ROOT/php-ionos/stripe-webhook.php") && ok "Datenbankfehler bei der Firmenzuordnung antwortet mit 500 (A-03)" || bad "A-03: Datenbankfehler mit 200 quittiert"

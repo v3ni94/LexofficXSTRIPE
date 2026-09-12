@@ -261,6 +261,10 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 }
 .btn-ghost:hover { background: var(--hvm-outlinegray); color: var(--hvm-black); }
 .btn-sm { padding: 5px 10px; font-size: 13px; }
+/* Gesperrte Schaltflaechen (disabled) sichtbar abschwaechen; ohne diese Regel sahen sie wie aktive aus (Befund 12.09.2026) */
+.btn:disabled, .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.btn:disabled:hover, .btn[disabled]:hover { background: inherit; }
+.btn-secondary:disabled:hover, .btn-secondary[disabled]:hover { background: var(--color-surface); color: var(--hvm-anthracite); }
 button.linklike {
     background: none;
     border: none;

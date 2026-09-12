@@ -35,11 +35,23 @@ echo "A) Ruecklastschrift setzt Klaerungsbedarf (kein automatischer Neu-Einzug)\
 $hook = $lies('php-ionos/stripe-webhook.php');
 $disp = $abschnitt($hook, "case 'charge.dispute.created':", 'break;');
 $disp !== '' ? $ok('Zweig charge.dispute.created gefunden') : $bad('Zweig charge.dispute.created fehlt');
-str_contains($disp, 'requires_review = 1') ? $ok('setzt requires_review = 1') : $bad('setzt requires_review NICHT: widerrufene Lastschrift wird erneut eingezogen');
-str_contains($disp, 'review_reason') ? $ok('hinterlegt einen Grund fuer die Klaerung') : $bad('review_reason fehlt');
-str_contains($disp, 'tenant_id = ?') ? $ok('Aktualisierung ist auf die Firma begrenzt') : $bad('Aktualisierung ohne Mandantenbezug');
-// Gegenprobe: Die Auswahl automatischer Einzuege schliesst 'failed' NICHT aus, deshalb ist requires_review noetig.
+// Seit 4.73 liegt die Wirkung in collection_apply_dispute() (app/collections.php), die auch der manuelle
+// Statusabgleich nutzt; der Webhook-Zweig muss sie aufrufen, die Funktion selbst traegt die Sicherungen.
 $coll = $lies('php-ionos/app/collections.php');
+str_contains($disp, 'collection_apply_dispute(') ? $ok('Webhook-Zweig ruft collection_apply_dispute() auf') : $bad('Webhook-Zweig setzt die Ruecklastschrift nicht ueber collection_apply_dispute()');
+$dispFn = $abschnitt($coll, 'function collection_apply_dispute(', "\n}\n");
+$dispFn !== '' ? $ok('collection_apply_dispute() gefunden') : $bad('collection_apply_dispute() fehlt');
+str_contains($dispFn, 'requires_review = 1') ? $ok('setzt requires_review = 1') : $bad('setzt requires_review NICHT: widerrufene Lastschrift wird erneut eingezogen');
+str_contains($dispFn, 'review_reason') ? $ok('hinterlegt einen Grund fuer die Klaerung') : $bad('review_reason fehlt');
+substr_count($dispFn, 'tenant_id = ?') >= 2 ? $ok('Aktualisierung von Einzug und Rechnung ist auf die Firma begrenzt') : $bad('Aktualisierung ohne Mandantenbezug');
+str_contains($dispFn, "=== 'disputed'") ? $ok('idempotent: bereits vermerkte Ruecklastschrift wird nicht erneut geschrieben') : $bad('keine Idempotenz in collection_apply_dispute()');
+// Der manuelle Statusabgleich (4.73) muss abgeschlossene Einzuege ueber dieselben Funktionen behandeln, nie ueber eigene UPDATEs.
+$sync = $abschnitt($coll, 'function sync_collection_statuses(', "\n}\n");
+(str_contains($sync, 'collection_apply_dispute(') && str_contains($sync, 'collection_apply_refund('))
+    ? $ok('Statusabgleich vermerkt Ruecklastschrift und Erstattung ueber collection_apply_dispute()/collection_apply_refund()')
+    : $bad('Statusabgleich behandelt Ruecklastschrift oder Erstattung nicht ueber die gemeinsamen Funktionen');
+str_contains($sync, "stripe_status IN ('succeeded', 'refunded')") ? $ok('Rueckschau umfasst erfolgreiche und erstattete Einzuege') : $bad('Rueckschau auf abgeschlossene Einzuege fehlt');
+// Gegenprobe: Die Auswahl automatischer Einzuege schliesst 'failed' NICHT aus, deshalb ist requires_review noetig.
 (substr_count($coll, "collection_status NOT IN ('in_collection', 'scheduled', 'collected')") >= 2 && substr_count($coll, 'requires_review = 0') >= 2)
     ? $ok('Auswahl automatischer Einzuege filtert ueber requires_review (Begruendung des Falls)')
     : $bad('Auswahl automatischer Einzuege nicht wie erwartet aufgebaut');

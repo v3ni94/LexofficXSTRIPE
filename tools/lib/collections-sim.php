@@ -12,6 +12,7 @@
  *   process [tenant] [now]       process_scheduled_collections mit ignore_window (now = Zeitpunkt fuer collections_now)
  *   process_window <now>         wie process, aber MIT Fensterpruefung
  *   resolve <tenant>             collection_attempts_resolve
+ *   sync_status <tenant>         sync_collection_statuses (laufende Einzuege, Rueckschau auf Ruecklastschrift/Erstattung)
  *   state <invoice>              Zustand der Rechnung, ihrer Einzuege und Versuche
  *   sign <secret> <payload-datei> Stripe-Signature-Header fuer einen Webhook-Testaufruf
  *   cancel <tenant> <collection> cancel_scheduled_collection
@@ -130,6 +131,11 @@ switch ($case) {
     case 'resolve':
         $r = collection_attempts_resolve((string)$argv[3], ['user_id' => null, 'email' => 'sim']);
         foreach ($r as $k => $v) { $out($k, $v); }
+        break;
+
+    case 'sync_status':
+        $r = sync_collection_statuses((string)$argv[3], ['user_id' => null, 'email' => 'sim']);
+        foreach ($r as $k => $v) { $out($k, is_bool($v) ? (int)$v : $v); }
         break;
 
     case 'refund':

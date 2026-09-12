@@ -59,9 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } elseif ($action === 'sync_status') {
             $result = sync_collection_statuses($tenantId, $ctx);
-            flash_set('success', sprintf(
-                'Statusabgleich: %d geprüft, %d eingezogen, %d fehlgeschlagen, %d unverändert.',
-                $result['checked'], $result['succeeded'], $result['failed'], $result['unchanged']
+            $found = $result['disputed'] > 0 || $result['refunded'] > 0;
+            flash_set($found ? 'info' : 'success', sprintf(
+                'Statusabgleich: %d laufende(r) Einzug/Einzüge geprüft (%d eingezogen, %d fehlgeschlagen, %d unverändert). %d abgeschlossene(r) Einzug/Einzüge der letzten %d Tage auf Rücklastschrift und Erstattung geprüft: %d Rücklastschrift(en), %d Erstattung(en) neu vermerkt%s.%s',
+                $result['checked'], $result['succeeded'], $result['failed'], $result['unchanged'],
+                $result['reviewed'], $result['lookback_days'], $result['disputed'], $result['refunded'],
+                $found ? ' (Rechnungen zur Klärung markiert, kein automatischer Neu-Einzug)' : '',
+                $result['truncated'] ? ' Die Liste bei Stripe war zu lang oder nicht vollständig abrufbar; bitte den Abgleich später wiederholen.' : ''
             ));
 
         } elseif ($action === 'submit_all_ready') {
@@ -206,8 +210,8 @@ layout_header('Einzüge', $ctx);
         <form method="post">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="sync_status">
-            <button type="submit" class="btn btn-secondary"<?= $processingCount === 0 ? ' disabled' : '' ?>>
-                Status mit Stripe abgleichen<?= $processingCount > 0 ? " ($processingCount)" : '' ?>
+            <button type="submit" class="btn btn-secondary" title="Liest den Stand laufender Einzüge bei Stripe und prüft abgeschlossene Einzüge der letzten <?= (int)$rules['sync_lookback_days'] ?> Tage auf Rücklastschrift und Erstattung. Nur Lesezugriff.">
+                Status mit Stripe abgleichen<?= $processingCount > 0 ? " ($processingCount laufend)" : '' ?>
             </button>
         </form>
     </div>
@@ -229,9 +233,11 @@ layout_header('Einzüge', $ctx);
     <?php endif; ?>
     <p class="hint"><strong>Karenzzeit:</strong> <?= e(collections_rules_text()) ?>
         Vorgemerkt: <?= $pending['queued'] ?>, terminiert: <?= $pending['total'] - $pending['queued'] ?>, davon fällig: <?= $pending['due'] ?>, überfällig: <?= $pending['overdue'] ?>.</p>
-    <p class="hint">"Status mit Stripe abgleichen" prüft laufende Einzüge (nur Lesezugriff, kein Geld
-        bewegt sich). Eine spätere Rücklastschrift oder Erstattung erkennt nur der Stripe-Webhook (siehe Einstellungen).
-        Nach einer Erstattung wird die Rechnung zur Klärung markiert und nicht automatisch erneut eingezogen.</p>
+    <p class="hint">"Status mit Stripe abgleichen" prüft laufende Einzüge und zusätzlich alle abgeschlossenen Einzüge der
+        letzten <?= (int)$rules['sync_lookback_days'] ?> Tage auf Rücklastschrift und Erstattung (nur Lesezugriff, kein Geld
+        bewegt sich). Der Stripe-Webhook (siehe Einstellungen) meldet dasselbe ohne Ihr Zutun; der Abgleich ist die
+        Kontrolle, falls eine Meldung ausbleibt. Nach einer Rücklastschrift oder Erstattung wird die Rechnung zur Klärung
+        markiert und nicht automatisch erneut eingezogen.</p>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
         <a class="btn <?= $filter === '' ? '' : 'btn-secondary' ?> btn-sm" href="collections.php">Alle</a>
         <?php foreach ($allowedFilters as $f): ?>

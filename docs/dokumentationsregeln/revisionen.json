@@ -5,14 +5,14 @@
     "summary": "Marketingmodul (4.63) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r35",
+    "revision": "r36",
     "date": "12.09.2026",
-    "summary": "Rueckkanal des Ads-Tags in der Content-Security-Policy, neuer Pruefpunkt in site-tag-check (4.71)."
+    "summary": "Statusabgleich mit Rückschau auf Rücklastschrift und Erstattung, collection_apply_dispute(), collections.sync_lookback_days (4.73)."
   },
   "kunden": {
-    "revision": "r4",
-    "date": "08.09.2026",
-    "summary": "Abschnitt 8.4: Inhalt der Vorabankündigung, Hinweis zu Stripe-Benachrichtigungen (4.44)."
+    "revision": "r5",
+    "date": "12.09.2026",
+    "summary": "Kapitel Einzüge: Statusabgleich prüft abgeschlossene Einzüge der letzten 70 Tage auf Rücklastschrift und Erstattung (4.73)."
   },
   "marketing": {
     "revision": "r7",

@@ -75,3 +75,15 @@ Nachweis rot vor der Korrektur: collections 85/36 (Protokoll `collections-check-
 
 Hinweis zur Zählung: Der TOTP-Wettlauf (auth-check Abschnitt 2) ließ sich mit sechs Prozessen gegen den alten Code nicht
 reproduzieren; die Korrektur ist statisch und funktional (akzeptiert genau einmal) belegt, nicht durch ein rotes Vorher.
+
+## Nachtrag 12.09.2026 (4.73, Backend; 4.69 bis 4.72 sind Frontend-Versionen des Google-Tags)
+
+| Suite | Ergebnis |
+|---|---|
+| collections (ohne `COLLECTIONS_CHECK_SLOW`) | 169/0 (neu: 14d Statusabgleich mit Rückschau, 36 Fälle: Rücklastschrift Wochen nach dem Erfolg, Voll- und Teilerstattung, Idempotenz, Rückschau-Grenze 70 Tage, Mandantentrennung bei gemeinsamer Stub-Liste, reiner Lesezugriff, Liste mit `expand=data.latest_charge`) |
+| payment-safety | 74/0 (Abschnitt A prüft jetzt `collection_apply_dispute()` und den Aufruf aus Webhook und Statusabgleich) |
+
+Nachweis rot vor der Korrektur: Die Fälle „Ruecklastschrift des erfolgreichen Einzugs erkannt“, „Vollerstattung erkannt“ und
+„Teilerstattung erkannt“ in 14d setzen voraus, dass der Statusabgleich abgeschlossene Einzüge liest; der Code bis 4.68 prüfte
+ausschließlich `processing` (Faktenregister STATUS-03) und liefert `disputed`/`refunded` nicht, die Felder fehlen dort
+(`erw` wertet leer als Fehlschlag).

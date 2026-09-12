@@ -230,6 +230,10 @@ return [
         'window_start'   => '23:00',
         'window_end'     => '06:00',
         'overdue_days'   => 3,
+        // Rueckschau des manuellen Statusabgleichs (Einzuege, "Status mit Stripe abgleichen") auf abgeschlossene Einzuege:
+        // Ruecklastschriften und Erstattungen der letzten N Tage werden aus der Charge bei Stripe nachgelesen (4.73).
+        // Vorgabe 70 (acht Wochen Rueckgabefrist der SEPA-Basislastschrift plus Puffer), hoechstens 400.
+        'sync_lookback_days' => 70,
     ],
 
     // --- Synchronisation mit Lexware Office ---

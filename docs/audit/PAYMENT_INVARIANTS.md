@@ -22,7 +22,7 @@ Code und den automatisierten Nachweis zu. Kennzeichnung je Regel: automatisiert 
    geschrieben VOR dem Stripe-Aufruf über eine eigene Autocommit-Verbindung (`_attempts_db`), UNIQUE auf den Schlüssel.
 6. Stripe-Aufruf: `StripeClient::createPaymentIntent()` mit `Idempotency-Key` und `metadata.attempt_key`.
 7. Ereignisverarbeitung: `stripe-webhook.php` (Signatur je Firma, Beanspruchung je Ereignis, Reihenfolge je Objekt).
-8. Abgleich: `sync_collection_statuses()` (manuell), `collection_attempts_resolve()` (Klärung unklarer Versuche).
+8. Abgleich: `sync_collection_statuses()` (manuell; seit 4.73 auch Rückschau auf Rücklastschrift und Erstattung abgeschlossener Einzüge über `collection_apply_dispute()`/`collection_apply_refund()`), `collection_attempts_resolve()` (Klärung unklarer Versuche).
 9. Anzeige und Journal: `collections.php`, `invoices.php`, `audit_log`, Export.
 
 Die Plattform-Abrechnung (Abonnements der Firmen, Stripe-Konto der Müller Holding AG) läuft über `app/billing.php` und
