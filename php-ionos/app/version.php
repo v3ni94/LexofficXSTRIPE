@@ -8,12 +8,18 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.69';
+const APP_VERSION = '4.70';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.70', 'date' => '12.09.2026', 'title' => 'Conversion bei Klick auf Registrieren auf smart-einzug.de',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Auf Vorgabe des Betreibers meldet smart-einzug.de jetzt die Google-Ads-Conversion „Kauf (1)“, sobald ein Besucher auf Registrieren klickt. Der Ereignis-Schnipsel aus Google Ads steht unverändert im Kopf jeder Seite direkt hinter dem Google-Tag; assets/js/site.js bindet ihn an jeden Link auf die Registrierung der Anwendung, statt an jedem der 70 Verweise ein onclick-Attribut zu setzen. Inline-Attribute würden unsafe-hashes in der Content-Security-Policy erzwingen und den Schutz gegen eingeschleuste Skripte schwächen.'],
+            ['type' => 'Neu', 'text' => 'Die Messung kann eine Registrierung nicht verhindern: Der Browser wechselt spätestens nach 800 Millisekunden zur Registrierung, auch wenn Google nicht antwortet, und jeder Fehler in der Messung führt sofort zur Navigation. Klicks mit Sondertaste oder in ein neues Fenster bleiben unberührt. tools/site-tag-check.py prüft das zusammen mit dem zweiten CSP-Hash und dem Label.'],
+            ['type' => 'Geändert', 'text' => 'Wichtig für die Auswertung: Gezählt wird der Klick auf Registrieren, nicht der Abschluss eines Abonnements. Die Conversion-Aktion heißt in Google Ads „Kauf“, misst mit dieser Einbindung aber eine Absicht. Solange dieselbe Aktion hier gemeldet wird, bleibt analytics.ads_conversion_label in der Anwendung leer, sonst würde derselbe Vorgang doppelt gezählt.'],
+         ]],
         ['version' => '4.69', 'date' => '12.09.2026', 'title' => 'Google-Ads-Tag im Seitenkopf von smart-einzug.de, Anwendung scharf geschaltet',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Auf Anweisung des Betreibers ist die Ads-Kennung AW-18431688840 jetzt als Vorgabe im Code hinterlegt (app/tracking.php, TRACKING_DEFAULT_ADS_ID), wie schon auf den Marketingseiten. Sie wirkt damit mit dem nächsten Deployment, ohne dass jemand shared/config.php auf dem Server ändern muss. Der Block analytics in der Konfiguration ist optional geworden: Er kann die Kennung überschreiben, und analytics.enabled = false schaltet Tag und Banner vollständig ab.'],

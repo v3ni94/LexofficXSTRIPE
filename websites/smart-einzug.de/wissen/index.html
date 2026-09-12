@@ -11,6 +11,22 @@
 
   gtag('config', 'AW-18431688840');
 </script>
+<!-- Event snippet for Kauf (1) conversion page -->
+<script>
+function gtag_report_conversion(url) {
+  var callback = function () {
+    if (typeof(url) != 'undefined') {
+      window.location = url;
+    }
+  };
+  gtag('event', 'conversion', {
+      'send_to': 'AW-18431688840/3yI5CMyYwfIcEIiB9dRE',
+      'transaction_id': '',
+      'event_callback': callback
+  });
+  return false;
+}
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wissen zu SEPA-Lastschrift und SmartEinzug</title>
@@ -210,7 +226,7 @@
   </div>
 </footer>
 
-<script src="/assets/js/site.js?v=ad3c33d8ca" defer></script>
+<script src="/assets/js/site.js?v=3d8b8fe1da" defer></script>
 <!--
   Timo Müller · Müller Holding AG
   In Liebe zu Charlotte und Christina.

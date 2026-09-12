@@ -110,6 +110,37 @@
     }, { threshold: 0 }).observe(hero);
   }
 
+  /*
+   * Conversion "Kauf (1)" bei Klick auf Registrieren (Vorgabe des Betreibers 12.09.2026).
+   * Die Funktion gtag_report_conversion steht im Kopf der Seite (Schnipsel aus Google Ads);
+   * hier wird sie an jeden Link auf die Registrierung der Anwendung gebunden, statt an jedem
+   * Link ein onclick-Attribut zu setzen. Inline-Attribute wuerden 'unsafe-hashes' in der
+   * Content-Security-Policy erzwingen und den Schutz gegen eingeschleuste Skripte schwaechen.
+   *
+   * Grundsatz: Die Messung darf eine Registrierung NIE verhindern. Deshalb navigiert der
+   * Browser spaetestens nach NAV_NOTBREMSE Millisekunden, auch wenn Google nicht antwortet,
+   * und jeder Fehler in der Messung fuehrt sofort zur Navigation.
+   */
+  var NAV_NOTBREMSE = 800;
+  function bindConversionLinks() {
+    if (typeof window.gtag_report_conversion !== 'function') { return; }
+    document.addEventListener('click', function (event) {
+      if (event.defaultPrevented || event.button !== 0) { return; }
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) { return; }
+      var el = event.target;
+      while (el && el !== document && el.tagName !== 'A') { el = el.parentElement; }
+      if (!el || el === document || !el.href) { return; }
+      if (el.pathname !== '/register.php' || el.hostname !== 'app.smart-einzug.de') { return; }
+      if (el.target && el.target !== '_self') { return; }
+      var ziel = el.href;
+      var navigiert = false;
+      function gehe() { if (!navigiert) { navigiert = true; window.location = ziel; } }
+      event.preventDefault();
+      window.setTimeout(gehe, NAV_NOTBREMSE);
+      try { window.gtag_report_conversion(ziel); } catch (e) { gehe(); }
+    });
+  }
+
   /* Mobile-Navigation nach Linkklick schließen */
   function closeNavOnLinkClick() {
     var toggle = document.getElementById('nav-toggle');
@@ -236,6 +267,7 @@
     trackCtaClicks();
     initStickyCta();
     closeNavOnLinkClick();
+    bindConversionLinks();
     trackPageView();
     initConsent();
   }

@@ -28,6 +28,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Domains, die das Tag im Kopf tragen sollen, mit der erwarteten Kennung.
 SEITEN_TAG = {'smart-einzug.de': 'AW-18431688840'}
+# Conversion-Aktion "Kauf (1)" aus Google Ads. Wird beim Klick auf Registrieren gemeldet
+# (Vorgabe des Betreibers 12.09.2026). Das Label wird nie erfunden, es kommt aus Google Ads.
+CONVERSION_SEND_TO = {'smart-einzug.de': 'AW-18431688840/3yI5CMyYwfIcEIiB9dRE'}
 ALLE_DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de',
                 'sevdesk-einzug.de', 'sevdesk-sepa.de']
 
@@ -73,7 +76,8 @@ def main():
         m_script = re.search(r'script-src([^;]*)', csp)
         script_src = m_script.group(1) if m_script else ''
         hashes = set(re.findall(r"'(sha256-[A-Za-z0-9+/=]+)'", script_src))
-        gesehen = set()
+        fassungen_konfig = set()
+        fassungen_ereignis = set()
 
         for f in dateien:
             rel = os.path.relpath(f, ROOT)
@@ -99,11 +103,26 @@ def main():
                 fail(f'{rel}: Tag steht nicht im <head>')
 
             passend = [s for s in inline_skripte(html) if 'gtag(' in s]
-            if len(passend) != 1:
-                fail(f'{rel}: {len(passend)} Inline-Skripte mit gtag, erwartet genau eines')
+            konfig = [s for s in passend if "gtag('config'" in s]
+            ereignis = [s for s in passend if 'gtag_report_conversion' in s]
+            if len(konfig) != 1:
+                fail(f'{rel}: {len(konfig)} Inline-Skripte mit gtag config, erwartet genau eines')
                 continue
-            skript = passend[0]
-            gesehen.add(skript)
+            skript = konfig[0]
+            fassungen_konfig.add(skript)
+            fassungen_ereignis.update(ereignis)
+
+            sende = CONVERSION_SEND_TO.get(domain)
+            if sende:
+                if len(ereignis) != 1:
+                    fail(f'{rel}: {len(ereignis)} Conversion-Schnipsel, erwartet genau einen')
+                else:
+                    if f"'send_to': '{sende}'" not in ereignis[0]:
+                        fail(f'{rel}: Conversion-Schnipsel ohne das erwartete Label {sende}')
+                    if 'event_callback' not in ereignis[0]:
+                        fail(f'{rel}: Conversion-Schnipsel ohne event_callback, der Klick wuerde nicht weiterleiten')
+                    if html.index('gtag_report_conversion') < html.index("gtag('config'"):
+                        fail(f'{rel}: Conversion-Schnipsel steht vor dem Google-Tag')
 
             if "gtag('consent', 'default'" not in skript:
                 fail(f'{rel}: Inline-Skript ohne "consent default"; Google wuerde vor der Einwilligung Cookies setzen')
@@ -118,10 +137,12 @@ def main():
 
         if erwartet is None:
             continue
-        if len(gesehen) > 1:
-            fail(f'{domain}: {len(gesehen)} unterschiedliche Fassungen des Inline-Skripts; '
-                 f'ein einziger CSP-Hash kann nicht alle abdecken')
-        for skript in gesehen:
+        # Je Art genau eine Fassung, sonst braeuchte die CSP je Seite einen eigenen Hash.
+        if len(fassungen_konfig) > 1:
+            fail(f'{domain}: {len(fassungen_konfig)} unterschiedliche Fassungen des Google-Tags')
+        if len(fassungen_ereignis) > 1:
+            fail(f'{domain}: {len(fassungen_ereignis)} unterschiedliche Fassungen des Conversion-Schnipsels')
+        for skript in fassungen_konfig | fassungen_ereignis:
             h = 'sha256-' + base64.b64encode(hashlib.sha256(skript.encode('utf-8')).digest()).decode()
             if h not in hashes:
                 fail(f'{domain}: CSP enthaelt den Hash des Inline-Skripts nicht ({h}). '
@@ -137,6 +158,16 @@ def main():
         fail('site.js: keine Pruefung auf ein bereits vorhandenes Tag im Kopf')
     elif "gtag('consent', 'update'" not in quelle:
         fail('site.js: zieht die Einwilligung nicht per "consent update" nach')
+    # Die Messung darf eine Registrierung nie verhindern.
+    if 'bindConversionLinks' not in quelle:
+        fail('site.js: bindet die Conversion nicht an die Registrierungslinks')
+    else:
+        if 'NAV_NOTBREMSE' not in quelle or 'setTimeout' not in quelle:
+            fail('site.js: keine Notbremse; bliebe Google stumm, kaeme der Kunde nicht zur Registrierung')
+        if 'catch (e) { gehe(); }' not in quelle:
+            fail('site.js: ein Fehler in der Messung fuehrt nicht zur Navigation')
+        if 'event.metaKey' not in quelle or 'el.target' not in quelle:
+            fail('site.js: Klicks in neuem Fenster oder mit Sondertaste werden nicht ausgenommen')
     # Alle Domains liefern dieselbe site.js aus.
     fassungen = {open(p, encoding='utf-8').read() for p in glob.glob(os.path.join(ROOT, 'websites', '*', 'assets', 'js', 'site.js'))}
     if len(fassungen) > 1:

@@ -343,7 +343,7 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
 
 ## 7. Frontend-Branch `claude/frontend-smart-einzug-egsouk` (Stand 09.09.2026, kein Deployment aus diesem Branch)
 
-Nachtrag 12.09.2026: Das Google-Tag (AW-18431688840) steht auf Vorgabe des Betreibers direkt im Kopf jeder Seite von smart-einzug.de, mit Consent-Voreinstellung auf `denied` (keine Cookies ohne Einwilligung) und Freigabe in der CSP über den SHA-256-Hash des Inline-Skripts. `tools/site-tag-check.py` sichert Hash, Einmaligkeit und Voreinstellung ab und läuft im Workflow mit. Offen bleibt das Conversion-Label aus Google Ads; ohne Label zählt Google nur Seitenaufrufe.
+Nachtrag 12.09.2026: Das Google-Tag (AW-18431688840) steht auf Vorgabe des Betreibers direkt im Kopf jeder Seite von smart-einzug.de, mit Consent-Voreinstellung auf `denied` (keine Cookies ohne Einwilligung) und Freigabe in der CSP über den SHA-256-Hash des Inline-Skripts. `tools/site-tag-check.py` sichert Hash, Einmaligkeit und Voreinstellung ab und läuft im Workflow mit. Seit 4.70 meldet smart-einzug.de die Conversion „Kauf (1)“ (`AW-18431688840/3yI5CMyYwfIcEIiB9dRE`) beim Klick auf Registrieren; gezählt wird damit die Absicht, nicht der Abschluss. Für den Abschluss wäre eine zweite Conversion-Aktion nötig, die die Anwendung auf `subscription.php?bestellt=1` melden kann; bis dahin bleibt `analytics.ads_conversion_label` leer, um Doppelzählung zu vermeiden.
 
 Auftrag: Masterprompt „SEO-, Content- und Landingpage-Ausbau für SmartEinzug“ vom 07.09.2026 (Bestandsaufnahme, Faktenregister, Bereinigung, Keyword-Map, Maßnahmenplan). Arbeitsordner `docs/seo/`, Einstieg `docs/seo/README.md`.
 

@@ -15,8 +15,8 @@
     "summary": "Abschnitt 8.4: Inhalt der Vorabankündigung, Hinweis zu Stripe-Benachrichtigungen (4.44)."
   },
   "marketing": {
-    "revision": "r4",
-    "date": "10.09.2026",
-    "summary": "Datenschutzerklärung um die Anwendung erweitert, Google-Ads-Kennung auch in app.smart-einzug.de (4.57)."
+    "revision": "r5",
+    "date": "12.09.2026",
+    "summary": "Google-Tag im Seitenkopf und Conversion bei Klick auf Registrieren (4.70)."
   }
 }
