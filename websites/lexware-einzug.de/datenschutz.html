@@ -1,6 +1,32 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18431688840"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', wait_for_update: 500});
+  gtag('js', new Date());
+
+  gtag('config', 'AW-18431688840');
+</script>
+<!-- Event snippet for Kauf (1) conversion page -->
+<script>
+function gtag_report_conversion(url) {
+  var callback = function () {
+    if (typeof(url) != 'undefined') {
+      window.location = url;
+    }
+  };
+  gtag('event', 'conversion', {
+      'send_to': 'AW-18431688840/3yI5CMyYwfIcEIiB9dRE',
+      'transaction_id': '',
+      'event_callback': callback
+  });
+  return false;
+}
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Datenschutzerklärung | lexware-einzug.de</title>
@@ -120,7 +146,7 @@
 
       <section>
         <h2 id="cookies">8a. Cookies und Einwilligung</h2>
-        <p>Beim ersten Aufruf dieser Webseite fragen wir Sie über ein Einwilligungsbanner, ob Sie der Nutzung von Google Analytics zustimmen. Ohne Ihre Zustimmung werden keine Google-Skripte geladen und keine Analyse-Cookies gesetzt. Ihre Entscheidung speichern wir ausschließlich in Ihrem Browser (localStorage, Schlüssel "le_consent_v1") für zwölf Monate, damit das Banner nicht bei jedem Aufruf erscheint. Diese Speicherung ist technisch notwendig für die Umsetzung Ihrer Entscheidung. Sie können Ihre Auswahl jederzeit über den Link "Cookie-Einstellungen" im Fußbereich jeder Seite ändern oder widerrufen. Der Widerruf gilt für die Zukunft; bereits erfasste Daten sind davon nicht betroffen.</p>
+        <p>Beim ersten Aufruf dieser Webseite fragen wir Sie über ein Einwilligungsbanner, ob Sie der Nutzung von Google Analytics und der Conversion-Messung mit Google Ads zustimmen. Ohne Ihre Zustimmung wird Google Analytics nicht geladen und es werden keine Analyse-Cookies gesetzt. Das in Abschnitt 8c beschriebene Google-Ads-Tag lädt beim Seitenaufruf, ist dabei aber auf den Einwilligungsmodus „abgelehnt“ voreingestellt und setzt ohne Ihre Zustimmung keine Cookies. Ihre Entscheidung speichern wir ausschließlich in Ihrem Browser (localStorage, Schlüssel "le_consent_v1") für zwölf Monate, damit das Banner nicht bei jedem Aufruf erscheint. Diese Speicherung ist technisch notwendig für die Umsetzung Ihrer Entscheidung. Sie können Ihre Auswahl jederzeit über den Link "Cookie-Einstellungen" im Fußbereich jeder Seite ändern oder widerrufen. Der Widerruf gilt für die Zukunft; bereits erfasste Daten sind davon nicht betroffen.</p>
       </section>
 
       <section>
@@ -132,7 +158,7 @@
 
       <section>
         <h2>8c. Google Ads Conversion-Messung</h2>
-        <p>Wir bewerben diese Webseite über Google Ads (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland). Um zu erkennen, ob ein Besuch über eine Anzeige zu einer Registrierung führt, ist das Google-Ads-Tag eingebunden. Es wird ausschließlich geladen, wenn Sie im Einwilligungsbanner "Alle akzeptieren" gewählt haben. Google setzt dann ein Cookie, das den Anzeigenklick mit dem späteren Besuch verbindet, und verarbeitet Angaben zu aufgerufenen Seiten, Gerät, Browser und Herkunft des Besuchs. Personalisierte Werbung und Remarketing sind deaktiviert (Consent Mode: ad_personalization auf "denied").</p>
+        <p>Wir bewerben diese Webseite über Google Ads (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland). Um zu erkennen, ob ein Besuch über eine Anzeige zu einer Registrierung führt, ist das Google-Tag seit dem 12.09.2026 im Kopf jeder Seite eingebunden. Es lädt beim Seitenaufruf, ist dabei aber auf den Einwilligungsmodus „abgelehnt“ voreingestellt (Google Consent Mode): Ohne Ihre Einwilligung setzt Google keine Cookies, liest keine vorhandenen Cookies aus und verwendet keine Werbekennungen. Übertragen werden in diesem Zustand nur technisch notwendige Angaben des Seitenaufrufs, darunter die IP-Adresse, ohne dass daraus ein wiedererkennbares Profil entsteht. Erst wenn Sie im Einwilligungsbanner "Alle akzeptieren" wählen, setzt Google ein Cookie, das den Anzeigenklick mit dem späteren Besuch verbindet, und verarbeitet Angaben zu aufgerufenen Seiten, Gerät, Browser und Herkunft des Besuchs. Gemeldet wird dabei der Klick auf eine Schaltfläche zur Registrierung, nicht der Abschluss eines Vertrags. Personalisierte Werbung und Remarketing sind deaktiviert (Consent Mode: ad_personalization auf "denied").</p>
         <p>Rechtsgrundlage ist Ihre Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO und § 25 Abs. 1 TDDDG. Eine Übermittlung an Google LLC in den USA stützt sich auf das EU-US Data Privacy Framework sowie Standardvertragsklauseln. Die Einwilligung können Sie jederzeit über "Cookie-Einstellungen" im Fußbereich widerrufen. Weitere Informationen: https://policies.google.com/technologies/ads.</p>
       </section>
 

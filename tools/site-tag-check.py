@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prueft das Google-Tag im Seitenkopf der Marketingseiten.
 
-Seit dem 12.09.2026 traegt smart-einzug.de das Google-Tag auf Vorgabe des Betreibers
+Seit dem 12.09.2026 tragen smart-einzug.de und lexware-einzug.de das Google-Tag auf Vorgabe des Betreibers
 direkt im <head> jeder Seite, damit Googles eigene Tag-Pruefung es findet. Das ist nur
 tragfaehig, wenn drei Bedingungen dauerhaft gelten; genau die prueft dieses Werkzeug:
 
@@ -31,10 +31,11 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Domains, die das Tag im Kopf tragen sollen, mit der erwarteten Kennung.
-SEITEN_TAG = {'smart-einzug.de': 'AW-18431688840'}
+SEITEN_TAG = {'smart-einzug.de': 'AW-18431688840', 'lexware-einzug.de': 'AW-18431688840'}
 # Conversion-Aktion "Kauf (1)" aus Google Ads. Wird beim Klick auf Registrieren gemeldet
 # (Vorgabe des Betreibers 12.09.2026). Das Label wird nie erfunden, es kommt aus Google Ads.
-CONVERSION_SEND_TO = {'smart-einzug.de': 'AW-18431688840/3yI5CMyYwfIcEIiB9dRE'}
+CONVERSION_SEND_TO = {'smart-einzug.de': 'AW-18431688840/3yI5CMyYwfIcEIiB9dRE',
+                      'lexware-einzug.de': 'AW-18431688840/3yI5CMyYwfIcEIiB9dRE'}
 ALLE_DOMAINS = ['smart-einzug.de', 'lexware-einzug.de', 'lexoffice-einzug.de',
                 'sevdesk-einzug.de', 'sevdesk-sepa.de']
 

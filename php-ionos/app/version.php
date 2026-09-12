@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.71';
+const APP_VERSION = '4.72';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.72', 'date' => '12.09.2026', 'title' => 'Google-Tag und Conversion „Kauf (1)“ auch auf lexware-einzug.de',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Auf Vorgabe des Betreibers steht das Google-Tag (AW-18431688840) jetzt auch im Kopf aller 14 Seiten von lexware-einzug.de, in derselben Fassung wie auf smart-einzug.de: Voreinstellung nach Google Consent Mode mit allen vier Speicherarten auf „denied“, danach der Ereignis-Schnipsel der Conversion „Kauf (1)“. Die Content-Security-Policy der Domain erlaubt beide Inline-Skripte über ihren SHA-256-Hash, nicht über unsafe-inline.'],
+            ['type' => 'Neu', 'text' => 'Die 52 Verweise auf die Registrierung melden die Conversion beim Klick. Ein Eingriff in assets/js/site.js war nicht nötig: Die Bindung prüft nur, ob die Seite den Ereignis-Schnipsel trägt, und gilt damit für jede Domain. Notbremse nach 800 Millisekunden und Navigation bei jedem Fehler gelten unverändert; die Messung kann eine Registrierung nicht verhindern.'],
+            ['type' => 'Geändert', 'text' => 'Die Datenschutzerklärung von lexware-einzug.de beschreibt den neuen Zustand. Die bisherige Aussage, ohne Einwilligung werde kein Google-Skript geladen, trifft für das Ads-Tag nicht mehr zu: Es lädt beim Seitenaufruf, setzt aber ohne Zustimmung keine Cookies, liest keine aus und verwendet keine Werbekennungen. Ergänzt ist der Hinweis, dass der Klick auf eine Schaltfläche zur Registrierung gemeldet wird, nicht der Abschluss eines Vertrags. Google Analytics bleibt unverändert einwilligungspflichtig.'],
+            ['type' => 'Geändert', 'text' => 'tools/site-tag-check.py führt lexware-einzug.de jetzt als zweite Domain mit Kopf-Tag und prüft dort dieselben Bedingungen: Tag genau einmal je Seite, Hash beider Skripte in der Richtlinie, Voreinstellung vor dem config-Aufruf, Conversion-Label und Rückkanal. Gegenproben ausgeführt (fehlender Hash und fehlendes Tag auf einer Seite werden erkannt).'],
+         ]],
         ['version' => '4.71', 'date' => '12.09.2026', 'title' => 'Google Ads fand das Tag nicht: Rückkanal war von der Sicherheitsrichtlinie blockiert',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Google Ads meldete trotz sichtbarem Tag im Quelltext, es finde kein Tag. Ursache: Die Content-Security-Policy der Marketingdomains erlaubte www.googleadservices.com nur zum Laden des Skripts (script-src), nicht als Ziel der Meldung (img-src, connect-src). Das Skript lief, der Conversion-Ping wurde vom Browser blockiert. Der Fehler ist an der Seite nicht zu erkennen: Sie funktioniert vollständig, nur die Messung kommt nie an. Ergänzt sind jetzt www.googleadservices.com, stats.g.doubleclick.net und td.doubleclick.net in img-src und connect-src aller fünf Marketingdomains.'],
