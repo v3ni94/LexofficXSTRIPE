@@ -83,6 +83,7 @@ Geldfluss-Jobtypen) und wird bei jeder neuen Aktion dort ergänzt.
 | Geldfluss | `process_due_now` (`collections.php`), `apply` (`stripe-import.php`), Jobaktionen `job_retry_now`/`job_cancel`/`job_close`/`job_release` für `collections_due` und `unclear_attempts` (`QUEUE_MONEY_TYPES`, `queue_type_is_money()`) | ja; dieselben Jobaktionen für `sync_run`, `mail`, `alerts`, `mandate_reminders`, `monitor_collect`, `maintenance` nein |
 | Kontosicherheit | `change_password` (`security.php`), `transfer_ownership` (`team.php`, zusätzlich Passwort), `switch_invoice_source` (`settings.php`, Projektregel) | ja |
 | Rechtsdokumente | `publish`/`retire` (`admin-legal.php`, Außenwirkung für alle Firmen) | ja; `import_draft`, `create`, `delete` (nur unveröffentlichte Fassungen) nein |
+| Werbeversand freigeben (seit 4.63) | `campaign_start` (`admin-marketing.php`): Massenversand einer Kampagne an alle aktiven Empfänger der gewählten Listen, außenwirksam und nicht rückholbar; zusätzlich nur nach Testversand | ja; Entwurf, Vorschau, Testversand, Anhalten, Fortsetzen, Abbrechen, Listen, Sperrliste, Ratenbegrenzung nein (CSRF und Audit) |
 | Support-Modus, zentral gesperrt (seit 4.55) | Der Plattformbetreiber arbeitet im Namen der Firma. Gesperrt sind: Einzüge, IBAN setzen und deaktivieren, SEPA-Freigabe je Kunde, Mandate erzeugen und widerrufen, Aufheben des Not-Stopps (Aktivieren bleibt möglich), Firmendaten mit Geldbezug (Gläubiger-Identifikationsnummer, Pflicht zum unterschriebenen Mandat, Vorabankündigung und Frist), Wechsel des Buchhaltungssystems, Zustimmung zu AVV und Verschwiegenheitsvereinbarung. Die Prüfung liegt in den Funktionen selbst (`app/customer_settings.php`, `app/collections.php`, `app/legal.php`), nicht nur in den Seiten | nein (Sperre, kein Code; `php tools/payment-safety-check.php` Abschnitt H) |
 | Sitzungscookie (seit 4.55) | `Secure` wird gesetzt, sobald die Anwendung unter https angesprochen wird (`app_base_url`, `admin_base_url`) oder der Proxy https meldet, nicht mehr allein anhand von `$_SERVER['HTTPS']`. Hinter dem Coolify-Proxy mit leerem `trusted_proxies` lief das Cookie sonst ohne Secure | nein |
 | Platzhalter der Beispielkonfiguration (seit 4.55) | `config_is_placeholder()` erkennt die 32 Zeichen langen Platzhalter aus `app/config.example.php`. Verschlüsselung, Cron-Endpunkt und Migrationsendpunkt weisen sie ab; die reinen Längenprüfungen ließen sie bis 4.54 durch | nein |
@@ -149,13 +150,15 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
   einer Auswahl des Katalogs; `admin.view` ist immer enthalten.
 - **Berechtigungskatalog** (`PLATFORM_PERMISSIONS`): `admin.view`, `companies.view`, `companies.plan`, `companies.manage` (Wechselsperre des Buchhaltungssystems aufheben, seit 4.38), `plans.manage`,
   `notstopp.platform`, `interest.view`, `interest.manage`, `support.view`, `support.tickets`, `support.sessions`,
-  `support.users`, `monitoring.view`, `monitoring.edit`, `legal.view`, `legal.manage`, `docs.admin`, `docs.technical`,
-  `users.manage`. Jede Adminseite verlangt ein Eintrittsrecht (`require_platform`) und prüft je POST-Aktion serverseitig
+  `support.users`, `support.customers` (Kundenprofile pflegen, seit 4.62), `monitoring.view`, `monitoring.edit`, `legal.view`, `legal.manage`, `docs.admin`, `docs.technical`,
+  `users.manage`, `marketing.view`, `marketing.manage` (Marketingmodul, seit 4.63, keine Systemrolle außer Administrator). Jede Adminseite verlangt ein Eintrittsrecht (`require_platform`) und prüft je POST-Aktion serverseitig
   das passende Recht; Menüpunkte und Formulare werden zusätzlich ausgeblendet, sind aber nie der Schutz.
 - **Zuordnung:** `admin.php` (`admin.view`; Kennzahlen/Firmen `companies.view`, Tarif je Firma `companies.plan`, Wechselsperre aufheben `companies.manage`,
   Tarife `plans.manage`, Not-Stopp `notstopp.platform`, Vormerkungen `interest.view`/`interest.manage`),
   `admin-support.php` (`support.view`; Firmenwechsel `support.sessions`, Anfragen `support.tickets`, Entsperren und
-  2FA-Reset `support.users`), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen
+  2FA-Reset `support.users`), `admin-kunde.php` (`support.view`; Firmenname, Anschrift und Kontaktdaten der Benutzer ändern
+  `support.customers`, siehe Abschnitt Kundenprofil), `admin-marketing.php` (`marketing.view`; Ändern `marketing.manage`, Massenversand
+  zusätzlich 2FA-Code, `docs/marketing.md`), `admin-system.php` und `admin-system-data.php` (`monitoring.view`; Änderungen
   `monitoring.edit`, zusätzlich `monitoring.editors`), `admin-legal.php` (`legal.view`/`legal.manage`),
   `admin-doc.php` (`admin.view`, je Datei `docs_can_access()`: `docs.admin`, `docs.technical`), `admin-users.php`
   (`users.manage`). Der Support-Modus (`support_session_redeem()`, `_current_user_support()`) verlangt `support.sessions`
@@ -181,6 +184,25 @@ Superadmin-Kennzeichen. Verwaltung in `admin-users.php` (Berechtigung `users.man
   `platform_role_changed`, `platform_role_deleted`. Prüfung: `bash tools/platform-roles-check.sh` (83 Prüfungen gegen
   eine temporäre MariaDB: Rechte je Rolle, Dokumentationsrechte, Rollenpflege, Schutzregeln, Einladung ohne Mail,
   Plattformkontext, Audit).
+
+## Kundenprofil im Adminbereich (seit 4.62)
+
+`admin-kunde.php` zeigt einer Plattformrolle mit `support.view` alle Daten einer Firma (`?org=`) oder eines Benutzers
+(`?user=`): Stammdaten, Anschrift, Tarif und Abonnement, Verbindungen, SEPA-Einstellungen (nur lesend), Mitglieder mit
+Telefonnummern und Kontostatus, Support-Anfragen, Support-Sitzungen und die letzten Protokolleinträge. Die Logik liegt in
+`app/customer_profile.php`:
+
+- **Änderbar** (Recht `support.customers`, Systemrolle Mitarbeiter Support seit Migration 033): Firma `name`, `street`, `zip`,
+  `city`, `country`; Benutzer `display_name`, `first_name`, `last_name`, `phone_private`, `phone_business`
+  (`CUSTOMER_PROFILE_EDITABLE`). Jede Änderung verlangt einen Grund (5 bis 255 Zeichen), schreibt Vorher/Nachher ins
+  Audit (`org_updated_support`, `profile_updated_support`; Telefonnummern nur als gesetzt/nicht gesetzt) und sendet dem
+  Inhaber beziehungsweise dem Benutzer eine Sicherheitsmail (`security_notify_owner()`, `security_notify_user()`).
+- **Nie änderbar** (`CUSTOMER_PROFILE_LOCKED_FIELDS`, Sperre in der Funktion, nicht in der Seite): Gläubiger-Identifikationsnummer,
+  Mandatspräfix, Vorabankündigung und Frist, Mandatspflicht, Verschwiegenheitspflicht, Tarif, Abonnement, Not-Stopp;
+  E-Mail-Adresse (Anmeldename), Passwort, 2FA, Aktivstatus, Plattformrolle. Eingaben zu diesen Feldern werden ignoriert.
+  Plattform-Benutzer ändert nur ein Administrator (`platform_actor_is_admin()`), Superadmin-Konten niemand.
+- Kein 2FA-Code (Kontaktdaten ohne Geld- oder Zugangsbezug, Beschluss 07.09.2026), immer CSRF und Audit. Prüfstand:
+  `bash tools/platform-roles-check.sh` (Abschnitt Kundenprofil), `php tools/totp-policy-check.php`.
 
 ## Support-Modus
 
@@ -402,3 +424,29 @@ Vorgabe des Betreibers vom 10.09.2026: Die Google-Ads-Kennung soll auch in der A
    Geschäftsführung, danach Prüfung, dass alle drei Hosts dauerhaft ausschließlich über gültiges
    HTTPS erreichbar sind, bevor der Header einkommentiert wird (Browser-Cache macht eine Rücknahme
    sonst langwierig).
+
+## Gesamtaudit vom 10.09.2026 (Version 4.59)
+
+Vollständige Befundliste: `docs/audit/AUDIT_REPORT.md`. Umgesetzt in der Anmelde- und Rechteverwaltung:
+
+- Plattformrollen (C-01): Die Rolle Administrator sowie jede Rolle mit `users.manage`, `*` oder `docs.*` gilt als privilegiert
+  (`platform_role_is_privileged()`). Vergabe (`platform_user_invite`, `platform_user_set_role`) und Anlegen oder Ändern solcher
+  Rollen (`platform_role_save`) nur durch Administratoren (`platform_actor_is_admin()`); die eigene Rolle ist nie bearbeitbar.
+  Nachweis: `tools/platform-roles-check.sh`, Fälle C-01.
+- Gegenprüfung F-03: Nicht-Administratoren vergeben und definieren nur Rechte, die Teilmenge ihrer eigenen sind
+  (`platform_actor_may_grant()`); Konten mit Rolle admin oder `is_superadmin` sind für sie unantastbar (Rolle, Deaktivierung).
+- Gerätecookie (C-03): `device_cookie_secure()` nutzt `request_is_https()` aus `app/bootstrap.php`, dieselbe Ableitung wie das
+  Sitzungscookie (HTTPS, X-Forwarded-Proto, https-Basisadresse).
+- Gerätefreigabe (C-05): `current_user()` prüft `device_session_valid()` vor dem Plattformkontext; widerrufene Freigaben wirken
+  auch für Plattform-Benutzer ohne Firma.
+- TOTP-Wiederholungsschutz (C-06): `twofa_verify_user()` schreibt den Zeitschritt mit Bedingung (`totp_last_step < ?`) und
+  akzeptiert nur bei genau einer geänderten Zeile. Nachweis: `tools/auth-check.sh` (sechs parallele Prozesse).
+- IP-Grenzen hinter nicht konfiguriertem Proxy (C-02, F-02): Anmeldung, Registrierung und Passwort-Reset; das Aussetzen wird
+  einmal je Prozess protokolliert und als Monitor-Ereignis `proxy_config` erfasst.
+- IP-Grenzen (Detail): `client_ip_is_unresolved_proxy()` (private oder Loopback-Adresse mit
+  X-Forwarded-For ohne `trusted_proxies`) setzt die IP-Sperre der Anmeldung aus; die Sperre je E-Mail-Adresse bleibt.
+  Betriebsauflage: `trusted_proxies` in `shared/config.php` belegen (RELEASE_CHECKLIST.md).
+- Datenminimierung (C-09): `login_attempts_cleanup()` löscht Anmeldeversuche nach 30 Tagen (Wartung und Cron).
+- Bestätigungsmail (C-10): `verify-email.php` sendet je Klick genau einmal.
+- Nicht umgesetzt, dokumentiert (P3): Support-Einlösetoken per GET (C-04), serverseitige Sitzungsablaufprüfung (C-08),
+  Abmeldung per GET (C-11), Cron-Token in der URL (C-12).

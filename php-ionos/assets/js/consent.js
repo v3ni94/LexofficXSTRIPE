@@ -20,6 +20,9 @@
     var gaId = self.getAttribute('data-ga') || '';
     var adsId = self.getAttribute('data-ads') || '';
     var privacyUrl = self.getAttribute('data-privacy') || '';
+    /* Nur auf der Bestaetigungsseite einer abgeschlossenen Bestellung gesetzt (app/tracking.php).
+       Ohne Label meldet die Anwendung keine Conversion; das Label wird nie erfunden. */
+    var conversionLabel = self.getAttribute('data-conversion-label') || '';
     if (!gaId && !adsId) { return; }
 
     var KEY = 'se_consent_v1';
@@ -60,6 +63,26 @@
         document.head.appendChild(s);
     }
 
+    /*
+     * Abgeschlossene Bestellung an Google Ads melden. Voraussetzungen, alle drei muessen erfuellt sein:
+     * Einwilligung liegt vor, die Seite weist eine Bestellung aus (Element mit data-conversion) und ein
+     * Conversion-Label ist konfiguriert. Uebertragen werden Nettobetrag, Waehrung und eine gehashte
+     * Vorgangskennung, keine personenbezogenen Daten.
+     */
+    var conversionSent = false;
+    function reportConversion() {
+        if (conversionSent || !adsId || !conversionLabel || !window.gtag) { return; }
+        var el = document.querySelector('[data-conversion]');
+        if (!el) { return; }
+        conversionSent = true;
+        window.gtag('event', 'conversion', {
+            send_to: adsId + '/' + conversionLabel,
+            value: parseFloat(el.getAttribute('data-conversion-value') || '0') || 0,
+            currency: el.getAttribute('data-conversion-currency') || 'EUR',
+            transaction_id: el.getAttribute('data-conversion-id') || ''
+        });
+    }
+
     function buildBanner() {
         var wrap = document.createElement('div');
         wrap.className = 'consent';
@@ -78,7 +101,11 @@
         text.className = 'consent-text';
         var dienste = [];
         if (gaId) { dienste.push('Google Analytics'); }
-        if (adsId) { dienste.push('Google Ads (Messung, ob ein Besuch über eine Anzeige zu einer Registrierung führt)'); }
+        if (adsId) {
+            dienste.push(conversionLabel
+                ? 'Google Ads (Messung, ob ein Besuch über eine Anzeige zu dieser Bestellung geführt hat)'
+                : 'Google Ads (Messung, ob ein Besuch über eine Anzeige zu einer Registrierung führt)');
+        }
         text.appendChild(document.createTextNode(
             'Auf dieser Seite nutzen wir ' + dienste.join(' und ') + '. Dabei werden Cookies gesetzt und Daten an Google übertragen, auch in die USA. '
             + 'Das geschieht nur mit Ihrer Einwilligung. Innerhalb Ihres Firmenaccounts findet keine Messung statt. '
@@ -113,7 +140,7 @@
         box.appendChild(row);
         wrap.appendChild(box);
 
-        accept.addEventListener('click', function () { saveState('all'); wrap.remove(); loadTag(); });
+        accept.addEventListener('click', function () { saveState('all'); wrap.remove(); loadTag(); reportConversion(); });
         decline.addEventListener('click', function () { saveState('necessary'); wrap.remove(); });
         return wrap;
     }
@@ -125,7 +152,7 @@
 
     function init() {
         var state = readState();
-        if (state === 'all') { loadTag(); }
+        if (state === 'all') { loadTag(); reportConversion(); }
         else if (state === null) { showBanner(); }
 
         document.addEventListener('click', function (event) {

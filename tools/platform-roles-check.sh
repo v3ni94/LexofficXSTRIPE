@@ -10,11 +10,11 @@ feld() { printf '%s' "$1" | sed -n "s/^$2=//p" | tail -n1; }
 erw() { [[ "$(feld "$OUT" "$2")" == "$3" ]] && ok "$1" || bad "$1 ($2=$(feld "$OUT" "$2"), erwartet $3)"; }
 
 echo "1) Statische Pruefungen"
-for f in app/platform.php app/auth.php app/layout.php admin-users.php admin.php admin-support.php admin-system.php admin-legal.php admin-doc.php admin-system-data.php app/docs.php app/monitor.php app/support.php twofa-setup.php support-end.php verify-email.php; do
+for f in app/platform.php app/auth.php app/layout.php admin-users.php admin.php admin-support.php admin-kunde.php app/customer_profile.php admin-marketing.php app/marketing.php abmelden.php marketing-webhook.php admin-system.php admin-legal.php admin-doc.php admin-system-data.php app/docs.php app/monitor.php app/support.php twofa-setup.php support-end.php verify-email.php; do
     php -l "$ROOT/php-ionos/$f" >/dev/null 2>&1 && ok "php -l $f" || bad "php -l $f"
 done
 grep -q "CREATE TABLE IF NOT EXISTS platform_roles" "$ROOT/php-ionos/sql/migrations/027_platform_roles.sql" && grep -q "platform_role " "$ROOT/php-ionos/sql/schema.sql" && grep -q "CREATE TABLE IF NOT EXISTS platform_roles" "$ROOT/php-ionos/sql/schema.sql" && ok "Migration 027 und schema.sql" || bad "Migration 027"
-for f in admin.php admin-support.php admin-system.php admin-legal.php admin-doc.php admin-users.php; do
+for f in admin.php admin-support.php admin-kunde.php admin-marketing.php admin-system.php admin-legal.php admin-doc.php admin-users.php; do
     grep -q "require_platform(" "$ROOT/php-ionos/$f" && ok "$f nutzt require_platform" || bad "$f ohne require_platform"
 done
 ! grep -rn "require_superadmin()" "$ROOT/php-ionos" --include=*.php | grep -v "function require_superadmin" | grep -q . && ok "keine Seite ruft mehr require_superadmin() direkt" || bad "require_superadmin() noch in Verwendung"
@@ -26,7 +26,15 @@ grep -q "'users.manage'" "$ROOT/php-ionos/admin-users.php" && ok "Benutzerverwal
 grep -q "mail_enabled()" "$ROOT/php-ionos/app/platform.php" && grep -q "nie im Adminbereich angezeigt\|nie im Frontend" "$ROOT/php-ionos/app/platform.php" && ok "Einladung nur per Mail, kein Passwortlink im Frontend" || bad "Einladung ohne Mailpflicht"
 grep -q "platform_only" "$ROOT/php-ionos/app/auth.php" && grep -q "is_admin_script(\$script)" "$ROOT/php-ionos/app/auth.php" && ok "Plattformkontext: Kundenseiten leiten in den Adminbereich" || bad "Plattformkontext"
 grep -q "admin_subnav_items(\$ctx)" "$ROOT/php-ionos/admin-legal.php" && grep -q "admin_subnav_items(\$ctx)" "$ROOT/php-ionos/admin-users.php" && ok "Reiterleiste nach Rechten gefiltert" || bad "Reiterleiste"
-! grep -q "—" "$ROOT/php-ionos/app/platform.php" "$ROOT/php-ionos/admin-users.php" && ok "keine Gedankenstriche" || bad "Gedankenstrich"
+! grep -q "—" "$ROOT/php-ionos/app/platform.php" "$ROOT/php-ionos/admin-users.php" "$ROOT/php-ionos/admin-kunde.php" "$ROOT/php-ionos/app/customer_profile.php" "$ROOT/php-ionos/admin-marketing.php" "$ROOT/php-ionos/app/marketing.php" && ok "keine Gedankenstriche" || bad "Gedankenstrich"
+# Kundenprofil (4.62): Recht im Katalog, in der Systemrolle support (Konstante, schema.sql, Migration 033), dokumentiert; Seite prueft je POST
+grep -q "'support.customers'" "$ROOT/php-ionos/app/platform.php" && grep -q '"support.customers"' "$ROOT/php-ionos/sql/schema.sql" && grep -q "support.customers" "$ROOT/php-ionos/sql/migrations/033_support_customers.sql" && ok "support.customers im Katalog, Seed und Migration 033" || bad "support.customers unvollstaendig"
+grep -q "support.customers" "$ROOT/docs/entwickler/sicherheit.md" && ok "support.customers dokumentiert (sicherheit.md)" || bad "support.customers nicht dokumentiert"
+grep -q "platform_can(\$ctx, 'support.customers')" "$ROOT/php-ionos/admin-kunde.php" && grep -q "customer_profile_require(\$ctx)" "$ROOT/php-ionos/app/customer_profile.php" && ok "Kundenprofil: Recht in Seite UND Funktion geprueft" || bad "Kundenprofil ohne Rechtepruefung in der Funktion"
+for feld in creditor_identifier mandate_prefix email password_hash totp_secret_encrypted platform_role plan_code; do
+    grep -q "'$feld'" "$ROOT/php-ionos/app/customer_profile.php" && ok "Kundenprofil: Feld $feld als gesperrt gefuehrt" || bad "Kundenprofil: $feld fehlt in CUSTOMER_PROFILE_LOCKED_FIELDS"
+done
+! grep -Eq "UPDATE (organizations|users) SET [^;]*(creditor_identifier|email|password_hash|totp|plan_code|mandate_prefix)" "$ROOT/php-ionos/app/customer_profile.php" && ok "Kundenprofil: kein UPDATE auf gesperrte Felder" || bad "Kundenprofil schreibt gesperrte Felder"
 
 echo "2) Prueffaelle gegen temporaere MariaDB"
 source "$ROOT/tools/lib/mariadb-sandbox.sh"
@@ -80,6 +88,20 @@ if mariadb_sandbox_available; then
     erw "Mitarbeiter deaktiviert" staff_deaktiviert 1
     erw "eigenes Konto nicht deaktivierbar" eigenes_konto_nicht_deaktivierbar verweigert
     erw "Einladung des eigenen Kontos mit hoeherer Rolle verweigert" einladung_selbst_verweigert verweigert
+    erw "C-01: users.manage laedt kein Zweitkonto als admin ein" c01_zweitkonto_admin_verweigert verweigert
+    erw "C-01: kein Konto angelegt" c01_zweitkonto_nicht_angelegt 0
+    erw "C-01: eigene Rolle nicht bearbeitbar" c01_eigene_rolle_bearbeiten_verweigert verweigert
+    erw "C-01: eigene Rolle unveraendert" c01_eigene_rolle_unveraendert 1
+    erw "C-01: neue Rolle mit users.manage nur durch Administrator" c01_neue_rolle_mit_users_manage_verweigert verweigert
+    erw "C-01: Rolle aus eigenen Rechten weiterhin anlegbar" c01_neue_rolle_ohne_privileg_erlaubt ok
+    erw "F-03: einzelnes fremdes Recht verweigert" f03_fremdes_recht_verweigert verweigert
+    erw "C-01: unprivilegierte Rolle vergebbar" c01_verwalter_vergibt_lesen ok
+    erw "C-01: admin nur durch Administrator vergebbar" c01_verwalter_vergibt_admin_verweigert verweigert
+    erw "C-01: Administrator vergibt admin" c01_admin_vergibt_admin ok
+    erw "F-03: Rolle mit Rechten ausserhalb der eigenen verweigert" f03_rolle_mit_fremden_rechten_verweigert verweigert
+    erw "F-03: Administrator nicht durch users.manage entfernbar" f03_admin_entfernen_verweigert verweigert
+    erw "F-03: Administrator nicht durch users.manage deaktivierbar" f03_admin_deaktivieren_verweigert verweigert
+    erw "F-03: Administratorrolle unveraendert" f03_admin_rolle_unveraendert admin
     erw "eigene Rolle nach Einladungsversuch unveraendert" einladung_selbst_rolle_unveraendert technik
     erw "Einladung ohne Mailversand verweigert" einladung_ohne_mail_verweigert verweigert
     erw "Einladung mit ungueltiger Adresse verweigert" einladung_ungueltige_adresse verweigert
@@ -90,6 +112,28 @@ if mariadb_sandbox_available; then
     erw "Kunde ohne Rolle: kein Plattformkontext" kunde_ohne_rolle_kein_plattformkontext 1
     erw "Plattform-Benutzer ohne Firma erkannt" plattform_user_ohne_org 1
     erw "Audit: alle Aenderungen protokolliert" audit_aktionen "platform_role_changed,platform_role_created,platform_role_deleted,platform_user_access_removed,platform_user_deactivated,platform_user_role_changed"
+    erw "Kundenprofil: Systemrolle support hat support.customers" p_support_recht 1
+    erw "Kundenprofil: Mitarbeiter ohne support.customers" p_staff_kein_recht 1
+    erw "Kundenprofil: Mitarbeiter darf Firma nicht aendern" p_staff_org_verweigert verweigert
+    erw "Kundenprofil: Grund unter 5 Zeichen verweigert" p_grund_zu_kurz_verweigert verweigert
+    erw "Kundenprofil: ungueltiger Laendercode verweigert" p_land_ungueltig_verweigert verweigert
+    erw "Kundenprofil: Name und Anschrift geaendert" p_org_geaendert 1
+    erw "Kundenprofil: Diff nur Kontaktfelder" p_org_diff_felder "name,street,city"
+    erw "Kundenprofil: Glaeubiger-ID, Praefix, Frist, Tarif unveraendert trotz Eingabe" p_org_geldfelder_unveraendert 1
+    erw "Kundenprofil: unveraenderte Eingabe liefert leeren Diff" p_org_keine_aenderung_leer 1
+    erw "Kundenprofil: Mitarbeiter darf Benutzer nicht aendern" p_staff_user_verweigert verweigert
+    erw "Kundenprofil: ungueltige Telefonnummer verweigert" p_user_telefon_ungueltig_verweigert verweigert
+    erw "Kundenprofil: Benutzerdaten geaendert" p_user_geaendert 1
+    erw "Kundenprofil: E-Mail, Aktivstatus, Rolle, 2FA unveraendert trotz Eingabe" p_user_zugang_unveraendert 1
+    erw "Kundenprofil: Telefonnummern nicht im Klartext im Diff" p_user_diff_ohne_klartext_telefon 1
+    erw "Kundenprofil: Superadmin als Ziel verweigert" p_superadmin_ziel_verweigert verweigert
+    erw "Kundenprofil: Plattform-Benutzer durch Support verweigert" p_plattformbenutzer_durch_support_verweigert verweigert
+    erw "Kundenprofil: Plattform-Benutzer durch Administrator erlaubt" p_plattformbenutzer_durch_admin ok
+    erw "Kundenprofil: Audit je Aenderung" p_audit "org_updated_support:1,profile_updated_support:2"
+    erw "Kundenprofil: Audit mit Grund und Vorher/Nachher" p_audit_grund_und_vorher 1
+    erw "Kundenprofil: unbekannte Firma liefert null" p_geloeschte_firma_null 1
+    erw "Kundenprofil: Suche Firma" p_suche_firma 1
+    erw "Kundenprofil: Suche Benutzer" p_suche_user 1
     fi
 else
     echo "  uebersprungen: mariadbd/mariadb-install-db nicht vorhanden"

@@ -31,9 +31,9 @@ function jobs_pools(): array
         'lexware'     => ['sync_run'],
         'sevdesk'     => ['sync_run_sevdesk'], // eigener Container worker-sevdesk (4.38); gleicher Handler, getrennte Drosselung
         'stripe'      => ['collections_due', 'unclear_attempts'],
-        'mail'        => ['mail', 'alerts', 'mandate_reminders'],
+        'mail'        => ['mail', 'alerts', 'mandate_reminders', 'marketing_send'],
         'maintenance' => ['monitor_collect', 'maintenance'],
-        'all'         => ['sync_run', 'sync_run_sevdesk', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'monitor_collect', 'maintenance'],
+        'all'         => ['sync_run', 'sync_run_sevdesk', 'collections_due', 'unclear_attempts', 'mail', 'alerts', 'mandate_reminders', 'marketing_send', 'monitor_collect', 'maintenance'],
     ];
 }
 
@@ -43,7 +43,9 @@ function jobs_config(): array
     return [
         'sync_attempt_seconds'    => max(30, (int)($c['sync_attempt_seconds'] ?? 600)),   // Zeitbudget je Versuch, danach Fortsetzung
         'sync_max_steps_attempt'  => max(1, (int)($c['sync_max_steps_attempt'] ?? 60)),
-        'collections_seconds'     => max(20, (int)($c['collections_seconds'] ?? 120)),
+        // Obergrenze 480 s: unter dem Heartbeat-TTL von collections_due (600 s), sonst gaebe queue_release_stale() einen
+        // noch laufenden Geldjob frei (Befund D-06).
+        'collections_seconds'     => max(20, min(480, (int)($c['collections_seconds'] ?? 120))),
         'auto_sync_hours'         => max(1, (int)($c['auto_sync_hours'] ?? 6)),
         'full_sync_hour'          => max(0, min(23, (int)($c['full_sync_hour'] ?? 3))),
         // Vollabgleich entzerren (4.39): Firmen werden ueber ein Fenster von n Stunden ab full_sync_hour verteilt
@@ -79,6 +81,7 @@ function job_handle(array $job, string $workerId): array
         case 'mail':              return job_mail($job);
         case 'alerts':            return ['status' => 'completed', 'result' => alerts_cron_notify()];
         case 'mandate_reminders': return job_mandate_reminders($job);
+        case 'marketing_send':    return job_marketing_send($job);
         case 'monitor_collect':   return ['status' => 'completed', 'result' => monitor_collect(['source' => 'worker', 'budget' => 8.0])];
         case 'maintenance':       return job_maintenance($job);
         default:
@@ -196,7 +199,9 @@ function job_sync_run(array $job, string $workerId): array
         // ANDERER Firmen warten. Der eigene Job geht ohne Fehlversuch ans Ende der Warteschlange (Cursor bleibt).
         // Nur Jobs desselben Typs zaehlen: Der Pool lexware kann keine sevdesk-Jobs uebernehmen und umgekehrt (Review 4.41).
         if ($fairSeconds > 0 && microtime(true) - $startedAt >= $fairSeconds && queue_waiting_count([(string)$job['type']], $tenantId) > 0) {
-            throw new JobRequeueException('Faire Verteilung: Synchronisationen anderer Firmen warten, Fortsetzung eingeplant');
+            $yieldEx = new JobRequeueException('Faire Verteilung: Synchronisationen anderer Firmen warten, Fortsetzung eingeplant');
+            $yieldEx->yield = true; // hinter die wartenden Jobs einreihen (Befund D-07)
+            throw $yieldEx;
         }
     }
     return ['status' => 'partially_completed', 'result' => ['steps' => $steps, 'note' => 'Lauf wurde anderweitig beendet']];
@@ -215,7 +220,13 @@ function job_collections_due(array $job): array
         $deadline = min($deadline, (float)$job['_deadline']);
     }
     $seen = array_values(array_filter((array)($job['payload_data']['_seen'] ?? []), 'is_string'));
-    $r = process_scheduled_collections($tenantId ? (string)$tenantId : null, ['user_id' => null, 'email' => 'worker'], ['deadline' => $deadline, 'skip_ids' => $seen]);
+    // Fortschritt je Einzug melden (Heartbeat des Jobs und des Workers), damit ein langer Lauf nicht als verwaist gilt (D-06)
+    $GLOBALS['lexsepa_progress_tick'] = static function () use ($job): void { queue_heartbeat($job); };
+    try {
+        $r = process_scheduled_collections($tenantId ? (string)$tenantId : null, ['user_id' => null, 'email' => 'worker'], ['deadline' => $deadline, 'skip_ids' => $seen]);
+    } finally {
+        unset($GLOBALS['lexsepa_progress_tick']);
+    }
     $handled = (array)($r['handled_ids'] ?? []);
     unset($r['handled_ids']);
     queue_heartbeat($job, 100, sprintf('%d eingereicht, %d fehlgeschlagen, %d zurückgestellt', (int)$r['submitted'], (int)$r['failed'], (int)$r['deferred']));
@@ -252,6 +263,7 @@ function job_unclear_attempts(array $job): array
             throw new JobRequeueException('Worker wird beendet, Klärung wird fortgesetzt');
         }
         $stopped = false;
+        $GLOBALS['lexsepa_progress_tick'] = static function () use ($job): void { queue_heartbeat($job); };
         try {
             $r = collection_attempts_resolve((string)$tid, ['user_id' => null, 'email' => 'worker']);
             foreach (['checked', 'recovered', 'cleared', 'pending'] as $k) {
@@ -263,6 +275,8 @@ function job_unclear_attempts(array $job): array
         } catch (Throwable $e) {
             $sum['errors']++;
             app_log('warning', 'Klärung unklarer Versuche fehlgeschlagen', ['company_id' => (string)$tid, 'job_id' => $job['id'], 'error_code' => monitor_category($e)]);
+        } finally {
+            unset($GLOBALS['lexsepa_progress_tick']);
         }
         queue_heartbeat($job);
         if ($stopped) {
@@ -288,7 +302,8 @@ function job_mail(array $job): array
         throw new JobFailedException('Leerer oder bereinigter Nachrichteninhalt, Versand verweigert.');
     }
     api_call_gate('mail', 20);
-    $ok = mail_send_direct($to, (string)($p['subject'] ?? ''), (string)($p['text'] ?? ''), isset($p['html']) ? (string)$p['html'] : null);
+    $ok = mail_send_direct($to, (string)($p['subject'] ?? ''), (string)($p['text'] ?? ''), isset($p['html']) ? (string)$p['html'] : null,
+        is_array($p['options'] ?? null) ? $p['options'] : []);
     if (!$ok) {
         $err = mail_last_error();
         if ($err && ($err['kind'] ?? '') === 'rejected') {
@@ -300,6 +315,39 @@ function job_mail(array $job): array
     }
     circuit_success('mail');
     return ['status' => 'completed', 'result' => ['accepted' => true], 'prune' => true];
+}
+
+/**
+ * Werbeversand des Marketingmoduls (app/marketing.php, 4.63): arbeitet freigegebene Kampagnen mit Ratenbegrenzung ab.
+ * Zeitbudget je Versuch, danach Fortsetzung mit Fairness (Systemmails des Pools mail gehen vor). Tagesgrenze erreicht:
+ * Job endet, der Scheduler reiht ihn alle 300 s neu ein, solange Kampagnen offen sind. Transportfehler: Fehlversuch mit
+ * Backoff (Adresse bleibt queued, kein Doppelversand: jede Adresse wird vor dem Senden einzeln beansprucht).
+ */
+function job_marketing_send(array $job): array
+{
+    require_once __DIR__ . '/marketing.php';
+    $n = 0;
+    $tick = static function (array $stats) use ($job, &$n): bool {
+        $n++;
+        if ($n % 5 === 0) {
+            queue_heartbeat($job, null, sprintf('%d gesendet, %d fehlgeschlagen', $stats['sent'], $stats['failed']));
+        }
+        return worker_stop_requested();
+    };
+    $stats = marketing_send_process(MARKETING_JOB_BUDGET_SECONDS, $tick);
+    if ($stats['stopped']) {
+        throw new JobRequeueException('Worker wird beendet, Werbeversand wird fortgesetzt');
+    }
+    if (isset($stats['transport_error'])) {
+        circuit_failure('mail_marketing', 'connection');
+        throw new JobRetryException('Versandweg des Marketingprofils hat die Nachricht nicht angenommen: ' . $stats['transport_error']);
+    }
+    if ($stats['remaining'] > 0 && !$stats['daily_limit']) {
+        $e = new JobRequeueException('Zeitbudget je Versuch erreicht, Werbeversand wird fortgesetzt');
+        $e->yield = true;
+        throw $e;
+    }
+    return ['status' => 'completed', 'result' => ['sent' => $stats['sent'], 'failed' => $stats['failed'], 'skipped' => $stats['skipped'], 'daily_limit' => $stats['daily_limit'], 'remaining' => $stats['remaining']]];
 }
 
 function job_mandate_reminders(array $job): array
@@ -321,6 +369,7 @@ function job_maintenance(array $job): array
         'registration_requests' => fn() => registration_requests_cleanup(),
         'interest_pending_deleted' => fn() => interest_cleanup(),
         'audit_pruned' => fn() => audit_cleanup(),
+        'login_attempts_pruned' => fn() => login_attempts_cleanup(),
         'interest_mails_resent' => fn() => interest_send_pending(),
         'welcome_mails_resent' => fn() => auth_send_pending_welcome_mails(),
         'devices' => fn() => devices_cleanup(),
@@ -366,6 +415,11 @@ function scheduler_tick(): array
         ['maintenance', 3600, 'low', 'maintenance:hourly'],
         ['mandate_reminders', 3600, 'low', 'mandates:remind'],
     ];
+    require_once __DIR__ . '/marketing.php';
+    if (marketing_campaigns_pending()) {
+        // Werbeversand: nur solange Kampagnen offen sind (Fortsetzung nach Tagesgrenze oder Transportfehler)
+        $tasks[] = [MARKETING_JOB_TYPE, 300, 'low', MARKETING_JOB_DEDUPE];
+    }
     foreach ($tasks as [$type, $interval, $prio, $dedupe]) {
         $last = queue_ts(monitor_mark_get('sched_' . $type));
         if ($last !== null && $now - $last < $interval) {
@@ -524,7 +578,7 @@ function job_execute(array $job, string $workerId): string
             $msg = $e instanceof JobRequeueException
                 ? $e->getMessage()
                 : 'Worker wird beendet, Job wird kontrolliert unterbrochen und fortgesetzt (Meldung unterwegs umgedeutet: ' . $e->getMessage() . ')';
-            queue_requeue($job, 0, $msg);
+            queue_requeue($job, 0, $msg, $e instanceof JobRequeueException && $e->yield);
             job_run_finish($runId, 'success', [], 'requeued');
             return 'requeued';
         }

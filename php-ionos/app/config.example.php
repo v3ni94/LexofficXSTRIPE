@@ -141,20 +141,48 @@ return [
     // dann im Portal angezeigt und die E-Mail-Verifizierung entfällt.
     // transport 'smtp' versendet über ein Postfach mit Benutzername und Passwort
     // (IONOS: smtp.ionos.de, Port 587, encryption 'tls'; Benutzer = volle E-Mail-Adresse).
+    // Zustellbarkeit: from_address, smtp.user und reply_to gehören zur selben Domain (SPF, DKIM und DMARC
+    // gelten für die Domain des sichtbaren Absenders). Eine Antwortadresse auf fremder Domain setzt die
+    // Anwendung nicht (mail_reply_to_effective); Prüfung mit php bin/mail-check.php --zustellbarkeit.
     'mail' => [
         'enabled'      => false,
         'transport'    => 'smtp',
-        'from_address' => 'noreply@lexware-einzug.de',   // muss zum SMTP-Postfach passen
+        'from_address' => 'kontakt@smart-einzug.de',     // muss zum SMTP-Postfach passen
         'from_name'    => 'SmartEinzug',
-        'reply_to'     => 'info@mueller-holding.ag',
+        'reply_to'     => 'kontakt@smart-einzug.de',     // gleiche Domain wie from_address; identisch = kein eigener Header
         'log_file'     => __DIR__ . '/../mail.log',
         'smtp' => [
             'host'       => 'smtp.ionos.de',
             'port'       => 587,
             'encryption' => 'tls',                       // 'tls' (Port 587) | 'ssl' (Port 465)
-            'user'       => 'noreply@lexware-einzug.de',
+            'user'       => 'kontakt@smart-einzug.de',
             'pass'       => 'HIER-POSTFACH-PASSWORT',
         ],
+    ],
+
+    // Versandprofil des Marketingmoduls (4.63, admin-marketing.php): Werbe- und Informationsnachrichten laufen ueber
+    // einen EIGENEN Absender auf einer eigenen Subdomain und einen eigenen SMTP-Weg (Amazon SES), damit die
+    // Reputation der Systemmails (kontakt@smart-einzug.de ueber IONOS) unberuehrt bleibt. SES-Endpunkt je Region:
+    // email-smtp.<region>.amazonaws.com (zum Beispiel eu-central-1), Port 587 STARTTLS, SMTP-Zugangsdaten aus IAM.
+    // Die Subdomain braucht bei IONOS die DKIM-CNAMEs aus der SES-Konsole, einen SPF-Eintrag mit include:amazonses.com
+    // und die MAIL-FROM-Domain von SES; Anleitung docs/marketing.md. webhook_token schuetzt marketing-webhook.php
+    // (SNS-Benachrichtigungen zu Ruecklaeufern und Beschwerden), zusaetzlich zur Signaturpruefung.
+    // Ratenbegrenzung (je Sekunde, je 24 Stunden) wird im Adminbereich gesetzt (platform_settings), nicht hier.
+    'mail_marketing' => [
+        'enabled'      => false,
+        'transport'    => 'smtp',
+        'from_address' => 'kontakt@mail.smart-einzug.de',
+        'from_name'    => 'SmartEinzug',
+        'reply_to'     => 'kontakt@smart-einzug.de',      // gleiche registrierbare Domain wie der Absender
+        'log_file'     => __DIR__ . '/../mail-marketing.log',
+        'smtp' => [
+            'host'       => 'email-smtp.HIER-REGION.amazonaws.com',
+            'port'       => 587,
+            'encryption' => 'tls',
+            'user'       => 'HIER-SES-SMTP-BENUTZERNAME',
+            'pass'       => 'HIER-SES-SMTP-PASSWORT',
+        ],
+        'webhook_token' => 'HIER-ZUFALLSWERT-MINDESTENS-32-ZEICHEN',
     ],
 
     // --- Lexware Office Public API ---
@@ -308,13 +336,18 @@ return [
     // vormerken.php und dort erst nach ausdruecklicher Einwilligung im Banner.
     // Angemeldete Seiten bleiben ohne Google-Skript, weil ihre Adressen Kunden- und
     // Rechnungskennungen tragen (Auftragsverarbeitung, siehe app/tracking.php).
-    // Der Block ist OPTIONAL: Ohne ihn gilt die eingebaute Ads-Kennung aus app/tracking.php
-    // (TRACKING_DEFAULT_ADS_ID), Analytics bleibt aus. 'enabled' => false schaltet alles ab.
-    // 'analytics' => [
-    //     'enabled' => true,     // false schaltet Tag und Banner vollstaendig ab
-    //     'ga_id' => '',         // Format G-XXXXXXXXXX; fuer app.smart-einzug.de gibt es keine Property
-    //     'ads_id' => '',        // Format AW-000000000; ueberschreibt die eingebaute Kennung
-    // ],
+    // Der Block ist OPTIONAL: Fehlt er ganz, gilt die eingebaute Ads-Kennung aus app/tracking.php
+    // (TRACKING_DEFAULT_ADS_ID) und Analytics bleibt aus. Nur 'enabled' => false schaltet alles ab.
+    // 'enabled' false schaltet alles ab, unabhaengig von den Kennungen.
+    'analytics' => [
+        'enabled' => true,     // false schaltet Tag und Banner vollstaendig ab
+        'ga_id' => '',            // Format G-XXXXXXXXXX, leer lassen wenn nicht gewuenscht
+        'ads_id' => '',           // Format AW-000000000, leer lassen wenn nicht gewuenscht
+        // Label der Conversion-Aktion aus Google Ads (Teil hinter dem Schraegstrich in send_to).
+        // Ohne Label meldet die Anwendung keine Conversion; die Bestaetigungsseite der Bestellung laedt
+        // das Tag dann zwar, zaehlt aber nichts. Nie erfinden, aus Google Ads uebernehmen.
+        'ads_conversion_label' => '',
+    ],
 
     'timezone' => 'Europe/Berlin',
 ];

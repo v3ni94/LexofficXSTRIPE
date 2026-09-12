@@ -155,7 +155,9 @@ class LexofficeClient
             }
 
             if ($status === 401) {
-                throw new LexofficeException('Lexware Office API-Key ungültig oder abgelaufen.');
+                // "HTTP 401" im Text: monitor_category() erkennt daran die Kategorie auth, und job_sync_run() beendet den Job
+                // als fachlichen Fehler statt ihn endlos zu wiederholen (Befund B-03).
+                throw new LexofficeException('Lexware Office API-Key ungültig oder abgelaufen (HTTP 401).');
             }
 
             if ($status === 429) {

@@ -50,8 +50,8 @@ $vierhundert = $abschnitt($stripe, 'if ($status >= 400) {', 'return $data;');
 preg_match('/outcomeUnknown\s*=\s*\$status\s*>=\s*500\s*\|\|\s*\$status\s*===\s*409/', $vierhundert)
     ? $ok('5xx und 409 mit lesbarer Fehlerantwort gelten als unbekannt')
     : $bad('5xx mit JSON-Fehlertext gilt als endgueltiger Fehlschlag: Wiederholung erzeugt eine zweite Lastschrift');
-str_contains($stripe, '$ex->outcomeUnknown = $status === 0 || $status >= 500;')
-    ? $ok('Antwort ohne lesbares JSON bleibt unbekannt') : $bad('Fall ohne JSON-Antwort veraendert');
+str_contains($stripe, '$ex->outcomeUnknown = $status === 0 || $status >= 500 || $status < 400;')
+    ? $ok('Antwort ohne lesbares JSON bleibt unbekannt (nur klare 4xx sind endgueltig, Audit 10.09.2026)') : $bad('Fall ohne JSON-Antwort veraendert');
 str_contains($stripe, '$ex->outcomeUnknown = true;') ? $ok('Verbindungsfehler bleibt unbekannt') : $bad('Verbindungsfehler nicht mehr unbekannt');
 // Der Einzugspfad muss ein unbekanntes Ergebnis in die Klaerung fuehren und darf es nie als 'failed' journalisieren.
 $mitAttempt = $abschnitt($coll, 'function _execute_with_attempt', 'collection_attempt_finish($attempt[\'id\'], \'succeeded\'');

@@ -29,6 +29,37 @@ function client_ip(): ?string
 }
 
 /**
+ * Ist die ermittelte Adresse in Wirklichkeit ein nicht konfigurierter Reverse Proxy? Kennzeichen: private oder
+ * Loopback-Adresse UND ein X-Forwarded-For-Header, ohne dass bootstrap.php den Hop ueber trusted_proxies aufgeloest hat.
+ * Dann teilen sich alle Benutzer dieselbe Adresse; IP-bezogene Grenzen (Anmeldung, Passwort-Reset, Registrierung)
+ * wuerden die gesamte Plattform sperren (Befund C-02) und werden ausgesetzt. Die Grenzen je E-Mail-Adresse gelten weiter.
+ */
+function client_ip_is_unresolved_proxy(): bool
+{
+    if (PHP_SAPI === 'cli' || empty($_SERVER['HTTP_X_FORWARDED_FOR']) || !empty($_SERVER['TRUSTED_PROXY_HOP'])) {
+        return false;
+    }
+    $ip = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+        return false;
+    }
+    $unresolved = filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+    static $gemeldet = false;
+    if ($unresolved && !$gemeldet) {
+        // Sichtbar machen, dass IP-Grenzen ausgesetzt sind (Gegenpruefung F-02): Betreiber muss trusted_proxies setzen.
+        $gemeldet = true;
+        error_log('trusted_proxies fehlt oder passt nicht: Anfrage von ' . $ip . ' mit X-Forwarded-For; IP-bezogene Sperren ausgesetzt.');
+        try {
+            require_once __DIR__ . '/monitor.php';
+            monitor_event('proxy_config', 'fail', null, 'unresolved_proxy', 'instrumented', 3600);
+        } catch (Throwable $e) {
+            // Diagnose darf die Anfrage nicht stoeren
+        }
+    }
+    return $unresolved;
+}
+
+/**
  * Audit-Eintrag schreiben.
  *
  * @param array $details Beliebige Zusatzangaben (werden als JSON gespeichert).

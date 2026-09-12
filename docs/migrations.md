@@ -147,3 +147,26 @@ Empfohlenes Vorgehen beim Umzug: Solange die Anwendung noch auf dem Webhosting l
 ## Tests (nur Testdatenbank)
 
 `scratchpad/test_migrate_endpoint.php` (29 Prüfungen) gegen `lexsepa_e2e` über den lokalen PHP-Server: 405 mit Allow, 401 bei fehlendem, leerem, falschem Token, URL-Parameter und cron_token; 200 ohne offene Migrationen; Einspielen, exaktes einmaliges Ausführen, Überspringen bei Wiederholung; Fehler mit Abbruch, `failed`-Zeile, keine Wiederholung, Folgemigration nicht ausgeführt; manuelle Klärung und Fortsetzung; verwaistes `running` wird `unknown` und blockiert; 409 bei fremder Sperre ohne Ausführung; Login, Cron und Setup-Check starten keine Migration; leerer Server-Token liefert 500 auch bei leerem Client-Token. Der Test bricht ab, wenn die Konfiguration nicht auf `lexsepa_e2e` zeigt oder `migration_token` fehlt bzw. dem `cron_token` gleicht. Es wurde keine produktive Migration ausgeführt.
+
+## Migration 034 (Marketingmodul, 4.63)
+
+`034_marketing.sql` legt `marketing_lists`, `marketing_recipients`, `marketing_suppressions`, `marketing_campaigns`,
+`marketing_sends` und `marketing_events` an (alle `CREATE TABLE IF NOT EXISTS`, Zeitpunkte in UTC) und setzt die
+Ratenbegrenzung `marketing_rate_per_second` = 1 und `marketing_rate_per_day` = 200 in `platform_settings` (`INSERT IGNORE`,
+im Adminbereich änderbar). Kein Eingriff in bestehende Tabellen. Details `docs/marketing.md`.
+
+## Migration 033 (Kundenprofil, 4.62)
+
+`033_support_customers.sql` trägt der Systemrolle `support` das neue Recht `support.customers` nach (Kundenprofile pflegen,
+`admin-kunde.php`). Die Rechte einer Rolle liegen als JSON-Array in `platform_roles.permissions`; die Konstante
+`PLATFORM_SYSTEM_ROLES` ist nur Rückfall. Idempotent über `JSON_CONTAINS`, ändert nur die Systemrolle, eigene Rollen
+bleiben unverändert (bewusste Vergabe im Adminbereich). Kein Strukturwechsel.
+
+## Migration 032 (Audit 10.09.2026)
+
+`032_audit_indizes_eindeutigkeit.sql` legt `ix_jobs_status_finished`, `ix_jobruns_status_finished` und, NUR wenn der Bestand
+keine Dubletten enthält, den eindeutigen Index `uq_collection_tenant_pi (tenant_id, stripe_payment_intent_id)` an (Prüfung
+über `PREPARE` wie in 031). Enthält der Bestand Dubletten, endet die Migration erfolgreich ohne den Index; die Anwendung
+schützt den Nachtrag dann nur über die Zeilensperre je Rechnung. Vorgehen: Dubletten mit der Abfrage im Kopf der Migration
+ermitteln, fachlich bereinigen, `php bin/migrate.php --retry=032`. `tools/migrations-check.sh` prüft die Migration gegen den
+Vorzustand (12/0 am 10.09.2026).

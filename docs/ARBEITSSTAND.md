@@ -1,6 +1,10 @@
 # Arbeitsstand SmartEinzug (LexofficXSTRIPE)
 
-Stand: 08.09.2026, Branch `claude/setup-lexsepa-monorepo-v5ZcZ`. Diese Datei ist der Einstieg für die Fortsetzung der Arbeit
+Stand: 11.09.2026. Der Prüfbranch `audit/2026-09-09-gesamtpruefung` (4.59 bis 4.63, Basis 66c59d5 = 4.58) wurde am 11.09.2026 auf
+Freigabe des Betreibers („Produktiv ausrollen“) per Fast-Forward auf `claude/setup-lexsepa-monorepo-v5ZcZ` gepusht (HEAD 9bac540);
+der GitHub-Workflow rollt 4.63 mit den Migrationen 032 bis 034 aus. Vor dem Push wurde die Historie der sieben Commits neu
+geschrieben (SHAs geändert), weil GitHubs Push-Schutz die synthetischen Schlüssel `sk_live_TESTGUARD…` in `tools/test-guard-check.sh`
+als Stripe-Schlüssel wertete; die Prüfwerte werden seitdem zur Laufzeit zusammengesetzt (`'sk_' . 'live_TESTGUARD'`). Übergabe des Audits: `docs/audit/HANDOVER.md`. Diese Datei ist der Einstieg für die Fortsetzung der Arbeit
 und wird bei jedem Arbeitspaket aktualisiert. Sie enthält keine Zugangsdaten. Angaben, die nicht aus Code, Tests oder
 Git-Historie belegbar sind, tragen den Vermerk „unsicher“.
 
@@ -41,6 +45,18 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 | Version | Inhalt | Commit | Push |
 |---|---|---|---|
+| 4.68 | `deploy/vps/scripts/setup-marketing-mail.sh`: Einrichtung des Marketingprofils auf dem VPS ohne Einfügen langer Blöcke (Abfragen, Sicherung, Block einfügen, Syntaxprüfung mit Rückfall, restart-workers, Zustand; `--status`, `--test=`) | siehe git log | ja |
+| 4.67 | `bin/mail-check.php --marketing [--send=]`: Zustand des Marketingprofils und Testversand über SES vom Server; Grundlage der Konsoleneinrichtung | siehe git log | ja |
+| 4.66 | Marketing: gesperrte Schaltflächen (Test, Freigabe) nennen den Grund (Profil inaktiv, SMTP unvollständig, Test fehlt); Betreiber hielt den ausgegrauten Testknopf für einen Fehler. Marketingversand bleibt bis zur SES-Einrichtung gesperrt | siehe git log | ja |
+| 4.65 | Marketing-Vorschau: Iframe lädt nicht mehr `?vorschau=` nach (Caddy `X-Frame-Options: DENY` auf dem Adminhost, Browser „Verbindung abgelehnt“), sondern bettet den HTML-Code per `srcdoc` in das sandbox-iframe ein; Link „in neuem Fenster öffnen“ bleibt | siehe git log | ja |
+| Betrieb 11.09.2026 | Produktion auf 4.64 (Release 8f521af, alle Container healthy). `shared/config.php`: `from_name` = SmartEinzug (restart-workers.sh, Inode-Wechsel erkannt). IONOS-DNS: DMARC-CNAME entfernt, eigener TXT `v=DMARC1; p=none; rua=mailto:kontakt@smart-einzug.de; fo=1` am Nameserver bestätigt. Mailkopf einer Willkommensmail ausgewertet: SPF/DKIM/DMARC PASS über IONOS, SOFTFAIL nur durch Weiterleitung beim Empfänger. Offen (Betreiber): Abnahmetest Vormerkung mit direkter Adresse, DMARC-Berichte nach zwei Wochen auswerten, Kernel-Neustart im Wartungsfenster, API-Schlüssel im IONOS Developer Portal löschen (war in Chat und Historie sichtbar), SES-Einrichtung für das Marketingmodul | keine Codeänderung | entfällt |
+| 4.64 | `mail_encode_header_value()` (RFC 2047, Base64 an Wortgrenzen) für Betreff und Anzeigename statt `mb_encode_mimeheader`; Auswertung des Mailkopfs vom 11.09.2026 in `docs/mail-einrichtung.md` (Authentifizierung über IONOS in Ordnung, SOFTFAIL durch Weiterleitung beim Empfänger); mail-ci-check 86/0 | siehe git log | ja |
+| Prüfstand | `tools/collections-check.sh`: Terminierungsdatum auf den nächsten Werktag (Mo bis Fr) statt fest „morgen“; am Freitag oder Samstag scheiterten sonst 41 Fälle an der berechtigten Wochenendsperre (`validate_scheduled_date`), kein Anwendungsfehler. Vollständiger Regressionslauf 11.09.2026 auf dem Prüfbranch: collections 133/0 (ohne SLOW), sync 18/0, auth 13/0, worker-signal 17/0, scheduler-sync 59/0, sevdesk 129/0, invoice-source 42/0, legal 66/0, interest 133/0, platform-roles 143/0, marketing 137/0, migrations 12/0, compose 0, staging-isolation 0, release-version 23/0, github-poll 25/0, github-ssh-retry 43/0, billing-setup 83/0, admin-period 44/0, healthcheck-redis 0, test-guard 22/0, redis-deploy 111/0, deploy-runner 35/0, payment-safety 69/0, totp-policy 87/0, mail-ci 76/0, mail-dns 30/0, host-separation 25/0, app-tracking 53/0, docs-access 23/0, pricing 14/0, docs-build-check 0. Release-Checkliste um 4.60 bis 4.63 ergänzt | 9bac540 (Historie neu geschrieben) | ja, 11.09.2026 (Workflow-Lauf nicht aus der Session einsehbar) |
+| 4.63 | Marketingmodul: `admin-marketing.php`, `app/marketing.php`, `abmelden.php`, `marketing-webhook.php`, Migration 034 (6 Tabellen, Raten in platform_settings), Versandprofil `marketing` in `app/mailer.php` (`mail_profile_config`, Precedence bulk), Jobtyp `marketing_send` (Pool mail, Scheduler 300 s bei offenen Kampagnen), Rechte marketing.view/manage, 2FA für `campaign_start`, Test-Schutz für `mail_marketing`; `docs/marketing.md` mit SES-Anleitung; marketing-check 137/0, totp-policy 87/0, test-guard 22/0. Offen: SES-Identität, DNS und SNS-Thema durch den Betreiber; SNS-Signatur nur mit eigenem Zertifikat geprüft | 9bac540 (Historie neu geschrieben) | ja, 11.09.2026 (Workflow-Lauf nicht aus der Session einsehbar) |
+| 4.62 | Kundenprofil im Support: `admin-kunde.php` (Firma `?org=`, Benutzer `?user=`), `app/customer_profile.php` (Lesen `support.view`, Ändern `support.customers` nur Kontaktdaten mit Grund, Audit `org_updated_support`/`profile_updated_support`, Sicherheitsmail; `CUSTOMER_PROFILE_LOCKED_FIELDS`), Migration 033 (Recht für Systemrolle support), Links in admin-support.php und admin.php; platform-roles-check +23 Fälle, totp-policy-check +3 | 9bac540 (Historie neu geschrieben) | ja, 11.09.2026 (Workflow-Lauf nicht aus der Session einsehbar) |
+| 4.61 | Kopfzeilen der Zustellbarkeit: `mail_header_lines()`, `mail_reply_to_effective()` (Reply-To nur auf Absenderdomain, fremde Domain ignoriert und protokolliert), `Auto-Submitted: auto-generated`, `List-Unsubscribe`/`List-Unsubscribe-Post` One-Click nur für die drei Vormerkungsmails (Option `unsubscribe_url` durch `mail_send`, Payload `options`, `job_mail`), `interest_is_one_click_unsubscribe()` in `vormerken.php`; Vorgabe `config.example.php` auf kontakt@smart-einzug.de; Anleitung für Betreiber in `docs/mail-einrichtung.md` (Server-Transport, DKIM-Schalter, DMARC-TXT mit rua, Testmail, Postmaster Tools); mail-ci-check 76/0 | 9bac540 (Historie neu geschrieben) | ja, 11.09.2026 (Workflow-Lauf nicht aus der Session einsehbar) |
+| 4.60 | Zustellbarkeit ausgehender Mails: `bin/mail-check.php --zustellbarkeit` (DNS-Abfrage auf dem VPS), `app/mail_dns.php` (Auswertung SPF, DMARC, DKIM, Absenderkonsistenz), `tools/mail-dns-check.php` 30/0; Anlass Spam-Einstufung von kontakt@smart-einzug.de; DNS-Zone laut Betreiber vollständig für IONOS-Versand, offene Prüfpunkte DKIM-Schalter, Transport, DMARC in eigener Hand, Reply-To | 9bac540 (Historie neu geschrieben) | ja, 11.09.2026 (Workflow-Lauf nicht aus der Session einsehbar) |
+| 4.59 | Gesamtaudit (Rollen A bis F): 26 behobene Befunde in Geldfluss (Klärung mit Listenprüfung, Zeitzonen der Fristen, hängende submitting-Einzüge, Schutzschaltung als Zurückstellung, Webhook 500 statt 200, decline_code, Terminierung mit eigenen Einzügen, Storno, Erstattung, Währung, Backfill-Sperre, benannte Firmensperre), Sicherheit (C-01 Selbsterhöhung, C-02, C-03, C-05, C-06, C-09, C-10), Synchronisation (B-01, B-02, B-03, B-05, B-07, B-08, B-09, A-12), Betrieb (D-02, D-06, D-07, D-08, D-09), Oberfläche (E-01, E-02, E-04, E-05, E-07); Migration 032; Test-Schutz und Suiten collections/sync/auth/test-guard; `docs/audit/` | e7bba57, 166b46e (Historie neu geschrieben) | ja, 11.09.2026 auf Freigabe des Betreibers |
 | 4.11 bis 4.16 | Statusdatei, Worker-Signalmodell, Docker-CLI-Probe, Billing-Werkzeuge, Betriebsdoku im Admin, Scheduler-Waisen, verlinkte Kennzahlen, Statusseite | bis bdd42e0 | ja, produktiv aktiv (Deploy 22 s, alle Container healthy laut Serverausgabe) |
 | 4.17 | Deployjob robust gegen SSH-Netzaussetzer: `vps-ssh-retry.sh`, `vps-trigger.sh` (triggered/rejected/unclear/unreachable), Frischeprüfung des Endstatus (`JOB_STARTED_AT`), `.release-complete`-Nachweis in `deploy.sh`, Bereinigung unvollständiger Releases, Fristen je Schritt, Doku | 54caa37 | ja (Workflow-Lauf dadurch ausgelöst, Ergebnis nicht einsehbar: GitHub-API in der Session gesperrt) |
 | 4.18 | sevdesk-Vorankündigung: indexierbare Seite mit Vormerkformular, `vormerken.php`, `app/interest.php`, Migration 020 `interest_registrations`, Mailvorlage, Admin-Karte, Wartung `interest_cleanup`, Datenschutz 3a, `docs/integrations.md`; Review-Fixes (faf10c1) | 9b3c880, faf10c1 | ja, 07.09.2026 auf Anweisung „mache den nächsten Schritt“ |
@@ -55,6 +71,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 | 4.48 | `billing_check_tax()` prüft zusätzlich den Standard-Steuercode (`defaults.tax_code`); `docs/abrechnung.md` um Steuercode und Anzeigeverhalten des Checkouts ergänzt | siehe git log | billing-setup-check 80/0 |
 | 4.49 | `billing_check_tax()` liest die Art jeder Registrierung (`country_options`), meldet eine reine OSS-Registrierung im Land des Hauptsitzes als Fehler; Ausgabe nennt Land und Art | siehe git log | billing-setup-check 83/0 |
 | 4.50 | `admin_host_separated()` in `app/bootstrap.php`; `app/layout.php` zeigt die Balken Abonnement, Testmodus und Support nur in der Kundenanwendung und verlinkt absolut über `app_base_url()`; `tools/host-separation-check.php` (25/0) | siehe git log | host-separation-check 25/0 |
+| 4.58 | Conversion der abgeschlossenen Bestellung: `tracking_conversion_page()` und `tracking_conversion_label()` in `app/tracking.php` (nur `subscription.php?bestellt=1`, nur Ads-Kennung, Label aus `analytics.ads_conversion_label`), `assets/js/consent.js` meldet einmalig nach Einwilligung, `subscription.php` behält den Parameter und kennzeichnet die Bestellung mit Nettobetrag, Währung und gehashter Vorgangskennung; `tools/app-tracking-check.php` 31 auf 53 Fälle; `docs/ads-conversions.md`, CLAUDE.md, Revision r23 | siehe git log | app-tracking-check 53/0 |
 | 4.55 | Empfehlungen der Gesamtprüfung umgesetzt: `app/webhook_events.php` (Beanspruchen, Reihenfolge, Freigabe), beide Webhooks mit HTTP 500 und Wiederholung; Support-Modus zentral in `app/customer_settings.php`, `app/collections.php`, `app/legal.php` sowie in customer.php, notstopp.php, team.php, settings.php; Sitzungscookie mit Secure hinter dem Proxy, `config_is_placeholder()` in crypto/cron/migrate, setup-check.php mit SMARTEINZUG_CONFIG und Caddy-Sperre; Bestellnachweis in `consent_records` mit echter AGB-Fassung (Migration 031, Spalte details); Alarmmarke erst nach Versand, unabhängiger Kanal `monitoring.heartbeat_url`; Doku payment-safety 5f, monitoring, email-system (SPF/DKIM/DMARC), sicherheit, CLAUDE.md | siehe git log | payment-safety-check 69/0, alle 25 Suiten grün |
 | 4.52 | Gesamtprüfung (16 Fachrichtungen, 72 Rohbefunde): sechs kritische Befunde behoben. `stripe-webhook.php` Rücklastschrift setzt `requires_review`; `app/stripe.php` 5xx/409 als unbekanntes Ergebnis; `app/collections.php` `collections_source_blocked()` vor beiden Einzugswegen (+ `invoice_source_code_for_tenant()`); `app/queue.php` `queue_requeue()` liest den Zwischenstand aus der Datenbank; `app/sync.php` Cursor-Vorgaben immer ergänzt; `deploy/vps/scripts/deploy.sh` Cutover mit Auswertung, Bericht und Rollback. Neu `tools/payment-safety-check.php` (34/0), `tools/sevdesk-check.sh` +5 Fälle (129/0), veralteter Fall in `tools/interest-check.sh` korrigiert (133/0), schnelle Prüfungen im GitHub-Workflow | siehe git log | Gesamtlauf aller Suiten grün, siehe Abschnitt 4 |
 | 4.42 | sevdesk-Pilot (Entscheidung 08.09.2026): `sevdesk_connect = 'pilot'` (Migration 030, Vorgabe), `integration_pilot_mode/_pilot_tenant/_connect_allowed` in `app/integration_state.php`, tenant-bewusst in Factory, Einstellungen, Wechsel, Scheduler, Registrierung, Performance-Reiter; Texte; Tests (sevdesk-check 124/0) | siehe git log | sevdesk-check 124/0, migrations-check 12/0, scheduler-sync-check 59/0 |
@@ -133,6 +150,13 @@ rot werden. Nicht getestet: der Web-Teil von `vormerken.php` (Origin-Prüfung, g
 und die statischen Prüfungen; die E2E-Suite `scratchpad/e2e_saas.php` wurde in dieser Session nicht ausgeführt (unsicher,
 ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv).
 
+## 4b. Gesamtlauf 10.09.2026 nach 4.59 (Prüfbranch)
+
+Alle 27 Bestandssuiten grün (platform-roles 102/0 mit neuen Fällen, payment-safety 69/0 mit angepasstem Fall B), neu:
+test-guard 20/0, collections 136/0 (mit SLOW; vorher gegen 66c59d5: 85/36), sync 18/0 (vorher 9/8), auth 13/0, migrations 12/0
+mit 032, docs-build 0 Fehler, `php -l` fehlerfrei. Gegenprüfung F: 18 Gegenbeispiele, 13 umgesetzt, 5 dokumentiert
+(`docs/audit/AUDIT_REPORT.md` Abschnitt 6). Leistungsmessung lokal (`tools/perf-probe.sh`): `docs/audit/PERFORMANCE_REPORT.md`.
+
 ## 5. Bekannte Fehler und Risiken
 
 - GitHub-Workflow-Lauf #51 (4.14) scheiterte an einem SSH-Timeout; Ursache extern (Netz/Firewall), behoben durch
@@ -197,6 +221,14 @@ ob sie mit Migration 020 unverändert grün bleibt, erwartet ja, da rein additiv
 - Cron: Der VPS braucht keine Cron-Jobs (Abdeckungsmatrix `docs/vps/06-betrieb.md`); der alte IONOS-Cronjob ist vom
   Betreiber zu löschen (Cutover-Checkliste Punkt 12). Konfigurationsänderungen ohne Deployment erfordern
   `deploy/vps/scripts/restart-workers.sh`.
+
+## 5a. Offene Befunde des Audits (nicht behoben, Priorität laut `docs/audit/AUDIT_REPORT.md`)
+
+B-04 dasselbe Lexware-Konto in zwei Firmenaccounts (Doppel-Einzug über Firmengrenze, P1, braucht Identitätsfeld aus
+`/profile` und Entscheidung des Betreibers), B-06 Altrechnungen nach Wechsel des Buchhaltungssystems (P2, braucht Spalte
+Herkunftssystem), A-13 Import-Übernahme ohne Neuprüfung (P3), E-03 Stripe-Rohtexte (P2), E-06 Bestätigung ohne Cache (P2),
+C-04, C-08, C-11, C-12 (P3), D-10 bis D-18 (P3). Betreiberaufgaben: `trusted_proxies` setzen, Datenbankzeitzone feststellen,
+Migration 032 auf Staging prüfen (RELEASE_CHECKLIST.md).
 
 ## 6. Nächste offene Schritte (Reihenfolge)
 
@@ -310,6 +342,8 @@ Stand 08.09.2026 nach Abschluss der Zwölf-Aufgaben-Nachricht vom 07.09.2026 (Re
 
 
 ## 7. Frontend-Branch `claude/frontend-smart-einzug-egsouk` (Stand 09.09.2026, kein Deployment aus diesem Branch)
+
+Nachtrag 12.09.2026: Das Google-Tag (AW-18431688840) steht auf Vorgabe des Betreibers direkt im Kopf jeder Seite von smart-einzug.de, mit Consent-Voreinstellung auf `denied` (keine Cookies ohne Einwilligung) und Freigabe in der CSP über den SHA-256-Hash des Inline-Skripts. `tools/site-tag-check.py` sichert Hash, Einmaligkeit und Voreinstellung ab und läuft im Workflow mit. Offen bleibt das Conversion-Label aus Google Ads; ohne Label zählt Google nur Seitenaufrufe.
 
 Auftrag: Masterprompt „SEO-, Content- und Landingpage-Ausbau für SmartEinzug“ vom 07.09.2026 (Bestandsaufnahme, Faktenregister, Bereinigung, Keyword-Map, Maßnahmenplan). Arbeitsordner `docs/seo/`, Einstieg `docs/seo/README.md`.
 

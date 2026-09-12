@@ -34,7 +34,9 @@ if (($_GET['checkout'] ?? '') === 'success') {
         error_log('Abo-Abgleich nach Checkout: ' . $e->getMessage());
     }
     flash_set('success', 'Vielen Dank. Ihr Abonnement wird eingerichtet; der Status aktualisiert sich in Kürze.');
-    redirect('subscription.php');
+    // Der Parameter bleibt erhalten: Nur mit ihm gilt die Seite als Bestaetigung einer abgeschlossenen
+    // Bestellung (tracking_conversion_page() in app/tracking.php) und darf die Conversion melden.
+    redirect('subscription.php?bestellt=1');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -100,10 +102,22 @@ if (billing_enabled() && !empty($org['platform_stripe_customer_id'])) {
     }
 }
 
-layout_header('Abonnement', $ctx);
+// Auf der Bestaetigungsseite einer abgeschlossenen Bestellung darf das Google-Tag laden (nur nach
+// Einwilligung, nur mit Ads-Kennung, siehe app/tracking.php). Auf jeder anderen Ansicht dieser Seite nicht.
+layout_header('Abonnement', $ctx, tracking_conversion_page() ? ['tracking' => true] : []);
 ?>
 <h1>Abonnement</h1>
 <p class="page-sub"><?= e($org['name']) ?> · registriert am <?= format_datetime($org['created_at'] ?? null) ?></p>
+
+<?php if (tracking_conversion_page()): ?>
+<?php /* Kennzeichnung der abgeschlossenen Bestellung fuer die Messung des Werbeerfolgs. Gemeldet wird sie nur
+         nach Einwilligung und nur mit konfiguriertem Conversion-Label (assets/js/consent.js). Uebertragen
+         werden Nettobetrag, Waehrung und eine gehashte Vorgangskennung, keine personenbezogenen Daten. */ ?>
+<span data-conversion hidden
+      data-conversion-value="<?= e(number_format((int)$plan['price_cents'] / 100, 2, '.', '')) ?>"
+      data-conversion-currency="EUR"
+      data-conversion-id="<?= e(substr(hash('sha256', 'conv|' . (string)$org['id'] . '|' . (string)($org['platform_stripe_subscription_id'] ?? '')), 0, 24)) ?>"></span>
+<?php endif; ?>
 
 <?php if ($ordering): ?>
 <div class="card" id="bestellen">

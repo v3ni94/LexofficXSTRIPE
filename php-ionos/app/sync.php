@@ -218,9 +218,24 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
         while ($processed < $limit && $cursor['proc_index'] < count($list) && $mayContinue($iterations)) {
             $voucher = $list[$cursor['proc_index']];
             $skippedBefore = $cursor['metrics']['skipped_unchanged'];
-            $isNew = _sync_process_voucher($tenantId, $voucher, $lex, $cursor['contact_cache'], $rules, $cursor['metrics']);
-            $cursor['result']['synced']++;
-            $cursor['result'][$isNew ? 'new' : 'updated']++;
+            try {
+                $isNew = _sync_process_voucher($tenantId, $voucher, $lex, $cursor['contact_cache'], $rules, $cursor['metrics']);
+                $cursor['result']['synced']++;
+                $cursor['result'][$isNew ? 'new' : 'updated']++;
+            } catch (JobRequeueException | CircuitOpenException $e) {
+                throw $e; // Notbremse des Workers und Schutzschaltung nie verschlucken
+            } catch (Throwable $e) {
+                // Befund B-02: Ein dauerhaft fehlerhafter Beleg (z. B. 404 im Detailabruf) blockierte den gesamten Lauf an
+                // derselben Position endlos (sechs Wiederholungen, dann alle auto_sync_hours erneut am selben Cursor).
+                // Technische Fehler (Stoerung, Drosselung, Zeitueberschreitung, Zugang) werden weitergereicht und wiederholt;
+                // ein fachlicher Fehler dieses einen Belegs wird gezaehlt, protokolliert und uebersprungen.
+                if (_sync_error_is_technical($e)) {
+                    throw $e;
+                }
+                $cursor['result']['errors'] = (int)($cursor['result']['errors'] ?? 0) + 1;
+                $cursor['result']['error_ids'] = array_slice(array_merge((array)($cursor['result']['error_ids'] ?? []), [(string)($voucher['id'] ?? '?')]), -20);
+                error_log('Beleg ' . (string)($voucher['id'] ?? '?') . ' uebersprungen: ' . $e->getMessage());
+            }
             $cursor['proc_index']++;
             $iterations++;
             if ($cursor['metrics']['skipped_unchanged'] === $skippedBefore) {
@@ -242,16 +257,18 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
                 $placeholders = implode(',', array_fill(0, count($seenLexIds), '?'));
                 $stmt = $pdo->prepare(
                     "SELECT id FROM invoices
-                     WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')
+                     WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue', 'not_open')
                        AND lexoffice_invoice_id NOT IN ($placeholders)"
                 );
                 $stmt->execute(array_merge([$tenantId], $seenLexIds));
             } else {
                 $stmt = $pdo->prepare(
-                    "SELECT id FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue')"
+                    "SELECT id FROM invoices WHERE tenant_id = ? AND lexoffice_status IN ('open', 'overdue', 'not_open')"
                 );
                 $stmt->execute([$tenantId]);
             }
+            // not_open ("wird noch geprueft") gehoert zu den Kandidaten: Scheiterte die Einzelpruefung, blieb die Rechnung
+            // sonst dauerhaft in diesem Zwischenzustand (Befund B-07).
             $cursor['recheck_ids'] = array_column($stmt->fetchAll(), 'id');
 
             // Sofortkorrektur, BEVOR die langsame Einzelprüfung (unten,
@@ -305,11 +322,16 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
                 $newStatus = $detail['voucherStatus'] ?? 'unknown';
                 $collectionStatus = $inv['collection_status'];
 
-                if ($newStatus === 'paid') {
-                    $collectionStatus = 'collected';
-                    $cursor['result']['removed']++;
-                } elseif (in_array($newStatus, ['voided', 'cancelled'], true)) {
-                    $collectionStatus = 'none';
+                if ($newStatus === 'paid' || in_array($newStatus, ['voided', 'cancelled'], true)) {
+                    // Befund B-08: Terminierte, noch nicht eingereichte Einzuege auf eine inzwischen bezahlte oder stornierte
+                    // Rechnung werden storniert; sonst endeten sie am Faelligkeitstag als "fehlgeschlagen", und die bezahlte
+                    // Rechnung stand auf "fehlgeschlagen". Laufende Einzuege (processing, submitting) bleiben sichtbar.
+                    _sync_cancel_scheduled_collections($tenantId, (string)$inv['id'], $newStatus);
+                    $stAct = $pdo->prepare("SELECT COUNT(*) FROM payment_collections WHERE tenant_id = ? AND invoice_id = ? AND stripe_status IN ('processing', 'submitting')");
+                    $stAct->execute([$tenantId, $inv['id']]);
+                    if ((int)$stAct->fetchColumn() === 0) {
+                        $collectionStatus = $newStatus === 'paid' ? 'collected' : 'none';
+                    }
                     $cursor['result']['removed']++;
                 }
 
@@ -317,7 +339,10 @@ function sync_invoices_step(string $tenantId, InvoiceSource $lex, ?array $cursor
                     'UPDATE invoices SET lexoffice_status = ?, collection_status = ?, lexoffice_updated_at = ?, last_synced_at = NOW() WHERE id = ?'
                 )->execute([$newStatus, $collectionStatus, _sync_parse_datetime($detail['updatedDate'] ?? null), $inv['id']]);
                 $cursor['result']['updated']++;
+            } catch (JobRequeueException | CircuitOpenException $e) {
+                throw $e; // Notbremse des Workers und Schutzschaltung nie verschlucken (Befund B-07)
             } catch (Throwable $e) {
+                $cursor['result']['errors'] = (int)($cursor['result']['errors'] ?? 0) + 1;
                 error_log('Konnte Rechnung ' . $inv['lexoffice_invoice_id'] . ' nicht pruefen: ' . $e->getMessage());
             }
         }
@@ -580,7 +605,19 @@ function _sync_upsert_customer(
     } else {
         try {
             $contact = $lex->getContact($contactId);
+        } catch (JobRequeueException | CircuitOpenException $e) {
+            throw $e; // Notbremse des Workers und Schutzschaltung nie verschlucken
         } catch (Throwable $e) {
+            // Befund B-01: Ein technischer Fehler beim Kontaktabruf ueberschrieb bestehende Kundendaten mit den Ersatzwerten
+            // (Sammelkunde 10001, is_walk_in, ohne E-Mail). Bestehende Kunden bleiben unveraendert; bei technischen Fehlern
+            // (Stoerung, Drosselung, Zeitueberschreitung, Zugang) scheitert der Schritt und wird wiederholt; nur ein fachlich
+            // nicht lieferbarer Kontakt fuehrt fuer einen NEUEN Kunden zum Ersatzkunden.
+            if (_sync_error_is_technical($e)) {
+                throw $e; // wird wiederholt (auch fuer bestehende Kunden, Gegenpruefung F-07)
+            }
+            if ($existing) {
+                return $existing['id']; // fachlich fehlender Kontakt: bestehende Daten unveraendert lassen
+            }
             $contact = [];
         }
         if ($metrics !== null) {
@@ -658,4 +695,45 @@ function _sync_parse_date($value): ?string
     }
     $date = substr($value, 0, 10);
     return preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? $date : null;
+}
+
+/**
+ * Terminierte, noch nicht eingereichte Einzuege einer Rechnung stornieren, die in Lexware Office bezahlt oder storniert
+ * wurde (Befund B-08). Nur Zustand scheduled; laufende oder erfolgreiche Einzuege bleiben unberuehrt. Liefert die Anzahl.
+ */
+function _sync_cancel_scheduled_collections(string $tenantId, string $invoiceId, string $newStatus): int
+{
+    require_once __DIR__ . '/audit.php';
+    $pdo = db();
+    $st = $pdo->prepare("SELECT id, amount_cents FROM payment_collections WHERE tenant_id = ? AND invoice_id = ? AND is_scheduled = 1 AND scheduled_submitted = 0 AND stripe_status = 'scheduled'");
+    $st->execute([$tenantId, $invoiceId]);
+    $n = 0;
+    $grund = 'Storniert durch Synchronisation: Rechnung in Lexware Office ' . ($newStatus === 'paid' ? 'bezahlt' : 'storniert') . ' (' . date('d.m.Y') . ')';
+    foreach ($st->fetchAll() as $c) {
+        $upd = $pdo->prepare("UPDATE payment_collections SET stripe_status = 'cancelled', note = LEFT(CONCAT_WS(' ', note, ?), 255) WHERE id = ? AND tenant_id = ? AND stripe_status = 'scheduled' AND scheduled_submitted = 0");
+        $upd->execute([mb_substr($grund, 0, 255), $c['id'], $tenantId]);
+        if ($upd->rowCount() === 1) {
+            $n++;
+            audit_log($tenantId, null, 'collection_cancelled', 'collection', (string)$c['id'], [
+                'amount_cents' => (int)$c['amount_cents'], 'source' => 'sync', 'lexoffice_status' => $newStatus,
+            ]);
+        }
+    }
+    return $n;
+}
+
+/**
+ * Technischer (wiederholbarer) Fehler gegen fachlichen Fehler eines Belegs: Stoerung, Drosselung, Zeitueberschreitung, Zugang,
+ * Datenbank und eine nicht lesbare Antwort (HTML statt JSON) werden weitergereicht und wiederholt (Gegenpruefung F-07).
+ */
+function _sync_error_is_technical(Throwable $e): bool
+{
+    if ($e instanceof PDOException) {
+        return true;
+    }
+    if ($e instanceof LexofficeException && str_contains($e->getMessage(), 'Ungültige Antwort')) {
+        return true;
+    }
+    $cat = function_exists('monitor_category') ? monitor_category($e) : 'other';
+    return in_array($cat, ['timeout', 'connection', 'connection_refused', 'dns', 'tls', 'http_5xx', 'throttled', 'auth', 'database'], true);
 }

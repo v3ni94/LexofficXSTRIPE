@@ -58,7 +58,8 @@ function device_format(?string $utc): string
 
 function device_cookie_secure(): bool
 {
-    return !empty($_SERVER['HTTPS']);
+    // Dieselbe Ableitung wie das Sitzungscookie (Befund C-03: das 90-Tage-Geraetecookie lief hinter dem Proxy ohne Secure).
+    return function_exists('request_is_https') ? request_is_https() : !empty($_SERVER['HTTPS']);
 }
 
 /** Host-only-Cookie ohne Domain-Attribut; mit __Host-Präfix, sobald es über HTTPS läuft. */
@@ -81,7 +82,9 @@ function device_cookie_options(int $expires): array
 /** Cookie lesen und formal prüfen. Liefert ['id' => ..., 'secret' => ...] oder null. */
 function device_cookie_read(): ?array
 {
-    $raw = (string)($_COOKIE[device_cookie_name()] ?? '');
+    // Uebergang (Gegenpruefung F-11): Vor 4.59 hiess das Cookie hinter dem Proxy ohne __Host-Praefix. Beide Namen lesen,
+    // damit bestehende Freigaben nicht verfallen; device_cookie_clear() entfernt beide.
+    $raw = (string)($_COOKIE[device_cookie_name()] ?? $_COOKIE[DEVICE_COOKIE_BASE] ?? '');
     if ($raw === '' || !preg_match('/^([0-9a-f-]{36})\.([0-9a-f]{64})$/', $raw, $m)) {
         return null;
     }
@@ -104,6 +107,10 @@ function device_cookie_clear(): void
     }
     setcookie(device_cookie_name(), '', device_cookie_options(time() - 86400));
     unset($_COOKIE[device_cookie_name()]);
+    if (device_cookie_name() !== DEVICE_COOKIE_BASE && isset($_COOKIE[DEVICE_COOKIE_BASE])) {
+        setcookie(DEVICE_COOKIE_BASE, '', ['expires' => time() - 86400, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
+        unset($_COOKIE[DEVICE_COOKIE_BASE]);
+    }
 }
 
 function device_token_hash(string $secret): string

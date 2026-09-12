@@ -144,13 +144,103 @@ foreach (glob($root . '/php-ionos/*.php') as $datei) {
         continue;
     }
     $src = (string)file_get_contents($datei);
-    if (strpos($src, "'tracking' => true") !== false || strpos($src, 'googletagmanager') !== false) {
+    if (strpos($src, 'googletagmanager') !== false) {
+        $verdacht[] = $name . ' (Google-Aufruf im Quelltext)';
+        continue;
+    }
+    if (strpos($src, "'tracking' => true") === false) {
+        continue;
+    }
+    // Einzige zugelassene Ausnahme (seit 4.58): die Bestaetigungsseite der abgeschlossenen Bestellung, und
+    // dort ausschliesslich an tracking_conversion_page() gebunden. Eine bedingungslose Freigabe bleibt ein Fehler.
+    $erlaubt = $name === TRACKING_CONVERSION_PAGE
+        && substr_count($src, "'tracking' => true") === 1
+        && strpos($src, "tracking_conversion_page() ? ['tracking' => true] : []") !== false;
+    if (!$erlaubt) {
         $verdacht[] = $name;
     }
 }
 $verdacht === []
     ? $ok('keine weitere Seite bindet ein Google-Skript ein')
     : $bad('unerwartete Einbindung in: ' . implode(', ', $verdacht));
+
+echo "\nF) Abgeschlossene Bestellung: die einzige Ausnahme im angemeldeten Bereich (seit 4.58)\n";
+$AK = ['enabled' => true, 'ga_id' => 'G-8C1W9817PV', 'ads_id' => 'AW-18431688840', 'ads_conversion_label' => 'AbCdEfGhIjK'];
+$mitGet = static function (array $get, callable $f) {
+    $alt = $_GET;
+    $_GET = $get;
+    try { return $f(); } finally { $_GET = $alt; }
+};
+
+$setze($AK);
+$mitGet([], static fn(): bool => tracking_allowed_for('/subscription.php'))
+    ? $bad('subscription.php ohne Parameter darf kein Tag einbinden')
+    : $ok('subscription.php ohne Parameter ohne Tag');
+$mitGet(['bestellt' => '1'], static fn(): bool => tracking_allowed_for('/subscription.php'))
+    ? $ok('abgeschlossene Bestellung darf das Tag einbinden')
+    : $bad('abgeschlossene Bestellung bindet kein Tag ein');
+$mitGet(['bestellt' => '1', 'id' => 'abc'], static fn(): bool => tracking_allowed_for('/subscription.php'))
+    ? $bad('zusaetzlicher Parameter darf die Ausnahme nicht oeffnen')
+    : $ok('zusaetzlicher Parameter in der Adresse: kein Tag');
+$mitGet(['bestellt' => '2'], static fn(): bool => tracking_allowed_for('/subscription.php'))
+    ? $bad('anderer Wert darf die Ausnahme nicht oeffnen')
+    : $ok('anderer Wert des Parameters: kein Tag');
+foreach (['dashboard.php', 'customer.php', 'invoices.php', 'settings.php', 'admin.php'] as $seite) {
+    $mitGet(['bestellt' => '1'], static fn(): bool => tracking_allowed_for('/' . $seite))
+        ? $bad("$seite darf die Ausnahme nicht nutzen")
+        : $ok("$seite auch mit bestellt=1 ohne Tag");
+}
+// Nur mit Ads-Kennung: eine reine Reichweitenmessung rechtfertigt die Ausnahme nicht.
+$setze(['enabled' => true, 'ga_id' => 'G-8C1W9817PV', 'ads_id' => '', 'ads_conversion_label' => 'AbCdEfGhIjK']);
+$mitGet(['bestellt' => '1'], static fn(): bool => tracking_allowed_for('/subscription.php'))
+    ? $bad('ohne Ads-Kennung darf die Bestellseite kein Tag laden')
+    : $ok('ohne Ads-Kennung bleibt die Bestellseite ohne Tag');
+
+$setze($AK);
+$htmlK = $mitGet(['bestellt' => '1'], static fn(): string => tracking_head_html('/subscription.php'));
+(strpos($htmlK, 'data-ga=""') !== false)
+    ? $ok('auf der Bestellseite keine Reichweitenmessung (data-ga leer)')
+    : $bad('auf der Bestellseite wird auch die Analytics-Kennung uebergeben');
+(strpos($htmlK, 'data-conversion-label="AbCdEfGhIjK"') !== false)
+    ? $ok('Conversion-Label wird uebergeben')
+    : $bad('Conversion-Label fehlt im HTML');
+(strpos($htmlK, 'googletagmanager') === false)
+    ? $ok('auch hier kein Google-Aufruf im HTML')
+    : $bad('das HTML der Bestellseite enthaelt einen Google-Aufruf');
+$setze(['enabled' => true, 'ga_id' => '', 'ads_id' => 'AW-18431688840', 'ads_conversion_label' => 'zu kurz!']);
+(tracking_conversion_label() === '')
+    ? $ok('fehlerhaftes Conversion-Label wird verworfen')
+    : $bad('fehlerhaftes Conversion-Label wird uebernommen');
+$setze(['enabled' => true, 'ga_id' => '', 'ads_id' => 'AW-18431688840']);
+$htmlOhne = $mitGet(['bestellt' => '1'], static fn(): string => tracking_head_html('/subscription.php'));
+(tracking_conversion_label() === '' && strpos($htmlOhne, 'data-conversion-label') === false)
+    ? $ok('ohne Label wird keines erfunden')
+    : $bad('ohne Label taucht trotzdem ein Attribut auf');
+
+$js2 = (string)file_get_contents($root . '/php-ionos/assets/js/consent.js');
+(strpos($js2, 'function reportConversion') !== false && strpos($js2, 'conversionSent') !== false)
+    ? $ok('consent.js meldet die Conversion genau einmal')
+    : $bad('keine Conversion-Meldung in consent.js');
+(strpos($js2, '!conversionLabel') !== false && strpos($js2, "querySelector('[data-conversion]')") !== false)
+    ? $ok('Meldung nur mit Label und gekennzeichneter Bestellung')
+    : $bad('Meldung ohne Bedingungen');
+(substr_count($js2, 'reportConversion();') >= 2 && strpos($js2, "saveState('all'); wrap.remove(); loadTag(); reportConversion();") !== false)
+    ? $ok('Meldung erst nach Zustimmung, auch bei frischer Einwilligung')
+    : $bad('Meldung nicht an die Zustimmung gebunden');
+
+$sub = (string)file_get_contents($root . '/php-ionos/subscription.php');
+(strpos($sub, "redirect('subscription.php?bestellt=1')") !== false)
+    ? $ok('Rueckkehr aus dem Checkout behaelt die Kennzeichnung')
+    : $bad('Kennzeichnung geht bei der Weiterleitung verloren');
+(strpos($sub, "tracking_conversion_page() ? ['tracking' => true] : []") !== false)
+    ? $ok('Tag nur auf der Bestaetigungsseite freigegeben')
+    : $bad('Freigabe des Tags auf subscription.php nicht begrenzt');
+(strpos($sub, 'data-conversion') !== false && preg_match('/data-conversion-id="[^"]*hash\(/', $sub) === 1)
+    ? $ok('Bestellung gekennzeichnet, Vorgangskennung gehasht')
+    : $bad('Bestellung nicht oder mit Klartextkennung gekennzeichnet');
+(strpos($sub, 'data-conversion-value=') !== false && strpos($sub, "data-conversion-currency=\"EUR\"") !== false)
+    ? $ok('Nettobetrag und Waehrung werden mitgegeben')
+    : $bad('Betrag oder Waehrung fehlen');
 
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail === 0 ? 0 : 1);

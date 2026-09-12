@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (PDOException $e) {
                 // Spalte fehlt bis Migration 018
             }
-            sync_lex_client($tenantId); // prüft Verbindung und Schlüssel
+            sync_invoice_source($tenantId); // prüft Verbindung und Schlüssel des Buchhaltungssystems der Firma (Befund B-05: sevdesk-Firmen konnten nicht manuell starten)
             if (queue_enabled($tenantId)) {
                 // Warteschlange aktiv: der Webrequest startet nur den Auftrag, Worker verarbeiten ihn (HIGH)
                 $started = sync_state_start($tenantId, $ctx + ['trigger' => 'manual']);
@@ -204,7 +204,13 @@ if ($sepaFilter === 'active') {
 
 $stmt = $pdo->prepare(
     "SELECT i.*, c.customer_number, c.sepa_debit_enabled, c.is_walk_in,
-            (SELECT COUNT(*) FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1) AS has_iban
+            (SELECT COUNT(*) FROM customer_ibans ci WHERE ci.customer_id = c.id AND ci.is_active = 1) AS has_iban,
+            (SELECT COUNT(*) FROM collection_attempts a
+              WHERE a.tenant_id = i.tenant_id AND a.invoice_id = i.id
+                AND (a.status IN ('pending', 'unknown')
+                     OR (a.status = 'succeeded' AND a.stripe_payment_intent_id IS NOT NULL
+                         AND NOT EXISTS (SELECT 1 FROM payment_collections pc
+                                         WHERE pc.tenant_id = a.tenant_id AND pc.stripe_payment_intent_id = a.stripe_payment_intent_id)))) AS open_attempts
      FROM invoices i
      LEFT JOIN customers c ON c.id = i.customer_id
      WHERE $where
@@ -298,11 +304,14 @@ layout_header('Rechnungen', $ctx);
                     $sepaDisabled = $hasCustomer && (int)($inv['sepa_debit_enabled'] ?? 1) === 0;
                     $canToggleSepa = $hasCustomer && !$isWalkIn;
                     $needsReview = (int)($inv['requires_review'] ?? 0) === 1;
+                    // Offener oder unklarer Einzugsversuch (collection_attempts): serverseitig gesperrt, hier sichtbar (Befund E-02)
+                    $openAttempt = (int)($inv['open_attempts'] ?? 0) > 0;
                     $collectable = in_array($inv['lexoffice_status'], ['open', 'overdue'], true)
                         && !in_array($inv['collection_status'], ['in_collection', 'scheduled'], true)
                         && $hasCustomer
                         && !$sepaDisabled
-                        && !$needsReview;
+                        && !$needsReview
+                        && !$openAttempt;
                 ?>
                 <tr>
                     <td><?= e($inv['voucher_number']) ?></td>
@@ -323,7 +332,7 @@ layout_header('Rechnungen', $ctx);
                     </td>
                     <td><?= format_date($inv['due_date']) ?></td>
                     <td><?= e($inv['keyword'] ?? '-') ?></td>
-                    <td><?= status_badge($inv['collection_status']) ?><?php if ($needsReview): ?> <span class="badge badge-warn">Klärung offen</span><?php endif; ?></td>
+                    <td><?= status_badge($inv['collection_status']) ?><?php if ($needsReview): ?> <span class="badge badge-warn">Klärung offen</span><?php endif; ?><?php if ($openAttempt): ?> <a class="badge badge-warn" href="collections.php" title="Ein Einzugsversuch dieser Rechnung ist offen oder unklar. Klärung unter Einzüge.">Versuch offen</a><?php endif; ?></td>
                     <td>
                         <?php if ($needsReview): ?>
                             <div class="hint"><strong>Klärungsbedarf:</strong> <?= e((string)($inv['review_reason'] ?: 'Grund nicht vermerkt')) ?> Kein Einzug bis zum Abschluss der Klärung.</div>
@@ -367,7 +376,8 @@ layout_header('Rechnungen', $ctx);
                             <button type="submit" class="btn btn-sm"<?= $pauseReason ? ' disabled title="Not-Stopp aktiv"' : '' ?>><?= $partial ? (collections_grace_active() ? 'Restbetrag vormerken' : 'Restbetrag einziehen') : (collections_grace_active() ? 'Einzug vormerken' : 'Einziehen') ?></button>
                         </form>
                         <?php endif; ?>
-                        <form method="post" class="inline-form">
+                        <form method="post" class="inline-form"
+                              onsubmit="return confirm(<?= e(json_encode('Lastschrift für Rechnung ' . $inv['voucher_number'] . ($partial ? ' über den Restbetrag ' . format_eur_cents($restCents) : '') . ' terminieren auf den ', JSON_UNESCAPED_UNICODE)) ?> + (this.scheduled_date.value ? this.scheduled_date.value.split('-').reverse().join('.') : '?') + '?')">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="schedule">
                             <input type="hidden" name="invoice_id" value="<?= e($inv['id']) ?>">

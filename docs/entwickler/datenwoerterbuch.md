@@ -1,6 +1,6 @@
 # Datenwörterbuch (alle Anwendungstabellen)
 
-Erzeugt aus `php-ionos/sql/schema.sql` durch `tools/gen-datenwoerterbuch.py`; fachliche Angaben aus `docs/entwickler/tabellen-beschreibungen.json`. 47 Tabellen. Datenbank: MariaDB (Coolify-MariaDB auf dem VPS; Zeichensatz utf8mb4, Kollation utf8mb4_unicode_ci laut Tabellendefinitionen). Zeitangaben: DATETIME ohne Zeitzone; die Anwendung schreibt teils UTC (UTC_TIMESTAMP(), Kommentar UTC) und teils Serverzeit (NOW(), CURRENT_TIMESTAMP, Zeitzone des Containers TZ=Europe/Berlin), siehe Spaltenkommentare. Geldbeträge: Cent als INT (`*_cents`) oder DECIMAL(10,2) in EUR, siehe Spaltentyp.
+Erzeugt aus `php-ionos/sql/schema.sql` durch `tools/gen-datenwoerterbuch.py`; fachliche Angaben aus `docs/entwickler/tabellen-beschreibungen.json`. 53 Tabellen. Datenbank: MariaDB (Coolify-MariaDB auf dem VPS; Zeichensatz utf8mb4, Kollation utf8mb4_unicode_ci laut Tabellendefinitionen). Zeitangaben: DATETIME ohne Zeitzone; die Anwendung schreibt teils UTC (UTC_TIMESTAMP(), Kommentar UTC) und teils Serverzeit (NOW(), CURRENT_TIMESTAMP, Zeitzone des Containers TZ=Europe/Berlin), siehe Spaltenkommentare. Geldbeträge: Cent als INT (`*_cents`) oder DECIMAL(10,2) in EUR, siehe Spaltentyp.
 
 Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen), UQ eindeutig, IX Index. Beziehungen ohne FK-Eintrag werden nur durch Anwendungscode gesichert.
 
@@ -41,7 +41,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [iban_history](#iban-history) | Aenderungshistorie zu Bankverbindungen (wer hat wann was geaendert und warum). | Fachdaten je Firma / SEPA-Mandate | tenant_id | 9 | 1 |
 | [sepa_mandates](#sepa-mandates) | SEPA-Lastschriftmandate der Kunden: Referenz, Unterschrift, Verfall (schema.sql-Kommentar Zeile 519f.), Bezug zu Stripe-Mandat/Zahlungsmethode. | Fachdaten je Firma / SEPA-Mandate | tenant_id | 23 | 3 |
 | [invoices](#invoices) | Aus Lexware Office synchronisierte Rechnungen (Belege) je Firma, mit Einzugsstatus. | Fachdaten je Firma / Rechnungen | tenant_id | 20 | 2 |
-| [payment_collections](#payment-collections) | Einzelner SEPA-Lastschrifteinzug zu einer Rechnung ueber Stripe (Kernobjekt des Geldflusses). | Fachdaten je Firma / Einzuege | tenant_id | 29 | 4 |
+| [payment_collections](#payment-collections) | Einzelner SEPA-Lastschrifteinzug zu einer Rechnung ueber Stripe (Kernobjekt des Geldflusses). | Fachdaten je Firma / Einzuege | tenant_id | 30 | 3 |
 | [support_sessions](#support-sessions) | Zeitlich begrenzter Support-Zugriff des Plattformbetreibers auf einen Firmenaccount (Migration 008, siehe app/support.php). | Support und Administration | organization_id | 13 | 0 |
 | [mandate_files](#mandate-files) | Hochgeladene Mandatsdokumente (PDF/JPG/PNG) je Kunde, Dateien liegen unter app/storage/mandates/ (schema.sql-Kommentar Zeile 627). | Fachdaten je Firma / SEPA-Mandate | tenant_id | 12 | 3 |
 | [collection_attempts](#collection-attempts) | Versuchsjournal: jeder Stripe-Aufruf zu einem Einzug wird VOR dem Aufruf mit Idempotenz-Schluessel festgehalten, damit bei Abbruch der Transaktion der Versuch nachvollziehbar bleibt (schema.sql-Kommentar Zeile 664-671, Migration 006). | Fachdaten je Firma / Einzuege / Zahlungssicherheit | tenant_id | 12 | 0 |
@@ -59,6 +59,12 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | [legal_acceptances](#legal-acceptances) | Zustimmungsnachweis je Firma und Fassung eines Rechtsdokuments (wer, wann, auf welchem Weg), Migration 023. | Recht und Vertraege | organization_id | 7 | 0 |
 | [consent_records](#consent-records) | Zustimmungsnachweis zu AGB und Datenschutzerklärung je Benutzer (Gegenstand, Fassung, Zeitpunkt UTC, Weg, Quellseite, E-Mail). Ergänzt legal_acceptances (Vertragsdokumente mit Volltext) und interest_registrations (Vorregistrierung). | Konten und Firmen / Rechtsdokumente | organization_id | 10 | 0 |
 | [platform_roles](#platform-roles) | Rollen des Adminbereichs (Plattform-Benutzer und Rechte, Version 4.37): je Rolle eine Liste von Berechtigungscodes aus dem festen Katalog PLATFORM_PERMISSIONS in app/platform.php, oder ["*"] für Vollzugriff. Systemrollen admin, support, staff werden mit Migration 027 angelegt. | Konten und Firmen / Plattform-Administration | keine (plattformweit) | 7 | 0 |
+| [marketing_lists](#marketing-lists) | Empfaengerlisten des Marketingmoduls: Importlisten (CSV) und Systemlisten aus den Firmenaccounts (docs/marketing.md). | Marketing / Werbeversand (4.63) | keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen) | 8 | 0 |
+| [marketing_recipients](#marketing-recipients) | Empfaenger je Liste mit Rechtsgrundlage und Vermerk des Imports; email_norm ist der Vergleichsschluessel gegen Sperrliste und Dubletten. | Marketing / Werbeversand (4.63) | keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen) | 11 | 1 |
+| [marketing_suppressions](#marketing-suppressions) | Dauerhafte, listenuebergreifende Sperrliste: Adressen, die nie wieder eine Werbenachricht erhalten (Abmeldung, Beschwerde, harter Ruecklaeufer, von Hand). | Marketing / Werbeversand (4.63) | keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen) | 6 | 0 |
+| [marketing_campaigns](#marketing-campaigns) | Kampagnen des Marketingmoduls: Inhalt (Betreff, Ueberschrift, Absaetze, Schaltflaeche, Fussnote), Listen, Status, Test- und Freigabenachweis, Zaehler. | Marketing / Werbeversand (4.63) | keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen) | 22 | 0 |
+| [marketing_sends](#marketing-sends) | Versandzeilen je Kampagne und Adresse: Beanspruchung, Ergebnis, Abmeldetoken (Hash). | Marketing / Werbeversand (4.63) | keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen) | 14 | 1 |
+| [marketing_events](#marketing-events) | Ereignisprotokoll des Marketingmoduls: Abmeldungen und Testversand der Anwendung, Ruecklaeufer, Beschwerden, Zustellungen und Abonnementbestaetigungen aus Amazon SES/SNS. | Marketing / Werbeversand (4.63) | keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen) | 7 | 0 |
 
 ## plans
 
@@ -444,7 +450,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | peak_memory_bytes | INT UNSIGNED | ja |  | Wartezeit in der Warteschlange bis zur Reservierung (Migration 029) |
 | error_category | VARCHAR(60) | ja |  | bereinigte Fehlerkategorie (siehe monitor_category()), keine Rohtexte |
 
-**Indizes und Eindeutigkeit:** IX ix_jobruns_type_started (job_type, started_at); IX ix_jobruns_finished (finished_at); IX ix_jobruns_status_heartbeat (status, heartbeat_at)  
+**Indizes und Eindeutigkeit:** IX ix_jobruns_type_started (job_type, started_at); IX ix_jobruns_finished (finished_at); IX ix_jobruns_status_heartbeat (status, heartbeat_at); IX ix_jobruns_status_finished (status, finished_at)  
 **Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
 **Statuswerte und Übergänge:**  
 - `status`: running | success | failed | unknown (schema.sql-Kommentar Zeile 230); unknown wird gesetzt, wenn ein Lauf ueberfaellig ist (queue_release_stale(), _mon_mark_stale_runs())
@@ -639,7 +645,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | dedupe_key | VARCHAR(120) | ja |  | [UQ uq_jobs_dedupe] |
 | eindeutig | closed | ja |  |  |
 
-**Indizes und Eindeutigkeit:** UQ uq_jobs_dedupe (dedupe_key); IX ix_jobs_pick (status, type, available_at, priority); IX ix_jobs_tenant (tenant_id, created_at); IX ix_jobs_status_created (status, created_at); IX ix_jobs_locked (locked_by, heartbeat_at); IX ix_jobs_correlation (correlation_id)  
+**Indizes und Eindeutigkeit:** UQ uq_jobs_dedupe (dedupe_key); IX ix_jobs_pick (status, type, available_at, priority); IX ix_jobs_tenant (tenant_id, created_at); IX ix_jobs_status_created (status, created_at); IX ix_jobs_locked (locked_by, heartbeat_at); IX ix_jobs_correlation (correlation_id); IX ix_jobs_status_finished (status, finished_at)  
 **Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
 **Statuswerte und Übergänge:**  
 - `status`: queued | processing | retry | completed | partially_completed | failed | cancelled (schema.sql-Kommentar Zeile 322); Uebergaenge in app/queue.php: queue_reserve() -> processing, queue_complete() -> completed/partially_completed/failed, queue_requeue()/queue_fail() -> retry oder failed, queue_cancel() -> cancelled, queue_retry_now() -> queued
@@ -1085,13 +1091,13 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | Spalte | Typ | NULL | Standard | Bedeutung |
 |---|---|---|---|---|
 | id | CHAR(36) | nein |  | [PK; PRIMARY KEY] |
-| tenant_id | CHAR(36) | nein |  | [FK → organizations.id (ON DELETE CASCADE)] |
+| tenant_id | CHAR(36) | nein |  | [UQ uq_collection_tenant_pi] |
 | invoice_id | CHAR(36) | nein |  | [FK → invoices.id (ON DELETE CASCADE)] |
 | mandate_id | CHAR(36) | ja |  | [FK → sepa_mandates.id] |
 | customer_iban_id | CHAR(36) | ja |  | NULL bei importierten Einzügen (Migration 009) [FK → customer_ibans.id] |
 | amount_cents | INT | nein |  |  |
 | currency | CHAR(3) | nein | 'EUR' |  |
-| stripe_payment_intent_id | VARCHAR(255) | ja |  |  |
+| stripe_payment_intent_id | VARCHAR(255) | ja |  | [UQ uq_collection_tenant_pi] |
 | stripe_status | VARCHAR(50) | ja |  |  |
 | submitted_at | DATETIME | ja |  | scheduled\|submitting\|processing\|succeeded\|failed\|disputed\|refunded\|cancelled |
 | completed_at | DATETIME | ja |  |  |
@@ -1106,6 +1112,7 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | prenotified_at | DATETIME | ja |  |  |
 | created_at | DATETIME | nein | CURRENT_TIMESTAMP |  |
 | updated_at | DATETIME | nein | CURRENT_TIMESTAMP | [ON UPDATE CURRENT_TIMESTAMP] |
+| ein | Einzug | ja |  |  |
 | note | VARCHAR(255) | ja |  | [per ALTER ergänzt] |
 | stripe_charge_id | VARCHAR(255) | ja |  | [per ALTER ergänzt] |
 | refunded_cents | INT | nein | 0 | [per ALTER ergänzt] |
@@ -1114,8 +1121,8 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 | source | VARCHAR(20) | nein | 'app' | app (im Portal ausgeloest) oder Herkunft aus Stripe-Import (Migration 009) [per ALTER ergänzt] |
 | imported_mandate_reference | VARCHAR(35) | ja |  | [per ALTER ergänzt] |
 
-**Indizes und Eindeutigkeit:** IX ix_collection_tenant (tenant_id); IX ix_collection_pi (stripe_payment_intent_id); IX ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date); IX ix_collection_tenant_status (tenant_id, stripe_status)  
-**Von der Datenbank erzwungene Beziehungen:** tenant_id → organizations.id (ON DELETE CASCADE); invoice_id → invoices.id (ON DELETE CASCADE); mandate_id → sepa_mandates.id; customer_iban_id → customer_ibans.id  
+**Indizes und Eindeutigkeit:** UQ uq_collection_tenant_pi (tenant_id, stripe_payment_intent_id); IX ix_collection_tenant (tenant_id); IX ix_collection_pi (stripe_payment_intent_id); IX ix_collection_scheduled (is_scheduled, scheduled_submitted, scheduled_date); IX ix_collection_tenant_status (tenant_id, stripe_status)  
+**Von der Datenbank erzwungene Beziehungen:** invoice_id → invoices.id (ON DELETE CASCADE); mandate_id → sepa_mandates.id; customer_iban_id → customer_ibans.id  
 **Statuswerte und Übergänge:**  
 - `stripe_status`: scheduled | submitting | processing | succeeded | failed | disputed | refunded | cancelled (schema.sql-Kommentar Zeile 584). Uebergaenge: scheduled -> submitting (_submit_single_scheduled()) -> processing (stripe-webhook.php) -> succeeded/failed (Stripe-Webhook, sync_collection_statuses()); scheduled -> cancelled (collections_cancel_all_pending(), cancel_scheduled_collection()).
 **Erzeugt durch:** app/collections.php (kein direkter INSERT-Treffer in Grep-Suche fuer payment_collections; INSERT vermutlich in einer Funktion wie schedule_collection()/create_collection() in app/collections.php, nicht abschliessend per Grep bestaetigt), app/stripe_import.php (Uebernahme importierter Einzuege)  
@@ -1677,6 +1684,207 @@ Legende: PK Primärschlüssel, FK Fremdschlüssel (von der Datenbank erzwungen),
 **Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: created_at, updated_at UTC (UTC_TIMESTAMP()); keine Beträge; keine externen IDs  
 **Migrationen:** 027_platform_roles.sql  
 **Besonderheiten:** users.platform_role verweist ohne Fremdschlüssel auf code (Rollen mit Benutzern sind nicht löschbar, Prüfung im Code). Fehlt die Tabelle (Migration noch nicht gelaufen), liefert platform_roles() die Systemrollen aus PLATFORM_SYSTEM_ROLES als Rückfall. Jede Änderung im audit_log (platform_role_created/changed/deleted).  
+
+## marketing_lists
+
+**Zweck:** Empfaengerlisten des Marketingmoduls: Importlisten (CSV) und Systemlisten aus den Firmenaccounts (docs/marketing.md).  
+**Modul:** Marketing / Werbeversand (4.63)  
+**Mandantenzuordnung:** keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)  
+**Primärschlüssel:** id  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| id | CHAR(36) | nein |  | [PK; PRIMARY KEY] |
+| name | VARCHAR(120) | nein |  | [UQ uq_marketing_list_name] |
+| description | VARCHAR(500) | ja |  |  |
+| source | VARCHAR(20) | nein | 'import' |  |
+| system_scope | VARCHAR(40) | ja |  | owners = nur Inhaber, owners_admins = Inhaber und Administratoren aktiver Firmen |
+| created_by | VARCHAR(255) | ja |  | system: owners \| owners_admins |
+| created_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+| updated_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+
+**Indizes und Eindeutigkeit:** UQ uq_marketing_list_name (name)  
+**Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
+**Statuswerte und Übergänge:**  
+- `source`: import | system (Systemliste aus users/organization_members, system_scope owners oder owners_admins)
+**Erzeugt durch:** app/marketing.php marketing_list_create() aus admin-marketing.php  
+**Verändert durch:** app/marketing.php marketing_list_import(), marketing_list_sync_system() (updated_at)  
+**Gelesen durch:** admin-marketing.php (Uebersicht, Empfaenger, Export), marketing_campaign_save() (Pruefung der Listen)  
+**Löschung, Archivierung, Aufbewahrung:** marketing_list_delete() nur ohne laufende Kampagne; Empfaenger folgen per ON DELETE CASCADE; die Sperrliste bleibt unberuehrt  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: created_at, updated_at UTC; keine Betraege; keine externen IDs  
+**Migrationen:** 034_marketing.sql  
+**Besonderheiten:** Name eindeutig (uq_marketing_list_name). Systemlisten werden nie importiert, sondern aus den Firmenaccounts aufgebaut (Rechtsgrundlage bestandskunde).  
+
+## marketing_recipients
+
+**Zweck:** Empfaenger je Liste mit Rechtsgrundlage und Vermerk des Imports; email_norm ist der Vergleichsschluessel gegen Sperrliste und Dubletten.  
+**Modul:** Marketing / Werbeversand (4.63)  
+**Mandantenzuordnung:** keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)  
+**Primärschlüssel:** id  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| id | CHAR(36) | nein |  | [PK; PRIMARY KEY] |
+| list_id | CHAR(36) | nein |  | [FK → marketing_lists.id (ON DELETE CASCADE); UQ uq_marketing_recipient] |
+| email | VARCHAR(255) | nein |  |  |
+| email_norm | VARCHAR(255) | nein |  | kleingeschriebene Adresse fuer Vergleiche [UQ uq_marketing_recipient] |
+| Vergleichsschluessel | name | ja |  |  |
+| company | VARCHAR(255) | ja |  |  |
+| source | VARCHAR(20) | nein | 'import' |  |
+| legal_basis | VARCHAR(30) | nein |  | import \| system |
+| legal_note | VARCHAR(255) | ja |  | Herkunft und Nachweis des Imports (frei, Pflicht bei sonstiges) |
+| status | VARCHAR(20) | nein | 'active' |  |
+| created_at | DATETIME | nein | UTC_TIMESTAMP() | active \| suppressed \| removed |
+
+**Indizes und Eindeutigkeit:** UQ uq_marketing_recipient (list_id, email_norm); IX ix_marketing_recipient_email (email_norm)  
+**Von der Datenbank erzwungene Beziehungen:** list_id → marketing_lists.id (ON DELETE CASCADE)  
+**Statuswerte und Übergänge:**  
+- `status`: active | suppressed (auf der Sperrliste, wird nie angeschrieben) | removed (Systemliste: Mitglied nicht mehr vorhanden)
+- `legal_basis`: bestandskunde | einwilligung | b2b_kontakt | sonstiges (MARKETING_LEGAL_BASES)
+- `source`: import | system
+**Erzeugt durch:** app/marketing.php marketing_list_import() (INSERT IGNORE je Liste und email_norm), app/marketing.php marketing_list_sync_system()  
+**Verändert durch:** marketing_suppress() setzt status suppressed, marketing_unsuppress() setzt status active, marketing_list_sync_system() (name, company, removed)  
+**Gelesen durch:** admin-marketing.php, marketing_campaign_start() (Versandzeilen), marketing_list_export_csv()  
+**Löschung, Archivierung, Aufbewahrung:** marketing_recipient_remove() einzeln (Audit ohne Klartextadresse); Cascade mit der Liste  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: created_at UTC; keine Betraege  
+**Migrationen:** 034_marketing.sql  
+**Besonderheiten:** Eindeutig je Liste und email_norm (uq_marketing_recipient). Der Import erzwingt eine Rechtsgrundlage, bei sonstiges einen Vermerk; die Bewertung trifft der Betreiber.  
+
+## marketing_suppressions
+
+**Zweck:** Dauerhafte, listenuebergreifende Sperrliste: Adressen, die nie wieder eine Werbenachricht erhalten (Abmeldung, Beschwerde, harter Ruecklaeufer, von Hand).  
+**Modul:** Marketing / Werbeversand (4.63)  
+**Mandantenzuordnung:** keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)  
+**Primärschlüssel:** email_norm  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| email_norm | VARCHAR(255) | nein |  | [PK; PRIMARY KEY] |
+| reason | VARCHAR(20) | nein |  |  |
+| note | VARCHAR(255) | ja |  | Herkunft der Sperre (per Link, one-click, SES-Untertyp, Vermerk des Mitarbeiters) |
+| campaign_id | CHAR(36) | ja |  |  |
+| created_by | VARCHAR(255) | ja |  |  |
+| created_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+
+**Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
+**Statuswerte und Übergänge:**  
+- `reason`: unsubscribe | complaint | bounce | manual (MARKETING_SUPPRESSION_REASONS); unsubscribe und complaint sind nicht aufhebbar (MARKETING_SUPPRESSION_PERMANENT)
+**Erzeugt durch:** app/marketing.php marketing_suppress() aus marketing_unsubscribe() (abmelden.php), marketing_ses_handle() (marketing-webhook.php), marketing_suppress_manual() (admin-marketing.php)  
+**Verändert durch:** marketing_suppress(): ein dauerhafter Grund ersetzt einen schwaecheren, nie umgekehrt  
+**Gelesen durch:** marketing_is_suppressed() bei Import, Freigabe und vor jedem Senden; admin-marketing.php Sperrliste  
+**Löschung, Archivierung, Aufbewahrung:** marketing_unsuppress() nur fuer bounce und manual mit Grund und Audit; unsubscribe und complaint nie  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: created_at UTC; keine Betraege; campaign_id verweist ohne Fremdschluessel auf die ausloesende Kampagne  
+**Migrationen:** 034_marketing.sql  
+**Besonderheiten:** Primaerschluessel email_norm. Audit marketing_suppressed/marketing_unsuppressed traegt die Adresse nur als Kennung (mail_addr_ref).  
+
+## marketing_campaigns
+
+**Zweck:** Kampagnen des Marketingmoduls: Inhalt (Betreff, Ueberschrift, Absaetze, Schaltflaeche, Fussnote), Listen, Status, Test- und Freigabenachweis, Zaehler.  
+**Modul:** Marketing / Werbeversand (4.63)  
+**Mandantenzuordnung:** keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)  
+**Primärschlüssel:** id  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| id | CHAR(36) | nein |  | [PK; PRIMARY KEY] |
+| name | VARCHAR(120) | nein |  |  |
+| subject | VARCHAR(200) | nein |  |  |
+| title | VARCHAR(200) | nein |  |  |
+| body_text | TEXT | nein |  |  |
+| Platzhalter | {{name}} und {{firma}} button_label   VARCHAR(80)  NULL | ja |  |  |
+| button_url | VARCHAR(500) | ja |  |  |
+| footer_note | VARCHAR(500) | ja |  |  |
+| list_ids | TEXT | nein |  |  |
+| status | VARCHAR(20) | nein | 'draft' | JSON-Array der Listen |
+| test_sent_at | DATETIME | ja |  | draft \| queued \| sending \| paused \| sent \| cancelled |
+| test_sent_ref | VARCHAR(80) | ja |  | Kennung der Testadresse (mail_addr_ref), kein Klartext |
+| started_by | VARCHAR(255) | ja |  |  |
+| started_at | DATETIME | ja |  |  |
+| finished_at | DATETIME | ja |  |  |
+| total_count | INT | nein | 0 | Versandzeilen bei Freigabe (eine je Adresse ueber alle Listen) |
+| sent_count | INT | nein | 0 |  |
+| failed_count | INT | nein | 0 |  |
+| skipped_count | INT | nein | 0 |  |
+| created_by | VARCHAR(255) | ja |  |  |
+| created_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+| updated_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+
+**Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
+**Statuswerte und Übergänge:**  
+- `status`: draft | queued (freigegeben) | sending | paused | sent | cancelled (MARKETING_CAMPAIGN_STATUS). Uebergaenge: marketing_campaign_start() draft -> queued; marketing_send_process() queued -> sending -> sent; marketing_campaign_set_status() queued/sending -> paused, paused -> queued, queued/sending/paused -> cancelled
+**Erzeugt durch:** app/marketing.php marketing_campaign_save() aus admin-marketing.php  
+**Verändert durch:** marketing_campaign_save() (nur draft; Inhaltsaenderung setzt test_sent_at zurueck), marketing_campaign_test_send() (test_sent_at, test_sent_ref), marketing_campaign_start() (status, started_by, total_count, skipped_count), marketing_send_process() und marketing_campaign_refresh_counts() (status, Zaehler, finished_at), marketing_campaign_set_status()  
+**Gelesen durch:** admin-marketing.php, job_marketing_send(), scheduler_tick() (marketing_campaigns_pending())  
+**Löschung, Archivierung, Aufbewahrung:** marketing_campaign_delete() nur draft und cancelled; versendete Kampagnen bleiben als Nachweis  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: created_at, updated_at, test_sent_at, started_at, finished_at UTC; keine Betraege  
+**Migrationen:** 034_marketing.sql  
+**Besonderheiten:** Freigabe nur nach Testversand und mit 2FA-Code (admin-marketing.php campaign_start). body_text ohne HTML; Platzhalter {{name}} und {{firma}}. list_ids ist ein JSON-Array.  
+
+## marketing_sends
+
+**Zweck:** Versandzeilen je Kampagne und Adresse: Beanspruchung, Ergebnis, Abmeldetoken (Hash).  
+**Modul:** Marketing / Werbeversand (4.63)  
+**Mandantenzuordnung:** keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)  
+**Primärschlüssel:** id  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| id | CHAR(36) | nein |  | [PK; PRIMARY KEY] |
+| campaign_id | CHAR(36) | nein |  | [FK → marketing_campaigns.id (ON DELETE CASCADE); UQ uq_marketing_send] |
+| recipient_id | CHAR(36) | ja |  |  |
+| email | VARCHAR(255) | nein |  |  |
+| email_norm | VARCHAR(255) | nein |  | [UQ uq_marketing_send] |
+| name | VARCHAR(200) | ja |  |  |
+| company | VARCHAR(255) | ja |  |  |
+| status | VARCHAR(20) | nein | 'queued' |  |
+| skip_reason | VARCHAR(40) | ja |  | suppressed (Sperrliste) \| cancelled (Kampagne abgebrochen) |
+| error | VARCHAR(255) | ja |  | Meldung des Versandwegs bei failed oder letztem Transportfehler |
+| unsubscribe_token_hash | CHAR(64) | ja |  |  |
+| claimed_at | DATETIME | ja |  |  |
+| sent_at | DATETIME | ja |  |  |
+| created_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+
+**Indizes und Eindeutigkeit:** UQ uq_marketing_send (campaign_id, email_norm); IX ix_marketing_send_status (campaign_id, status); IX ix_marketing_send_sent (sent_at); IX ix_marketing_send_token (unsubscribe_token_hash)  
+**Von der Datenbank erzwungene Beziehungen:** campaign_id → marketing_campaigns.id (ON DELETE CASCADE)  
+**Statuswerte und Übergänge:**  
+- `status`: queued | sending (beansprucht) | sent | failed (endgueltige Ablehnung) | skipped (skip_reason suppressed oder cancelled)
+**Erzeugt durch:** app/marketing.php marketing_campaign_start() (INSERT IGNORE je Kampagne und email_norm)  
+**Verändert durch:** marketing_send_process(): UPDATE ... WHERE status = 'queued' als Beanspruchung, unsubscribe_token_hash, sent_at, error; Transportfehler stellt auf queued zurueck, marketing_suppress() setzt offene Zeilen der Adresse auf skipped, marketing_campaign_set_status(cancelled)  
+**Gelesen durch:** marketing_send_by_token() (abmelden.php), marketing_sent_last_24h() (Tagesgrenze), admin-marketing.php (Fehlerliste)  
+**Löschung, Archivierung, Aufbewahrung:** Cascade mit der Kampagne; versendete Kampagnen werden nicht geloescht  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: claimed_at, sent_at, created_at UTC; keine Betraege; message_id der Anwendung nicht gespeichert (SES-Ereignisse tragen die SES-Message-ID)  
+**Migrationen:** 034_marketing.sql  
+**Besonderheiten:** Eindeutig je Kampagne und email_norm (uq_marketing_send): jede Adresse wird je Kampagne genau einmal angeschrieben. Der Abmeldetoken (48 Hexzeichen) steht nur als SHA-256 in unsubscribe_token_hash.  
+
+## marketing_events
+
+**Zweck:** Ereignisprotokoll des Marketingmoduls: Abmeldungen und Testversand der Anwendung, Ruecklaeufer, Beschwerden, Zustellungen und Abonnementbestaetigungen aus Amazon SES/SNS.  
+**Modul:** Marketing / Werbeversand (4.63)  
+**Mandantenzuordnung:** keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)  
+**Primärschlüssel:** id  
+
+| Spalte | Typ | NULL | Standard | Bedeutung |
+|---|---|---|---|---|
+| id | BIGINT UNSIGNED | nein |  | [PK; PRIMARY KEY AUTO_INCREMENT] |
+| source | VARCHAR(20) | nein |  |  |
+| event_type | VARCHAR(40) | nein |  | ses \| app |
+| email_norm | VARCHAR(255) | ja |  | bounce \| bounce_transient \| complaint \| delivery \| test_send \| unsubscribe \| ... |
+| message_id | VARCHAR(120) | ja |  | Message-ID aus dem SES-Ereignis (mail.messageId) |
+| details_json | TEXT | ja |  |  |
+| created_at | DATETIME | nein | UTC_TIMESTAMP() |  |
+
+**Indizes und Eindeutigkeit:** IX ix_marketing_event_email (email_norm); IX ix_marketing_event_created (created_at)  
+**Von der Datenbank erzwungene Beziehungen:** keine (Beziehungen nur im Anwendungscode).  
+**Statuswerte und Übergänge:**  
+- `source`: app | ses
+- `event_type`: test_send | unsubscribe | bounce | bounce_transient | complaint | delivery | subscription | sonstige SES-Typen kleingeschrieben
+**Erzeugt durch:** app/marketing.php marketing_campaign_test_send(), marketing_unsubscribe(), marketing_ses_handle(); marketing-webhook.php (subscription)  
+**Verändert durch:** keine (nur Einfuegen)  
+**Gelesen durch:** admin-marketing.php Abschnitt Ereignisse, marketing_sent_last_24h() (test_send zaehlt zur Tagesgrenze)  
+**Löschung, Archivierung, Aufbewahrung:** keine automatische Bereinigung (offen, siehe abdeckung-und-offene-punkte.md)  
+**Geldbeträge, Zeit, externe IDs, Verschlüsselung:** Zeit: created_at UTC; message_id = SES-Message-ID; keine Betraege  
+**Migrationen:** 034_marketing.sql  
+**Besonderheiten:** details_json enthaelt nur technische Angaben (Bounce-Typ, Statuscode, gekuerzter Diagnosetext), keine Nachrichteninhalte.  
 
 ## Offene Beschreibungen
 

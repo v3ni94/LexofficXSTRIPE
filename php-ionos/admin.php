@@ -505,7 +505,7 @@ echo layout_subnav($sub, 'uebersicht', 'Adminbereiche'); ?>
             <tbody>
             <?php foreach ($orgs as $o): ?>
                 <tr>
-                    <td><?= e($o['name']) ?></td>
+                    <td><?php if ($can('support.view')): ?><a href="admin-kunde.php?org=<?= e($o['id']) ?>" title="Kundenprofil"><?= e($o['name']) ?></a><?php else: ?><?= e($o['name']) ?><?php endif; ?></td>
                     <td class="hint"><?= e($o['owner_email'] ?? '-') ?></td>
                     <td><?= e($o['signup_domain'] ?: 'direkt') ?></td>
                     <td><?= format_date($o['created_at']) ?></td>

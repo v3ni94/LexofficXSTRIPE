@@ -1298,5 +1298,176 @@
       "permissions": "JSON-Array von Berechtigungscodes (z. B. support.sessions) oder [\"*\"]",
       "is_system": "Systemrolle ja/nein"
     }
+  },
+  "marketing_lists": {
+    "zweck": "Empfaengerlisten des Marketingmoduls: Importlisten (CSV) und Systemlisten aus den Firmenaccounts (docs/marketing.md).",
+    "modul": "Marketing / Werbeversand (4.63)",
+    "mandant": "keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)",
+    "statuswerte": {
+      "source": "import | system (Systemliste aus users/organization_members, system_scope owners oder owners_admins)"
+    },
+    "erzeugt_durch": [
+      "app/marketing.php marketing_list_create() aus admin-marketing.php"
+    ],
+    "veraendert_durch": [
+      "app/marketing.php marketing_list_import(), marketing_list_sync_system() (updated_at)"
+    ],
+    "gelesen_durch": [
+      "admin-marketing.php (Uebersicht, Empfaenger, Export), marketing_campaign_save() (Pruefung der Listen)"
+    ],
+    "loeschung": "marketing_list_delete() nur ohne laufende Kampagne; Empfaenger folgen per ON DELETE CASCADE; die Sperrliste bleibt unberuehrt",
+    "geld_zeit_extern": "Zeit: created_at, updated_at UTC; keine Betraege; keine externen IDs",
+    "migrationen": [
+      "034_marketing.sql"
+    ],
+    "besonderheiten": "Name eindeutig (uq_marketing_list_name). Systemlisten werden nie importiert, sondern aus den Firmenaccounts aufgebaut (Rechtsgrundlage bestandskunde).",
+    "spalten_erlaeuterung": {
+      "system_scope": "owners = nur Inhaber, owners_admins = Inhaber und Administratoren aktiver Firmen"
+    }
+  },
+  "marketing_recipients": {
+    "zweck": "Empfaenger je Liste mit Rechtsgrundlage und Vermerk des Imports; email_norm ist der Vergleichsschluessel gegen Sperrliste und Dubletten.",
+    "modul": "Marketing / Werbeversand (4.63)",
+    "mandant": "keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)",
+    "statuswerte": {
+      "status": "active | suppressed (auf der Sperrliste, wird nie angeschrieben) | removed (Systemliste: Mitglied nicht mehr vorhanden)",
+      "legal_basis": "bestandskunde | einwilligung | b2b_kontakt | sonstiges (MARKETING_LEGAL_BASES)",
+      "source": "import | system"
+    },
+    "erzeugt_durch": [
+      "app/marketing.php marketing_list_import() (INSERT IGNORE je Liste und email_norm)",
+      "app/marketing.php marketing_list_sync_system()"
+    ],
+    "veraendert_durch": [
+      "marketing_suppress() setzt status suppressed",
+      "marketing_unsuppress() setzt status active",
+      "marketing_list_sync_system() (name, company, removed)"
+    ],
+    "gelesen_durch": [
+      "admin-marketing.php, marketing_campaign_start() (Versandzeilen), marketing_list_export_csv()"
+    ],
+    "loeschung": "marketing_recipient_remove() einzeln (Audit ohne Klartextadresse); Cascade mit der Liste",
+    "geld_zeit_extern": "Zeit: created_at UTC; keine Betraege",
+    "migrationen": [
+      "034_marketing.sql"
+    ],
+    "besonderheiten": "Eindeutig je Liste und email_norm (uq_marketing_recipient). Der Import erzwingt eine Rechtsgrundlage, bei sonstiges einen Vermerk; die Bewertung trifft der Betreiber.",
+    "spalten_erlaeuterung": {
+      "email_norm": "kleingeschriebene Adresse fuer Vergleiche",
+      "legal_note": "Herkunft und Nachweis des Imports (frei, Pflicht bei sonstiges)"
+    }
+  },
+  "marketing_suppressions": {
+    "zweck": "Dauerhafte, listenuebergreifende Sperrliste: Adressen, die nie wieder eine Werbenachricht erhalten (Abmeldung, Beschwerde, harter Ruecklaeufer, von Hand).",
+    "modul": "Marketing / Werbeversand (4.63)",
+    "mandant": "keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)",
+    "statuswerte": {
+      "reason": "unsubscribe | complaint | bounce | manual (MARKETING_SUPPRESSION_REASONS); unsubscribe und complaint sind nicht aufhebbar (MARKETING_SUPPRESSION_PERMANENT)"
+    },
+    "erzeugt_durch": [
+      "app/marketing.php marketing_suppress() aus marketing_unsubscribe() (abmelden.php), marketing_ses_handle() (marketing-webhook.php), marketing_suppress_manual() (admin-marketing.php)"
+    ],
+    "veraendert_durch": [
+      "marketing_suppress(): ein dauerhafter Grund ersetzt einen schwaecheren, nie umgekehrt"
+    ],
+    "gelesen_durch": [
+      "marketing_is_suppressed() bei Import, Freigabe und vor jedem Senden; admin-marketing.php Sperrliste"
+    ],
+    "loeschung": "marketing_unsuppress() nur fuer bounce und manual mit Grund und Audit; unsubscribe und complaint nie",
+    "geld_zeit_extern": "Zeit: created_at UTC; keine Betraege; campaign_id verweist ohne Fremdschluessel auf die ausloesende Kampagne",
+    "migrationen": [
+      "034_marketing.sql"
+    ],
+    "besonderheiten": "Primaerschluessel email_norm. Audit marketing_suppressed/marketing_unsuppressed traegt die Adresse nur als Kennung (mail_addr_ref).",
+    "spalten_erlaeuterung": {
+      "note": "Herkunft der Sperre (per Link, one-click, SES-Untertyp, Vermerk des Mitarbeiters)"
+    }
+  },
+  "marketing_campaigns": {
+    "zweck": "Kampagnen des Marketingmoduls: Inhalt (Betreff, Ueberschrift, Absaetze, Schaltflaeche, Fussnote), Listen, Status, Test- und Freigabenachweis, Zaehler.",
+    "modul": "Marketing / Werbeversand (4.63)",
+    "mandant": "keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)",
+    "statuswerte": {
+      "status": "draft | queued (freigegeben) | sending | paused | sent | cancelled (MARKETING_CAMPAIGN_STATUS). Uebergaenge: marketing_campaign_start() draft -> queued; marketing_send_process() queued -> sending -> sent; marketing_campaign_set_status() queued/sending -> paused, paused -> queued, queued/sending/paused -> cancelled"
+    },
+    "erzeugt_durch": [
+      "app/marketing.php marketing_campaign_save() aus admin-marketing.php"
+    ],
+    "veraendert_durch": [
+      "marketing_campaign_save() (nur draft; Inhaltsaenderung setzt test_sent_at zurueck)",
+      "marketing_campaign_test_send() (test_sent_at, test_sent_ref)",
+      "marketing_campaign_start() (status, started_by, total_count, skipped_count)",
+      "marketing_send_process() und marketing_campaign_refresh_counts() (status, Zaehler, finished_at)",
+      "marketing_campaign_set_status()"
+    ],
+    "gelesen_durch": [
+      "admin-marketing.php, job_marketing_send(), scheduler_tick() (marketing_campaigns_pending())"
+    ],
+    "loeschung": "marketing_campaign_delete() nur draft und cancelled; versendete Kampagnen bleiben als Nachweis",
+    "geld_zeit_extern": "Zeit: created_at, updated_at, test_sent_at, started_at, finished_at UTC; keine Betraege",
+    "migrationen": [
+      "034_marketing.sql"
+    ],
+    "besonderheiten": "Freigabe nur nach Testversand und mit 2FA-Code (admin-marketing.php campaign_start). body_text ohne HTML; Platzhalter {{name}} und {{firma}}. list_ids ist ein JSON-Array.",
+    "spalten_erlaeuterung": {
+      "test_sent_ref": "Kennung der Testadresse (mail_addr_ref), kein Klartext",
+      "total_count": "Versandzeilen bei Freigabe (eine je Adresse ueber alle Listen)"
+    }
+  },
+  "marketing_sends": {
+    "zweck": "Versandzeilen je Kampagne und Adresse: Beanspruchung, Ergebnis, Abmeldetoken (Hash).",
+    "modul": "Marketing / Werbeversand (4.63)",
+    "mandant": "keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)",
+    "statuswerte": {
+      "status": "queued | sending (beansprucht) | sent | failed (endgueltige Ablehnung) | skipped (skip_reason suppressed oder cancelled)"
+    },
+    "erzeugt_durch": [
+      "app/marketing.php marketing_campaign_start() (INSERT IGNORE je Kampagne und email_norm)"
+    ],
+    "veraendert_durch": [
+      "marketing_send_process(): UPDATE ... WHERE status = 'queued' als Beanspruchung, unsubscribe_token_hash, sent_at, error; Transportfehler stellt auf queued zurueck",
+      "marketing_suppress() setzt offene Zeilen der Adresse auf skipped",
+      "marketing_campaign_set_status(cancelled)"
+    ],
+    "gelesen_durch": [
+      "marketing_send_by_token() (abmelden.php), marketing_sent_last_24h() (Tagesgrenze), admin-marketing.php (Fehlerliste)"
+    ],
+    "loeschung": "Cascade mit der Kampagne; versendete Kampagnen werden nicht geloescht",
+    "geld_zeit_extern": "Zeit: claimed_at, sent_at, created_at UTC; keine Betraege; message_id der Anwendung nicht gespeichert (SES-Ereignisse tragen die SES-Message-ID)",
+    "migrationen": [
+      "034_marketing.sql"
+    ],
+    "besonderheiten": "Eindeutig je Kampagne und email_norm (uq_marketing_send): jede Adresse wird je Kampagne genau einmal angeschrieben. Der Abmeldetoken (48 Hexzeichen) steht nur als SHA-256 in unsubscribe_token_hash.",
+    "spalten_erlaeuterung": {
+      "skip_reason": "suppressed (Sperrliste) | cancelled (Kampagne abgebrochen)",
+      "error": "Meldung des Versandwegs bei failed oder letztem Transportfehler"
+    }
+  },
+  "marketing_events": {
+    "zweck": "Ereignisprotokoll des Marketingmoduls: Abmeldungen und Testversand der Anwendung, Ruecklaeufer, Beschwerden, Zustellungen und Abonnementbestaetigungen aus Amazon SES/SNS.",
+    "modul": "Marketing / Werbeversand (4.63)",
+    "mandant": "keine (plattformweit; Empfaenger sind Firmenaccounts und importierte Kontakte, nie Kunden der Firmen)",
+    "statuswerte": {
+      "source": "app | ses",
+      "event_type": "test_send | unsubscribe | bounce | bounce_transient | complaint | delivery | subscription | sonstige SES-Typen kleingeschrieben"
+    },
+    "erzeugt_durch": [
+      "app/marketing.php marketing_campaign_test_send(), marketing_unsubscribe(), marketing_ses_handle(); marketing-webhook.php (subscription)"
+    ],
+    "veraendert_durch": [
+      "keine (nur Einfuegen)"
+    ],
+    "gelesen_durch": [
+      "admin-marketing.php Abschnitt Ereignisse, marketing_sent_last_24h() (test_send zaehlt zur Tagesgrenze)"
+    ],
+    "loeschung": "keine automatische Bereinigung (offen, siehe abdeckung-und-offene-punkte.md)",
+    "geld_zeit_extern": "Zeit: created_at UTC; message_id = SES-Message-ID; keine Betraege",
+    "migrationen": [
+      "034_marketing.sql"
+    ],
+    "besonderheiten": "details_json enthaelt nur technische Angaben (Bounce-Typ, Statuscode, gekuerzter Diagnosetext), keine Nachrichteninhalte.",
+    "spalten_erlaeuterung": {
+      "message_id": "Message-ID aus dem SES-Ereignis (mail.messageId)"
+    }
   }
 }

@@ -30,7 +30,11 @@ const QUEUE_STATE_LABELS  = ['queued' => 'Wartend', 'processing' => 'In Bearbeit
 
 class JobRetryException extends RuntimeException {}      // technischer Fehler, erneuter Versuch sinnvoll
 class JobFailedException extends RuntimeException {}     // fachlicher Fehler, kein erneuter Versuch
-class JobRequeueException extends RuntimeException {}    // Zeitbudget des Versuchs erreicht, sofort weiter (kein Fehlversuch)
+class JobRequeueException extends RuntimeException      // Zeitbudget des Versuchs erreicht, sofort weiter (kein Fehlversuch)
+{
+    /** true = Worker freiwillig abgegeben (Fairness): der Job stellt sich hinter wartende Jobs an (Befund D-07). */
+    public bool $yield = false;
+}
 class CircuitOpenException extends RuntimeException {}   // externe Anbindung vorübergehend gesperrt
 
 function queue_available(): bool
@@ -100,11 +104,12 @@ function queue_type_defaults(string $type): array
         'sync_run_sevdesk' => ['max_attempts' => 6, 'heartbeat_ttl' => 300], // gleiche Logik, eigener Worker-Pool (4.38)
         'collections_due'  => ['max_attempts' => 5, 'heartbeat_ttl' => 600],
         'unclear_attempts' => ['max_attempts' => 5, 'heartbeat_ttl' => 300],
-        'mail'             => ['max_attempts' => 3, 'heartbeat_ttl' => 120],
+        'mail'             => ['max_attempts' => 3, 'heartbeat_ttl' => 300], // 300 statt 120: ueber der Summe der SMTP-Zeitlimits, sonst Doppelzustellung nach Stale-Freigabe (Befund D-09)
         'monitor_collect'  => ['max_attempts' => 2, 'heartbeat_ttl' => 120],
         'maintenance'      => ['max_attempts' => 2, 'heartbeat_ttl' => 300],
         'alerts'           => ['max_attempts' => 2, 'heartbeat_ttl' => 1800],
         'mandate_reminders'=> ['max_attempts' => 3, 'heartbeat_ttl' => 1800],
+        'marketing_send'   => ['max_attempts' => 5, 'heartbeat_ttl' => 300], // Werbeversand (4.63), Heartbeat alle 5 Nachrichten
     ];
     return $map[$type] ?? ['max_attempts' => 5, 'heartbeat_ttl' => 300];
 }
@@ -258,6 +263,12 @@ function queue_reserve(string $workerId, array $types): ?array
 /** Heartbeat und Fortschritt melden. false, wenn die Reservierung nicht mehr diesem Worker gehört. */
 function queue_heartbeat(array $job, ?int $progress = null, ?string $text = null): bool
 {
+    if (isset($GLOBALS['worker_beat']) && is_callable($GLOBALS['worker_beat'])) {
+        // Lebenszeichen des Prozesses (Heartbeat-Datei fuer den Container-Healthcheck, worker_heartbeats) bei jedem
+        // Jobfortschritt: Bis zum Audit vom 10.09.2026 schrieb der Worker waehrend eines laufenden Jobs kein Lebenszeichen,
+        // ein Job ueber 90 s machte den Container "unhealthy" und den Pool "ohne lebenden Worker" (Befund D-02).
+        ($GLOBALS['worker_beat'])('busy', (string)($job['id'] ?? ''));
+    }
     $st = db()->prepare("UPDATE jobs SET heartbeat_at = ?, progress = COALESCE(?, progress), progress_text = COALESCE(?, progress_text) WHERE id = ? AND locked_by = ? AND status = 'processing'");
     $st->execute([queue_utc(queue_now()), $progress !== null ? max(0, min(100, $progress)) : null, $text !== null ? mb_substr($text, 0, 160) : null, $job['id'], $job['locked_by']]);
     return $st->rowCount() === 1;
@@ -279,7 +290,7 @@ function queue_complete(array $job, string $status = 'completed', array $result 
 }
 
 /** Job ohne Fehlversuch sofort wieder einreihen (Fortsetzung nach Zeitbudget je Versuch). */
-function queue_requeue(array $job, int $delaySeconds = 0, ?string $text = null): void
+function queue_requeue(array $job, int $delaySeconds = 0, ?string $text = null, bool $yield = false): void
 {
     // Fortsetzungen zählen nicht als Fehlversuche, sind aber begrenzt (Schutz vor Endlosschleifen).
     //
@@ -310,8 +321,12 @@ function queue_requeue(array $job, int $delaySeconds = 0, ?string $text = null):
         queue_fail($job, 'Zu viele Fortsetzungen (' . $payload['_continuations'] . '), Auftrag angehalten', 'too_many_continuations', false);
         return;
     }
-    db()->prepare("UPDATE jobs SET status = 'queued', available_at = ?, locked_by = NULL, attempts = GREATEST(0, attempts - 1), payload = ?, progress_text = COALESCE(?, progress_text) WHERE id = ? AND locked_by = ?")
-        ->execute([queue_utc(queue_now() + max(0, $delaySeconds)), json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $text !== null ? mb_substr($text, 0, 160) : null, $job['id'], $job['locked_by']]);
+    // Fairness-Abgabe (Befund D-07): Ein manuell gestarteter Sync (Prioritaet high) stand nach der Abgabe sofort wieder vorn
+    // und wurde vom selben Worker erneut reserviert; wartende Jobs anderer Firmen kamen nie dran. Bei $yield sinkt die
+    // Prioritaet auf normal, und available_at liegt hinter den bereits wartenden Jobs (Reihenfolge priority, available_at).
+    $prio = $yield ? 'GREATEST(priority, ' . (int)QUEUE_PRIORITY['normal'] . ')' : 'priority';
+    db()->prepare("UPDATE jobs SET status = 'queued', available_at = ?, locked_by = NULL, attempts = GREATEST(0, attempts - 1), payload = ?, progress_text = COALESCE(?, progress_text), priority = $prio WHERE id = ? AND locked_by = ?")
+        ->execute([queue_utc(queue_now() + max(0, $delaySeconds) + ($yield ? 1 : 0)), json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $text !== null ? mb_substr($text, 0, 160) : null, $job['id'], $job['locked_by']]);
 }
 
 /** Payload eines reservierten Jobs aktualisieren (z.B. Zwischenstand für Fortsetzungen). */
@@ -647,7 +662,7 @@ function queue_tenant_active(string $tenantId, string|array $type): ?array
 function queue_type_label(string $type): string
 {
     return ['sync_run' => 'Synchronisation Lexware Office', 'sync_run_sevdesk' => 'Synchronisation sevdesk', 'collections_due' => 'Einzugsverarbeitung', 'unclear_attempts' => 'Klärung unklarer Einzugsversuche', 'mail' => 'E-Mail-Versand',
-            'monitor_collect' => 'Monitoring-Sammler', 'maintenance' => 'Wartungsaufgaben', 'alerts' => 'Alarmierung', 'mandate_reminders' => 'Mandats-Erinnerungen'][$type] ?? $type;
+            'monitor_collect' => 'Monitoring-Sammler', 'maintenance' => 'Wartungsaufgaben', 'alerts' => 'Alarmierung', 'mandate_reminders' => 'Mandats-Erinnerungen', 'marketing_send' => 'Werbeversand (Marketing)'][$type] ?? $type;
 }
 
 // ---------------------------------------------------------------------------

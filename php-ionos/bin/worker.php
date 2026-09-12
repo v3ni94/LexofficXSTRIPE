@@ -60,6 +60,7 @@ $beat = function (string $status, ?string $jobId) use ($workerId, &$done, &$fail
         $lastBeat = time();
     }
 };
+$GLOBALS['worker_beat'] = $beat; // von queue_heartbeat() bei jedem Jobfortschritt aufgerufen (Befund D-02)
 
 $maintenanceLogged = false;
 while (!worker_stop_requested()) {

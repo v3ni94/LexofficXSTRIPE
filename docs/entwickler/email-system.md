@@ -46,9 +46,22 @@ Kundendaten; Beispiele sind synthetisch.
 
 - `config('mail')['from_address']`, `['from_name']` (Standard `SmartEinzug`, ansonsten
   `product_name()`, `app/mailer.php:178, 33-40`).
-- `config('mail')['reply_to']`, optional, wird als eigener `Reply-To`-Header gesetzt, sofern
-  vorhanden (`app/mailer.php:179-181, 192-194`); laut `config.example.php:149` standardmäßig auf
-  `info@mueller-holding.ag` vorgesehen.
+- `config('mail')['reply_to']`, optional. Seit 4.61 setzt `mail_reply_to_effective()` den Header
+  `Reply-To` nur, wenn die Adresse gültig ist, sich vom Absender unterscheidet und dieselbe registrierbare
+  Domain wie `from_address` hat; eine fremde Domain (bis 4.60 Vorgabe `info@mueller-holding.ag`) wird
+  ignoriert und einmal je Prozess protokolliert (`mail_log_once()`). Vorgabe in `config.example.php`
+  ist `kontakt@smart-einzug.de`, identisch mit dem Absender, also ohne eigenen Header.
+- Alle Kopfzeilen entstehen in `mail_header_lines(array $cfg, string $contentType, bool $plainOnly,
+  array $options)`: From, Reply-To (wirksam), MIME-Version, Date, Message-ID, `Auto-Submitted:
+  auto-generated` (RFC 3834, jede Nachricht), bei Option `unsubscribe_url` `List-Unsubscribe: <URL>` und
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), dann Content-Type. Optionen laufen
+  als fünfter Parameter durch `mail_send()`, `mail_send_queued()` und `mail_send_direct()` sowie als
+  Schlüssel `options` im Payload des Jobtyps `mail` (`mail_queue_payload()`, `job_mail()`);
+  `mail_options_normalize()` lässt nur `unsubscribe_url` mit `http(s)://` zu, andere Schlüssel werden
+  verworfen (kein Durchreichen beliebiger Kopfzeilen). Gesetzt wird die Option ausschließlich von den
+  drei Vormerkungsmails in `app/interest.php`; die One-Click-Anfrage der Postfachanbieter (POST mit Feld
+  `List-Unsubscribe=One-Click` an `vormerken.php?abmelden=B`) erkennt `interest_is_one_click_unsubscribe()`
+  und führt die Abmeldung ohne Rückfrage aus. Prüfung: `php tools/mail-ci-check.php`, Abschnitt 4.
 - Header-Werte werden vor dem Versand von `\r`/`\n` bereinigt (`mail_sanitize_header()`,
   `app/mailer.php:27-30`), Schutz vor Header-Injection über Freitextfelder (z. B. Betreff aus
   Support-Ticket).
@@ -243,9 +256,37 @@ DMARC zunächst auf `p=none` mit Berichtsadresse setzen und erst nach einigen Ta
    **Quelle:** kein Fund außerhalb von `app/monitor.php:1481-1488` (nur `alert_emails` der
    Administratoren). **Prüfverfahren:** Abgleich mit `docs/status-page.md` und Rückfrage bei der
    Produktverantwortlichen, ob ein Abonnement-Mechanismus für Kunden geplant ist.
-4. **Frage:** Sind SPF, DKIM und DMARC für die tatsächlich verwendete Absenderdomain (z. B.
-   `noreply@lexware-einzug.de` laut `config.example.php:147`) im Produktivbetrieb eingerichtet?
+4. **Frage:** Sind SPF, DKIM und DMARC für die tatsächlich verwendete Absenderdomain
+   (`kontakt@smart-einzug.de`) im Produktivbetrieb eingerichtet und ist die DKIM-Signatur bei IONOS aktiv?
    **Quelle:** siehe Abschnitt „SPF, DKIM, DMARC" oben. **Prüfverfahren:** DNS-Abfrage gegen die
    produktiv genutzte Absenderdomain (`dig TXT`, `dig TXT default._domainkey.<domain>` oder den vom
    Mailanbieter genannten Selektor) und Abgleich mit den Vorgaben des eingesetzten
    SMTP-Anbieters.
+
+## Kopfzeilenkodierung (4.64)
+
+`mail_encode_header_value()` kodiert Betreff und Anzeigename nach RFC 2047: reiner ASCII-Text bleibt unverändert, sonst
+Base64-Wörter (`=?UTF-8?B?…?=`) mit höchstens 75 Zeichen je Teil, Trennung nur an Wortgrenzen (überlange Wörter
+zeichenweise, nie innerhalb eines Multibyte-Zeichens), Faltung mit CRLF und Leerzeichen. Ersetzt `mb_encode_mimeheader()`,
+das beim Zeilenumbruch mitten im Wort trennte. Prüfung: `php tools/mail-ci-check.php`, Abschnitt 5.
+
+## Versandprofile: system und marketing (4.63)
+
+`mail_send_direct()` wählt über die Option `profile` das Versandprofil: `system` (Vorgabe, `config('mail')`) für alle
+Nachrichten der Anwendung und `marketing` (`config('mail_marketing')`) für Werbenachrichten des Marketingmoduls
+(`app/marketing.php`, `docs/marketing.md`). `mail_profile_config()`/`mail_profile_enabled()` liefern Block und Schalter;
+das Marketingprofil hat eigenen Absender (Subdomain), eigenen SMTP-Weg (Amazon SES), eigene Logdatei und setzt keine
+Monitoring-Marken des Systemversands (`mail_last_ok_at`, `mail_last_fail_at` bleiben Systemkennzahlen). Kopfzeilen des
+Marketingprofils: `Precedence: bulk` statt `Auto-Submitted`, immer `List-Unsubscribe` und `List-Unsubscribe-Post`. Die
+Reply-To-Regel (gleiche registrierbare Domain) gilt für beide Profile; `kontakt@smart-einzug.de` als Antwortadresse zu
+`kontakt@mail.smart-einzug.de` ist zulässig. Prüfstand: `bash tools/marketing-check.sh`, `php tools/mail-ci-check.php`.
+
+## Zustellbarkeitsprüfung (4.60)
+
+`app/mail_dns.php` wertet SPF, DMARC, DKIM und die Absenderkonsistenz aus, ohne selbst DNS abzufragen; die Abfrage liegt in
+`bin/mail-check.php --zustellbarkeit` (nur dort, damit die Logik in `tools/mail-dns-check.php` ohne Netz geprüft werden kann).
+Regeln: genau ein `v=spf1`-Eintrag, Anbieter des SMTP-Relays muss im Eintrag vorkommen, Transport `mail` ist eine Warnung
+(Server-Adresse müsste im SPF stehen); DMARC als CNAME oder mit fremdem `rua` ist eine Warnung, fehlende Richtlinie ein
+Fehler; DKIM nur mit Verweis ohne Schlüssel ist UNKLAR (Signatur beim Anbieter vermutlich nicht eingeschaltet); Absender und
+Versandpostfach auf verschiedenen Domains ist ein Fehler (Alignment), Reply-To auf fremder Domain eine Warnung. Der
+Gesamtstatus ist der schlechteste Einzelwert; Exit 1 bei FEHLT oder UNKLAR. Betriebsanleitung: `docs/mail-einrichtung.md`.

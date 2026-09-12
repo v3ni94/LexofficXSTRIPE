@@ -37,6 +37,20 @@ if (strlen($expected) < 16 || config_is_placeholder($expected) || !hash_equals($
 
 @set_time_limit(120);
 @ignore_user_abort(true); // Bricht der Aufrufer (z.B. cron-job.org) ab, läuft der begonnene Schritt sauber zu Ende
+// Ueberlappende Cron-Laeufe ausschliessen (Befund D-08): externe Cron-Dienste wiederholen bei Zeitueberschreitung. Einzuege
+// und Synchronisation sind einzeln geschuetzt, Klaerung, Alarm-Mails und Nachsendungen waren es nicht. Die Sperre endet mit
+// der Datenbankverbindung dieses Aufrufs.
+try {
+    $cronLock = db()->prepare('SELECT GET_LOCK(?, 0)'); // Name je Datenbank wie bei Migrationen (Gegenpruefung F-12)
+    $cronLock->execute(['smarteinzug_cron_' . substr(md5((string)(config('db')['name'] ?? 'smarteinzug')), 0, 16)]);
+    if ((int)$cronLock->fetchColumn() !== 1) {
+        echo "Ein anderer Cron-Lauf ist noch aktiv; dieser Aufruf endet ohne Arbeit.\n";
+        exit;
+    }
+} catch (Throwable $e) {
+    http_response_code(500);
+    die('Datenbank nicht erreichbar.');
+}
 $start = microtime(true);
 // Gesamtlaufzeit: externe Cron-Dienste brechen häufig nach 30 Sekunden ab. Ziel sind
 // höchstens etwa 20 bis 25 Sekunden je Aufruf; die Synchronisation arbeitet in Schritten
@@ -71,6 +85,7 @@ try { devices_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration
 require_once __DIR__ . '/app/interest.php';
 try { interest_cleanup(); } catch (Throwable $e) { /* Tabelle fehlt bis Migration 020 */ }
 try { audit_cleanup(); } catch (Throwable $e) { /* Aufbewahrung 90 Tage */ }
+try { login_attempts_cleanup(); } catch (Throwable $e) { /* Datenminimierung 30 Tage */ }
 try { interest_send_pending(); } catch (Throwable $e) { /* Spalte fehlt bis Migration 021 */ }
 try { auth_send_pending_welcome_mails(); } catch (Throwable $e) { /* Spalte fehlt bis Migration 021 */ }
 
