@@ -352,6 +352,16 @@ Jede Abfrage auf mandantenbezogene Tabellen filtert zusätzlich zum fachlichen S
   Security`; im Caddyfile ist HSTS bewusst auskommentiert, bis App-, Admin- und API-Host dauerhaft
   ausschließlich über gültiges HTTPS erreichbar sind, und soll erst nach ausdrücklicher Freigabe der
   Geschäftsführung aktiviert werden (Kommentar Zeilen 33-36). Siehe Offene Prüfpunkte.
+- **Gefunden:** je Marketingdomain eine eigene Richtlinie in `websites/<domain>/.htaccess`. Sie
+  erlaubt Inline-Skripte nie über `'unsafe-inline'`, sondern ausschließlich über den SHA-256-Hash
+  des jeweiligen Skripts; `object-src 'none'`, `frame-ancestors 'none'`, `base-uri 'self'`.
+- **Befund 12.09.2026, behoben in 4.71:** Eine Richtlinie muss dem Google-Ads-Tag nicht nur das
+  Laden erlauben (`script-src`), sondern auch den Rückkanal, über den es die Conversion meldet
+  (`img-src` und `connect-src`, Hosts `www.googleadservices.com` und `googleads.g.doubleclick.net`).
+  `www.googleadservices.com` stand nur in `script-src`. Folge: Das Skript lief, der Browser blockierte
+  den Conversion-Ping, und Google Ads meldete, es finde kein Tag, obwohl das Tag im Quelltext sichtbar
+  war. Ein Fehler ohne sichtbares Symptom, die Seite funktionierte vollständig. `tools/site-tag-check.py`
+  prüft den Rückkanal seitdem für jede Domain mit Ads-Kennung und ist gegen den alten Zustand rot.
 
 ## Geheimnisverwaltung
 
