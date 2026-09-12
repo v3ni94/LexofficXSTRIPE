@@ -13,6 +13,10 @@ tragfaehig, wenn drei Bedingungen dauerhaft gelten; genau die prueft dieses Werk
   3. Das Inline-Skript setzt "consent default denied" VOR dem config-Aufruf. Ohne das
      wuerde Google schon vor der Einwilligung Cookies setzen (§ 25 Abs. 1 TDDDG).
 
+  4. Die CSP erlaubt dem Tag auch den RUECKKANAL (img-src, connect-src). Steht ein Host nur
+     in script-src, laedt das Skript, der Conversion-Ping wird aber blockiert: Google Ads
+     meldet dann, es finde kein Tag, obwohl das Tag im Quelltext sichtbar ist.
+
 Zusaetzlich: Keine andere Domain darf ein Tag im Kopf tragen, und site.js darf kein
 zweites gtag.js nachladen, wenn die Seite bereits eines im Kopf hat.
 
@@ -62,6 +66,48 @@ def csp_von(domain):
         return ''
     m = re.search(r'Content-Security-Policy\s+"([^"]*)"', open(p, encoding='utf-8').read())
     return m.group(1) if m else ''
+
+
+def direktive(csp, name):
+    """Inhalt einer CSP-Direktive, sonst der Inhalt von default-src."""
+    m = re.search(re.escape(name) + r'([^;]*)', csp)
+    if m:
+        return m.group(1)
+    m = re.search(r'default-src([^;]*)', csp)
+    return m.group(1) if m else ''
+
+
+# Hosts, die das Google-Ads-Tag fuer seinen RUECKKANAL braucht. Das Laden des Skripts
+# regelt script-src; gemeldet wird die Conversion aber als Bild oder fetch an diese Hosts.
+# Befund 12.09.2026: googleadservices stand nur in script-src. Das Skript lud, der
+# Conversion-Ping wurde vom Browser blockiert, und Google Ads meldete deshalb, es finde
+# kein Tag. Ein Fehler, den man der Seite nicht ansieht: Sie funktioniert vollstaendig,
+# nur die Messung kommt nie an. Deshalb hier geprueft und nicht dem Zufall ueberlassen.
+ADS_RUECKKANAL = ['https://www.googleadservices.com', 'https://googleads.g.doubleclick.net']
+
+
+def ads_domains():
+    """Domains mit einer Ads-Kennung: aus dem Seitenkopf und aus der Zuordnung in site.js."""
+    treffer = set(SEITEN_TAG)
+    js = os.path.join(ROOT, 'websites', 'smart-einzug.de', 'assets', 'js', 'site.js')
+    if os.path.isfile(js):
+        for host in re.findall(r"'([a-z0-9.-]+)':\s*'AW-\d+'", open(js, encoding='utf-8').read()):
+            treffer.add(host[4:] if host.startswith('www.') else host)
+    return sorted(t for t in treffer if t in ALLE_DOMAINS)
+
+
+def pruefe_ads_rueckkanal():
+    for domain in ads_domains():
+        csp = csp_von(domain)
+        if not csp:
+            fail(f'{domain}: fuehrt eine Ads-Kennung, hat aber keine Content-Security-Policy')
+            continue
+        for richtung in ('img-src', 'connect-src'):
+            werte = direktive(csp, richtung)
+            for host in ADS_RUECKKANAL:
+                if host not in werte:
+                    fail(f'{domain}: {richtung} erlaubt {host} nicht. Das Tag laedt, der '
+                         f'Conversion-Ping wird blockiert; Google Ads sieht kein Tag.')
 
 
 def main():
@@ -150,6 +196,8 @@ def main():
         if "'unsafe-inline'" in script_src:
             warn(f"{domain}: CSP erlaubt 'unsafe-inline'; der Hash waere dann wirkungslos und der Schutz gegen "
                  f'eingeschleuste Skripte deutlich schwaecher')
+
+    pruefe_ads_rueckkanal()
 
     # site.js darf kein zweites gtag.js nachladen, wenn die Seite bereits eines traegt.
     js = os.path.join(ROOT, 'websites', 'smart-einzug.de', 'assets', 'js', 'site.js')
