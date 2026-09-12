@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.74';
+const APP_VERSION = '4.75';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.75', 'date' => '12.09.2026', 'title' => 'Rechnungen: SEPA-Zustand je Kunde sichtbar, Schaltfläche nennt die Aktion',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Schaltfläche je Zeile hieß „SEPA: Nein“, wenn der Kunde auf Ja stand (Aktion „auf Nein setzen“), und „SEPA: Ja“, wenn er auf Nein stand. In der Ansicht „Nur SEPA-Kunden“ trug damit jede Zeile ein rotes „SEPA: Nein“, die Filter wirkten vertauscht (Rückmeldung Betreiber 12.09.2026). Die Filterabfrage war korrekt. Jetzt zeigt die Spalte „Kunde“ den Zustand als Kennzeichen (SEPA: Ja grün, SEPA: Nein rot, Laufkunde), die Schaltfläche heißt „SEPA auf Nein setzen“ beziehungsweise „SEPA auf Ja setzen“.'],
+            ['type' => 'Geändert', 'text' => 'Kundenhandbuch Kapitel 7.7 erklärt Kennzeichen und Schaltfläche.'],
+         ]],
         ['version' => '4.74', 'date' => '12.09.2026', 'title' => 'Rechnungen: eindeutige Filter für SEPA-Kunden',
          'entries' => [
             ['type' => 'Geändert', 'text' => 'Die Filterreihe für das SEPA-Kennzeichen heißt jetzt „Kunden: Nur SEPA-Kunden (Standard), Nur SEPA: Nein, Alle Kunden“ statt „SEPA-deaktivierte Kunden: Ausblenden, Nur deaktivierte, Alle anzeigen“; der Statusfilter heißt „Auch bezahlte anzeigen“ statt „Alle anzeigen“. Zwei gleich beschriftete Schaltflächen „Alle anzeigen“ in zwei Reihen waren missverständlich. Bei eingeblendeten Nein-Kunden erscheint ein Hinweis, dass diese Rechnungen nicht einziehbar sind. Das Verhalten (Rechnungen von Kunden mit SEPA: Nein standardmäßig ausgeblendet, seit 31.08.2026) ist unverändert.'],

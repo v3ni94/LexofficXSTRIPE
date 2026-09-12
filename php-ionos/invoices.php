@@ -327,6 +327,14 @@ layout_header('Rechnungen', $ctx);
                         <?php if ($inv['customer_number']): ?>
                             <span class="hint">KD <?= e($inv['customer_number']) ?></span>
                         <?php endif; ?>
+                        <?php if ($hasCustomer && !$isWalkIn): ?>
+                            <?php // Zustand des Kennzeichens (nicht die Aktion): bis 4.74 zeigte nur die Schaltflaeche „SEPA: Nein“ (= auf Nein setzen), das wirkte wie der Zustand ?>
+                            <?= $sepaDisabled
+                                ? '<span class="badge badge-danger" title="SEPA-Einzug für diesen Kunden steht auf Nein">SEPA: Nein</span>'
+                                : '<span class="badge badge-success" title="SEPA-Einzug für diesen Kunden steht auf Ja">SEPA: Ja</span>' ?>
+                        <?php elseif ($isWalkIn): ?>
+                            <span class="badge badge-neutral" title="Sammel-Kundennummer, kein SEPA-Kennzeichen">Laufkunde</span>
+                        <?php endif; ?>
                     </td>
                     <td class="num"><?= format_eur($inv['total_gross_amount']) ?>
                         <?php if ($inv['open_amount'] !== null && $inv['open_amount_fetched_at']): ?>
@@ -408,8 +416,8 @@ layout_header('Rechnungen', $ctx);
                             <input type="hidden" name="customer_id" value="<?= e($inv['customer_id']) ?>">
                             <input type="hidden" name="back_status" value="<?= e($filter) ?>">
                             <input type="hidden" name="back_sepa" value="<?= e($sepaFilter) ?>">
-                            <button type="submit" class="btn btn-sm <?= $sepaDisabled ? '' : 'btn-danger' ?>">
-                                <?= $sepaDisabled ? 'SEPA: Ja' : 'SEPA: Nein' ?>
+                            <button type="submit" class="btn btn-sm <?= $sepaDisabled ? '' : 'btn-danger' ?>" title="<?= $sepaDisabled ? 'SEPA-Einzug für diesen Kunden wieder erlauben' : 'SEPA-Einzug für diesen Kunden ausschließen; gilt für alle seine Rechnungen' ?>">
+                                <?= $sepaDisabled ? 'SEPA auf Ja setzen' : 'SEPA auf Nein setzen' ?>
                             </button>
                         </form>
                         <?php endif; ?>
