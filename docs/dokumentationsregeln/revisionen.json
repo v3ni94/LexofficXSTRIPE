@@ -10,9 +10,9 @@
     "summary": "Statusabgleich mit Rückschau auf Rücklastschrift und Erstattung, collection_apply_dispute(), collections.sync_lookback_days (4.73)."
   },
   "kunden": {
-    "revision": "r5",
+    "revision": "r6",
     "date": "12.09.2026",
-    "summary": "Kapitel Einzüge: Statusabgleich prüft abgeschlossene Einzüge der letzten 70 Tage auf Rücklastschrift und Erstattung (4.73)."
+    "summary": "Kapitel 7.7: Filter der Rechnungsliste für Kunden mit SEPA: Nein, Kombination mit dem Statusfilter (4.74)."
   },
   "marketing": {
     "revision": "r7",

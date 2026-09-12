@@ -1,6 +1,6 @@
 # Arbeitsstand SmartEinzug (LexofficXSTRIPE)
 
-Stand: 12.09.2026 (4.73). Der Prüfbranch `audit/2026-09-09-gesamtpruefung` (4.59 bis 4.63, Basis 66c59d5 = 4.58) wurde am 11.09.2026 auf
+Stand: 12.09.2026 (4.74). Der Prüfbranch `audit/2026-09-09-gesamtpruefung` (4.59 bis 4.63, Basis 66c59d5 = 4.58) wurde am 11.09.2026 auf
 Freigabe des Betreibers („Produktiv ausrollen“) per Fast-Forward auf `claude/setup-lexsepa-monorepo-v5ZcZ` gepusht (HEAD 9bac540);
 der GitHub-Workflow rollt 4.63 mit den Migrationen 032 bis 034 aus. Vor dem Push wurde die Historie der sieben Commits neu
 geschrieben (SHAs geändert), weil GitHubs Push-Schutz die synthetischen Schlüssel `sk_live_TESTGUARD…` in `tools/test-guard-check.sh`
@@ -45,6 +45,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 | Version | Inhalt | Commit | Push |
 |---|---|---|---|
+| 4.74 | Rechnungsliste: Filterreihe „Kunden: Nur SEPA-Kunden, Nur SEPA: Nein, Alle Kunden“ und „Auch bezahlte anzeigen“ statt zweimal „Alle anzeigen“; Hinweis bei eingeblendeten Nein-Kunden; Handbuch 7.7 (Revision kunden r6). Nur Beschriftung und Doku, Filterlogik (`sepa=active` Standard seit 31.08.2026) unverändert; keine Entwicklerdoku-Auswirkung, da keine Funktion oder Schnittstelle geändert | siehe git log | ja |
 | 4.73 | (4.69 bis 4.72 stammen aus dem Frontend-Branch, Google-Tag und Conversion, gemerged über PR #6 und #7; Backend setzt mit 4.73 fort.) Statusabgleich (Einzüge, „Status mit Stripe abgleichen“) prüft zusätzlich erfolgreiche und erstattete Einzüge der letzten `collections.sync_lookback_days` Tage (Vorgabe 70, höchstens 400) über `listPaymentIntents()` mit eingebetteter Charge auf Rücklastschrift und Erstattung; gemeinsame Funktion `collection_apply_dispute()` für Webhook und Abgleich (idempotent, Audit mit Quelle); Schaltfläche immer aktiv mit Zahl laufender Einzüge, Meldung mit Rücklastschriften/Erstattungen und `truncated`-Hinweis; CSS für gesperrte Schaltflächen (Befund Betreiber: Knopf ohne Rückmeldung, weil `disabled` unsichtbar). Prüfstände: collections-check 169/0 (Abschnitt 14d, 36 neue Fälle), payment-safety 74/0. Anlass: Frage des Betreibers nach Rücklastschriften Wochen nach dem Erfolg bei ausgebliebenem Webhook | siehe git log | ja |
 | Betrieb 12.09.2026 | Marketingprofil `mail_marketing` auf dem VPS noch NICHT eingerichtet (`grep -c mail_marketing shared/config.php` = 0, `--status` NICHT AKTIV); erster Konsolenversuch mit eingefügtem Skript hatte einen unbrauchbaren Block erzeugt, Sicherung `config.php.bak-20260911-1957` zurückgespielt. Nächster Schritt Betreiber: `bash /opt/smarteinzug/deploy/scripts/setup-marketing-mail.sh` mit Einzeleingaben (Region Enter, SMTP-Benutzer AKIA…, Passwort unsichtbar, Absender Enter), danach `--test=timo@muellerhv.de`. Die im Chat gemeldete Meldung „403 Forbidden“ stammte nicht aus dem Skript (nur `php -l`), vermutlich Browser | keine Codeänderung | entfällt |
 | 4.68 | `deploy/vps/scripts/setup-marketing-mail.sh`: Einrichtung des Marketingprofils auf dem VPS ohne Einfügen langer Blöcke (Abfragen, Sicherung, Block einfügen, Syntaxprüfung mit Rückfall, restart-workers, Zustand; `--status`, `--test=`) | siehe git log | ja |

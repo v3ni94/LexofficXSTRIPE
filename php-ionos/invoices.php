@@ -260,20 +260,23 @@ layout_header('Rechnungen', $ctx);
         </form>
         <a class="btn btn-secondary" href="synchronisationen.php" title="Verlauf der Synchronisationen mit <?= e($isrcLabel) ?>">Synchronisationen</a>
         <?php if ($filter === 'open'): ?>
-            <a class="btn btn-secondary" href="<?= e(invoices_url('all', $sepaFilter)) ?>">Alle anzeigen</a>
+            <a class="btn btn-secondary" href="<?= e(invoices_url('all', $sepaFilter)) ?>" title="Auch bezahlte und stornierte Rechnungen anzeigen">Auch bezahlte anzeigen</a>
         <?php else: ?>
             <a class="btn btn-secondary" href="<?= e(invoices_url('open', $sepaFilter)) ?>">Nur offene anzeigen</a>
         <?php endif; ?>
         <a class="btn btn-secondary" href="reconcile.php">Mit <?= e($isrcLabel) ?> abgleichen</a>
     </div>
     <div class="form-actions" style="margin: 0 0 16px; flex-wrap: wrap;">
-        <span class="hint" style="align-self: center;">SEPA-deaktivierte Kunden:</span>
+        <span class="hint" style="align-self: center;">Kunden:</span>
         <a class="btn btn-sm <?= $sepaFilter === 'active' ? '' : 'btn-secondary' ?>"
-           href="<?= e(invoices_url($filter, 'active')) ?>">Ausblenden</a>
+           href="<?= e(invoices_url($filter, 'active')) ?>" title="Standard: nur Rechnungen von Kunden mit SEPA-Einzug Ja">Nur SEPA-Kunden</a>
         <a class="btn btn-sm <?= $sepaFilter === 'disabled' ? '' : 'btn-secondary' ?>"
-           href="<?= e(invoices_url($filter, 'disabled')) ?>">Nur deaktivierte</a>
+           href="<?= e(invoices_url($filter, 'disabled')) ?>" title="Nur Rechnungen von Kunden, deren SEPA-Einzug auf Nein steht">Nur SEPA: Nein</a>
         <a class="btn btn-sm <?= $sepaFilter === 'all' ? '' : 'btn-secondary' ?>"
-           href="<?= e(invoices_url($filter, 'all')) ?>">Alle anzeigen</a>
+           href="<?= e(invoices_url($filter, 'all')) ?>" title="Rechnungen aller Kunden, unabhängig vom SEPA-Kennzeichen">Alle Kunden</a>
+        <?php if ($sepaFilter !== 'active'): ?>
+            <span class="hint" style="align-self: center;">Rechnungen von Kunden mit „SEPA: Nein“ sind eingeblendet; sie lassen sich nicht einziehen, bis SEPA-Einzug wieder auf „Ja“ steht.</span>
+        <?php endif; ?>
     </div>
     <?php if ($pauseReason): ?>
         <div class="flash flash-error"><?= e($pauseReason) ?> <?php if (can_manage_settings($ctx)): ?><a href="notstopp.php">Not-Stopp verwalten</a><?php endif; ?></div>

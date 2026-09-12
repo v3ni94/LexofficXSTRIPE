@@ -8,12 +8,17 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.73';
+const APP_VERSION = '4.74';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.74', 'date' => '12.09.2026', 'title' => 'Rechnungen: eindeutige Filter für SEPA-Kunden',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Die Filterreihe für das SEPA-Kennzeichen heißt jetzt „Kunden: Nur SEPA-Kunden (Standard), Nur SEPA: Nein, Alle Kunden“ statt „SEPA-deaktivierte Kunden: Ausblenden, Nur deaktivierte, Alle anzeigen“; der Statusfilter heißt „Auch bezahlte anzeigen“ statt „Alle anzeigen“. Zwei gleich beschriftete Schaltflächen „Alle anzeigen“ in zwei Reihen waren missverständlich. Bei eingeblendeten Nein-Kunden erscheint ein Hinweis, dass diese Rechnungen nicht einziehbar sind. Das Verhalten (Rechnungen von Kunden mit SEPA: Nein standardmäßig ausgeblendet, seit 31.08.2026) ist unverändert.'],
+            ['type' => 'Geändert', 'text' => 'Kundenhandbuch Kapitel 7.7 beschreibt die Filter der Rechnungsliste, die Kombination mit dem Statusfilter und die Fälle „Rechnung ohne Kunde“ und „Laufkunde“.'],
+         ]],
         ['version' => '4.73', 'date' => '12.09.2026', 'title' => 'Statusabgleich erkennt Rücklastschriften und Erstattungen nachträglich',
          'entries' => [
             ['type' => 'Neu', 'text' => '„Status mit Stripe abgleichen“ (Einzüge) prüft zusätzlich alle erfolgreichen und erstatteten Einzüge der letzten 70 Tage (collections.sync_lookback_days, höchstens 400) über eine seitenweise Liste der PaymentIntents mit eingebetteter Charge auf Rücklastschrift (charge.disputed) und Erstattungsstand (amount_refunded). Treffer wirken wie die Webhook-Ereignisse: Einzug disputed beziehungsweise refunded, Rechnung mit Klärungsbedarf, kein automatischer Neu-Einzug. Anlass: SEPA-Rücklastschriften kommen bis zu acht Wochen nach der Belastung; blieb der Webhook aus, wurden sie bisher nicht erkannt.'],
