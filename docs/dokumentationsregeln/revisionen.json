@@ -5,9 +5,9 @@
     "summary": "Marketingmodul (4.63) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r33",
-    "date": "11.09.2026",
-    "summary": "setup-marketing-mail.sh (4.68)."
+    "revision": "r34",
+    "date": "12.09.2026",
+    "summary": "Google-Tag von smart-einzug.de direkt im Seitenkopf, Ads-Kennung der Anwendung als Vorgabe im Code (4.69)."
   },
   "kunden": {
     "revision": "r4",
@@ -15,8 +15,8 @@
     "summary": "Abschnitt 8.4: Inhalt der Vorabankündigung, Hinweis zu Stripe-Benachrichtigungen (4.44)."
   },
   "marketing": {
-    "revision": "r4",
-    "date": "10.09.2026",
-    "summary": "Datenschutzerklärung um die Anwendung erweitert, Google-Ads-Kennung auch in app.smart-einzug.de (4.57)."
+    "revision": "r5",
+    "date": "12.09.2026",
+    "summary": "Google-Tag im Seitenkopf und Conversion bei Klick auf Registrieren (4.70)."
   }
 }

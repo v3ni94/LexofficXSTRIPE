@@ -233,6 +233,13 @@ jobs:
         shell: bash
         run: python3 tools/seo-linkcheck.py
 
+      # Google-Tag im Seitenkopf: Hash in der CSP, genau einmal je Seite, Consent-Voreinstellung.
+      # Ein abweichender Hash wuerde das Tag stillschweigend blockieren.
+      - name: Google-Tag der Marketingseiten pruefen (site-tag-check)
+        if: needs.changes.outputs.websites == 'true'
+        shell: bash
+        run: python3 tools/site-tag-check.py
+
       - name: Themen- und URL-Zuordnung pruefen (seo-map-check)
         if: needs.changes.outputs.websites == 'true'
         shell: bash

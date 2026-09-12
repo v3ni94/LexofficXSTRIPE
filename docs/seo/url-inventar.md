@@ -14,7 +14,7 @@ Erzeugt von `tools/seo-inventory.py` aus dem Repository. Indexierung bei Google 
 | anleitungen/index.html | keyword_landingpage | Anleitungen für die Einrichtung von SmartEinzug | ja | ja | 31 | 441 |  |  | BreadcrumbList, ListItem |
 | anleitungen/lexware-office-verbinden/index.html | keyword_landingpage | Lexware Office mit SmartEinzug verbinden | ja | ja | 4 | 985 |  |  | BreadcrumbList, ListItem |
 | anleitungen/stripe-verbinden/index.html | keyword_landingpage | Eigenes Stripe-Konto mit SmartEinzug verbinden | ja | ja | 5 | 1120 |  |  | BreadcrumbList, ListItem |
-| datenschutz/index.html | rechtliches_kontakt | Datenschutzerklärung | ja | ja | 33 | 1433 |  |  | BreadcrumbList, ListItem |
+| datenschutz/index.html | rechtliches_kontakt | Datenschutzerklärung | ja | ja | 33 | 1477 |  | 12.09.2026 | BreadcrumbList, ListItem |
 | funktionen/index.html | produktseite | SmartEinzug im Überblick: alle Funktionen | ja | ja | 31 | 327 | 1.475,20 € |  | BreadcrumbList, ListItem |
 | hilfe/index.html | produktseite | Hilfe und Anleitungen zu SmartEinzug | ja | ja | 31 | 468 |  |  | BreadcrumbList, ListItem |
 | impressum/index.html | rechtliches_kontakt | Impressum | ja | ja | 33 | 183 |  |  | BreadcrumbList, ListItem |

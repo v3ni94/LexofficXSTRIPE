@@ -8,12 +8,26 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.68';
+const APP_VERSION = '4.70';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.70', 'date' => '12.09.2026', 'title' => 'Conversion bei Klick auf Registrieren auf smart-einzug.de',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Auf Vorgabe des Betreibers meldet smart-einzug.de jetzt die Google-Ads-Conversion „Kauf (1)“, sobald ein Besucher auf Registrieren klickt. Der Ereignis-Schnipsel aus Google Ads steht unverändert im Kopf jeder Seite direkt hinter dem Google-Tag; assets/js/site.js bindet ihn an jeden Link auf die Registrierung der Anwendung, statt an jedem der 70 Verweise ein onclick-Attribut zu setzen. Inline-Attribute würden unsafe-hashes in der Content-Security-Policy erzwingen und den Schutz gegen eingeschleuste Skripte schwächen.'],
+            ['type' => 'Neu', 'text' => 'Die Messung kann eine Registrierung nicht verhindern: Der Browser wechselt spätestens nach 800 Millisekunden zur Registrierung, auch wenn Google nicht antwortet, und jeder Fehler in der Messung führt sofort zur Navigation. Klicks mit Sondertaste oder in ein neues Fenster bleiben unberührt. tools/site-tag-check.py prüft das zusammen mit dem zweiten CSP-Hash und dem Label.'],
+            ['type' => 'Geändert', 'text' => 'Wichtig für die Auswertung: Gezählt wird der Klick auf Registrieren, nicht der Abschluss eines Abonnements. Die Conversion-Aktion heißt in Google Ads „Kauf“, misst mit dieser Einbindung aber eine Absicht. Solange dieselbe Aktion hier gemeldet wird, bleibt analytics.ads_conversion_label in der Anwendung leer, sonst würde derselbe Vorgang doppelt gezählt.'],
+         ]],
+        ['version' => '4.69', 'date' => '12.09.2026', 'title' => 'Google-Ads-Tag im Seitenkopf von smart-einzug.de, Anwendung scharf geschaltet',
+         'entries' => [
+            ['type' => 'Geändert', 'text' => 'Auf Anweisung des Betreibers ist die Ads-Kennung AW-18431688840 jetzt als Vorgabe im Code hinterlegt (app/tracking.php, TRACKING_DEFAULT_ADS_ID), wie schon auf den Marketingseiten. Sie wirkt damit mit dem nächsten Deployment, ohne dass jemand shared/config.php auf dem Server ändern muss. Der Block analytics in der Konfiguration ist optional geworden: Er kann die Kennung überschreiben, und analytics.enabled = false schaltet Tag und Banner vollständig ab.'],
+            ['type' => 'Geändert', 'text' => 'Analytics bleibt in der Anwendung aus, weil es für app.smart-einzug.de keine eigene GA4-Property gibt; eine Kennung einer Marketingdomain würde die Messwerte vermischen. Gemessen wird also nur die Ads-Conversion, und weiterhin ausschließlich auf register.php und vormerken.php nach ausdrücklicher Einwilligung. Der Prüfer tools/app-tracking-check.php deckt die Vorgabe mit ab (35 Fälle).'],
+            ['type' => 'Neu', 'text' => 'Auf Anweisung des Betreibers steht das Google-Tag (AW-18431688840) jetzt direkt im Kopf jeder Seite von smart-einzug.de, so wie Google es vorgibt, damit die Tag-Prüfung es findet. Ergänzt ist eine Voreinstellung nach Google Consent Mode: Ohne Einwilligung setzt Google keine Cookies, liest keine aus und nutzt keine Werbekennungen; personalisierte Werbung bleibt dauerhaft abgeschaltet. Erst nach „Alle akzeptieren“ zieht assets/js/site.js die Einwilligung per consent update nach und ergänzt Analytics. Ein zweites Google-Skript wird nie geladen.'],
+            ['type' => 'Geändert', 'text' => 'Die Content-Security-Policy von smart-einzug.de erlaubt genau dieses eine Inline-Skript über seinen SHA-256-Hash, nicht über unsafe-inline; der Schutz gegen eingeschleuste Skripte bleibt damit erhalten. Weicht der Hash vom Skript ab, blockiert der Browser das Tag stillschweigend. python3 tools/site-tag-check.py prüft deshalb Hash, Einmaligkeit je Seite und die Voreinstellung der Einwilligung und läuft im Workflow mit.'],
+            ['type' => 'Geändert', 'text' => 'Die Datenschutzerklärung beschreibt den neuen Zustand: Das Tag lädt beim Seitenaufruf, setzt aber ohne Einwilligung keine Cookies; übertragen werden dabei nur technisch notwendige Angaben des Seitenaufrufs. Der Bannertext sagt dasselbe, statt wie bisher zu behaupten, ohne Einwilligung werde kein Google-Skript geladen.'],
+         ]],
         ['version' => '4.68', 'date' => '11.09.2026', 'title' => 'Einrichtungsskript für das Marketing-Versandprofil auf dem VPS',
          'entries' => [
             ['type' => 'Neu', 'text' => 'deploy/vps/scripts/setup-marketing-mail.sh richtet das Versandprofil mail_marketing (Amazon SES) auf dem Server ein: Abfrage von Region, SMTP-Zugangsdaten (unsichtbar) und Absender mit Plausibilitätsprüfung, Sicherung der Konfiguration, Einfügen des Blocks, Webhook-Token, Syntaxprüfung im Container mit Rückfall auf die Sicherung, Neuerzeugen der Worker, Zustandsanzeige; --status und --test=ADRESSE für die laufende Kontrolle. Anlass: Einfügen langer Befehlsblöcke in die SSH-Sitzung war fehleranfällig.'],

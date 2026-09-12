@@ -5,10 +5,18 @@
  * 2) Anonyme, cookielose Reichweitenmessung (eigener Endpunkt, keine Cookies)
  * 3) Sticky Mobile-CTA-Leiste ein-/ausblenden
  * 4) Einwilligung (Consent), Google Analytics 4 (smart-einzug.de, lexware-einzug.de, lexoffice-einzug.de) und
- *    Google Ads (lexware-einzug.de und smart-einzug.de): gtag.js wird erst nach
- *    ausdrücklicher Zustimmung geladen. Ohne Zustimmung wird kein Google-Skript
- *    geladen und kein Cookie gesetzt. Entscheidung wird lokal gespeichert
- *    (localStorage, 12 Monate) und kann über "Cookie-Einstellungen" geändert werden.
+ *    Google Ads (lexware-einzug.de und smart-einzug.de).
+ *
+ *    Zwei Betriebsarten, abhängig davon, ob die Seite das Google-Tag bereits im Kopf trägt:
+ *    a) Seitenweites Tag im Kopf (smart-einzug.de seit 12.09.2026, Vorgabe des Betreibers):
+ *       gtag.js lädt sofort, setzt aber durch "consent default denied" KEINE Cookies und
+ *       keine Werbekennungen. Diese Datei zieht nach der Zustimmung nur die Einwilligung
+ *       nach ("consent update") und ergänzt GA4. Ein zweites gtag.js wird nie geladen.
+ *    b) Kein Tag im Kopf (alle übrigen Domains): gtag.js wird erst nach ausdrücklicher
+ *       Zustimmung geladen, vorher kein Google-Skript und kein Cookie.
+ *
+ *    Die Entscheidung wird lokal gespeichert (localStorage, 12 Monate) und kann über
+ *    "Cookie-Einstellungen" geändert werden.
  */
 (function () {
   'use strict';
@@ -102,6 +110,37 @@
     }, { threshold: 0 }).observe(hero);
   }
 
+  /*
+   * Conversion "Kauf (1)" bei Klick auf Registrieren (Vorgabe des Betreibers 12.09.2026).
+   * Die Funktion gtag_report_conversion steht im Kopf der Seite (Schnipsel aus Google Ads);
+   * hier wird sie an jeden Link auf die Registrierung der Anwendung gebunden, statt an jedem
+   * Link ein onclick-Attribut zu setzen. Inline-Attribute wuerden 'unsafe-hashes' in der
+   * Content-Security-Policy erzwingen und den Schutz gegen eingeschleuste Skripte schwaechen.
+   *
+   * Grundsatz: Die Messung darf eine Registrierung NIE verhindern. Deshalb navigiert der
+   * Browser spaetestens nach NAV_NOTBREMSE Millisekunden, auch wenn Google nicht antwortet,
+   * und jeder Fehler in der Messung fuehrt sofort zur Navigation.
+   */
+  var NAV_NOTBREMSE = 800;
+  function bindConversionLinks() {
+    if (typeof window.gtag_report_conversion !== 'function') { return; }
+    document.addEventListener('click', function (event) {
+      if (event.defaultPrevented || event.button !== 0) { return; }
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) { return; }
+      var el = event.target;
+      while (el && el !== document && el.tagName !== 'A') { el = el.parentElement; }
+      if (!el || el === document || !el.href) { return; }
+      if (el.pathname !== '/register.php' || el.hostname !== 'app.smart-einzug.de') { return; }
+      if (el.target && el.target !== '_self') { return; }
+      var ziel = el.href;
+      var navigiert = false;
+      function gehe() { if (!navigiert) { navigiert = true; window.location = ziel; } }
+      event.preventDefault();
+      window.setTimeout(gehe, NAV_NOTBREMSE);
+      try { window.gtag_report_conversion(ziel); } catch (e) { gehe(); }
+    });
+  }
+
   /* Mobile-Navigation nach Linkklick schließen */
   function closeNavOnLinkClick() {
     var toggle = document.getElementById('nav-toggle');
@@ -127,24 +166,38 @@
     try { localStorage.setItem(CONSENT_KEY, JSON.stringify({ s: state, t: Date.now() })); } catch (e) { /* kein Speicher */ }
   }
 
+  /* Trägt die Seite das Google-Tag bereits im Kopf? Dann nie ein zweites gtag.js laden:
+     Google weist ausdrücklich darauf hin, dass das Tag je Seite nur einmal vorhanden sein darf. */
+  function pageTagPresent() {
+    return !!document.querySelector('script[src*="googletagmanager.com/gtag/js"]');
+  }
+
   var gaLoaded = false;
   function loadAnalytics() {
     var id = GA_IDS[location.hostname];
     var adsId = ADS_IDS[location.hostname];
-    if (!id || gaLoaded) { return; }
+    if ((!id && !adsId) || gaLoaded) { return; }
     gaLoaded = true;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
-    window.gtag('consent', 'default', {
+    var erlaubt = {
       ad_storage: adsId ? 'granted' : 'denied', ad_user_data: adsId ? 'granted' : 'denied',
-      ad_personalization: 'denied', analytics_storage: 'granted'
-    });
+      ad_personalization: 'denied', analytics_storage: id ? 'granted' : 'denied'
+    };
+    if (pageTagPresent()) {
+      /* Das Tag im Kopf hat bereits "consent default denied" gesetzt und die Ads-Kennung
+         konfiguriert. Hier nur die Einwilligung nachziehen und GA4 ergänzen. */
+      window.gtag('consent', 'update', erlaubt);
+      if (id) { window.gtag('config', id, { anonymize_ip: true }); }
+      return;
+    }
+    window.gtag('consent', 'default', erlaubt);
     window.gtag('js', new Date());
-    window.gtag('config', id, { anonymize_ip: true });
+    if (id) { window.gtag('config', id, { anonymize_ip: true }); }
     if (adsId) { window.gtag('config', adsId); }
     var s = document.createElement('script');
     s.async = true;
-    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(id);
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(id || adsId);
     document.head.appendChild(s);
   }
 
@@ -162,7 +215,10 @@
     var text = document.createElement('p');
     text.className = 'consent-text';
     var adsHint = ADS_IDS[location.hostname] ? ' und Google Ads (Messung, ob ein Besuch über eine Anzeige zu einer Registrierung führt)' : '';
-    text.appendChild(document.createTextNode('Wir nutzen Google Analytics' + adsHint + ', um zu verstehen, wie diese Seite genutzt wird. Dabei werden Cookies gesetzt und Daten an Google übertragen, auch in die USA. Das geschieht nur mit Ihrer Einwilligung, die Sie jederzeit über "Cookie-Einstellungen" im Fußbereich ändern können. Technisch notwendige Funktionen und unsere eigene cookielose Zählung laufen ohne Einwilligung. Details in der '));
+    var vorabHint = pageTagPresent()
+      ? 'Das Google-Tag ist auf dieser Seite eingebunden, setzt ohne Ihre Einwilligung aber keine Cookies und keine Werbekennungen. '
+      : '';
+    text.appendChild(document.createTextNode('Wir nutzen Google Analytics' + adsHint + ', um zu verstehen, wie diese Seite genutzt wird. ' + vorabHint + 'Cookies werden erst nach Ihrer Einwilligung gesetzt; dabei werden Daten an Google übertragen, auch in die USA. Sie können die Einwilligung jederzeit über "Cookie-Einstellungen" im Fußbereich ändern. Technisch notwendige Funktionen und unsere eigene cookielose Zählung laufen ohne Einwilligung. Details in der '));
     var link = document.createElement('a');
     link.href = '/datenschutz';
     link.textContent = 'Datenschutzerklärung';
@@ -195,7 +251,7 @@
   }
 
   function initConsent() {
-    if (!GA_IDS[location.hostname]) { return; }
+    if (!GA_IDS[location.hostname] && !ADS_IDS[location.hostname]) { return; }
     var state = consentState();
     if (state === 'all') { loadAnalytics(); }
     else if (state === null) { showBanner(); }
@@ -211,6 +267,7 @@
     trackCtaClicks();
     initStickyCta();
     closeNavOnLinkClick();
+    bindConversionLinks();
     trackPageView();
     initConsent();
   }

@@ -558,7 +558,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 1433,
+  "woerter_hauptinhalt": 1477,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -567,7 +567,9 @@
   "jsonld_faq": false,
   "preise_text": [],
   "preise_meta": [],
-  "daten_text": [],
+  "daten_text": [
+   "12.09.2026"
+  ],
   "bilder": 2,
   "bilder_ohne_alt": 0,
   "links_intern_ausgehend": [
