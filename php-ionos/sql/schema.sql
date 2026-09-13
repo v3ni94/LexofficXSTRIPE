@@ -426,6 +426,9 @@ CREATE TABLE IF NOT EXISTS integrations (
     stripe_business_name            VARCHAR(255) NULL,
     stripe_mode                     VARCHAR(8)   NULL, -- test | live
     stripe_last_verified_at         DATETIME   NULL,
+    stripe_charges_enabled          TINYINT(1)   NULL,             -- Ergebnis GET /v1/account (Migration 035), NULL = unbekannt
+    stripe_sepa_capability          VARCHAR(16)  NULL,             -- capabilities.sepa_debit_payments: active | inactive | pending | unrequested | unknown (Migration 035)
+    stripe_verify_error             VARCHAR(16)  NULL,             -- auth | permission | technical, NULL = letzte Pruefung erfolgreich (Migration 035)
     stripe_disconnected_at          DATETIME   NULL,
     lexoffice_last_sync             DATETIME   NULL,
     sevdesk_api_key_encrypted       TEXT       NULL,               -- sevdesk-Anbindung (Migration 028)

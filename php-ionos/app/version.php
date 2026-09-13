@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.78';
+const APP_VERSION = '4.79';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.79', 'date' => '13.09.2026', 'title' => 'Stripe-Verbindungszustand, Produktfaktenquelle, Datenvertrag (Masterprompt Backend)',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Stripe-Verbindungszustand je Firma (Migration 035): Die Kontoprüfung übernimmt Zahlungsfreischaltung (charges_enabled) und SEPA-Fähigkeit (capabilities.sepa_debit_payments); stripe_connection_state() liefert bereit, SEPA nicht verfügbar, SEPA in Prüfung, Konto nimmt keine Zahlungen an, Schlüssel ungültig, Berechtigung fehlt, vorübergehend gestört, nicht geprüft, getrennt oder nicht verbunden. Einreichung, Vormerkung, IBAN-Registrierung und digitales Mandat verlangen ein bereites Konto (klare deutsche Meldung, im Fälligkeitslauf Zurückstellung statt Fehlschlag); Statusabgleich, Klärung, Webhook und Import lesen weiter. Anzeige unter Einstellungen, Stripe.'],
+            ['type' => 'Geändert', 'text' => 'Stripe-Webhook ignoriert Ereignisse, deren livemode nicht zum Modus des hinterlegten Schlüssels passt. Trennen der Stripe-Verbindung nennt die Zahl terminierter Einzüge, die bestehen bleiben und ohne Verbindung nicht eingereicht werden. billing-webhook.php antwortet auf andere Methoden als POST mit 405.'],
+            ['type' => 'Neu', 'text' => 'Zentrale Produktfaktenquelle app/product_facts.php (Register 1.0 mit Status technisch getestet, öffentlich behauptet, geplant, ungeklärt, Quelle und Prüfdatum je Aussage), Snapshot docs/contracts/product-facts.snapshot.json (bin/product-facts.php --export), öffentlicher Endpunkt fakten.php (GET, JSON, 300 s Cache, noindex, CORS nur für eigene Domains, ohne Login, ohne Stripe-Aufruf) und Prüfwerkzeug tools/product-facts-check.php im Workflow. Preisbeträge bleiben bis zur Freigabe des Betreibers nicht öffentlich.'],
+            ['type' => 'Neu', 'text' => 'Datenvertrag docs/contracts/smarteinzug-contract.md 1.0 (Dateibesitz, Snapshot, Vormerkung, Reichweitenmessung, Conversion-Ereignisse, Zustandsbereiche, Berechtigungen, Endpunkte) sowie docs/backend/ (Audit, Routeninventar, Stripe-Review, Produktfakten, Release-Checkliste). Prüfstände: collections-check Abschnitt 16 und 16a (32 Fälle, 201/0), product-facts-check 33/0.'],
+         ]],
         ['version' => '4.78', 'date' => '24.09.2026', 'title' => 'Statusseite: Aufgabenverarbeitung zählt den Scheduler, nicht nur cron.php',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Monitoring-Komponente „Cronjobs / Aufgabenverarbeitung“ wertete nur Aufrufe von cron.php aus. Seit dem Ende des externen Cronjobs (20.09.2026, auf Uptime-Check umgewidmet) meldete sie „verspätet“ und zog Datenabgleich und Einzugsverarbeitung auf der öffentlichen Statusseite auf „Störung“, obwohl Scheduler und Worker liefen. Mit aktiver Warteschlange gilt jetzt der Herzschlag des Schedulers (worker_heartbeats, Pool scheduler) als Nachweis; cron.php bleibt die Quelle auf dem Webhosting. Neue Fehlerkategorie scheduler_late.'],

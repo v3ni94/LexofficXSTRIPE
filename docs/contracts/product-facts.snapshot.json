@@ -1,0 +1,302 @@
+{
+    "schema": "smarteinzug-product-facts",
+    "version": "1.0",
+    "app_version": "4.79",
+    "geprueft_am": "13.09.2026",
+    "hinweis": "Freigegebene, nicht sensible Produktfakten. Status je Aussage: technisch_getestet, oeffentlich_behauptet oder geplant. Preise erscheinen erst nach Freigabe des Betreibers.",
+    "facts": [
+        {
+            "key": "produkt.name",
+            "bereich": "produkt",
+            "wert": "SmartEinzug",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "produkt.anbieter",
+            "bereich": "produkt",
+            "wert": "Müller Holding AG, Rheinpromenade 13, 40789 Monheim am Rhein, Amtsgericht Düsseldorf HRB 104291, Vorstand Timo Müller",
+            "status": "oeffentlich_behauptet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "produkt.domain_website",
+            "bereich": "produkt",
+            "wert": "https://smart-einzug.de",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "produkt.domain_anwendung",
+            "bereich": "produkt",
+            "wert": "https://app.smart-einzug.de",
+            "status": "oeffentlich_behauptet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "produkt.kategorie",
+            "bereich": "produkt",
+            "wert": "SEPA-Lastschrifteinzug für offene Rechnungen aus Lexware Office über das eigene Stripe-Konto des Unternehmens",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "produkt.zielgruppe",
+            "bereich": "produkt",
+            "wert": "Unternehmen und Selbstständige mit Lexware Office und eigenem Stripe-Konto (geschäftliches Angebot)",
+            "status": "oeffentlich_behauptet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "produkt.leadseiten",
+            "bereich": "produkt",
+            "wert": [
+                "lexware-einzug.de",
+                "lexoffice-einzug.de",
+                "sevdesk-einzug.de",
+                "sevdesk-sepa.de"
+            ],
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "integration.lexware_office.name",
+            "bereich": "integration",
+            "wert": "Lexware Office (ehemals lexoffice)",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "integration.lexware_office.status",
+            "bereich": "integration",
+            "wert": "verfuegbar",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "integration.lexware_office.zugriff",
+            "bereich": "integration",
+            "wert": "Nur lesend über die Lexware Office Public API (GET /profile, /voucherlist, /invoices/{id}, /contacts/{id}); keine Buchung, keine Rückschreibung von Zahlungen",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "integration.lexware_office.voraussetzung",
+            "bereich": "integration",
+            "wert": "API-Schlüssel der Lexware Office Public API (wird beim Speichern über GET /profile geprüft, verschlüsselt gespeichert, nie angezeigt)",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "integration.sevdesk.status",
+            "bereich": "integration",
+            "wert": "angekuendigt",
+            "status": "geplant",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "integration.buchhaltungssystem_je_firma",
+            "bereich": "integration",
+            "wert": "Genau ein Buchhaltungssystem je Firmenaccount; Wechsel nur durch Inhaber oder Administrator mit 2FA, danach Sperre von 28 Tagen",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.anbieter",
+            "bereich": "zahlung",
+            "wert": "Stripe. Jede Firma verbindet ihr eigenes Stripe-Konto; Lastschriften und Gutschriften laufen ausschließlich über dieses Konto. SmartEinzug hält kein Kundengeld.",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.kontomodell",
+            "bereich": "zahlung",
+            "wert": "API-Schlüssel je Firma (Secret Key oder Restricted Key); kein Stripe Connect, keine Stripe App, kein OAuth",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.schluessel_schutz",
+            "bereich": "zahlung",
+            "wert": "Schlüssel werden AES-256-GCM verschlüsselt gespeichert, nie angezeigt, nie protokolliert; empfohlen ist ein eingeschränkter Schlüssel mit minimalen Rechten",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.kontopruefung",
+            "bereich": "zahlung",
+            "wert": "Beim Verbinden und bei „Verbindung prüfen“ werden Konto, Zahlungsfreischaltung (charges_enabled) und SEPA-Fähigkeit (capabilities.sepa_debit_payments) geprüft; ohne aktive SEPA-Fähigkeit werden keine Einzüge eingereicht",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.verfahren",
+            "bereich": "zahlung",
+            "wert": "SEPA-Lastschrift über Stripe (Zahlungsmethode sepa_debit); die Anwendung erzeugt keine Firmenlastschrift (B2B)",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.verfahren_schema",
+            "bereich": "zahlung",
+            "wert": "SEPA-Basislastschrift (Core) laut Stripe-Dokumentation",
+            "status": "oeffentlich_behauptet",
+            "geprueft_am": null
+        },
+        {
+            "key": "zahlung.abonnement_trennung",
+            "bereich": "zahlung",
+            "wert": "Das Abonnement der Firma für SmartEinzug läuft über das Stripe-Konto der Müller Holding AG und ist von den Einzügen der Firma gegenüber ihren Kunden vollständig getrennt",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.webhook_ereignisse",
+            "bereich": "zahlung",
+            "wert": [
+                "payment_intent.processing",
+                "payment_intent.succeeded",
+                "payment_intent.payment_failed",
+                "charge.dispute.created",
+                "charge.refunded",
+                "charge.refund.updated",
+                "checkout.session.completed"
+            ],
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.ruecklastschrift",
+            "bereich": "zahlung",
+            "wert": "Rücklastschriften meldet der Stripe-Webhook; zusätzlich prüft der manuelle Statusabgleich abgeschlossene Einzüge der letzten 70 Tage (Vorgabe). Die Rechnung erhält Klärungsbedarf, ein automatischer Neu-Einzug findet nicht statt.",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "zahlung.zahlungseingang",
+            "bereich": "zahlung",
+            "wert": "Erfolg, spätere Rückgabe und Auszahlung sind getrennte Zustände; SmartEinzug nennt keine garantierten Zahlungseingangstage",
+            "status": "oeffentlich_behauptet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "mandat.nachweis",
+            "bereich": "mandat",
+            "wert": "Eigenes SEPA-Mandatsdokument je Kunde mit Mandatsreferenz; der handschriftliche Nachweis ist standardmäßig erforderlich (Firma kann die Einstellung ändern); digitales Mandat über Stripe Checkout (Setup) möglich",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "mandat.vorabankuendigung",
+            "bereich": "mandat",
+            "wert": "Vorabankündigung per E-Mail durch SmartEinzug optional (Vorgabe aus), Frist Vorgabe 14 Tage; Stripe versendet eigene Benachrichtigungen",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "einzug.restbetragspruefung",
+            "bereich": "einzug",
+            "wert": "Unmittelbar vor jeder Einreichung wird der offene Betrag der Rechnung bei Lexware Office abgerufen: bezahlte Rechnungen werden nicht eingezogen, Teilzahlungen nur nach Bestätigung des Restbetrags",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "einzug.doppelschutz",
+            "bereich": "einzug",
+            "wert": "Versuchsjournal mit Idempotenzschlüssel je Versuch, höchstens ein PaymentIntent je Einzug, Einzüge je Firma serialisiert; unbekannte Ergebnisse gehen in die Klärung statt in eine Wiederholung",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "einzug.karenz_und_fenster",
+            "bereich": "einzug",
+            "wert": "Vorgabe: Karenzzeit 4 Stunden vor der Einreichung (bis dahin stornierbar), Einreichfenster 23:00 bis 06:00 Uhr; je Installation konfigurierbar",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "einzug.not_stopp",
+            "bereich": "einzug",
+            "wert": "Not-Stopp je Firma und für die Plattform hält alle Einreichungen an; Aufheben nur mit 2FA-Code",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "sicherheit.zwei_faktor",
+            "bereich": "sicherheit",
+            "wert": "Zwei-Faktor-Authentifizierung (TOTP, Authenticator-App) für jeden Benutzer verpflichtend, Recovery-Codes nur als Hash, Gerätefreigabe 90 Tage",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "sicherheit.mandantentrennung",
+            "bereich": "sicherheit",
+            "wert": "Jede Abfrage ist an die Firma (tenant_id) gebunden; Zugriffe über Firmengrenzen sind im Prüfstand ausgeschlossen",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "sicherheit.protokoll",
+            "bereich": "sicherheit",
+            "wert": "Geldrelevante und sicherheitsrelevante Aktionen werden protokolliert; Aufbewahrung Vorgabe 90 Tage",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "tarif.name",
+            "bereich": "tarif",
+            "wert": "UNLIMITED START",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "tarif.periode",
+            "bereich": "tarif",
+            "wert": "Abrechnung je 28 Tage (nicht je Kalendermonat) über ein Stripe-Abonnement der Müller Holding AG",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "tarif.preis",
+            "bereich": "tarif",
+            "wert": "UNLIMITED START: 25,00 EUR netto je vier Wochen (28 Tage), zuzüglich gesetzlicher Umsatzsteuer; Einführungspreis",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "tarif.stichtag",
+            "bereich": "tarif",
+            "wert": "Der Einführungspreis gilt für Firmenaccounts, die bis zum 30.09.2026 angelegt werden (Ende des laufenden Kalendermonats); für diese Accounts bleibt er bestehen, solange das Abonnement läuft.",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "tarif.begrenzung",
+            "bereich": "tarif",
+            "wert": "UNLIMITED START ohne Begrenzung der Einzüge je Periode und ohne Begrenzung der Benutzer",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "tarif.kuendigung",
+            "bereich": "tarif",
+            "wert": "Kündigung zum Ende der laufenden Abrechnungsperiode über die Abo-Seite (Stripe cancel_at_period_end), Rücknahme bis zum Periodenende möglich",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "grenzen.rueckschreibung",
+            "bereich": "grenzen",
+            "wert": "Keine Rückschreibung von Zahlungen nach Lexware Office; der Zahlungsstatus wird aus Lexware Office gelesen und die Rechnung nach Zahlungseingang aus der Einzugsliste entfernt",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        },
+        {
+            "key": "grenzen.kein_b2b",
+            "bereich": "grenzen",
+            "wert": "Kein SEPA-Firmenlastschriftverfahren (B2B)",
+            "status": "technisch_getestet",
+            "geprueft_am": "13.09.2026"
+        }
+    ]
+}

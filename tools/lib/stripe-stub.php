@@ -15,6 +15,8 @@
  *   timeout       schlaeft laenger als CURLOPT_TIMEOUT (31 s) und legt den PaymentIntent an
  * Steuerdatei STRIPE_STUB_DIR/search_lag: Suche liefert leer (Suchindex haengt), Liste liefert weiterhin alles.
  * Steuerdatei STRIPE_STUB_DIR/pi_status: Status neu angelegter PaymentIntents (Vorgabe processing).
+ * Zustandsdatei STRIPE_STUB_DIR/account.json: Ueberschreibungen fuer GET /account ({"charges_enabled": false,
+ *   "capabilities": {"sepa_debit_payments": "inactive"}}); Steuerdatei account_error mit 401, 403 oder 500 simuliert einen Fehler.
  * Zustandsdatei STRIPE_STUB_DIR/charges.json: Ueberschreibungen je Charge-ID ({"ch_x": {"disputed": true,
  *   "amount_refunded": 4000}}) fuer GET /charges/{id} und die eingebettete Charge der Liste (expand=data.latest_charge).
  *
@@ -98,7 +100,17 @@ file_put_contents("$dir/requests.log", date('c') . " $method $path\n", FILE_APPE
 
 // --- Konto ---
 if ($method === 'GET' && $path === '/account') {
-    stub_json(200, ['id' => 'acct_stub', 'business_profile' => ['name' => 'Stub-Konto'], 'charges_enabled' => true, 'payouts_enabled' => true, 'country' => 'DE', 'default_currency' => 'eur']);
+    // account.json ueberschreibt Felder (charges_enabled, capabilities); account_error (401|403|500) simuliert einen Fehler
+    if (is_file("$dir/account_error")) {
+        $code = (int)trim((string)file_get_contents("$dir/account_error"));
+        if ($code === 401) { stub_error(401, 'invalid_request_error', 'api_key_expired', 'Invalid API Key provided (Stub).'); }
+        if ($code === 403) { stub_error(403, 'invalid_request_error', 'permission_error', 'This API key does not have the required permissions (Stub).'); }
+        stub_error(500, 'api_error', 'internal', 'Interner Fehler (Stub).');
+    }
+    $acct = ['id' => 'acct_stub', 'business_profile' => ['name' => 'Stub-Konto'], 'charges_enabled' => true, 'payouts_enabled' => true, 'country' => 'DE', 'default_currency' => 'eur',
+        'capabilities' => ['sepa_debit_payments' => 'active', 'transfers' => 'active']];
+    foreach (stub_load('account') as $k => $v) { $acct[$k] = $v; }
+    stub_json(200, $acct);
 }
 
 // --- Kunden ---

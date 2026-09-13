@@ -12,6 +12,14 @@ require_once __DIR__ . '/app/billing.php';
 http_response_code(200);
 header('Content-Type: text/plain');
 
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    // Stripe sendet ausschliesslich POST; andere Methoden werden ohne Signaturpruefung abgewiesen (4.79, Routeninventar).
+    header('Allow: POST');
+    http_response_code(405);
+    echo 'POST only';
+    exit;
+}
+
 $b = (array)config('billing', []);
 $secret = (string)($b['stripe_webhook_secret'] ?? '');
 $rawBody = file_get_contents('php://input') ?: '';

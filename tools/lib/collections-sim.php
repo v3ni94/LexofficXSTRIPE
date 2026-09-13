@@ -13,6 +13,8 @@
  *   process_window <now>         wie process, aber MIT Fensterpruefung
  *   resolve <tenant>             collection_attempts_resolve
  *   sync_status <tenant>         sync_collection_statuses (laufende Einzuege, Rueckschau auf Ruecklastschrift/Erstattung)
+ *   stripe_verify <tenant>       integration_verify_stripe mit dem hinterlegten Schluessel; Fehler werden vermerkt (4.79)
+ *   stripe_state <tenant>        stripe_connection_state der Firma
  *   state <invoice>              Zustand der Rechnung, ihrer Einzuege und Versuche
  *   sign <secret> <payload-datei> Stripe-Signature-Header fuer einen Webhook-Testaufruf
  *   cancel <tenant> <collection> cancel_scheduled_collection
@@ -31,6 +33,7 @@ require_once $argv[1] . '/php-ionos/app/crypto.php';
 require_once $argv[1] . '/php-ionos/app/invoice_source.php';
 require_once $argv[1] . '/php-ionos/app/mandates.php';
 require_once $argv[1] . '/php-ionos/app/queue.php'; // Circuit Breaker und Ratenbegrenzung wie im Worker
+require_once $argv[1] . '/php-ionos/app/integrations.php';
 
 final class FakeLexSource implements InvoiceSource
 {
@@ -131,6 +134,30 @@ switch ($case) {
     case 'resolve':
         $r = collection_attempts_resolve((string)$argv[3], ['user_id' => null, 'email' => 'sim']);
         foreach ($r as $k => $v) { $out($k, $v); }
+        break;
+
+    case 'stripe_verify':
+        $t = (string)$argv[3];
+        $integ = integration_load($t);
+        try {
+            $r = integration_verify_stripe($t, (string)integration_stripe_key($integ));
+            $out('result', 'ok');
+            $out('sepa_capability', $r['sepa_capability']);
+            $out('charges_enabled', $r['charges_enabled'] === null ? 'null' : (int)$r['charges_enabled']);
+        } catch (Throwable $e) {
+            $out('result', 'error');
+            $out('error_class', integration_stripe_verify_failed($t, $e));
+            $out('error', str_replace("\n", ' ', $e->getMessage()));
+        }
+        $s = stripe_connection_state(integration_load($t));
+        $out('state', $s['code']);
+        $out('ready', (int)$s['ready']);
+        break;
+
+    case 'stripe_state':
+        $s = stripe_connection_state(integration_load((string)$argv[3]));
+        $out('state', $s['code']);
+        $out('ready', (int)$s['ready']);
         break;
 
     case 'sync_status':

@@ -187,17 +187,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             funnel_event_once($tenantId, 'stripe_connected', $ctx['user_id']);
             notify_integration_change($ctx, 'Stripe-Verbindung eingerichtet (' . $info['mode'] . ')');
-            flash_set('success', 'Stripe erfolgreich verbunden: ' . ($info['business_name'] ?: $info['account_id'])
-                . ($info['mode'] === 'test' ? '. Achtung: Testmodus, es werden keine echten Lastschriften ausgeführt.' : '.') . $kontowechsel);
+            $state = stripe_connection_state(integration_load($tenantId));
+            flash_set($state['ready'] ? 'success' : 'error', 'Stripe erfolgreich verbunden: ' . ($info['business_name'] ?: $info['account_id'])
+                . ($info['mode'] === 'test' ? '. Achtung: Testmodus, es werden keine echten Lastschriften ausgeführt.' : '.') . $kontowechsel
+                . ($state['ready'] ? '' : ' Zustand: ' . $state['label'] . '. ' . $state['hint']));
 
         } elseif ($action === 'verify_stripe') {
             $key = integration_stripe_key($integration);
             if ($key === null) {
                 throw new RuntimeException('Es ist kein Stripe-Schlüssel hinterlegt.');
             }
-            $info = integration_verify_stripe($tenantId, $key);
-            audit_log($tenantId, $ctx, 'stripe_verified', 'integration', $tenantId, ['account' => $info['account_id']]);
-            flash_set('success', 'Stripe-Verbindung geprüft: Zugriff auf ' . ($info['business_name'] ?: $info['account_id']) . ' funktioniert.');
+            try {
+                $info = integration_verify_stripe($tenantId, $key);
+            } catch (Throwable $e) {
+                // Fehlerklasse am Datensatz vermerken (Verbindungszustand), dann die Meldung wie bisher anzeigen
+                $klasse = integration_stripe_verify_failed($tenantId, $e);
+                audit_log($tenantId, $ctx, 'stripe_verify_failed', 'integration', $tenantId, ['klasse' => $klasse]);
+                throw $e;
+            }
+            $state = stripe_connection_state(integration_load($tenantId));
+            audit_log($tenantId, $ctx, 'stripe_verified', 'integration', $tenantId, ['account' => $info['account_id'], 'zustand' => $state['code'], 'sepa' => $info['sepa_capability']]);
+            flash_set($state['ready'] ? 'success' : 'error', 'Stripe-Verbindung geprüft: Zugriff auf ' . ($info['business_name'] ?: $info['account_id']) . ' funktioniert. Zustand: ' . $state['label'] . '. ' . $state['hint']);
 
         } elseif ($action === 'save_webhook_secret') {
             support_guard();
@@ -212,12 +222,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         } elseif ($action === 'disconnect_stripe') {
             support_guard();
+            // Terminierte, noch nicht eingereichte Einzuege bleiben bestehen; der Faelligkeitslauf stellt sie ohne Verbindung
+            // zurueck (CollectionDeferredException) und reicht nichts ein. Die Zahl wird genannt, damit niemand annimmt,
+            // sie seien storniert (Trennen loest keinen Einzug aus und storniert keinen).
+            $stOffen = $pdo->prepare("SELECT COUNT(*) FROM payment_collections WHERE tenant_id = ? AND stripe_status = 'scheduled' AND scheduled_submitted = 0");
+            $stOffen->execute([$tenantId]);
+            $offen = (int)$stOffen->fetchColumn();
             $pdo->prepare(
-                'UPDATE integrations SET stripe_secret_key_encrypted = NULL, stripe_webhook_secret_encrypted = NULL, stripe_connected = 0, stripe_disconnected_at = NOW() WHERE tenant_id = ?'
+                'UPDATE integrations SET stripe_secret_key_encrypted = NULL, stripe_webhook_secret_encrypted = NULL, stripe_connected = 0, stripe_disconnected_at = NOW(),
+                        stripe_charges_enabled = NULL, stripe_sepa_capability = NULL, stripe_verify_error = NULL WHERE tenant_id = ?'
             )->execute([$tenantId]);
-            audit_log($tenantId, $ctx, 'stripe_disconnected', 'integration', $tenantId);
+            audit_log($tenantId, $ctx, 'stripe_disconnected', 'integration', $tenantId, ['terminierte_einzuege' => $offen]);
             notify_integration_change($ctx, 'Stripe-Verbindung getrennt');
-            flash_set('success', 'Stripe-Verbindung getrennt. Vorhandene Einzüge und Mandate bleiben erhalten, neue Einzüge sind bis zur erneuten Verbindung nicht möglich.');
+            flash_set('success', 'Stripe-Verbindung getrennt. Vorhandene Einzüge und Mandate bleiben erhalten, neue Einzüge sind bis zur erneuten Verbindung nicht möglich.'
+                . ($offen > 0 ? sprintf(' %d terminierte(r) Einzug/Einzüge bleiben bestehen und werden ohne Verbindung nicht eingereicht; bei Bedarf unter Einzüge stornieren.', $offen) : ''));
         }
     } catch (Throwable $e) {
         // Fehlermeldungen externer APIs können Details enthalten; Schlüssel selbst tauchen darin nicht auf.
@@ -396,12 +414,13 @@ layout_header('Einstellungen', $ctx);
 <?php endif; ?>
 
 <div class="card">
+    <?php $stripeState = stripe_connection_state($integration); ?>
     <h2>Stripe
         <?php if ((int)$integration['stripe_connected']): ?>
-            <span class="badge badge-success">Verbunden</span>
+            <span class="badge badge-<?= e($stripeState['badge']) ?>" title="<?= e($stripeState['hint']) ?>"><?= e($stripeState['label']) ?></span>
             <?php if (($integration['stripe_mode'] ?? '') === 'test'): ?><span class="badge badge-warn">Testmodus</span><?php endif; ?>
         <?php else: ?>
-            <span class="badge badge-neutral">Nicht verbunden</span>
+            <span class="badge badge-neutral"><?= e($stripeState['label']) ?></span>
         <?php endif; ?>
     </h2>
     <p class="hint">Ihr eigenes Stripe-Konto. Stripe verarbeitet die SEPA-Lastschriften, <?= e($productName) ?> steuert den Ablauf.
@@ -413,6 +432,9 @@ layout_header('Einstellungen', $ctx);
             <dt>Konto-ID</dt><dd><code><?= e($integration['stripe_account_id'] ?: 'unbekannt') ?></code></dd>
             <dt>Modus</dt><dd><?= ($integration['stripe_mode'] ?? '') === 'test' ? 'Test (keine echten Zahlungen)' : (($integration['stripe_mode'] ?? '') === 'live' ? 'Live' : 'unbekannt, bitte Verbindung prüfen') ?></dd>
             <dt>Zuletzt geprüft</dt><dd><?= $integration['stripe_last_verified_at'] ? e(format_datetime($integration['stripe_last_verified_at'])) : 'noch nicht geprüft' ?></dd>
+            <dt>Zustand</dt><dd><span class="badge badge-<?= e($stripeState['badge']) ?>"><?= e($stripeState['label']) ?></span> <span class="hint"><?= e($stripeState['hint']) ?></span></dd>
+            <dt>SEPA-Lastschrift</dt><dd><?= match ((string)($integration['stripe_sepa_capability'] ?? '')) { 'active' => 'aktiv', 'pending' => 'in Prüfung durch Stripe', 'inactive' => 'nicht aktiv', 'unrequested' => 'nicht beantragt', default => 'nicht geprüft (Verbindung prüfen)' } ?></dd>
+            <dt>Zahlungen freigeschaltet</dt><dd><?= isset($integration['stripe_charges_enabled']) ? ((int)$integration['stripe_charges_enabled'] === 1 ? 'ja' : 'nein') : 'nicht geprüft' ?></dd>
             <dt>Webhook-Secret</dt><dd><?= $integration['stripe_webhook_secret_encrypted'] ? '<span class="badge badge-success">hinterlegt</span>' : '<span class="badge badge-warn">fehlt (Statusänderungen und Rücklastschriften werden nur beim manuellen Abgleich erkannt)</span>' ?></dd>
         </dl>
         <details class="guide" <?= $integration['stripe_webhook_secret_encrypted'] ? '' : 'open' ?>>

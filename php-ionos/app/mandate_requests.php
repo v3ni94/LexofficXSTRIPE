@@ -119,7 +119,7 @@ function mandate_request_create(string $tenantId, array $customer, ?array $actor
 
     // Stripe muss verbunden sein, sonst kann der Kunde den Vorgang nicht abschließen.
     require_once __DIR__ . '/collections.php';
-    _get_stripe_client($tenantId);
+    _get_stripe_client($tenantId, true);
 
     if ($existing = mandate_request_active($tenantId, $customer['id'])) {
         $pdo->prepare("UPDATE mandate_requests SET status = 'revoked', revoked_at = NOW() WHERE id = ?")->execute([$existing['id']]);
@@ -204,7 +204,7 @@ function mandate_request_start_checkout(array $req, string $rawToken): string
         throw new RuntimeException('Diese Mandatsanforderung ist nicht mehr gültig.');
     }
     require_once __DIR__ . '/collections.php';
-    $stripe = _get_stripe_client($req['tenant_id']);
+    $stripe = _get_stripe_client($req['tenant_id'], true);
 
     $stripeCustomer = $stripe->findOrCreateCustomer(
         (string)$req['customer_name'],
