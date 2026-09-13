@@ -32,8 +32,10 @@ wird von `tools/site-qa.py` als Fehler gemeldet. Der Sinn bleibt unverändert.
 
 ## 3. Faktenquellen je Abschnitt
 
-Jede Aussage der Seite ist gegen den Programmcode geprüft. Quelle ist das Faktenregister
-`docs/seo/02-faktenregister.md` mit Gegenprüfung am Code unter `php-ionos/`.
+Aussagen über die eigene Software sind gegen den Code geprüft. Quelle ist das Faktenregister
+`docs/seo/02-faktenregister.md` mit Gegenprüfung am Code unter `php-ionos/`. Aussagen über Lexware
+Office und Stripe geben den Kenntnisstand wieder; verbindlich sind allein die Angaben dieser Anbieter
+(siehe Nachtrag 3b).
 
 | Abschnitt | Wesentliche Quelle |
 |---|---|
@@ -56,6 +58,30 @@ Jede Aussage der Seite ist gegen den Programmcode geprüft. Quelle ist das Fakte
 | Verschlüsselung der IBAN | Trifft nicht zu. Die Seite behauptet deshalb nichts dazu und verweist für die Grenzen auf `/sicherheit/`, wo der Punkt offen benannt ist. |
 | Zwingender Lexware-Tarif als Tatsache | Nur als Angabe von Lexware zitiert, mit der Bitte, im eigenen Konto zu prüfen. Der Code prüft keinen Tarif. |
 | Zusage eines sevdesk-Starttermins | Der genannte Termin ist als Planung ohne Zusage gekennzeichnet. |
+
+## 3b. Nachtrag 13.09.2026: externe Durchsicht
+
+Eine externe Durchsicht der veröffentlichten Seite hat zwei berechtigte Befunde ergeben, beide umgesetzt.
+
+**Geldfluss war falsch beschrieben.** Die Seite sagte „Belastet wird das Stripe-Konto Ihres eigenen
+Unternehmens“. Bei einer Lastschrift wird das Bankkonto des Zahlers belastet; über das Stripe-Konto der
+Firma wird die Zahlung lediglich abgewickelt, und dort geht das Geld ein. Der Satz vermengte den belasteten
+mit dem abwickelnden Kontostand. Jetzt getrennt formuliert.
+
+**Quellenangabe war nicht nachvollziehbar.** „Jede Angabe ist gegen den Programmcode geprüft“ ist für einen
+Leser von außen nicht überprüfbar und vermischte zwei verschiedene Quellenarten. Die Seite unterscheidet
+jetzt zwischen Aussagen über die eigene Software (gegen den Programmstand geprüft, verantwortlich die
+Müller Holding AG als Anbieterin, im Testkonto nachvollziehbar) und Aussagen über Lexware Office und Stripe
+(deren Bedingungen sind verbindlich, mit ausdrücklicher Bitte, Tarif, Gebühren und Auszahlungsdauer dort
+nachzufragen).
+
+Bewusst nicht ergänzt wurden Verweise auf die Dokumentationsseiten von Stripe und Lexware. Im Projekt sind
+nur die API-Basisadressen belegt, keine Dokumentationsadressen. Ein geratener Deep-Link, der ins Leere
+zeigt, wäre schlechter als die Nennung des Anbieters ohne Link.
+
+**Offen geblieben:** der dritte Befund der Durchsicht, die öffentliche Nennung des Preises. Das kehrt die
+Betreibervorgabe vom 07.09.2026 um und betrifft nicht nur diese Seite. Entscheidung liegt beim Betreiber,
+siehe `release-checklist.md`.
 
 ## 4. Strukturierte Daten
 
