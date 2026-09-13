@@ -77,6 +77,8 @@ DOCUMENTS = [
             'seo/SEO_PROJECT_CONTEXT.md', 'seo/SEO_AUDIT.md', 'seo/SEO_SCHEMA_REPORT.md',
             'seo/SEO_CONTENT_OPPORTUNITIES.md', 'seo/SEO_QA_CHECKLIST.md', 'seo/SEO_QA_COMMANDS.md',
             'seo/SEO_CHANGELOG.md',
+            'frontend/site-audit.md', 'frontend/grounding-seo.md', 'frontend/backend-anfragen.md',
+            'frontend/testbericht.md', 'frontend/release-checklist.md',
         ],
     },
 ]
