@@ -54,7 +54,7 @@ Office und Stripe geben den Kenntnisstand wieder; verbindlich sind allein die An
 | Angabe | Grund |
 |---|---|
 | Rechenzentrumsstandort der Anwendung | Nicht belegbar. Weder der Standort des VPS noch die Region des Sicherungsspeichers sind dokumentiert. Eine Aussage wie „Hosting in Deutschland“ wäre unbelegt. |
-| Preisbeträge | Vorgabe des Betreibers vom 07.09.2026. Die Seite beschreibt das Modell und verweist für Konditionen auf den Bestellvorgang. |
+| ~~Preisbeträge~~ | Überholt seit 13.09.2026: Der Betreiber hat die Vorgabe aufgehoben, die Seite nennt den Preis jetzt (25,00 EUR netto je vier Wochen zzgl. USt) mit rollierender Regel und Hinweis auf die Stripe-Gebühren. Ein Vergleichspreis bleibt gesperrt. |
 | Verschlüsselung der IBAN | Trifft nicht zu. Die Seite behauptet deshalb nichts dazu und verweist für die Grenzen auf `/sicherheit/`, wo der Punkt offen benannt ist. |
 | Zwingender Lexware-Tarif als Tatsache | Nur als Angabe von Lexware zitiert, mit der Bitte, im eigenen Konto zu prüfen. Der Code prüft keinen Tarif. |
 | Zusage eines sevdesk-Starttermins | Der genannte Termin ist als Planung ohne Zusage gekennzeichnet. |
@@ -79,9 +79,12 @@ Bewusst nicht ergänzt wurden Verweise auf die Dokumentationsseiten von Stripe u
 nur die API-Basisadressen belegt, keine Dokumentationsadressen. Ein geratener Deep-Link, der ins Leere
 zeigt, wäre schlechter als die Nennung des Anbieters ohne Link.
 
-**Offen geblieben:** der dritte Befund der Durchsicht, die öffentliche Nennung des Preises. Das kehrt die
-Betreibervorgabe vom 07.09.2026 um und betrifft nicht nur diese Seite. Entscheidung liegt beim Betreiber,
-siehe `release-checklist.md`.
+**Dritter Befund, entschieden am 13.09.2026:** Die öffentliche Nennung des Preises. Der Betreiber hat die
+Vorgabe vom 07.09.2026 aufgehoben. Preisseite und Faktenseite nennen jetzt 25,00 EUR netto je vier Wochen
+zuzüglich Umsatzsteuer, mit der rollierenden Regel zum Einführungspreis und dem Hinweis, dass die Gebühren
+des eigenen Stripe-Kontos hinzukommen. Der frühere Vergleichspreis bleibt weg, solange seine
+wettbewerbsrechtliche Zulässigkeit ungeklärt ist (Faktenregister TARIF-07). `tools/pricing-check.php`
+Abschnitt D prüft seitdem die Richtigkeit der Angabe statt ihres Fehlens.
 
 ## 4. Strukturierte Daten
 
