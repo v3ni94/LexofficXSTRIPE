@@ -92,6 +92,17 @@ nächsten Durchgang nachgezogen werden, damit eine geprüfte Quelle nicht zur Fe
 Neu unter `https://smart-einzug.de/fakten/`. Inhalte und Herleitung stehen in
 `docs/frontend/grounding-seo.md`.
 
+### P1-3: Unzulässige Rückschreibungszusage zu sevdesk (behoben)
+
+Die Vergleichstabelle auf `websites/smart-einzug.de/integrationen/sevdesk/index.html` stellte in der Spalte
+für den geplanten Ablauf eine „Rückschreibung nach sevdesk erst nach Abnahme“ in Aussicht. Das war in
+doppelter Hinsicht falsch: Es widersprach der Übersichtsseite derselben Domain („Keine Anbindung schreibt in
+Ihre Buchhaltung zurück“) und es verstieß gegen die Projektregel, zu sevdesk keine Rückschreibung
+zuzusagen. Die Formulierung „erst nach Abnahme“ verneint nichts, sie stellt in Aussicht.
+
+Korrigiert auf den tatsächlichen Stand: Den Zahlungseingang buchen Sie wie bisher in sevdesk, eine
+Rückschreibung ist nicht Bestandteil.
+
 ### Geprüft und nicht zu beanstanden
 
 - **Stripe-Anleitung gegen Implementierung.** Die Anleitung beschreibt die Verbindung über Secret Key oder
@@ -102,6 +113,13 @@ Neu unter `https://smart-einzug.de/fakten/`. Inhalte und Herleitung stehen in
   erste Augenschein legte sechs nahe; die Gegenprüfung am Code hat das widerlegt.
 - **Trennung der beiden Stripe-Konten.** Die Seiten vermischen an keiner Stelle das Stripe-Konto der Firma
   (Einzüge) mit dem Stripe-Konto des Anbieters (Abonnement).
+- **Nicht enthaltene Leistungen.** Systematisch gegen die Seitenaussagen geprüft wurden Mahnwesen,
+  automatischer Neuversuch, Rückschreibung in die Buchhaltung, Firmenlastschrift (B2B), kostenlose
+  Testphase, Benachrichtigung des Zahlers und Gebührenberechnung. Die Seiten verneinen jeden dieser Punkte
+  ausdrücklich. Einzige Ausnahme war die unter P1-3 behobene sevdesk-Zusage.
+- **Gebührenaussage bei der Auszahlung.** Der Satz „Dabei sind die Stripe-Gebühren bereits abgezogen“
+  beschreibt das Verhalten von Stripe bei der Auszahlung, nicht eine Funktion der Software. Sachlich
+  haltbar, kein Widerspruch zu „SmartEinzug berechnet keine Gebühren“.
 
 ## 4. Nicht geprüft, mit Begründung
 
