@@ -53,7 +53,7 @@ entfernt die Faktenseite deshalb auch vom Hoster. Das ist beabsichtigt und nicht
 | Punkt | Wer entscheidet |
 |---|---|
 | Zusammenführung in den Backend-Branch und damit Veröffentlichung | Betreiber |
-| Preisbeträge auf der Faktenseite (derzeit bewusst nicht genannt) | Betreiber |
+| ~~Preisbeträge auf der Faktenseite~~ | Entschieden am 13.09.2026: Preis wird öffentlich genannt |
 | Nachziehen des Faktenregisters, Eintrag RUECK-01 | Backend |
 | Standortangaben für Anwendung und Sicherungsspeicher | Betreiber, aus den Anbieterverträgen |
 | Verschlüsselung der IBAN oder Anpassung der AVV-Anlagen | Betreiber, nach anwaltlicher Prüfung |

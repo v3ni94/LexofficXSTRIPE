@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.76';
+const APP_VERSION = '4.77';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.77', 'date' => '13.09.2026', 'title' => 'Faktenseite: Geldfluss richtiggestellt, Quellen nachvollziehbar getrennt',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Faktenseite formulierte „Belastet wird das Stripe-Konto Ihres eigenen Unternehmens“. Das ist für eine Lastschrift falsch: Belastet wird das Bankkonto des Zahlers, über das Stripe-Konto der Firma wird die Zahlung lediglich abgewickelt und dort geht das Geld ein. Die Stelle nennt jetzt beide Konten getrennt. Befund aus einer externen Durchsicht vom 13.09.2026.'],
+            ['type' => 'Geändert', 'text' => 'Der Produktpreis steht jetzt öffentlich auf den Marketingseiten. Der Betreiber hat dazu am 13.09.2026 seine Vorgabe vom 07.09.2026 aufgehoben; Anlass war, dass die Preisseite selbst keinen Betrag führte und die Kaufentscheidung damit unbeantwortet blieb. Preisseite und Faktenseite nennen 25,00 EUR netto je vier Wochen zuzüglich Umsatzsteuer, mit der rollierenden Regel zum Einführungspreis und dem Hinweis, dass die Gebühren des eigenen Stripe-Kontos hinzukommen.'],
+            ['type' => 'Geändert', 'text' => 'tools/pricing-check.php Abschnitt D prüft statt eines Verbots jetzt die Richtigkeit: Wo ein Betrag steht, müssen Steuerhinweis und Periode dort ebenfalls stehen; die Preisseite muss den Betrag führen; Vergleichs- und Streichpreise bleiben in jeder Höhe gesperrt, solange ihre wettbewerbsrechtliche Zulässigkeit ungeklärt ist. Rechnungsbeispiele auf den Seiten (etwa 890,00 EUR offene Posten) werden nicht mehr fälschlich als Produktpreis gewertet. Drei Gegenproben ausgeführt: fehlender Steuerhinweis, eingesetzter Streichpreis und eine Preisseite ohne Betrag werden je erkannt.'],
+            ['type' => 'Geändert', 'text' => 'Die pauschale Aussage „Jede Angabe ist gegen den Programmcode geprüft“ war für Leser nicht nachvollziehbar und vermischte zwei Quellenarten. Die Seite trennt jetzt: Aussagen über die eigene Software werden gegen den Programmstand geprüft, verantwortlich ist die Müller Holding AG als Anbieterin; für Aussagen über Lexware Office und Stripe sind ausschließlich deren Bedingungen und offizielle Dokumentation verbindlich, mit ausdrücklicher Bitte, Tarif, Gebühren und Auszahlungsdauer dort nachzufragen. Es wurden keine fremden Dokumentationsadressen erfunden, weil im Projekt keine belegt sind.'],
+         ]],
         ['version' => '4.76', 'date' => '13.09.2026', 'title' => 'Öffentliche Faktenseite, überholte Aussage zur Rücklastschrift berichtigt',
          'entries' => [
             ['type' => 'Neu', 'text' => 'Neue Seite smart-einzug.de/fakten/ als sachliches Produktblatt: Was die Software leistet, welche Rolle Lexware Office, SmartEinzug und Stripe haben, welche Voraussetzungen je Anbieter gelten, welcher Integrationsstatus gilt, wie der Ablauf bis zur möglichen Rücklastschrift verläuft, was das Vertragsmodell ist und welche Sicherheitsangaben belegt sind. Jede Angabe ist gegen den Programmcode geprüft; nicht belegbare Angaben wie der Rechenzentrumsstandort stehen bewusst nicht darauf. Verlinkt aus dem Fußbereich aller Seiten der Hauptdomain sowie aus Funktionen, Integrationen und Hilfe.'],

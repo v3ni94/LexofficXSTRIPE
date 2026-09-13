@@ -9,8 +9,11 @@
  * gleichlautende Formulierung ohne Datum. Dieser Test hält beides zusammen und verhindert, dass wieder
  * ein festes Datum in eine Preisangabe gerät.
  *
- * Abschnitt D (seit 07.09.2026): Die Marketingseiten unter websites/ nennen bis zur Freigabe durch den Betreiber
- * keine Preisbeträge des Produkts (Text, Metadaten, JSON-LD). Konditionen zeigt nur der Buchungsprozess der Anwendung.
+ * Abschnitt D (Fassung seit 13.09.2026): Die Marketingseiten DÜRFEN den Produktpreis nennen; die Vorgabe vom
+ * 07.09.2026, keine Beträge auszuspielen, hat der Betreiber am 13.09.2026 aufgehoben. Geprüft wird deshalb nicht
+ * mehr das Vorhandensein, sondern die Richtigkeit: Genannt werden darf ausschließlich der gültige Betrag, immer
+ * mit Steuerhinweis und Periode. Der frühere Vergleichspreis (50,00 EUR, „bisher") bleibt gesperrt, solange seine
+ * wettbewerbsrechtliche Zulässigkeit nicht geklärt ist (Faktenregister TARIF-07).
  *
  * Aufruf: php tools/pricing-check.php     Exit 0 = alle Fälle bestanden
  */
@@ -69,8 +72,8 @@ $verstoss ? $bad('festes Ablaufdatum gefunden: ' . implode(' | ', $verstoss))
           : $ok(count($dateien) . ' HTML-/PHP-Dateien ohne festes Ablaufdatum in Preisangaben');
 
 echo "\nC) Marketingseiten und Anwendung sagen dasselbe\n";
-// Seit dem 07.09.2026 (Vorgabe des Betreibers, Masterprompt SEO Abschnitt 4) nennen die Marketingseiten vorerst
-// KEINE Preisbeträge. Nennt eine Seite dennoch den Einführungspreis, muss sie die rollierende Regel wörtlich tragen.
+// Nennt eine Seite den Einführungspreis, muss sie die rollierende Regel wörtlich tragen. Ein fester Stichtag im
+// Text würde veralten, ohne dass es jemandem auffällt; die Regel verschiebt sich von selbst.
 $mitPreis = $mitRegel = 0;
 foreach ($dateien as $p) {
     if (!str_contains($p, '/websites/')) {
@@ -87,55 +90,82 @@ foreach ($dateien as $p) {
     }
 }
 $mitPreis === $mitRegel
-    ? $ok($mitPreis === 0 ? 'keine Marketingseite nennt den Einführungspreis (Vorgabe seit 07.09.2026)' : "$mitRegel von $mitPreis Seiten mit Einführungspreis nennen die Regel wörtlich")
+    ? $ok($mitPreis === 0 ? 'keine Marketingseite nennt den Einführungspreis' : "$mitRegel von $mitPreis Seiten mit Einführungspreis nennen die Regel wörtlich")
     : $bad("$mitRegel von $mitPreis Seiten nennen die Regel");
 $help = (string)file_get_contents($root . '/php-ionos/app/help_content.php');
 str_contains($help, 'intro_price_deadline()') && str_contains($help, 'Ende des laufenden Kalendermonats')
     ? $ok('Hilfe-Center berechnet den Tag und nennt die Regel') : $bad('Hilfe-Center nennt Tag oder Regel nicht');
 
-echo "\nD) Keine Preisbeträge des Produkts auf den Marketingseiten (Vorgabe des Betreibers vom 07.09.2026)\n";
-// Öffentliche Preisbeträge werden bis zur Freigabe nicht ausgespielt: weder frühere 49-Euro-Angaben noch die
-// Aktionsangaben 25,00 EUR / 50,00 EUR, auch nicht in Metadaten, JSON-LD (Offer.price) oder Textbausteinen.
-// Konditionen bleiben im Buchungsprozess der Anwendung (php-ionos) sichtbar; dieser Abschnitt prüft nur websites/.
-// AGB-Seiten sind Vertragstexte: Sie werden gemeldet, aber nicht als Fehler gewertet, bis die Geschäftsführung
-// und die anwaltliche Prüfung über die Fassung entschieden haben (siehe docs/seo/04-massnahmenplan.md).
-$produktPreisMuster = [
-    '/Einführungspreis/u',
-    '/(?<![\d.,])(25|50|49)(,00)?\s?(EUR|Euro|€)/u',   // eigenstaendige Betraege, nicht Teil von 312,50 EUR
-    '/"price"\s*:/u',
-    '/je\s+4\s+Wochen/u',
-    '/zzgl\.\s*(gesetzl\.\s*)?(USt|MwSt|Umsatzsteuer)/u',
-];
-$verstoesse = [];
+echo "\nD) Preisangaben auf den Marketingseiten sind richtig und vollstaendig (Fassung seit 13.09.2026)\n";
+// Der Betreiber hat am 13.09.2026 entschieden, den Preis oeffentlich zu nennen. Geprueft wird deshalb die
+// Richtigkeit statt des Verbots. Drei Dinge muessen zusammen stehen, sonst ist die Angabe irrefuehrend:
+// der gueltige Betrag, der Steuerhinweis (netto zzgl. USt) und die Periode (vier Wochen).
+// Gesperrt bleibt der Vergleichspreis ("bisher 50,00 EUR"): Seine wettbewerbsrechtliche Zulaessigkeit ist
+// ungeklaert (Faktenregister TARIF-07), und ein durchgestrichener Preis ohne Nachweis ist angreifbar.
+// AGB-Seiten sind Vertragstexte und werden nur gemeldet, nicht bewertet.
+$gueltigerBetrag = '25,00';
+
+// Wichtig: Die Seiten enthalten Rechnungsbeispiele (890,00 EUR offene Posten und aehnlich). Diese Betraege
+// sind legitim und duerfen nicht als Produktpreis bewertet werden. Geprueft wird deshalb gezielt:
+//   1. Steht der gueltige Betrag auf einer Seite, muessen Steuerhinweis und Periode dort ebenfalls stehen.
+//   2. Ein Vergleichs- oder Streichpreis ist gesperrt, egal in welcher Hoehe (TARIF-07 ungeklaert).
+$fehler = [];
 $agbHinweise = [];
-foreach ($dateien as $p) {
-    if (!str_contains($p, '/websites/') || !str_ends_with($p, '.html')) {
+$seitenMitPreis = 0;
+foreach ($dateien as $p2) {
+    if (!str_contains($p2, '/websites/') || !str_ends_with($p2, '.html')) {
         continue;
     }
-    $t = (string)file_get_contents($p);
-    $treffer = [];
-    foreach ($produktPreisMuster as $muster) {
-        if (preg_match_all($muster, $t, $m)) {
-            $treffer = array_merge($treffer, array_unique($m[0]));
-        }
-    }
-    if (!$treffer) {
-        continue;
-    }
-    $rel = str_replace($root . '/websites/', '', $p);
+    $t = (string)file_get_contents($p2);
+    $rel = str_replace($root . '/websites/', '', $p2);
     $istAgb = (bool)preg_match('#(^|/)agb(/index)?\.html$#', $rel);
-    $zeile = $rel . ': ' . implode(', ', array_slice($treffer, 0, 6));
+
+    // 2. Vergleichs- und Streichpreise: "bisher/statt/vorher/regulaer 50,00 EUR" oder durchgestrichener Betrag.
+    $vergleich = [];
+    if (preg_match_all('/(?:bisher|statt|vorher|regulär|anstatt|zuvor)\s*(?:nur\s*)?[^<>]{0,15}?\d{1,3}(?:,\d{2})?\s?(?:EUR|Euro|€)/ui', $t, $m)) {
+        $vergleich = array_merge($vergleich, array_unique($m[0]));
+    }
+    if (preg_match_all('/<(?:s|del|strike)\b[^>]*>[^<]*(?:EUR|Euro|€)[^<]*<\/(?:s|del|strike)>/ui', $t, $m)) {
+        $vergleich = array_merge($vergleich, array_unique($m[0]));
+    }
+    if (preg_match_all('/line-through[^>]*>[^<]*(?:EUR|Euro|€)/ui', $t, $m)) {
+        $vergleich = array_merge($vergleich, array_unique($m[0]));
+    }
+    if ($vergleich && !$istAgb) {
+        $fehler[] = "$rel: Vergleichs- oder Streichpreis gesperrt (" . implode(', ', array_slice($vergleich, 0, 2)) . ')';
+    }
+
+    // 1. Gueltiger Betrag: nur zusammen mit Steuerhinweis und Periode zulaessig.
+    if (!preg_match('/(?<![\d.,])' . preg_quote($gueltigerBetrag, '/') . '\s?(?:EUR|Euro|€)/u', $t)) {
+        continue;
+    }
+    $seitenMitPreis++;
     if ($istAgb) {
-        $agbHinweise[] = $zeile;
-    } else {
-        $verstoesse[] = $zeile;
+        $agbHinweise[] = $rel;
+        continue;
+    }
+    if (!preg_match('/(netto|zzgl\.|zuzüglich)/u', $t)) {
+        $fehler[] = "$rel: Betrag ohne Steuerhinweis (netto, zzgl. oder zuzueglich fehlt)";
+    }
+    if (!preg_match('/(vier Wochen|4 Wochen|28 Tage)/u', $t)) {
+        $fehler[] = "$rel: Betrag ohne Angabe der Periode (vier Wochen)";
     }
 }
-$verstoesse ? $bad('Preisangaben des Produkts auf Marketingseiten: ' . implode(' | ', $verstoesse))
-            : $ok('keine Produktpreise auf den Marketingseiten (Text, Meta, JSON-LD)');
+$fehler ? $bad('fehlerhafte Preisangaben: ' . implode(' | ', $fehler))
+        : $ok($seitenMitPreis === 0
+            ? 'keine Marketingseite nennt den Produktpreis'
+            : "$seitenMitPreis Seite(n) nennen den Produktpreis, alle mit Steuerhinweis und Periode; kein Vergleichspreis");
 foreach ($agbHinweise as $h) {
-    echo "  HINWEIS AGB (Vertragstext, Entscheidung Geschäftsführung/Anwalt ausstehend): $h\n";
+    echo "  HINWEIS AGB (Vertragstext, Entscheidung Geschaeftsfuehrung/Anwalt ausstehend): $h\n";
 }
+
+// Die Preisseite muss den Betrag tatsaechlich nennen: Eine Preisseite ohne Preis war der Anlass der
+// Entscheidung vom 13.09.2026 (externe Durchsicht: die Kaufentscheidung blieb unbeantwortet).
+$preisseite = $root . '/websites/smart-einzug.de/preise/index.html';
+$pt = is_file($preisseite) ? (string)file_get_contents($preisseite) : '';
+str_contains($pt, $gueltigerBetrag . ' EUR')
+    ? $ok('Preisseite nennt den Betrag')
+    : $bad('Preisseite nennt keinen Betrag');
 
 echo "\nErgebnis: $pass bestanden, $fail fehlgeschlagen\n";
 exit($fail > 0 ? 1 : 0);

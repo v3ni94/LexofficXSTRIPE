@@ -150,8 +150,8 @@ function gtag_report_conversion(url) {
       <p class="eyebrow">Produktblatt</p>
       <h1>SmartEinzug: Produktfakten, Voraussetzungen und Integrationen</h1>
       <span class="bar" aria-hidden="true"></span>
-      <p class="lead">Diese Seite fasst zusammen, was SmartEinzug tatsächlich leistet, welche Voraussetzungen dafür gelten und was die Software ausdrücklich nicht übernimmt. Sie ist als sachliches Nachschlagewerk gedacht, nicht als Werbetext. Jede Angabe hier ist gegen den Programmcode geprüft.</p>
-      <p class="hero-note">Fachlich geprüft am 13.09.2026. Angaben ohne Nachweis sind als offen gekennzeichnet und werden nicht behauptet. Korrekturhinweise nehmen wir über die <a href="/kontakt/">Kontaktseite</a> entgegen.</p>
+      <p class="lead">Diese Seite fasst zusammen, was SmartEinzug tatsächlich leistet, welche Voraussetzungen dafür gelten und was die Software ausdrücklich nicht übernimmt. Sie ist als sachliches Nachschlagewerk gedacht, nicht als Werbetext. Angaben über SmartEinzug sind gegen den Programmstand der Software geprüft. Für Angaben über Lexware Office und Stripe sind die Bedingungen dieser Anbieter maßgeblich.</p>
+      <p class="hero-note">Fachlich geprüft am 13.09.2026 durch die Müller Holding AG als Anbieterin der Software. Angaben, die sich nicht belegen ließen, stehen hier nicht. Korrekturhinweise nehmen wir über die <a href="/kontakt/">Kontaktseite</a> entgegen.</p>
     </div>
   </header>
 
@@ -186,7 +186,7 @@ function gtag_report_conversion(url) {
         </div>
         <div class="tile">
           <h3>Stripe verarbeitet die Zahlung</h3>
-          <p>Belastet wird das Stripe-Konto Ihres eigenen Unternehmens, nicht ein Sammelkonto des Anbieters. Das eingezogene Geld fließt direkt an Sie, nach den Bedingungen Ihres Stripe-Vertrags. Auf dem Kontoauszug Ihres Kunden können Gläubiger-Identifikationsnummer und Mandatsreferenz von Stripe erscheinen.</p>
+          <p>Stripe zieht den Rechnungsbetrag vom Bankkonto Ihres Kunden ein. Abgewickelt wird das über das Stripe-Konto Ihres eigenen Unternehmens, nicht über ein Sammelkonto des Anbieters; das eingezogene Geld fließt danach nach den Bedingungen Ihres Stripe-Vertrags an Sie. Auf dem Kontoauszug Ihres Kunden können Gläubiger-Identifikationsnummer und Mandatsreferenz von Stripe erscheinen.</p>
         </div>
       </div>
     </div>
@@ -308,8 +308,8 @@ function gtag_report_conversion(url) {
       </div>
       <div class="tiles">
         <div class="tile">
-          <h3>Abrechnungszeitraum</h3>
-          <p>Abgerechnet wird je Zeitraum von vier Wochen, also 28 Tagen. Das ist ausdrücklich kein Kalendermonat: Auf ein Jahr gerechnet ergeben sich dreizehn Zeiträume, nicht zwölf.</p>
+          <h3>Preis und Abrechnungszeitraum</h3>
+          <p>Der Tarif UNLIMITED START kostet 25,00 EUR netto je vier Wochen, zuzüglich gesetzlicher Umsatzsteuer. Vier Wochen sind 28 Tage und ausdrücklich kein Kalendermonat: Auf ein Jahr gerechnet ergeben sich dreizehn Zeiträume, nicht zwölf. Die Zahl der Einzüge, Rechnungen und Mitarbeiter ändert den Preis nicht.</p>
         </div>
         <div class="tile">
           <h3>Laufzeit und Kündigung</h3>
@@ -320,7 +320,7 @@ function gtag_report_conversion(url) {
           <p>Eine Testphase gibt es nicht. Die Registrierung allein begründet noch keine Zahlungspflicht: Das kostenpflichtige Abonnement schließen Sie in einem gesonderten Schritt ab.</p>
         </div>
       </div>
-      <p>Die gültigen Konditionen nennt der Bestellvorgang in der Anwendung, damit hier keine veralteten Beträge stehen. Eine Übersicht finden Sie unter <a href="/preise/">Preise</a>.</p>
+      <p>Es handelt sich um einen Einführungspreis für Firmenaccounts, die bis zum Ende des laufenden Kalendermonats angelegt werden; wer einen Account angelegt hat, behält diesen Preis, solange das Abonnement läuft. Hinzu kommen die Gebühren Ihres eigenen Stripe-Kontos, die Stripe unmittelbar mit Ihnen abrechnet. Die für Sie gültigen Konditionen zeigt die Bestellübersicht vor dem Abschluss noch einmal. Einzelheiten unter <a href="/preise/">Preise</a>.</p>
     </div>
   </section>
 
@@ -384,7 +384,7 @@ function gtag_report_conversion(url) {
         <div class="tile"><h3>Wie kommt das Mandat zustande?</h3><p>Durch Unterschrift Ihres Kunden auf dem Mandat, das SmartEinzug erzeugt. Sie erfassen die Unterschrift, laden den Scan hoch oder tragen die Bankverbindung ein.</p></div>
         <div class="tile"><h3>Was passiert bei einer Rücklastschrift?</h3><p>Der Einzug wird als Rücklastschrift gekennzeichnet, die Rechnung fällt zur Klärung zurück. Ein automatischer zweiter Versuch findet nicht statt.</p></div>
         <div class="tile"><h3>Kann ich sevdesk schon nutzen?</h3><p>Nein. Die Anbindung ist in Vorbereitung, nicht nutzbar und nicht buchbar. Sie können sich unverbindlich vormerken lassen.</p></div>
-        <div class="tile"><h3>Was kostet SmartEinzug?</h3><p>Die gültigen Konditionen nennt der Bestellvorgang in der Anwendung, abgerechnet wird je vier Wochen. Eine Übersicht steht unter <a href="/preise/">Preise</a>.</p></div>
+        <div class="tile"><h3>Was kostet SmartEinzug?</h3><p>25,00 EUR netto je vier Wochen zuzüglich Umsatzsteuer, unabhängig von der Zahl der Einzüge. Die Gebühren Ihres eigenen Stripe-Kontos kommen hinzu. Einzelheiten unter <a href="/preise/">Preise</a>.</p></div>
       </div>
     </div>
   </section>
@@ -395,7 +395,19 @@ function gtag_report_conversion(url) {
         <p class="eyebrow">Quellen</p>
         <h2>Woher diese Angaben stammen</h2>
         <span class="bar" aria-hidden="true"></span>
-        <p>Alle Angaben auf dieser Seite sind gegen den Programmcode von SmartEinzug geprüft. Wo eine Angabe nicht belegbar war, steht sie hier nicht. Das betrifft insbesondere den Rechenzentrumsstandort der Anwendung, zu dem wir bewusst keine Aussage treffen, und die Frage, welcher Lexware-Tarif zwingend erforderlich ist, die allein Lexware verbindlich beantwortet.</p>
+        <p>Die Angaben auf dieser Seite stammen aus zwei unterschiedlichen Quellen, die wir bewusst
+        auseinanderhalten.</p>
+        <p><strong>Was SmartEinzug tut und nicht tut</strong>, prüfen wir gegen den Programmstand der Software.
+        Verantwortlich dafür ist die Müller Holding AG als Anbieterin. Diese Prüfung ist von außen nicht
+        einsehbar; Sie können sie in einem Testkonto jederzeit selbst nachvollziehen.</p>
+        <p><strong>Angaben über Lexware Office und Stripe</strong> geben unseren Kenntnisstand wieder.
+        Verbindlich sind allein die Bedingungen und die offizielle Dokumentation dieser Anbieter. Das gilt
+        besonders für die Frage, welcher Lexware-Tarif für den Schnittstellenzugang erforderlich ist, für die
+        Gebühren von Stripe und für die Dauer bis zu einer Auszahlung. Fragen Sie diese Punkte bitte dort
+        nach, bevor Sie sich entscheiden.</p>
+        <p>Wo sich eine Angabe nicht belegen ließ, steht sie hier nicht. Das betrifft insbesondere den
+        Rechenzentrumsstandort der Anwendung, zu dem wir bewusst keine Aussage treffen, statt eine zu
+        behaupten.</p>
         <p>Weiterführend: <a href="/funktionen/">Funktionen</a>, <a href="/so-funktionierts/">So funktioniert es</a>, <a href="/anleitungen/">Anleitungen</a>, <a href="/wissen/">Wissen</a>, <a href="/hilfe/">Hilfe</a>.</p>
         <p>Fällt Ihnen auf dieser Seite ein Fehler auf, schreiben Sie uns über die <a href="/kontakt/">Kontaktseite</a>. Wir prüfen jeden Hinweis und korrigieren nachweisbare Fehler.</p>
       </div>

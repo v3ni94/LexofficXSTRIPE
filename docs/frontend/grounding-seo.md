@@ -32,8 +32,10 @@ wird von `tools/site-qa.py` als Fehler gemeldet. Der Sinn bleibt unverändert.
 
 ## 3. Faktenquellen je Abschnitt
 
-Jede Aussage der Seite ist gegen den Programmcode geprüft. Quelle ist das Faktenregister
-`docs/seo/02-faktenregister.md` mit Gegenprüfung am Code unter `php-ionos/`.
+Aussagen über die eigene Software sind gegen den Code geprüft. Quelle ist das Faktenregister
+`docs/seo/02-faktenregister.md` mit Gegenprüfung am Code unter `php-ionos/`. Aussagen über Lexware
+Office und Stripe geben den Kenntnisstand wieder; verbindlich sind allein die Angaben dieser Anbieter
+(siehe Nachtrag 3b).
 
 | Abschnitt | Wesentliche Quelle |
 |---|---|
@@ -52,10 +54,37 @@ Jede Aussage der Seite ist gegen den Programmcode geprüft. Quelle ist das Fakte
 | Angabe | Grund |
 |---|---|
 | Rechenzentrumsstandort der Anwendung | Nicht belegbar. Weder der Standort des VPS noch die Region des Sicherungsspeichers sind dokumentiert. Eine Aussage wie „Hosting in Deutschland“ wäre unbelegt. |
-| Preisbeträge | Vorgabe des Betreibers vom 07.09.2026. Die Seite beschreibt das Modell und verweist für Konditionen auf den Bestellvorgang. |
+| ~~Preisbeträge~~ | Überholt seit 13.09.2026: Der Betreiber hat die Vorgabe aufgehoben, die Seite nennt den Preis jetzt (25,00 EUR netto je vier Wochen zzgl. USt) mit rollierender Regel und Hinweis auf die Stripe-Gebühren. Ein Vergleichspreis bleibt gesperrt. |
 | Verschlüsselung der IBAN | Trifft nicht zu. Die Seite behauptet deshalb nichts dazu und verweist für die Grenzen auf `/sicherheit/`, wo der Punkt offen benannt ist. |
 | Zwingender Lexware-Tarif als Tatsache | Nur als Angabe von Lexware zitiert, mit der Bitte, im eigenen Konto zu prüfen. Der Code prüft keinen Tarif. |
 | Zusage eines sevdesk-Starttermins | Der genannte Termin ist als Planung ohne Zusage gekennzeichnet. |
+
+## 3b. Nachtrag 13.09.2026: externe Durchsicht
+
+Eine externe Durchsicht der veröffentlichten Seite hat zwei berechtigte Befunde ergeben, beide umgesetzt.
+
+**Geldfluss war falsch beschrieben.** Die Seite sagte „Belastet wird das Stripe-Konto Ihres eigenen
+Unternehmens“. Bei einer Lastschrift wird das Bankkonto des Zahlers belastet; über das Stripe-Konto der
+Firma wird die Zahlung lediglich abgewickelt, und dort geht das Geld ein. Der Satz vermengte den belasteten
+mit dem abwickelnden Kontostand. Jetzt getrennt formuliert.
+
+**Quellenangabe war nicht nachvollziehbar.** „Jede Angabe ist gegen den Programmcode geprüft“ ist für einen
+Leser von außen nicht überprüfbar und vermischte zwei verschiedene Quellenarten. Die Seite unterscheidet
+jetzt zwischen Aussagen über die eigene Software (gegen den Programmstand geprüft, verantwortlich die
+Müller Holding AG als Anbieterin, im Testkonto nachvollziehbar) und Aussagen über Lexware Office und Stripe
+(deren Bedingungen sind verbindlich, mit ausdrücklicher Bitte, Tarif, Gebühren und Auszahlungsdauer dort
+nachzufragen).
+
+Bewusst nicht ergänzt wurden Verweise auf die Dokumentationsseiten von Stripe und Lexware. Im Projekt sind
+nur die API-Basisadressen belegt, keine Dokumentationsadressen. Ein geratener Deep-Link, der ins Leere
+zeigt, wäre schlechter als die Nennung des Anbieters ohne Link.
+
+**Dritter Befund, entschieden am 13.09.2026:** Die öffentliche Nennung des Preises. Der Betreiber hat die
+Vorgabe vom 07.09.2026 aufgehoben. Preisseite und Faktenseite nennen jetzt 25,00 EUR netto je vier Wochen
+zuzüglich Umsatzsteuer, mit der rollierenden Regel zum Einführungspreis und dem Hinweis, dass die Gebühren
+des eigenen Stripe-Kontos hinzukommen. Der frühere Vergleichspreis bleibt weg, solange seine
+wettbewerbsrechtliche Zulässigkeit ungeklärt ist (Faktenregister TARIF-07). `tools/pricing-check.php`
+Abschnitt D prüft seitdem die Richtigkeit der Angabe statt ihres Fehlens.
 
 ## 4. Strukturierte Daten
 
