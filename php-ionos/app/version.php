@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.75';
+const APP_VERSION = '4.76';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.76', 'date' => '13.09.2026', 'title' => 'Öffentliche Faktenseite, überholte Aussage zur Rücklastschrift berichtigt',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Neue Seite smart-einzug.de/fakten/ als sachliches Produktblatt: Was die Software leistet, welche Rolle Lexware Office, SmartEinzug und Stripe haben, welche Voraussetzungen je Anbieter gelten, welcher Integrationsstatus gilt, wie der Ablauf bis zur möglichen Rücklastschrift verläuft, was das Vertragsmodell ist und welche Sicherheitsangaben belegt sind. Jede Angabe ist gegen den Programmcode geprüft; nicht belegbare Angaben wie der Rechenzentrumsstandort stehen bewusst nicht darauf. Verlinkt aus dem Fußbereich aller Seiten der Hauptdomain sowie aus Funktionen, Integrationen und Hilfe.'],
+            ['type' => 'Behoben', 'text' => 'Die Wissensseite zur Rücklastschrift behauptete, Rücklastschriften und Erstattungen erkenne ausschließlich der Webhook. Seit 4.73 erkennt sie auch der Statusabgleich. Die Aussage war nicht nur veraltet, sondern in der Wirkung schädlich: Sie legte nahe, ohne eingerichteten Webhook bleibe eine Rücklastschrift dauerhaft unentdeckt. Berichtigt auf beide Wege mit dem Hinweis, dass der Abgleich ein reiner Lesezugriff ist. Der Eintrag RUECK-01 im Faktenregister trägt dieselbe überholte Aussage und ist vom Backend nachzuziehen.'],
+            ['type' => 'Neu', 'text' => 'Fünf Berichte unter docs/frontend: Seitenaudit mit Befunden und Prüfgrenzen, Herleitung der Faktenseite mit Quellen je Abschnitt und GEO-Prüfplan, Anfragen an das Backend, Testbericht mit Gegenproben und ausdrücklich ungetesteten Bereichen, Freigabecheckliste. Aufgenommen in die Marketingdokumentation des Adminbereichs.'],
+            ['type' => 'Geändert', 'text' => 'Die Faktenseite führt einen JSON-LD-Graphen mit stabilen Kennungen für Anbieter, Website, Software und Seite. Bewusst ohne Bewertungen, ohne Preisangebot, ohne sameAs auf Lexware, sevdesk oder Stripe und ohne FAQ-Auszeichnung. Geprüft wurde außerdem, dass die Oberfläche keinen eingereichten Einzug als bezahlt darstellt und dass keine Zugangsdaten in den Browser-Speicher gelangen; beides ohne Befund.'],
+         ]],
         ['version' => '4.75', 'date' => '12.09.2026', 'title' => 'Rechnungen: SEPA-Zustand je Kunde sichtbar, Schaltfläche nennt die Aktion',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Schaltfläche je Zeile hieß „SEPA: Nein“, wenn der Kunde auf Ja stand (Aktion „auf Nein setzen“), und „SEPA: Ja“, wenn er auf Nein stand. In der Ansicht „Nur SEPA-Kunden“ trug damit jede Zeile ein rotes „SEPA: Nein“, die Filter wirkten vertauscht (Rückmeldung Betreiber 12.09.2026). Die Filterabfrage war korrekt. Jetzt zeigt die Spalte „Kunde“ den Zustand als Kennzeichen (SEPA: Ja grün, SEPA: Nein rot, Laufkunde), die Schaltfläche heißt „SEPA auf Nein setzen“ beziehungsweise „SEPA auf Ja setzen“.'],

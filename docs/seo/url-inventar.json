@@ -32,6 +32,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -117,6 +118,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -145,7 +147,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -196,6 +198,7 @@
    "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
    "https://smart-einzug.de/anleitungen/stripe-verbinden/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -292,6 +295,7 @@
    "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
    "https://smart-einzug.de/anleitungen/stripe-verbinden/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -336,7 +340,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -383,6 +387,7 @@
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/anleitungen/stripe-verbinden/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -476,6 +481,7 @@
    "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
    "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -577,6 +583,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -609,7 +616,112 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 33,
+  "links_intern_eingehend": 34,
+  "verwaist": false
+ },
+ {
+  "domain": "smart-einzug.de",
+  "datei": "fakten/index.html",
+  "url": "https://smart-einzug.de/fakten/",
+  "seitentyp": "keyword_landingpage",
+  "title": "Produktfakten zu SmartEinzug",
+  "title_laenge": 28,
+  "description": "Geprüfte Fakten zu SmartEinzug: Was die Software tut, welche Rolle Lexware Office und Stripe haben, welche Voraussetzungen gelten, was nicht enthalten ist.",
+  "description_laenge": 155,
+  "h1": [
+   "SmartEinzug: Produktfakten, Voraussetzungen und Integrationen"
+  ],
+  "h2": [
+   "Was SmartEinzug ist",
+   "Wer welche Aufgabe übernimmt",
+   "Was enthalten ist und was nicht",
+   "Was Sie mitbringen müssen",
+   "Welche Systeme angebunden sind",
+   "Vom Verbinden bis zum Ergebnis",
+   "Wie SmartEinzug abgerechnet wird",
+   "Belegte Angaben zu Sicherheit und Datenschutz",
+   "Was SmartEinzug ausdrücklich nicht ist",
+   "Häufige Fragen in einem Satz",
+   "Woher diese Angaben stammen"
+  ],
+  "canonical": "https://smart-einzug.de/fakten/",
+  "canonical_self": true,
+  "robots_meta": "",
+  "indexierbar_technisch": true,
+  "in_sitemap": true,
+  "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
+  "woerter_hauptinhalt": 1631,
+  "jsonld_typen": [
+   "AboutPage",
+   "BreadcrumbList",
+   "ListItem",
+   "Organization",
+   "PostalAddress",
+   "SoftwareApplication",
+   "WebSite"
+  ],
+  "jsonld_preise": [],
+  "jsonld_faq": false,
+  "preise_text": [],
+  "preise_meta": [],
+  "daten_text": [
+   "13.09.2026"
+  ],
+  "bilder": 2,
+  "bilder_ohne_alt": 0,
+  "links_intern_ausgehend": [
+   "https://smart-einzug.de/",
+   "https://smart-einzug.de/agb/",
+   "https://smart-einzug.de/anleitungen/",
+   "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
+   "https://smart-einzug.de/funktionen/",
+   "https://smart-einzug.de/hilfe/",
+   "https://smart-einzug.de/impressum/",
+   "https://smart-einzug.de/integrationen/",
+   "https://smart-einzug.de/kontakt/",
+   "https://smart-einzug.de/preise/",
+   "https://smart-einzug.de/sicherheit/",
+   "https://smart-einzug.de/so-funktionierts/",
+   "https://smart-einzug.de/wissen/",
+   "https://smart-einzug.de/wissen/ruecklastschrift/",
+   "https://smart-einzug.de/wissen/sepa-mandat/",
+   "https://smart-einzug.de/wissen/zahlungsstatus-einer-lastschrift/"
+  ],
+  "links_extern_hosts": [
+   "app.smart-einzug.de"
+  ],
+  "ctas": [
+   {
+    "text": "Jetzt registrieren",
+    "href": "https://app.smart-einzug.de/register.php"
+   }
+  ],
+  "pruefwoerter": {
+   "kostenlos": 1,
+   "testen_testphase": 2,
+   "partner_offiziell": 1,
+   "automatisch": 2,
+   "firmenlastschrift_b2b": 2,
+   "ruecklastschrift": 8,
+   "vorabankuendigung": 1,
+   "glaeubiger_id": 2,
+   "mandat": 14,
+   "rueckschreibung_buchhaltung": 1,
+   "zwei_faktor": 3,
+   "verschluesselung": 3,
+   "standort_deutschland": 1,
+   "sevdesk": 4,
+   "lexoffice": 1,
+   "lexware_office": 15,
+   "lexware_allgemein": 9,
+   "tarif_xl_public_api": 2,
+   "stripe_gebuehr": 1,
+   "sofort_geld": 2
+  },
+  "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
+  "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -638,7 +750,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 327,
+  "woerter_hauptinhalt": 350,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -657,6 +769,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -702,7 +815,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -730,7 +843,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 468,
+  "woerter_hauptinhalt": 478,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -747,6 +860,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -790,7 +904,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -836,6 +950,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -864,7 +979,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 33,
+  "links_intern_eingehend": 34,
   "verwaist": false
  },
  {
@@ -918,6 +1033,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1007,7 +1123,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 33,
+  "links_intern_eingehend": 34,
   "verwaist": false
  },
  {
@@ -1034,7 +1150,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 507,
+  "woerter_hauptinhalt": 521,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -1051,6 +1167,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1094,7 +1211,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -1141,6 +1258,7 @@
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/anleitungen/lexware-office-verbinden/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1235,6 +1353,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1321,6 +1440,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1351,7 +1471,7 @@
   "pruefwoerter": {},
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -1537,6 +1657,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1578,7 +1699,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -1631,6 +1752,7 @@
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1679,7 +1801,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -1725,6 +1847,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1768,7 +1891,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -1808,6 +1931,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1883,6 +2007,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -1973,6 +2098,7 @@
    "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
    "https://smart-einzug.de/anleitungen/stripe-verbinden/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2031,7 +2157,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 31,
+  "links_intern_eingehend": 32,
   "verwaist": false
  },
  {
@@ -2079,6 +2205,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2164,6 +2291,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2256,6 +2384,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2344,6 +2473,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2413,7 +2543,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://smart-einzug.de/assets/img/og-image.png?v=20260905f",
-  "woerter_hauptinhalt": 1332,
+  "woerter_hauptinhalt": 1367,
   "jsonld_typen": [
    "Article",
    "BreadcrumbList",
@@ -2435,6 +2565,7 @@
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/anleitungen/stripe-verbinden/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2472,7 +2603,7 @@
   "pruefwoerter": {
    "partner_offiziell": 1,
    "automatisch": 4,
-   "ruecklastschrift": 22,
+   "ruecklastschrift": 23,
    "vorabankuendigung": 2,
    "mandat": 8,
    "rueckschreibung_buchhaltung": 3,
@@ -2482,7 +2613,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 8,
+  "links_intern_eingehend": 9,
   "verwaist": false
  },
  {
@@ -2535,6 +2666,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2629,6 +2761,7 @@
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2674,7 +2807,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 7,
+  "links_intern_eingehend": 8,
   "verwaist": false
  },
  {
@@ -2726,6 +2859,7 @@
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/anleitungen/erster-lastschrifteinzug/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2817,6 +2951,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2902,6 +3037,7 @@
    "https://smart-einzug.de/agb/",
    "https://smart-einzug.de/anleitungen/",
    "https://smart-einzug.de/datenschutz/",
+   "https://smart-einzug.de/fakten/",
    "https://smart-einzug.de/funktionen/",
    "https://smart-einzug.de/hilfe/",
    "https://smart-einzug.de/impressum/",
@@ -2940,7 +3076,7 @@
   },
   "indexiert_bei_google": "unbestaetigt (keine Search-Console-Daten im Repository)",
   "leistungsdaten": "nicht vorhanden (Search Console, Analytics, Ads nicht im Repository)",
-  "links_intern_eingehend": 3,
+  "links_intern_eingehend": 4,
   "verwaist": false
  },
  {
@@ -3677,7 +3813,7 @@
   "indexierbar_technisch": true,
   "in_sitemap": true,
   "og_image": "https://lexware-einzug.de/assets/img/og-image.png?v=20260907d",
-  "woerter_hauptinhalt": 1062,
+  "woerter_hauptinhalt": 1164,
   "jsonld_typen": [
    "BreadcrumbList",
    "ListItem"
@@ -3686,7 +3822,9 @@
   "jsonld_faq": false,
   "preise_text": [],
   "preise_meta": [],
-  "daten_text": [],
+  "daten_text": [
+   "12.09.2026"
+  ],
   "bilder": 0,
   "bilder_ohne_alt": 0,
   "links_intern_ausgehend": [
