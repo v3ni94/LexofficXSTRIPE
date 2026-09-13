@@ -1,6 +1,6 @@
 # Arbeitsstand SmartEinzug (LexofficXSTRIPE)
 
-Stand: 12.09.2026 (4.75). Der Prüfbranch `audit/2026-09-09-gesamtpruefung` (4.59 bis 4.63, Basis 66c59d5 = 4.58) wurde am 11.09.2026 auf
+Stand: 13.09.2026 (4.76 im Arbeitsbranch `backend/masterprompt-2026-09-13`, Basis e29e5d8 = 4.75; nicht deployt). Der Prüfbranch `audit/2026-09-09-gesamtpruefung` (4.59 bis 4.63, Basis 66c59d5 = 4.58) wurde am 11.09.2026 auf
 Freigabe des Betreibers („Produktiv ausrollen“) per Fast-Forward auf `claude/setup-lexsepa-monorepo-v5ZcZ` gepusht (HEAD 9bac540);
 der GitHub-Workflow rollt 4.63 mit den Migrationen 032 bis 034 aus. Vor dem Push wurde die Historie der sieben Commits neu
 geschrieben (SHAs geändert), weil GitHubs Push-Schutz die synthetischen Schlüssel `sk_live_TESTGUARD…` in `tools/test-guard-check.sh`
@@ -9,6 +9,16 @@ und wird bei jedem Arbeitspaket aktualisiert. Sie enthält keine Zugangsdaten. A
 Git-Historie belegbar sind, tragen den Vermerk „unsicher“.
 
 ## 1. Aktueller Auftrag
+
+Masterprompt Backend (13.09.2026): sichere Integrationen, Zahlungsläufe, verlässliche Produktdaten und Schnittstellen für das
+Frontend. Vorgabe: kein Produktionsdeploy, kein Push auf automatisch veröffentlichende Branches, Arbeit bis zu einem
+überprüfbaren PR-/Staging-Stand; getrennte Arbeitskopien für Backend- und Frontend-Chat, höchstens ein Subagent je Chat.
+Umgesetzt als 4.76 im Branch `backend/masterprompt-2026-09-13` (Basis e29e5d8): Stripe-Verbindungszustand mit SEPA-Fähigkeit
+(Migration 035), Webhook-Modusprüfung, Trennhinweis, Produktfaktenquelle mit Snapshot und `fakten.php`, Datenvertrag
+`docs/contracts/smarteinzug-contract.md` 1.0, `docs/backend/` (audit, routen-inventar, stripe-review, product-facts,
+release-checklist). Der Deploybranch `claude/setup-lexsepa-monorepo-v5ZcZ` bleibt auf 4.75; Zusammenführung erst nach
+Staging-Abnahme mit Stripe-Testkonto und Freigabe des Betreibers (Restpunkte in `docs/backend/release-checklist.md`).
+Vorheriger Auftrag (Dokumentationssystem) unverändert darunter.
 
 Masterprompt-Ergänzung „Vollständiges Dokumentationssystem“ (07.09.2026): drei dauerhaft gepflegte Dokumentationen im Adminbereich
 (Versionen & Dokumentation), PDF im CI der Müller Holding AG, Zugriffsschutz je Klassifizierung, Historie, Kundenhandbuch in der
@@ -45,6 +55,7 @@ Wechsel, Konzeptpapiere) sind abgeschlossen und gepusht.
 
 | Version | Inhalt | Commit | Push |
 |---|---|---|---|
+| 4.76 | Masterprompt Backend (Arbeitsbranch, NICHT deployt): Migration 035 (`stripe_charges_enabled`, `stripe_sepa_capability`, `stripe_verify_error`), `stripe_connection_state()`, `_get_stripe_client($tenantId, true)` für Einreichpfade, Anzeige in `settings.php`, Webhook `livemode`-Prüfung, Trennhinweis mit Zahl terminierter Einzüge, `billing-webhook.php` 405; `app/product_facts.php`, `bin/product-facts.php`, `fakten.php`, `tools/product-facts-check.php` (Workflow), Snapshot `docs/contracts/product-facts.snapshot.json`; Datenvertrag 1.0 und `docs/backend/*`; collections-check 201/0 (Abschnitt 16, 16a), migrations 12/0, product-facts 33/0, payment-safety 74/0. Stripe- und Lexware-Dokumentation in der Sitzung nicht abrufbar (Netzsperre), Annahmen gekennzeichnet | siehe git log (Branch backend/masterprompt-2026-09-13) | nur Arbeitsbranch |
 | 4.75 | Rechnungsliste: Kennzeichen „SEPA: Ja/Nein/Laufkunde“ in der Kundenspalte, Schaltfläche „SEPA auf Nein/Ja setzen“ statt „SEPA: Nein/Ja“ (Aktionsbeschriftung wirkte wie Zustand, Betreiber meldete vertauschte Filter; Abfrage war korrekt); Handbuch 7.7 (kunden r7). Keine Logikänderung, keine Entwicklerdoku-Auswirkung | siehe git log | ja |
 | 4.74 | Rechnungsliste: Filterreihe „Kunden: Nur SEPA-Kunden, Nur SEPA: Nein, Alle Kunden“ und „Auch bezahlte anzeigen“ statt zweimal „Alle anzeigen“; Hinweis bei eingeblendeten Nein-Kunden; Handbuch 7.7 (Revision kunden r6). Nur Beschriftung und Doku, Filterlogik (`sepa=active` Standard seit 31.08.2026) unverändert; keine Entwicklerdoku-Auswirkung, da keine Funktion oder Schnittstelle geändert | siehe git log | ja |
 | 4.73 | (4.69 bis 4.72 stammen aus dem Frontend-Branch, Google-Tag und Conversion, gemerged über PR #6 und #7; Backend setzt mit 4.73 fort.) Statusabgleich (Einzüge, „Status mit Stripe abgleichen“) prüft zusätzlich erfolgreiche und erstattete Einzüge der letzten `collections.sync_lookback_days` Tage (Vorgabe 70, höchstens 400) über `listPaymentIntents()` mit eingebetteter Charge auf Rücklastschrift und Erstattung; gemeinsame Funktion `collection_apply_dispute()` für Webhook und Abgleich (idempotent, Audit mit Quelle); Schaltfläche immer aktiv mit Zahl laufender Einzüge, Meldung mit Rücklastschriften/Erstattungen und `truncated`-Hinweis; CSS für gesperrte Schaltflächen (Befund Betreiber: Knopf ohne Rückmeldung, weil `disabled` unsichtbar). Prüfstände: collections-check 169/0 (Abschnitt 14d, 36 neue Fälle), payment-safety 74/0. Anlass: Frage des Betreibers nach Rücklastschriften Wochen nach dem Erfolg bei ausgebliebenem Webhook | siehe git log | ja |

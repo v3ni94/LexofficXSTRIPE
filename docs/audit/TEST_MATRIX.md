@@ -87,3 +87,16 @@ Nachweis rot vor der Korrektur: Die Fälle „Ruecklastschrift des erfolgreichen
 „Teilerstattung erkannt“ in 14d setzen voraus, dass der Statusabgleich abgeschlossene Einzüge liest; der Code bis 4.68 prüfte
 ausschließlich `processing` (Faktenregister STATUS-03) und liefert `disputed`/`refunded` nicht, die Felder fehlen dort
 (`erw` wertet leer als Fehlschlag).
+
+## Nachtrag 13.09.2026 (4.76, Arbeitsbranch backend/masterprompt-2026-09-13)
+
+| Suite | Ergebnis |
+|---|---|
+| collections | 201/0 (neu: 16 Stripe-Verbindungszustand, 16a Webhook im falschen Modus; 32 Fälle: Fähigkeit aktiv, inaktiv, in Prüfung, charges_enabled false, 403, 401, 500, Wiederherstellung, Sperre von Einreichung bei nicht bereitem Konto, Lesepfad frei, Mandantentrennung, kein PaymentIntent) |
+| migrations | 12/0 (mit 035) |
+| product-facts (neu) | 33/0 |
+| payment-safety 74/0, totp-policy 87/0, host-separation 25/0, app-tracking 57/0, docs-build 0 | grün |
+
+Nachweis rot vor der Korrektur: Die Fälle „SEPA inaktiv erkannt“, „Sofort-Einzug bei inaktiver SEPA-Faehigkeit abgewiesen“ und
+„Fehlerklasse permission“ setzen die Spalten aus Migration 035 und `stripe_connection_state()` voraus; der Code bis 4.75
+lieferte `sepa_capability` nicht und nahm den Einzug an (Faktenregister STRIPE-Prüfung nur `GET /account`).

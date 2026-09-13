@@ -154,6 +154,15 @@ try {
     if (!stripe_verify_webhook_signature($rawBody, $sigHeader, $webhookSecret)) {
         webhook_exit("Signaturprüfung fehlgeschlagen für tenant $tenantId");
     }
+    // Modus des Ereignisses (livemode) muss zum Modus des hinterlegten Schluessels passen (seit 4.76). Test- und
+    // Live-Endpunkt haben eigene Secrets, die Signatur faengt einen Wechsel meist ab; diese Pruefung greift zusaetzlich,
+    // wenn dasselbe Secret in beiden Modi hinterlegt wurde. Altbestand ohne stripe_mode wird nicht verglichen (F-13).
+    if (array_key_exists('livemode', $event) && in_array((string)($integration['stripe_mode'] ?? ''), ['test', 'live'], true)) {
+        $erwartetLive = $integration['stripe_mode'] === 'live';
+        if ((bool)$event['livemode'] !== $erwartetLive) {
+            webhook_exit("Modus des Ereignisses (livemode=" . ((bool)$event['livemode'] ? 'true' : 'false') . ") passt nicht zum Stripe-Modus der Firma $tenantId; ignoriert");
+        }
+    }
 
     // --- Doppelte Zustellung und Reihenfolge (Befund der Gesamtpruefung 09.09.2026) ---
     // Stripe stellt Ereignisse mehrfach und ohne garantierte Reihenfolge zu. Ohne diese Pruefung konnte ein

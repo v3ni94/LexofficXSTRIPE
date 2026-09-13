@@ -59,6 +59,8 @@ DOCUMENTS = [
             'dokumentationsregeln/README.md', 'entwickler/abdeckung-und-offene-punkte.md',
             'audit/AUDIT_REPORT.md', 'audit/PAYMENT_INVARIANTS.md', 'audit/TEST_MATRIX.md',
             'audit/PERFORMANCE_REPORT.md', 'audit/RELEASE_CHECKLIST.md', 'audit/HANDOVER.md',
+            'contracts/smarteinzug-contract.md', 'backend/audit.md', 'backend/routen-inventar.md',
+            'backend/stripe-review.md', 'backend/product-facts.md', 'backend/release-checklist.md',
         ],
     },
     {

@@ -104,6 +104,17 @@ Nicht als eigener HTTP-Endpunkt umgesetzt, aber erwähnenswert: `admin-legal.php
 einem separaten Adminhost zusätzlich zu Login/2FA/Passwort/Sicherheit/Abmelden erreichbar bleiben
 (`app/bootstrap.php:235`).
 
+### `fakten.php` (öffentliche Produktfakten, seit 4.76)
+
+`GET /fakten.php`, ohne Anmeldung und Sitzung (`SKIP_SESSION`), liefert den Snapshot aus `app/product_facts.php`
+(`product_facts_snapshot()`), ergänzt um `generated_at` und die Laufzeitwerte der Integrationsfreigabe aus
+`platform_settings` (`integration_public_state('sevdesk')`, `integration_release_at('sevdesk')`; bei Datenbankfehler
+`integrationen.live = false`). Header: `Content-Type: application/json`, `Cache-Control: public, max-age=300`,
+`X-Robots-Tag: noindex, nofollow`, `X-Content-Type-Options: nosniff`, `Vary: Origin`; `Access-Control-Allow-Origin`
+nur für `https://<domain>` und `https://www.<domain>` aus `signup_domains`. Andere Methoden: 405 mit `Allow: GET`. Kein
+Aufruf an Stripe oder Lexware, kein Google-Skript. Auf dem Adminhost 404 (nicht in der Positivliste). Vertrag:
+`docs/contracts/smarteinzug-contract.md` Abschnitt 2; Prüfung `tools/product-facts-check.php`.
+
 ## b) Ausgehende Aufrufe
 
 ### Lexware Office (`app/lexoffice.php`)
@@ -221,6 +232,10 @@ Plattformkonto der Müller Holding AG für Abonnements, Kommentarkopf `stripe-we
 `billing-webhook.php:1-6`).
 
 ### `stripe-webhook.php` (SEPA-Einzüge der Firmen)
+
+Seit 4.76 wird nach der Signaturprüfung `event.livemode` mit `integrations.stripe_mode` der Firma verglichen; ein
+Ereignis im falschen Modus wird mit 200 ignoriert (`webhook_exit`, Altbestand ohne `stripe_mode` wird nicht verglichen).
+`billing-webhook.php` antwortet auf andere Methoden als POST mit 405 (4.76).
 
 - **Signaturprüfung:** je Firma mit deren eigenem, verschlüsselt gespeichertem Webhook-Secret
   (`integrations.stripe_webhook_secret_encrypted`, entschlüsselt über `decrypt_value()`,

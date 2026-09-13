@@ -1160,7 +1160,7 @@ function register_iban_with_stripe(string $tenantId, string $customerId, string 
     }
 
     try {
-        $stripe = _get_stripe_client($tenantId);
+        $stripe = _get_stripe_client($tenantId, true);
     } catch (Throwable $e) {
         return ['registered' => false, 'reason' => $e->getMessage()];
     }
@@ -1223,7 +1223,12 @@ function validate_scheduled_date(string $scheduledDate, int $minLeadDays = 1): v
     }
 }
 
-function _get_stripe_client(string $tenantId): StripeClient
+/**
+ * Stripe-Client der Firma. $requireReady = true (Einreichung, Vormerkung, IBAN-Registrierung, digitales Mandat) verlangt
+ * seit 4.76 zusaetzlich ein bereites Konto (stripe_connection_state ready, sepa_pending oder unverified); Lesepfade
+ * (Statusabgleich, Klaerung, Webhook, Import) lassen $requireReady weg und arbeiten auch mit eingeschraenktem Konto.
+ */
+function _get_stripe_client(string $tenantId, bool $requireReady = false): StripeClient
 {
     $stmt = db()->prepare('SELECT * FROM integrations WHERE tenant_id = ?');
     $stmt->execute([$tenantId]);
@@ -1231,6 +1236,17 @@ function _get_stripe_client(string $tenantId): StripeClient
 
     if (!$integration || !(int)$integration['stripe_connected']) {
         throw new CollectionException('Stripe ist nicht verbunden.');
+    }
+    // Seit 4.76: Ein verbundenes, aber nicht bereites Konto (SEPA-Faehigkeit inaktiv, Zahlungen nicht freigeschaltet,
+    // Schluessel abgelehnt) sperrt den Einzug mit klarer Meldung; bei terminierten Einzuegen wird daraus eine
+    // Zurueckstellung (CollectionDeferredException in _submit_single_scheduled), kein Fehlschlag. Zustaende aus der
+    // Zeit vor 4.76 (unverified) und "in Pruefung" sperren nicht.
+    if ($requireReady) {
+        require_once __DIR__ . '/integrations.php';
+        $state = stripe_connection_state($integration);
+        if (!$state['ready']) {
+            throw new CollectionException('Stripe-Konto nicht bereit (' . $state['label'] . '): ' . $state['hint']);
+        }
     }
     $secretKey = decrypt_value($integration['stripe_secret_key_encrypted']);
     if (!$secretKey) {
@@ -1540,7 +1556,7 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
     $queuedImmediate = false;
     $submitNotBefore = null;
     if ($scheduledDate === null && collections_grace_active()) {
-        _get_stripe_client($tenantId);
+        _get_stripe_client($tenantId, true);
         // Kein Vormerken, solange ein früherer Versuch für diese Rechnung offen oder unklar ist
         $openAttempts = collection_attempts_open($tenantId, $invoice['id']);
         if ($openAttempts) {
@@ -1625,7 +1641,7 @@ function _submit_collection_locked(string $tenantId, string $invoiceId, ?string 
         }
     } else {
         // --- Sofort: Stripe jetzt aufrufen ---
-        $stripe = _get_stripe_client($tenantId);
+        $stripe = _get_stripe_client($tenantId, true);
 
         // 3. Restbetrag live bei Lexware Office (unmittelbar vor dem Stripe-Aufruf)
         $decision = _determine_collection_amount($tenantId, $invoice, $amountCents, $confirmed);
@@ -2193,7 +2209,7 @@ function _submit_single_scheduled(array $collection): void
     };
 
     try {
-        $stripe = _get_stripe_client($tenantId);
+        $stripe = _get_stripe_client($tenantId, true);
 
         $stmt = $pdo->prepare('SELECT * FROM invoices WHERE id = ? AND tenant_id = ?');
         $stmt->execute([$collection['invoice_id'], $tenantId]);

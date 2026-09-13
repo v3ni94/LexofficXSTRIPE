@@ -216,6 +216,7 @@ jobs:
           lauf bash tools/github-poll-check.sh
           lauf bash tools/github-ssh-retry-check.sh
           lauf php tools/pricing-check.php
+          lauf php tools/product-facts-check.php
           lauf bash tools/test-guard-check.sh
           lauf php tools/mail-dns-check.php
           exit "$status"

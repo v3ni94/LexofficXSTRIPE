@@ -393,6 +393,45 @@ OUT="$($SIM state "$(INVB 4)")"; erwp "Einzug von Firma B disputed" c0 "disputed
 grep -q "expand=latest_charge" "$STRIPE_STUB_DIR/list.log" && ok "Rueckschau nutzt die Liste mit eingebetteter Charge (ein Aufruf je 100 Einzuege)" || bad "Liste ohne expand=data.latest_charge"
 [[ "$(pis)" == "$P14" ]] && ok "kein PaymentIntent durch den Statusabgleich (reiner Lesezugriff)" || bad "Statusabgleich hat PaymentIntents angelegt: $(pis) statt $P14"
 
+echo "16) Stripe-Verbindungszustand: SEPA-Faehigkeit, Berechtigung, Modus (4.76)"
+account_set() { php -r '$f = $argv[1]; $d = is_file($f) ? (json_decode((string)file_get_contents($f), true) ?: []) : []; $d[$argv[2]] = json_decode($argv[3], true); file_put_contents($f, json_encode($d));' "$STRIPE_STUB_DIR/account.json" "$1" "$2"; }
+SQL "INSERT INTO invoices (id, tenant_id, lexoffice_invoice_id, voucher_number, customer_id, contact_name, total_gross_amount, currency, due_date, lexoffice_status, collection_status)
+     VALUES ('aaaaaaaa-4444-0000-0000-000000000007', '$A', 'aaaaaaaa-5555-0000-0000-000000000007', 'RE-FA-7', 'aaaaaaaa-2222-0000-0000-000000000001', 'Kunde FA1', 100.00, 'EUR', CURDATE(), 'open', 'none')"
+P16=$(pis)
+OUT="$($SIM stripe_state $A)"; erw "Verbindung aus der Zeit vor 4.76 (Faehigkeit unbekannt): unverified, Einzuege weiter moeglich" state unverified; erw "bereit" ready 1
+OUT="$($SIM stripe_verify $A)"; erw "Kontopruefung uebernimmt SEPA-Faehigkeit" sepa_capability active; erw "Zahlungen freigeschaltet" charges_enabled 1; erw "Zustand bereit" state ready
+account_set capabilities '{"sepa_debit_payments":"inactive","transfers":"active"}'
+OUT="$($SIM stripe_verify $A)"; erw "SEPA inaktiv erkannt" sepa_capability inactive; erw "Zustand SEPA nicht verfuegbar" state sepa_unavailable; erw "nicht bereit" ready 0
+OUT="$($SIM submit $A aaaaaaaa-4444-0000-0000-000000000007)"; erw "Sofort-Einzug bei inaktiver SEPA-Faehigkeit abgewiesen" result error
+erwp "Grund nennt den Zustand" error "*SEPA-Lastschrift nicht verf*"
+[[ "$(pis)" == "$P16" ]] && ok "kein PaymentIntent bei nicht bereitem Konto" || bad "PaymentIntent trotz inaktiver SEPA-Faehigkeit: $(pis) statt $P16"
+OUT="$($SIM sync_status $A)"; erwp "Statusabgleich (Lesezugriff) laeuft trotz nicht bereitem Konto" reviewed "[0-9]*"
+account_set capabilities '{"sepa_debit_payments":"pending","transfers":"active"}'
+OUT="$($SIM stripe_verify $A)"; erw "SEPA in Pruefung: Zustand sepa_pending" state sepa_pending; erw "in Pruefung sperrt nicht" ready 1
+account_set capabilities '{"sepa_debit_payments":"active","transfers":"active"}'; account_set charges_enabled false
+OUT="$($SIM stripe_verify $A)"; erw "charges_enabled=false: Konto nimmt keine Zahlungen an" state charges_disabled; erw "nicht bereit" ready 0
+OUT="$($SIM submit $A aaaaaaaa-4444-0000-0000-000000000007)"; erw "Einzug bei charges_enabled=false abgewiesen" result error
+account_set charges_enabled true
+echo 403 > "$STRIPE_STUB_DIR/account_error"
+OUT="$($SIM stripe_verify $A)"; erw "Pruefung mit 403 schlaegt fehl" result error; erw "Fehlerklasse permission" error_class permission; erw "Zustand Berechtigung fehlt" state permission_missing
+echo 401 > "$STRIPE_STUB_DIR/account_error"
+OUT="$($SIM stripe_verify $A)"; erw "Fehlerklasse auth" error_class auth; erw "Zustand Schluessel ungueltig" state auth_failed
+OUT="$($SIM submit $A aaaaaaaa-4444-0000-0000-000000000007)"; erw "Einzug bei abgelehntem Schluessel abgewiesen" result error
+echo 500 > "$STRIPE_STUB_DIR/account_error"
+OUT="$($SIM stripe_verify $A)"; erw "Fehlerklasse technical" error_class technical; erw "Zustand voruebergehend gestoert" state degraded
+rm -f "$STRIPE_STUB_DIR/account_error"
+OUT="$($SIM stripe_verify $A)"; erw "erfolgreiche Pruefung loescht den Fehler: bereit" state ready
+OUT="$($SIM submit $A aaaaaaaa-4444-0000-0000-000000000007)"; erw "Einzug nach Wiederherstellung angenommen" result ok
+[[ "$(pis)" == $((P16 + 1)) ]] && ok "genau ein PaymentIntent nach der Freigabe" || bad "PaymentIntents: $(pis) statt $((P16 + 1))"
+OUT="$($SIM stripe_state $B)"; erw "Firma B unberuehrt von den Pruefungen der Firma A" state unverified
+echo "16a) Webhook: Ereignis im falschen Modus (livemode) wird ignoriert"
+PIB6="$(SQL "SELECT stripe_payment_intent_id FROM payment_collections WHERE invoice_id = '$(INVB 6)' LIMIT 1")"
+ev evt_16 payment_intent.succeeded $((NOW+10)) "{\"id\":\"$PIB6\",\"object\":\"payment_intent\",\"status\":\"succeeded\",\"amount\":10000,\"metadata\":{\"tenant_id\":\"$B\"}}" > "$T/e16.json"
+sed -i 's/"livemode":false/"livemode":true/' "$T/e16.json"
+hook whsec_stub_FB "$T/e16.json"; [[ "$HOOK_CODE" == 200 && "$HOOK_BODY" == ok ]] && ok "Live-Ereignis an Firma im Testmodus: 200 ohne Wirkung" || bad "livemode: $HOOK_CODE $HOOK_BODY"
+OUT="$($SIM state "$(INVB 6)")"; erwp "Einzug von Firma B bleibt failed (Ereignis nicht verarbeitet)" c0 "failed|*"
+[[ "$(SQL "SELECT COUNT(*) FROM webhook_events WHERE id = 'evt_16'")" == 0 ]] && ok "Ereignis im falschen Modus nicht beansprucht" || bad "Ereignis im falschen Modus beansprucht"
+
 echo "15) Statische Sicherungen"
 grep -q "AND stripe_status IN ('submitting', 'scheduled')" "$ROOT/php-ionos/app/collections.php" && ok "Fehlermarkierung nur aus submitting/scheduled (A-11)" || bad "A-11 Fehlermarkierung ohne Zustandsbedingung"
 [[ "$(grep -c "webhook_retry('Datenbankfehler bei Firmenzuordnung" "$ROOT/php-ionos/stripe-webhook.php")" == 2 ]] && grep -q "http_response_code(500)" <(sed -n '/^function webhook_retry/,/^}/p' "$ROOT/php-ionos/stripe-webhook.php") && ok "Datenbankfehler bei der Firmenzuordnung antwortet mit 500 (A-03)" || bad "A-03: Datenbankfehler mit 200 quittiert"

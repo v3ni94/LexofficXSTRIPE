@@ -8,12 +8,19 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.75';
+const APP_VERSION = '4.76';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.76', 'date' => '13.09.2026', 'title' => 'Stripe-Verbindungszustand, Produktfaktenquelle, Datenvertrag (Masterprompt Backend)',
+         'entries' => [
+            ['type' => 'Neu', 'text' => 'Stripe-Verbindungszustand je Firma (Migration 035): Die Kontoprüfung übernimmt Zahlungsfreischaltung (charges_enabled) und SEPA-Fähigkeit (capabilities.sepa_debit_payments); stripe_connection_state() liefert bereit, SEPA nicht verfügbar, SEPA in Prüfung, Konto nimmt keine Zahlungen an, Schlüssel ungültig, Berechtigung fehlt, vorübergehend gestört, nicht geprüft, getrennt oder nicht verbunden. Einreichung, Vormerkung, IBAN-Registrierung und digitales Mandat verlangen ein bereites Konto (klare deutsche Meldung, im Fälligkeitslauf Zurückstellung statt Fehlschlag); Statusabgleich, Klärung, Webhook und Import lesen weiter. Anzeige unter Einstellungen, Stripe.'],
+            ['type' => 'Geändert', 'text' => 'Stripe-Webhook ignoriert Ereignisse, deren livemode nicht zum Modus des hinterlegten Schlüssels passt. Trennen der Stripe-Verbindung nennt die Zahl terminierter Einzüge, die bestehen bleiben und ohne Verbindung nicht eingereicht werden. billing-webhook.php antwortet auf andere Methoden als POST mit 405.'],
+            ['type' => 'Neu', 'text' => 'Zentrale Produktfaktenquelle app/product_facts.php (Register 1.0 mit Status technisch getestet, öffentlich behauptet, geplant, ungeklärt, Quelle und Prüfdatum je Aussage), Snapshot docs/contracts/product-facts.snapshot.json (bin/product-facts.php --export), öffentlicher Endpunkt fakten.php (GET, JSON, 300 s Cache, noindex, CORS nur für eigene Domains, ohne Login, ohne Stripe-Aufruf) und Prüfwerkzeug tools/product-facts-check.php im Workflow. Preisbeträge bleiben bis zur Freigabe des Betreibers nicht öffentlich.'],
+            ['type' => 'Neu', 'text' => 'Datenvertrag docs/contracts/smarteinzug-contract.md 1.0 (Dateibesitz, Snapshot, Vormerkung, Reichweitenmessung, Conversion-Ereignisse, Zustandsbereiche, Berechtigungen, Endpunkte) sowie docs/backend/ (Audit, Routeninventar, Stripe-Review, Produktfakten, Release-Checkliste). Prüfstände: collections-check Abschnitt 16 und 16a (32 Fälle, 201/0), product-facts-check 33/0.'],
+         ]],
         ['version' => '4.75', 'date' => '12.09.2026', 'title' => 'Rechnungen: SEPA-Zustand je Kunde sichtbar, Schaltfläche nennt die Aktion',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Schaltfläche je Zeile hieß „SEPA: Nein“, wenn der Kunde auf Ja stand (Aktion „auf Nein setzen“), und „SEPA: Ja“, wenn er auf Nein stand. In der Ansicht „Nur SEPA-Kunden“ trug damit jede Zeile ein rotes „SEPA: Nein“, die Filter wirkten vertauscht (Rückmeldung Betreiber 12.09.2026). Die Filterabfrage war korrekt. Jetzt zeigt die Spalte „Kunde“ den Zustand als Kennzeichen (SEPA: Ja grün, SEPA: Nein rot, Laufkunde), die Schaltfläche heißt „SEPA auf Nein setzen“ beziehungsweise „SEPA auf Ja setzen“.'],
