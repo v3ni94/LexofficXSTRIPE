@@ -36,7 +36,8 @@ eingerichtet und kein DNS-Eintrag geändert (siehe `docs/vps/08-hostinger-coolif
     künftige Deployments ab, siehe `docs/vps/03-github-deployment.md`).
 11. **Beobachtungsphase:** mindestens 24 Stunden erhöhte Aufmerksamkeit (Logs, Adminbereich
     System, Dead-Letter-Liste, Circuit Breaker).
-12. **Nachlauf:** alte Webhosting-Datenbank einige Tage als Referenz halten, danach Zugangsdaten
+12. **Nachlauf:** externer Cronjob gegen `cron.php` beendet (20.09.2026, cron-job.org auf Uptime-Check `health.php`
+    umgewidmet; IONOS-Kundenbereich, Hosting, Cronjobs noch prüfen); alte Webhosting-Datenbank einige Tage als Referenz halten, danach Zugangsdaten
     entfernen (`docs/vps/04-datenbankmigration.md`, Schritt 11); DNS-TTL wieder erhöhen. Sobald die
     Anwendung vollständig auf dem VPS läuft, die GitHub-Variable `WEBHOSTING_APP_DEPLOY` auf
     `false` setzen; danach werden nur noch die Marketingseiten hochgeladen, der App-Ordner und der

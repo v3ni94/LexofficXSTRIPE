@@ -14,7 +14,7 @@ Die Seite aktualisiert das Kopf-Fragment alle 30 Sekunden (assets/js/app.js), pa
 
 ## Was tatsächlich gemessen wird
 
-Umfeld: IONOS Webhosting, PHP ohne Root-Zugang, externer Cron (cron-job.org, Sollintervall 5 Minuten, 30 Sekunden Timeout). Es gibt keine Einsicht in Prozesse, CPU, Gesamtspeicher oder PHP-Worker des Hosts.
+Umfeld (historisch, Webhosting-Phase): IONOS Webhosting, PHP ohne Root-Zugang, externer Cron (cron-job.org, Sollintervall 5 Minuten, 30 Sekunden Timeout). Seit dem Betrieb auf dem VPS planen Scheduler und Worker selbst; der Cronjob bei cron-job.org dient seit dem 20.09.2026 nur noch als Uptime-Check auf `health.php` (`docs/vps/06-betrieb.md`). Es gibt keine Einsicht in Prozesse, CPU, Gesamtspeicher oder PHP-Worker des Hosts.
 
 | Kennzahl | Quelle | Verfügbar |
 |---|---|---|

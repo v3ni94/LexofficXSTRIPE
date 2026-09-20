@@ -609,10 +609,13 @@ Systemseitig braucht der VPS ebenfalls keinen eigenen Cron: Backups laufen über
 Containerprotokolle über die Docker-Logrotation im Stack, Betriebssystem-Updates über `unattended-upgrades` (die
 Anmeldemeldung „1 updates could not be installed automatically“ ist zu prüfen: `cat /var/log/unattended-upgrades/unattended-upgrades.log`).
 
-**Zu erledigen (Betreiber):** Der alte Cronjob des IONOS-Webhostings gegen die alte Datenbank ist im IONOS-Kundenbereich
-(Hosting, Cronjobs) beziehungsweise beim externen Cron-Dienst zu löschen und in `docs/vps/07-cutover-checkliste.md`,
-Punkt 12, abzuhaken. Er richtet keinen Schaden an den Kundendaten auf dem VPS an, arbeitet aber gegen einen veralteten
-Datenbestand und könnte bei dort aktivem Mailversand veraltete Nachrichten erzeugen.
+**Erledigt (Betreiber, 20.09.2026):** Der externe Cronjob bei cron-job.org ruft `cron.php` nicht mehr auf. Er wurde auf
+einen Uptime-Check umgewidmet: `GET https://app.smart-einzug.de/health.php` alle 5 Minuten, Benachrichtigung nach
+aufeinanderfolgenden Fehlschlägen, bei Erholung und vor Ablauf des TLS-Zertifikats. `health.php` liefert 200 bei
+laufendem PHP und erreichbarer Datenbank, sonst 503, ohne Versionen, Pfade oder Token. Damit ist die Überwachung von
+außen eingerichtet; der interne Totmannschalter (`monitoring.heartbeat_url`, Server meldet sich aktiv) ist davon getrennt
+und braucht einen Dienst mit eingehendem Ping. Ein etwaiger Cronjob im IONOS-Kundenbereich (Hosting, Cronjobs) ist
+weiterhin zu prüfen und zu löschen, falls vorhanden (Checkliste Punkt 12).
 
 ## Konfigurationsänderungen erreichen Dauerprozesse nur nach Neustart
 
