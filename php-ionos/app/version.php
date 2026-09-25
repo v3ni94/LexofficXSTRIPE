@@ -8,12 +8,16 @@
  */
 declare(strict_types=1);
 
-const APP_VERSION = '4.77';
+const APP_VERSION = '4.78';
 
 /** Änderungsverlauf, neueste Version zuerst. */
 function app_changelog(): array
 {
     return [
+        ['version' => '4.78', 'date' => '24.09.2026', 'title' => 'Statusseite: Aufgabenverarbeitung zählt den Scheduler, nicht nur cron.php',
+         'entries' => [
+            ['type' => 'Behoben', 'text' => 'Die Monitoring-Komponente „Cronjobs / Aufgabenverarbeitung“ wertete nur Aufrufe von cron.php aus. Seit dem Ende des externen Cronjobs (20.09.2026, auf Uptime-Check umgewidmet) meldete sie „verspätet“ und zog Datenabgleich und Einzugsverarbeitung auf der öffentlichen Statusseite auf „Störung“, obwohl Scheduler und Worker liefen. Mit aktiver Warteschlange gilt jetzt der Herzschlag des Schedulers (worker_heartbeats, Pool scheduler) als Nachweis; cron.php bleibt die Quelle auf dem Webhosting. Neue Fehlerkategorie scheduler_late.'],
+         ]],
         ['version' => '4.77', 'date' => '13.09.2026', 'title' => 'Faktenseite: Geldfluss richtiggestellt, Quellen nachvollziehbar getrennt',
          'entries' => [
             ['type' => 'Behoben', 'text' => 'Die Faktenseite formulierte „Belastet wird das Stripe-Konto Ihres eigenen Unternehmens“. Das ist für eine Lastschrift falsch: Belastet wird das Bankkonto des Zahlers, über das Stripe-Konto der Firma wird die Zahlung lediglich abgewickelt und dort geht das Geld ein. Die Stelle nennt jetzt beide Konten getrennt. Befund aus einer externen Durchsicht vom 13.09.2026.'],

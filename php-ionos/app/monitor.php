@@ -448,13 +448,35 @@ function _mon_check_mail(): array
     return ['status' => 'ok', 'category' => null];
 }
 
+/**
+ * Aufgabenverarbeitung: Auf dem Webhosting zaehlt der letzte Lauf von cron.php (job_runs.job_type = 'cron'); mit aktiver
+ * Warteschlange (VPS) zaehlt der Herzschlag des Schedulers (worker_heartbeats.pool = 'scheduler'), der jeden Tick schreibt.
+ * Der juengere der beiden Nachweise gilt. Bis 4.77 wurde nur cron.php ausgewertet: Nach dem Ende des externen Cronjobs
+ * (20.09.2026) meldete die Komponente "cron_late" und zog Datenabgleich und Einzugsverarbeitung auf der Statusseite auf
+ * "Stoerung", obwohl Scheduler und Worker liefen (Befund 24.09.2026).
+ */
 function _mon_check_cron(array $cfg): array
 {
+    $last = null;
     try {
         $stmt = db()->query("SELECT started_at FROM job_runs WHERE job_type = 'cron' ORDER BY started_at DESC LIMIT 1");
         $last = mon_ts((string)$stmt->fetchColumn());
     } catch (Throwable $e) {
         $last = null;
+    }
+    $quelle = 'cron';
+    try {
+        require_once __DIR__ . '/queue.php';
+        if (function_exists('queue_any_enabled') && queue_any_enabled()) {
+            $stmt = db()->query("SELECT MAX(heartbeat_at) FROM worker_heartbeats WHERE pool = 'scheduler' AND status <> 'stopped'");
+            $hb = mon_ts((string)$stmt->fetchColumn());
+            if ($hb !== null && ($last === null || $hb > $last)) {
+                $last = $hb;
+                $quelle = 'scheduler';
+            }
+        }
+    } catch (Throwable $e) {
+        // Warteschlange nicht verfuegbar: cron.php bleibt die einzige Quelle
     }
     if ($last === null) {
         return ['status' => 'unknown', 'category' => 'no_data', 'value' => null];
@@ -464,7 +486,7 @@ function _mon_check_cron(array $cfg): array
     if ($age <= $iv * 2 + 60) {
         return ['status' => 'ok', 'category' => null, 'value' => $age];
     }
-    return ['status' => $age <= $iv * 4 ? 'degraded' : 'fail', 'category' => 'cron_late', 'value' => $age];
+    return ['status' => $age <= $iv * 4 ? 'degraded' : 'fail', 'category' => $quelle === 'scheduler' ? 'scheduler_late' : 'cron_late', 'value' => $age];
 }
 
 /** Laufende Versuche mit abgelaufenem Heartbeat als "Ausführung unbestätigt" kennzeichnen (nur Monitoringdaten). */
@@ -730,7 +752,7 @@ function monitor_component_defs(): array
         'db'       => ['name' => 'Datenbank', 'source' => 'SELECT 1 über die bestehende Verbindung, Latenz in ms', 'note' => 'Lesetest; Schreibfähigkeit wird nicht behauptet.'],
         'web_ui'   => ['name' => 'Weboberfläche (Kundenanwendung)', 'source' => 'login.php mit Inhaltsmerkmal, style.css und app.js aus dem Assetbestand', 'note' => 'Kein vollständiger Browser-Funktionstest.'],
         'admin_ui' => ['name' => 'Weboberfläche (Administration)', 'source' => 'login.php des Admin-Hosts mit Inhaltsmerkmal', 'note' => 'Nur bei getrenntem Admin-Host.'],
-        'cron'     => ['name' => 'Cronjobs / Aufgabenverarbeitung', 'source' => 'Startzeit des letzten Cron-Laufs (job_runs) gegen Sollintervall', 'note' => 'Verspätung nach Sollintervall mit Toleranz.'],
+        'cron'     => ['name' => 'Cronjobs / Aufgabenverarbeitung', 'source' => 'Startzeit des letzten Cron-Laufs (job_runs) oder, mit Warteschlange, Herzschlag des Schedulers (worker_heartbeats) gegen Sollintervall', 'note' => 'Verspätung nach Sollintervall mit Toleranz; auf dem VPS zählt der Scheduler, cron.php wird dort nicht mehr aufgerufen.'],
         'mail'     => ['name' => 'E-Mail', 'source' => 'Marker der letzten Übergabe an den Versandweg und des letzten Fehlers', 'note' => 'Übergabe an den Versandweg, kein Zustellnachweis.'],
         'lexoffice'=> ['name' => 'Lexware-Anbindung', 'source' => 'API-Zähler der Synchronisationsschritte der letzten 24 Stunden', 'note' => 'Ein ungültiger Schlüssel einer Firma zählt nicht als Plattformstörung.'],
         'sevdesk'  => ['name' => 'sevdesk-Anbindung', 'source' => 'Instrumentierte API-Aufrufe des sevdesk-Adapters der letzten 24 Stunden (sevdesk_api)', 'note' => 'Ohne verbundene sevdesk-Firmen dauerhaft „keine Daten“. Ein abgelehnter Token einer Firma zählt nicht als Störung.'],

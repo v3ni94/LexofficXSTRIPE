@@ -14,7 +14,7 @@ Die Seite aktualisiert das Kopf-Fragment alle 30 Sekunden (assets/js/app.js), pa
 
 ## Was tatsächlich gemessen wird
 
-Umfeld (historisch, Webhosting-Phase): IONOS Webhosting, PHP ohne Root-Zugang, externer Cron (cron-job.org, Sollintervall 5 Minuten, 30 Sekunden Timeout). Seit dem Betrieb auf dem VPS planen Scheduler und Worker selbst; der Cronjob bei cron-job.org dient seit dem 20.09.2026 nur noch als Uptime-Check auf `health.php` (`docs/vps/06-betrieb.md`). Es gibt keine Einsicht in Prozesse, CPU, Gesamtspeicher oder PHP-Worker des Hosts.
+Umfeld (historisch, Webhosting-Phase): IONOS Webhosting, PHP ohne Root-Zugang, externer Cron (cron-job.org, Sollintervall 5 Minuten, 30 Sekunden Timeout). Seit dem Betrieb auf dem VPS planen Scheduler und Worker selbst; der Cronjob bei cron-job.org dient seit dem 20.09.2026 nur noch als Uptime-Check auf `health.php` (`docs/vps/06-betrieb.md`). Die Komponente „Cronjobs / Aufgabenverarbeitung“ wertet deshalb seit 4.78 mit aktiver Warteschlange den Herzschlag des Schedulers aus (`worker_heartbeats`, Pool `scheduler`, Kategorie `scheduler_late`); ohne diese Anpassung meldete sie nach dem Ende des externen Cronjobs eine Störung, die die öffentliche Statusseite für Datenabgleich und Einzugsverarbeitung übernahm (Befund 24.09.2026). Es gibt keine Einsicht in Prozesse, CPU, Gesamtspeicher oder PHP-Worker des Hosts.
 
 | Kennzahl | Quelle | Verfügbar |
 |---|---|---|

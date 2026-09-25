@@ -5,9 +5,9 @@
     "summary": "Marketingmodul (4.63) in der Funktionsübersicht."
   },
   "entwickler": {
-    "revision": "r36",
-    "date": "12.09.2026",
-    "summary": "Statusabgleich mit Rückschau auf Rücklastschrift und Erstattung, collection_apply_dispute(), collections.sync_lookback_days (4.73)."
+    "revision": "r37",
+    "date": "24.09.2026",
+    "summary": "Monitoring: Aufgabenverarbeitung über Scheduler-Herzschlag statt nur cron.php (4.78)."
   },
   "kunden": {
     "revision": "r7",
